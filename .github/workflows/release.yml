@@ -2,8 +2,6 @@ name: Release Executables
 
 on:
   push:
-    branches:
-      - "build/*"
     tags:
       - "v*"
   workflow_dispatch:
@@ -121,6 +119,7 @@ jobs:
             --distpath dist \
             --workpath build/command-line \
             --specpath build/spec \
+            --collect-data timiniprint \
             --collect-all bleak \
             --collect-all pypdfium2 \
             --collect-all pypdfium2_raw \
@@ -140,48 +139,17 @@ jobs:
           fi
           echo "path=$target" >> "$GITHUB_OUTPUT"
 
-      - name: Package command-line artifact
-        shell: bash
-        env:
-          ARTIFACT_NAME: ${{ steps.meta.outputs.artifact_name }}
-          TARGET_PATH: ${{ steps.built.outputs.path }}
-        run: |
-          python - <<'PY'
-          import os
-          import pathlib
-          import tarfile
-          import zipfile
-
-          name = os.environ["ARTIFACT_NAME"]
-          target = pathlib.Path(os.environ["TARGET_PATH"])
-          outdir = pathlib.Path("release")
-          outdir.mkdir(exist_ok=True)
-          if not target.exists():
-              raise SystemExit(f"Missing built artifact: {target}")
-
-          if os.environ["RUNNER_OS"] == "Windows":
-              archive = outdir / f"{name}.zip"
-              with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
-                  zf.write(target, arcname=target.name)
-          else:
-              archive = outdir / f"{name}.tar.gz"
-              with tarfile.open(archive, "w:gz") as tf:
-                  tf.add(target, arcname=target.name)
-
-          print(f"Created {archive}")
-          PY
-
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.artifact_name }}
-          path: release/*
+          path: ${{ steps.built.outputs.path }}
 
       - name: Upload files to GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: ${{ steps.built.outputs.path }}
 
   build_gui:
     name: Build GUI ${{ matrix.platform_name }}
@@ -261,6 +229,7 @@ jobs:
             --distpath dist \
             --workpath build/graphical \
             --specpath build/spec \
+            --collect-data timiniprint \
             --collect-all bleak \
             --collect-all pypdfium2 \
             --collect-all pypdfium2_raw \
@@ -280,50 +249,37 @@ jobs:
           fi
           echo "path=$target" >> "$GITHUB_OUTPUT"
 
-      - name: Package GUI artifact
+      - name: Package macOS app bundle
+        if: runner.os == 'macOS'
         shell: bash
         env:
           ARTIFACT_NAME: ${{ steps.meta.outputs.artifact_name }}
           TARGET_PATH: ${{ steps.built.outputs.path }}
         run: |
-          python - <<'PY'
-          import os
-          import pathlib
-          import tarfile
-          import zipfile
+          if [ ! -d "$TARGET_PATH" ]; then
+            echo "Expected macOS GUI bundle at $TARGET_PATH"
+            exit 1
+          fi
+          ditto -c -k --keepParent "$TARGET_PATH" "dist/${ARTIFACT_NAME}.zip"
 
-          name = os.environ["ARTIFACT_NAME"]
-          target = pathlib.Path(os.environ["TARGET_PATH"])
-          outdir = pathlib.Path("release")
-          outdir.mkdir(exist_ok=True)
-          if not target.exists():
-              raise SystemExit(f"Missing built artifact: {target}")
-
-          if os.environ["RUNNER_OS"] == "Windows":
-              archive = outdir / f"{name}.zip"
-              with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
-                  if target.is_dir():
-                      for path in target.rglob("*"):
-                          if path.is_file():
-                              zf.write(path, arcname=path.relative_to(target.parent))
-                  else:
-                      zf.write(target, arcname=target.name)
-          else:
-              archive = outdir / f"{name}.tar.gz"
-              with tarfile.open(archive, "w:gz") as tf:
-                  tf.add(target, arcname=target.name)
-
-          print(f"Created {archive}")
-          PY
+      - name: Resolve upload path
+        id: upload
+        shell: bash
+        run: |
+          path="${{ steps.built.outputs.path }}"
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            path="dist/${{ steps.meta.outputs.artifact_name }}.zip"
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.artifact_name }}
-          path: release/*
+          path: ${{ steps.upload.outputs.path }}
 
       - name: Upload files to GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: ${{ steps.upload.outputs.path }}
