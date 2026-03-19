@@ -38,33 +38,32 @@ class AppCliFlowsTests(unittest.TestCase):
         base.update(kwargs)
         return argparse.Namespace(**base)
 
-    def test_main_no_args_launches_gui(self) -> None:
-        with patch.object(sys, "argv", ["prog"]), patch("timiniprint.app.cli.launch_gui", return_value=0) as gui:
-            code = cli.main()
-        self.assertEqual(code, 0)
-        self.assertEqual(gui.call_count, 1)
+    def test_main_no_args_returns_2(self) -> None:
+        with patch("timiniprint.app.cli.emit_startup_warnings"):
+            code = cli.main([])
+        self.assertEqual(code, 2)
 
     def test_main_dispatch_list_models_and_scan(self) -> None:
         args = self._args(list_models=True)
-        with patch.object(sys, "argv", ["prog", "--list-models"]), patch("timiniprint.app.cli.parse_args", return_value=args), patch(
+        with patch("timiniprint.app.cli.parse_args", return_value=args), patch(
             "timiniprint.app.cli.emit_startup_warnings"
         ), patch("timiniprint.app.cli.list_models", return_value=0) as lm:
-            self.assertEqual(cli.main(), 0)
+            self.assertEqual(cli.main(["--list-models"]), 0)
         self.assertEqual(lm.call_count, 1)
 
         args2 = self._args(scan=True)
-        with patch.object(sys, "argv", ["prog", "--scan"]), patch("timiniprint.app.cli.parse_args", return_value=args2), patch(
+        with patch("timiniprint.app.cli.parse_args", return_value=args2), patch(
             "timiniprint.app.cli.emit_startup_warnings"
         ), patch("timiniprint.app.cli.scan_devices", return_value=0) as sc:
-            self.assertEqual(cli.main(), 0)
+            self.assertEqual(cli.main(["--scan"]), 0)
         self.assertEqual(sc.call_count, 1)
 
     def test_main_conflicting_args_returns_2(self) -> None:
         args = self._args(path="a.pdf", text="txt")
-        with patch.object(sys, "argv", ["prog", "a.pdf", "--text", "x"]), patch("timiniprint.app.cli.parse_args", return_value=args), patch(
+        with patch("timiniprint.app.cli.parse_args", return_value=args), patch(
             "timiniprint.app.cli.emit_startup_warnings"
         ):
-            self.assertEqual(cli.main(), 2)
+            self.assertEqual(cli.main(["a.pdf", "--text", "x"]), 2)
 
     def test_build_print_data_text_path_and_cleanup(self) -> None:
         fake_printing = types.ModuleType("timiniprint.printing")

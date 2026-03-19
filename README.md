@@ -18,31 +18,30 @@ TiMini Print works on Windows, Linux, and macOS as a standalone tool without a s
 - pip install -r requirements.txt
 
 ## Quick start (GUI)
-- If no arguments are provided, a GUI opens. You can scan, connect or disconnect with one button,
-  choose a file, and print. Run with no arguments:
-  python3 timiniprint.py
+You can scan, connect or disconnect with one button, choose a file, and print.
+Start the graphical app directly:
+  python3 timiniprint_gui.py
 
-## Quick start (CLI)
+## Quick start (Command line)
 - Print to the first supported Bluetooth printer:
-  python3 timiniprint.py /path/to/file.pdf
+  python3 timiniprint_command_line.py /path/to/file.pdf
 
 - Print to a specific Bluetooth printer:
-  python3 timiniprint.py --bluetooth "PRINTER_NAME" /path/to/file.pdf
+  python3 timiniprint_command_line.py --bluetooth "PRINTER_NAME" /path/to/file.pdf
 
 - Print via a serial port (skip Bluetooth connection):
-  python3 timiniprint.py --serial /dev/rfcomm0 --model A200 /path/to/file.pdf
+  python3 timiniprint_command_line.py --serial /dev/rfcomm0 --model A200 /path/to/file.pdf
 
 - Print raw text without creating a file:
-  python3 timiniprint.py --text "Hello from CLI"
+  python3 timiniprint_command_line.py --text "Hello from CLI"
 
 - List available printer models:
-  python3 timiniprint.py --list-models
+  python3 timiniprint_command_line.py --list-models
 
 - Scan for supported printers:
-  python3 timiniprint.py --scan
+  python3 timiniprint_command_line.py --scan
 
 ### Notes
-- Any CLI option/argument disables the GUI (no arguments = GUI mode)
 - If `--bluetooth` is omitted, the first supported printer found is used
 - For `--serial`, you must pass `--model` (see `--list-models`)
 - For Bluetooth printing, you can pass `--model` to override auto-detection

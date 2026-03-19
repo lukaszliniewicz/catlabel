@@ -3,9 +3,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
-import sys
 import tempfile
-from typing import Optional
+from typing import Optional, Sequence
 
 from ..devices import DeviceResolver, PrinterModel, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
@@ -15,7 +14,7 @@ from .diagnostics import emit_startup_warnings
 from .. import reporting
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="TiMini Print: Bluetooth printing for TiMini-compatible thermal printers."
     )
@@ -44,7 +43,7 @@ def parse_args() -> argparse.Namespace:
     motion_group.add_argument("--feed", action="store_true", help="Advance paper")
     motion_group.add_argument("--retract", action="store_true", help="Retract paper")
     parser.epilog = "If any CLI options/arguments are provided, the GUI will not be launched."
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def list_models() -> int:
@@ -81,14 +80,6 @@ def scan_devices(reporter: reporting.Reporter) -> int:
     except Exception as exc:
         reporter.error(reporting.ERROR_SCAN_FAILED, detail=str(exc), exc=exc)
         return 2
-    return 0
-
-
-def launch_gui() -> int:
-    from .gui import TiMiniPrintGUI
-
-    app = TiMiniPrintGUI()
-    app.mainloop()
     return 0
 
 
@@ -378,10 +369,8 @@ def _build_cli_reporter(verbose: bool) -> reporting.Reporter:
     return reporting.Reporter([reporting.StderrSink(levels=levels)])
 
 
-def main() -> int:
-    if len(sys.argv) == 1:
-        return launch_gui()
-    args = parse_args()
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    args = parse_args(argv)
     reporter = _build_cli_reporter(args.verbose)
     emit_startup_warnings(reporter)
     if args.list_models:

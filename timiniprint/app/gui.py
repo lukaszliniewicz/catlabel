@@ -641,3 +641,9 @@ class TiMiniPrintGUI(tk.Tk):
     def _set_device_combo_state(self, enabled: bool) -> None:
         state = "readonly" if enabled else "disabled"
         self.device_combo.configure(state=state)
+
+
+def main() -> int:
+    app = TiMiniPrintGUI()
+    app.mainloop()
+    return 0
