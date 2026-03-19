@@ -26,46 +26,56 @@ Theoretically, I support Windows, macOS, and Linux, but I test builds only on Ub
   macOS (Homebrew Python): `brew install python-tk`
 
 # Quick start
-If you use release binaries, run the executable directly without `python3`.
-Examples below show how to run the source files from the project directory.
+If you use release binaries, run the downloaded executable directly.
+If you build or run from source instead, use `python3 timiniprint_gui.py` or `python3 timiniprint_command_line.py`.
 
 ## Graphical user interface
 You can scan, connect or disconnect with one button, choose a file, and print.
-Start the graphical app directly:
+Start the graphical app by running the [downloaded executable file](#requirements).
+On Linux and macOS, make sure it has execute permission first.
+
+```bash
+# Replace the filename below with the matching asset for your platform
+chmod +x ./TiMini-Print-GUI-Linux-x86_64
+./TiMini-Print-GUI-Linux-x86_64
+```
+
+Or run it from source:
 
 ```bash
 python3 timiniprint_gui.py
 ```
 
 ## Command line interface
+(the examples use Linux filenames)
 - Print to the first supported Bluetooth printer:
   ```bash
-  python3 timiniprint_command_line.py /path/to/file.pdf
+  ./TiMini-Print-Command-Line-Linux-x86_64 /path/to/file.pdf
   ```
 
 - Print to a specific Bluetooth printer:
   ```bash
-  python3 timiniprint_command_line.py --bluetooth "PRINTER_NAME" /path/to/file.pdf
+  ./TiMini-Print-Command-Line-Linux-x86_64 --bluetooth "PRINTER_NAME" /path/to/file.pdf
   ```
 
 - Print via a serial port (skip Bluetooth connection):
   ```bash
-  python3 timiniprint_command_line.py --serial /dev/rfcomm0 --model A200 /path/to/file.pdf
+  ./TiMini-Print-Command-Line-Linux-x86_64 --serial /dev/rfcomm0 --model A200 /path/to/file.pdf
   ```
 
 - Print raw text without creating a file:
   ```bash
-  python3 timiniprint_command_line.py --text "Hello from CLI"
+  ./TiMini-Print-Command-Line-Linux-x86_64 --text "Hello from CLI"
   ```
 
 - List available printer models:
   ```bash
-  python3 timiniprint_command_line.py --list-models
+  ./TiMini-Print-Command-Line-Linux-x86_64 --list-models
   ```
 
 - Scan for supported printers:
   ```bash
-  python3 timiniprint_command_line.py --scan
+  ./TiMini-Print-Command-Line-Linux-x86_64 --scan
   ```
 
 ## Notes
