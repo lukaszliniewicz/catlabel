@@ -1,5 +1,7 @@
 __pycache__
 origin.*
+metals*
+settings.json
 build/
 dist/
 release/

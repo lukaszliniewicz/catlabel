@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Iterable, Optional, List, Tuple
+from typing import Dict, Iterable, Optional, List, Tuple, Set
 
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "printer_models.json"
 ALIAS_PATH = DATA_PATH.with_name("printer_model_aliases.json")
@@ -68,6 +68,9 @@ class PrinterModel:
     back_paper_num: int
     a4xii: bool = False
     add_mor_pix: Optional[bool] = None
+    # Experimental entries are family-based proxies derived from third-party apps.
+    testing: bool = False
+    testing_note: Optional[str] = None
 
     @property
     def width(self) -> int:
@@ -79,22 +82,33 @@ class PrinterModelMatch:
     model: PrinterModel
     source: PrinterModelMatchSource
     alias_kind: Optional[PrinterModelAliasKind] = None
+    testing: bool = False
+    testing_note: Optional[str] = None
+    conflict_models: Tuple[str, ...] = ()
 
     @property
     def used_alias(self) -> bool:
         return self.source is PrinterModelMatchSource.ALIAS
+
+    @property
+    def has_brand_conflict(self) -> bool:
+        return bool(self.conflict_models)
 
 
 @dataclass(frozen=True)
 class PrinterModelAliasMatch:
     target_head_name: str
     kind: PrinterModelAliasKind
+    testing: bool = False
+    testing_note: Optional[str] = None
 
 
 @dataclass(frozen=True)
 class PrinterModelHeadAlias:
     prefixes: List[str]
     map_model_head_name: str
+    testing: bool = False
+    testing_note: Optional[str] = None
     _normalized_prefixes: Tuple[str, ...] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -115,11 +129,16 @@ class PrinterModelHeadAlias:
 class PrinterModelMacAlias:
     suffixes: List[str]
     map_model_head_name: str
+    only_for_targets: Tuple[str, ...] = ()
+    testing: bool = False
+    testing_note: Optional[str] = None
     _normalized_suffixes: Tuple[str, ...] = field(init=False, repr=False)
+    _normalized_targets: Tuple[str, ...] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         normalized = tuple(suffix.upper() for suffix in self.suffixes)
         object.__setattr__(self, "_normalized_suffixes", normalized)
+        object.__setattr__(self, "_normalized_targets", tuple(self.only_for_targets))
 
     def matches(self, address: Optional[str]) -> bool:
         if not address:
@@ -135,6 +154,11 @@ class PrinterModelMacAlias:
                 if candidate.endswith(suffix):
                     return True
         return False
+
+    def applies_to(self, target_head_name: str) -> bool:
+        if not self._normalized_targets:
+            return True
+        return target_head_name in self._normalized_targets
 
 
 class PrinterModelAliasRegistry:
@@ -184,6 +208,8 @@ class PrinterModelAliasRegistry:
                     PrinterModelHeadAlias(
                         prefixes=list(prefixes),
                         map_model_head_name=map_model_head_name,
+                        testing=bool(entry.get("testing", False)),
+                        testing_note=entry.get("testing_note"),
                     )
                 )
                 continue
@@ -206,6 +232,9 @@ class PrinterModelAliasRegistry:
                     PrinterModelMacAlias(
                         suffixes=list(suffixes),
                         map_model_head_name=map_model_head_name,
+                        only_for_targets=tuple(entry.get("only_for_targets", ())),
+                        testing=bool(entry.get("testing", False)),
+                        testing_note=entry.get("testing_note"),
                     )
                 )
                 continue
@@ -227,12 +256,55 @@ class PrinterModelAliasRegistry:
             return None
         target = match.map_model_head_name
         match_kind = PrinterModelAliasKind.HEAD_NAME
+        testing = match.testing
+        testing_note = match.testing_note
         for mac_alias in self._mac_aliases:
-            if mac_alias.matches(address):
+            if mac_alias.matches(address) and mac_alias.applies_to(target):
                 target = mac_alias.map_model_head_name
                 match_kind = PrinterModelAliasKind.MAC
+                testing = mac_alias.testing
+                testing_note = mac_alias.testing_note
                 break
-        return PrinterModelAliasMatch(target_head_name=target, kind=match_kind)
+        return PrinterModelAliasMatch(
+            target_head_name=target,
+            kind=match_kind,
+            testing=testing,
+            testing_note=testing_note,
+        )
+
+    def resolve_all(self, name: str, address: Optional[str]) -> List[PrinterModelAliasMatch]:
+        if not name or not self._head_aliases:
+            return []
+        normalized_name = PrinterModelAliasNormalizer.normalize_alias_name(name)
+        matches: List[PrinterModelAliasMatch] = []
+        seen: Set[Tuple[str, PrinterModelAliasKind]] = set()
+        for alias in self._head_aliases:
+            if alias.match_length(normalized_name) <= 0:
+                continue
+            head_match = PrinterModelAliasMatch(
+                target_head_name=alias.map_model_head_name,
+                kind=PrinterModelAliasKind.HEAD_NAME,
+                testing=alias.testing,
+                testing_note=alias.testing_note,
+            )
+            key = (head_match.target_head_name, head_match.kind)
+            if key not in seen:
+                matches.append(head_match)
+                seen.add(key)
+            for mac_alias in self._mac_aliases:
+                if not mac_alias.matches(address) or not mac_alias.applies_to(alias.map_model_head_name):
+                    continue
+                mac_match = PrinterModelAliasMatch(
+                    target_head_name=mac_alias.map_model_head_name,
+                    kind=PrinterModelAliasKind.MAC,
+                    testing=mac_alias.testing,
+                    testing_note=mac_alias.testing_note,
+                )
+                key = (mac_match.target_head_name, mac_match.kind)
+                if key not in seen:
+                    matches.append(mac_match)
+                    seen.add(key)
+        return matches
 
 
 class PrinterModelRegistry:
@@ -269,6 +341,12 @@ class PrinterModelRegistry:
     def get_by_head_name(self, head_name: str) -> Optional[PrinterModel]:
         if not head_name:
             return None
+        for model in self._models:
+            if model.head_name and model.head_name == head_name:
+                return model
+        for model in self._models:
+            if model.model_no == head_name:
+                return model
         target = head_name.lower()
         for model in self._models:
             if model.head_name and model.head_name.lower() == target:
@@ -287,26 +365,65 @@ class PrinterModelRegistry:
     def detect_with_origin(self, name: str, address: Optional[str] = None) -> Optional[PrinterModelMatch]:
         if not name:
             return None
-        name_lower = name.lower()
-        match = None
-        for model in self._models:
-            if model.head_name and name_lower.startswith(model.head_name.lower()):
-                if match is None or len(model.head_name) > len(match.head_name):
-                    match = model
-        if match:
-            return PrinterModelMatch(model=match, source=PrinterModelMatchSource.HEAD_NAME)
-        for model in self._models:
-            if name_lower.startswith(model.model_no.lower()):
-                if match is None or len(model.model_no) > len(match.model_no):
-                    match = model
-        if match:
-            return PrinterModelMatch(model=match, source=PrinterModelMatchSource.MODEL_NO)
-        return self._detect_from_alias(name, address)
+        (
+            exact_head_matches,
+            exact_model_no_matches,
+            head_matches,
+            model_no_matches,
+            alias_match,
+            alias_matches,
+        ) = self._collect_matches(name, address)
+        conflict_models = self._conflict_models(
+            exact_head_matches,
+            exact_model_no_matches,
+            alias_matches,
+        )
+        if exact_head_matches:
+            match = max(exact_head_matches, key=lambda model: len(model.head_name))
+            return PrinterModelMatch(
+                model=match,
+                source=PrinterModelMatchSource.HEAD_NAME,
+                testing=match.testing,
+                testing_note=match.testing_note,
+                conflict_models=conflict_models(match.model_no),
+            )
+        if exact_model_no_matches:
+            match = max(exact_model_no_matches, key=lambda model: len(model.model_no))
+            return PrinterModelMatch(
+                model=match,
+                source=PrinterModelMatchSource.MODEL_NO,
+                testing=match.testing,
+                testing_note=match.testing_note,
+                conflict_models=conflict_models(match.model_no),
+            )
+        if head_matches:
+            match = max(head_matches, key=lambda model: len(model.head_name))
+            return PrinterModelMatch(
+                model=match,
+                source=PrinterModelMatchSource.HEAD_NAME,
+                testing=match.testing,
+                testing_note=match.testing_note,
+                conflict_models=conflict_models(match.model_no),
+            )
+        if model_no_matches:
+            match = max(model_no_matches, key=lambda model: len(model.model_no))
+            return PrinterModelMatch(
+                model=match,
+                source=PrinterModelMatchSource.MODEL_NO,
+                testing=match.testing,
+                testing_note=match.testing_note,
+                conflict_models=conflict_models(match.model_no),
+            )
+        return self._detect_from_alias(alias_match, alias_matches)
 
-    def _detect_from_alias(self, name: str, address: Optional[str]) -> Optional[PrinterModelMatch]:
-        alias_match = self._aliases.resolve(name, address)
+    def _detect_from_alias(
+        self,
+        alias_match: Optional[PrinterModelAliasMatch],
+        alias_matches: List[PrinterModelAliasMatch],
+    ) -> Optional[PrinterModelMatch]:
         if not alias_match:
             return None
+        conflict_models = self._conflict_models([], [], alias_matches)
         model = self.get_by_head_name(alias_match.target_head_name)
         if not model:
             return None
@@ -314,4 +431,77 @@ class PrinterModelRegistry:
             model=model,
             source=PrinterModelMatchSource.ALIAS,
             alias_kind=alias_match.kind,
+            testing=alias_match.testing or model.testing,
+            testing_note=alias_match.testing_note or model.testing_note,
+            conflict_models=conflict_models(model.model_no),
         )
+
+    def _collect_matches(
+        self, name: str, address: Optional[str]
+    ) -> Tuple[
+        List[PrinterModel],
+        List[PrinterModel],
+        List[PrinterModel],
+        List[PrinterModel],
+        Optional[PrinterModelAliasMatch],
+        List[PrinterModelAliasMatch],
+    ]:
+        exact_head_matches = self._matching_models(name, key="head_name", case_sensitive=True)
+        if exact_head_matches:
+            exact_model_no_matches = []
+        else:
+            exact_model_no_matches = self._matching_models(name, key="model_no", case_sensitive=True)
+        head_matches: List[PrinterModel] = []
+        model_no_matches: List[PrinterModel] = []
+        if not exact_head_matches and not exact_model_no_matches:
+            head_matches = self._matching_models(name, key="head_name", case_sensitive=False)
+        if not exact_head_matches and not exact_model_no_matches and not head_matches:
+            model_no_matches = self._matching_models(name, key="model_no", case_sensitive=False)
+        alias_match = self._aliases.resolve(name, address)
+        alias_matches = self._aliases.resolve_all(name, address)
+        return (
+            exact_head_matches,
+            exact_model_no_matches,
+            head_matches,
+            model_no_matches,
+            alias_match,
+            alias_matches,
+        )
+
+    def _matching_models(
+        self, name: str, *, key: str, case_sensitive: bool
+    ) -> List[PrinterModel]:
+        matches: List[PrinterModel] = []
+        if case_sensitive:
+            for model in self._models:
+                candidate = getattr(model, key)
+                if candidate and name.startswith(candidate):
+                    matches.append(model)
+            return matches
+
+        name_lower = name.lower()
+        for model in self._models:
+            candidate = getattr(model, key)
+            if candidate and name_lower.startswith(candidate.lower()):
+                matches.append(model)
+        return matches
+
+    def _conflict_models(
+        self,
+        head_matches: List[PrinterModel],
+        model_no_matches: List[PrinterModel],
+        alias_matches: List[PrinterModelAliasMatch],
+    ):
+        all_model_nos = {model.model_no for model in head_matches}
+        all_model_nos.update(model.model_no for model in model_no_matches)
+        for alias_match in alias_matches:
+            if not alias_match.testing:
+                continue
+            model = self.get_by_head_name(alias_match.target_head_name)
+            if model:
+                all_model_nos.add(model.model_no)
+
+        def others(selected_model_no: str) -> Tuple[str, ...]:
+            return tuple(sorted(model_no for model_no in all_model_nos if model_no != selected_model_no))
+
+        return others

@@ -264,10 +264,12 @@ class TiMiniPrintGUI(tk.Tk):
     def _device_label(self, device) -> str:
         name = device.name or ""
         transport = f" {device.transport_label}"
+        experimental = device.experimental_label
+        brand_conflict = device.brand_conflict_label
         status = " [unpaired]" if device.paired is False else ""
         if name:
-            return f"{name} ({device.display_address}){transport}{status}"
-        return f"{device.display_address}{transport}{status}"
+            return f"{name}{experimental}{brand_conflict} ({device.display_address}){transport}{status}"
+        return f"{device.display_address}{experimental}{brand_conflict}{transport}{status}"
 
     def _queue_status(self, key: str, **ctx) -> None:
         self.reporter.status(key, **ctx)
@@ -541,7 +543,9 @@ class TiMiniPrintGUI(tk.Tk):
             match = device.model_match
             self.connected_model = match.model
             self.model_var.set(match.model.model_no)
-            if match.used_alias:
+            used_alias = getattr(match, "used_alias", False) is True
+            is_testing = getattr(match, "testing", False) is True
+            if used_alias and not is_testing:
                 self._queue_warning(
                     reporting.WARNING_MODEL_ALIAS,
                     detail="Model detected via alias; using standard settings. Please help us tune better parameters.",

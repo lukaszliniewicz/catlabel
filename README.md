@@ -113,8 +113,25 @@ Alias-based Bluetooth name prefixes:
 - mapped to GT01-/GT02- defaults: YT02, MX01, MX02, MX03, MX07, MINIPRINTER, JL-BR22, URBANWORXKIDSCAMERA,
   CYLOBTPRINTER, MXTP-100, AZ-P2108X, MX12, PD01, XOPOPPY, MX13, BQ01, BQ02, EWTTOET-Z0499, BQ05, BQ06,
   BQ07, BQ7A, BQ7B, BQ08, BQ95, BQ96, MXW009, MXW010, EWTTOET-N3689, EWTTOET-N3687, MXPC-100, KP-IM606,
-  BQ95B, BQ03, BQ95C, BQ06B, K06
+  BQ95B, BQ03, BQ95C, BQ06B, K06, BQ17
 - mapped to TP81- defaults: TP84, TP85, TP86, TP87, TP88
 - mapped to M832- defaults: M836
 - mapped to Q302- defaults: Q580
 - mapped to T02- defaults: T02E, Q02E, C02E
+
+## Experimental support
+These entries are available, but they still need more real-device reports and tuning. In Bluetooth device lists they appear as `[experimental]`.
+
+Experimental printer models:
+P100, MP100, P100S, MP100S, LP100S, P3, P3S
+
+Experimental alias-based Bluetooth name prefixes:
+- mapped to P100- defaults: YINTIBAO-V5, MP200, MP220, AEQ918N4
+- mapped to P100S- defaults: YINTIBAO-V5PRO, MP200S, MP220S
+- mapped to LP100 / LP100S defaults: LP220, LY100_BLE, LP220S
+- mapped to P3 / P3S defaults: MP300, MP300S
+- mapped to GT02- defaults: MXW01, MXW01-1, X1, X2, C17, MXW-W5, AC695X_PRINT
+- mapped to GT02- defaults: JK01, PORTABLEPRINTER, INSTANTPRINTPLUS, REKA, HDMDT-00, KERUI, BH03
+- mapped to GT01- defaults: YTB01
+- mapped to D1- defaults: C21, D2, E2, NEWSMY
+- mapped to M08F- defaults: MXW-A4

@@ -48,6 +48,14 @@ class ResolvedBluetoothDevice:
     def model(self) -> PrinterModel:
         return self.model_match.model
 
+    @property
+    def experimental_label(self) -> str:
+        return " [experimental]" if self.model_match.testing else ""
+
+    @property
+    def brand_conflict_label(self) -> str:
+        return " [brand conflict]" if self.model_match.has_brand_conflict else ""
+
 
 @dataclass(frozen=True)
 class _EndpointCandidate:
@@ -157,7 +165,12 @@ class DeviceResolver:
             model = self._registry.get(model_no)
             if not model:
                 raise RuntimeError(f"Unknown printer model '{model_no}'")
-            return PrinterModelMatch(model=model, source=PrinterModelMatchSource.MODEL_NO)
+            return PrinterModelMatch(
+                model=model,
+                source=PrinterModelMatchSource.MODEL_NO,
+                testing=model.testing,
+                testing_note=model.testing_note,
+            )
         match = self._registry.detect_with_origin(device_name, address)
         if match:
             return match

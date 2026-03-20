@@ -63,6 +63,28 @@ class DevicesModelsTests(unittest.TestCase):
         self.assertEqual(match.model.model_no, "B")
         self.assertEqual(match.source, PrinterModelMatchSource.HEAD_NAME)
 
+    def test_case_sensitive_match_beats_case_insensitive_fallback(self) -> None:
+        upper = _model("UPPER", "X6H-")
+        lower = _model("LOWER", "X6h-")
+        reg = PrinterModelRegistry([upper, lower], PrinterModelAliasRegistry([], []))
+
+        match_upper = reg.detect_with_origin("X6H-AB")
+        self.assertIsNotNone(match_upper)
+        self.assertEqual(match_upper.model.model_no, "UPPER")
+
+        match_lower = reg.detect_with_origin("X6h-AB")
+        self.assertIsNotNone(match_lower)
+        self.assertEqual(match_lower.model.model_no, "LOWER")
+
+    def test_case_insensitive_fallback_still_detects_model(self) -> None:
+        upper = _model("UPPER", "X6H-")
+        reg = PrinterModelRegistry([upper], PrinterModelAliasRegistry([], []))
+
+        match = reg.detect_with_origin("x6h-AB")
+        self.assertIsNotNone(match)
+        self.assertEqual(match.model.model_no, "UPPER")
+        self.assertEqual(match.source, PrinterModelMatchSource.HEAD_NAME)
+
     def test_alias_parse_validation_and_mac_alias(self) -> None:
         with self.assertRaises(ValueError):
             PrinterModelAliasRegistry._parse([{"bad": 1}])
@@ -106,6 +128,105 @@ class DevicesModelsTests(unittest.TestCase):
                 mapped.source,
                 (PrinterModelMatchSource.ALIAS, PrinterModelMatchSource.MODEL_NO),
             )
+
+    def test_experimental_models_are_marked_testing(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        for model_no in ("P100", "MP100", "P100S", "MP100S", "LP100S", "P3", "P3S"):
+            model = reg.get(model_no)
+            self.assertIsNotNone(model)
+            self.assertTrue(model.testing)
+            self.assertTrue(model.testing_note)
+
+    def test_experimental_aliases_resolve(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        cases = {
+            "YINTIBAO-V5-ABCD": "P100",
+            "MP200-ABCD": "P100",
+            "YINTIBAO-V5PRO-ABCD": "P100S",
+            "LP220-ABCD": "LP100",
+            "LP220S-ABCD": "LP100S",
+            "MP300-ABCD": "P3",
+            "MP300S-ABCD": "P3S",
+            "JK01-ABCD": "GT02",
+            "KERUI-ABCD": "GT02",
+            "BH03-ABCD": "GT02",
+            "MXW01-ABCD": "GT02",
+            "MXW01-1-ABCD": "GT02",
+            "X2-ABCD": "GT02",
+            "C17-ABCD": "GT02",
+            "MXW-W5-ABCD": "GT02",
+            "AC695X_PRINT-ABCD": "GT02",
+            "C21-ABCD": "D1",
+            "MXW-A4-ABCD": "M08F",
+            "YTB01-ABCD": "GT01",
+        }
+
+        for name, expected_model_no in cases.items():
+            with self.subTest(name=name):
+                match = reg.detect_with_origin(name)
+                self.assertIsNotNone(match)
+                self.assertEqual(match.model.model_no, expected_model_no)
+                self.assertEqual(match.source, PrinterModelMatchSource.ALIAS)
+                self.assertTrue(match.testing)
+
+    def test_testing_flag_reaches_match_for_direct_and_alias_detection(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        direct = reg.detect_with_origin("P100-ABCD")
+        self.assertIsNotNone(direct)
+        self.assertTrue(direct.testing)
+        self.assertFalse(direct.used_alias)
+
+        alias = reg.detect_with_origin("JK01-ABCD")
+        self.assertIsNotNone(alias)
+        self.assertTrue(alias.testing)
+        self.assertTrue(alias.used_alias)
+
+    def test_direct_x1_model_still_beats_experimental_x1_alias(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        match = reg.detect_with_origin("X1-ABCD")
+        self.assertIsNotNone(match)
+        self.assertEqual(match.model.model_no, "X1")
+        self.assertEqual(match.source, PrinterModelMatchSource.HEAD_NAME)
+        self.assertFalse(match.used_alias)
+        self.assertTrue(match.has_brand_conflict)
+        self.assertEqual(match.conflict_models, ("GT02",))
+
+    def test_non_conflicting_model_has_no_brand_conflict(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        match = reg.detect_with_origin("X6H-ABCD")
+        self.assertIsNotNone(match)
+        self.assertFalse(match.has_brand_conflict)
+        self.assertEqual(match.conflict_models, ())
+
+    def test_mac_suffix_59_promotes_gt_bucket_to_gt02(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        match = reg.detect_with_origin("MX01-ABCD", "AA:BB:CC:DD:EE:59")
+        self.assertIsNotNone(match)
+        self.assertEqual(match.model.model_no, "GT02")
+        self.assertEqual(match.source, PrinterModelMatchSource.ALIAS)
+        self.assertEqual(match.alias_kind, PrinterModelAliasKind.MAC)
+
+    def test_mac_suffix_59_does_not_override_unrelated_alias_families(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        cases = {
+            "TP84-ABCD": "TP81",
+            "M836-ABCD": "M832",
+            "Q580-ABCD": "Q302",
+            "C02E-ABCD": "T02",
+        }
+        for name, expected_model_no in cases.items():
+            with self.subTest(name=name):
+                match = reg.detect_with_origin(name, "AA:BB:CC:DD:EE:59")
+                self.assertIsNotNone(match)
+                self.assertEqual(match.model.model_no, expected_model_no)
+                self.assertNotEqual(match.alias_kind, PrinterModelAliasKind.MAC)
 
 
 if __name__ == "__main__":

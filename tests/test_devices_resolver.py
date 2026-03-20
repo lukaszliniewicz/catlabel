@@ -62,6 +62,12 @@ class DevicesResolverTests(unittest.TestCase):
         self.assertEqual(self.resolver.build_connection_attempts(d1), [classic, ble])
         self.assertEqual(self.resolver.build_connection_attempts(d2), [ble, classic])
 
+    def test_resolved_device_exposes_brand_conflict_label(self) -> None:
+        classic = DeviceInfo(name="X1-ABCD", address="AA:BB:CC:DD:EE:01", transport=DeviceTransport.CLASSIC)
+        match = self.resolver.resolve_model_with_origin("X1-ABCD")
+        resolved = ResolvedBluetoothDevice("X1-ABCD", match, classic, None, classic.address, "[classic]")
+        self.assertEqual(resolved.brand_conflict_label, " [brand conflict]")
+
 
 def _run(coro):
     import asyncio

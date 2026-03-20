@@ -69,11 +69,19 @@ def scan_devices(reporter: reporting.Reporter) -> int:
         for device in devices:
             name = device.name or ""
             transport_label = f" {device.transport_label}"
+            experimental = device.experimental_label
+            brand_conflict = device.brand_conflict_label
             status = " [unpaired]" if device.paired is False else ""
             if name:
-                print(f"{name} ({device.display_address}){transport_label}{status}")
+                print(
+                    f"{name}{experimental}{brand_conflict} "
+                    f"({device.display_address}){transport_label}{status}"
+                )
             else:
-                print(f"{device.display_address}{transport_label}{status}")
+                print(
+                    f"{device.display_address}{experimental}{brand_conflict}"
+                    f"{transport_label}{status}"
+                )
 
     try:
         asyncio.run(run())
@@ -204,17 +212,17 @@ def _resolve_paper_motion_action(args: argparse.Namespace) -> Optional[str]:
 
 
 def _warn_alias_usage(match, device, reporter: reporting.Reporter) -> None:
-    if not match.used_alias:
+    used_alias = getattr(match, "used_alias", False) is True
+    is_testing = getattr(match, "testing", False) is True
+    if not used_alias or is_testing:
         return
-    name = device.name or "unknown"
-    address = device.address or "unknown"
     reporter.warning(
         reporting.WARNING_MODEL_ALIAS,
         detail=(
             "Detected printer via alias (name: "
-            f"{name}, address: {address}). Using standard profile settings for "
-            f"{match.model.model_no}. If you can, please help improve the model "
-            "parameters and share details with the project."
+            f"{device.name or 'unknown'}, address: {device.address or 'unknown'}). "
+            f"Using standard profile settings for {match.model.model_no}. "
+            "If you can, please help improve the model parameters and share details with the project."
         ),
     )
 

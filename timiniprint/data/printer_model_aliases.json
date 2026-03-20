@@ -47,7 +47,8 @@
         "BQ95C",
         "BQ06B",
         "X6",
-        "K06"
+        "K06",
+        "BQ17"
       ]
     },
     "map_model_head_name": "GT01-"
@@ -91,11 +92,145 @@
     "map_model_head_name": "T02-"
   },
   {
+    "head_name": {
+      "prefixes": [
+        "YINTIBAO-V5",
+        "MP200",
+        "MP220",
+        "AEQ918N4"
+      ]
+    },
+    "map_model_head_name": "P100-",
+    "testing": true,
+    "testing_note": "Experimental 2-inch family aliases mapped to the P100 testing profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "YINTIBAO-V5PRO",
+        "MP200S",
+        "MP220S"
+      ]
+    },
+    "map_model_head_name": "P100S-",
+    "testing": true,
+    "testing_note": "Experimental high-dpi 2-inch family aliases mapped to the P100S testing profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "LP220",
+        "LY100_BLE"
+      ]
+    },
+    "map_model_head_name": "LP100",
+    "testing": true,
+    "testing_note": "Experimental label-family aliases mapped to the LP100 profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "LP220S"
+      ]
+    },
+    "map_model_head_name": "LP100S-",
+    "testing": true,
+    "testing_note": "Experimental high-dpi label-family aliases mapped to the LP100S testing profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "MP300"
+      ]
+    },
+    "map_model_head_name": "P3-",
+    "testing": true,
+    "testing_note": "Experimental wide-format family aliases mapped to the P3 testing profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "MP300S"
+      ]
+    },
+    "map_model_head_name": "P3S-",
+    "testing": true,
+    "testing_note": "Experimental high-dpi wide-format family aliases mapped to the P3S testing profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "MXW01",
+        "MXW01-1",
+        "X1",
+        "X2",
+        "C17",
+        "MXW-W5",
+        "AC695X_PRINT"
+      ]
+    },
+    "map_model_head_name": "GT02-",
+    "testing": true,
+    "testing_note": "Experimental V5X family aliases mapped to GT02 defaults."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "JK01",
+        "PORTABLEPRINTER",
+        "INSTANTPRINTPLUS",
+        "REKA",
+        "HDMDT-00",
+        "KERUI",
+        "BH03"
+      ]
+    },
+    "map_model_head_name": "GT02-",
+    "testing": true,
+    "testing_note": "Experimental V5X_S family aliases mapped to GT02 defaults."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "C21",
+        "D2",
+        "E2",
+        "NEWSMY"
+      ]
+    },
+    "map_model_head_name": "D1-",
+    "testing": true,
+    "testing_note": "Experimental DCK-family aliases mapped to the existing D1 profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "MXW-A4"
+      ]
+    },
+    "map_model_head_name": "M08F-",
+    "testing": true,
+    "testing_note": "Experimental V10G-family alias mapped to the existing M08F profile."
+  },
+  {
+    "head_name": {
+      "prefixes": [
+        "YTB01"
+      ]
+    },
+    "map_model_head_name": "GT01-",
+    "testing": true,
+    "testing_note": "Experimental V5C-family alias mapped to GT01 defaults."
+  },
+  {
     "mac": {
       "suffixes": [
         "59"
       ]
     },
+    "only_for_targets": [
+      "GT01-"
+    ],
     "map_model_head_name": "GT02-"
   }
 ]
