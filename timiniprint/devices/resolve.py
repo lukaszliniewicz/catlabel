@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from ..protocol.family import ProtocolFamily
 from ..transport.bluetooth import DeviceInfo, SppBackend
 from ..transport.bluetooth.types import DeviceTransport, ScanFailure
 from .models import (
@@ -168,6 +169,7 @@ class DeviceResolver:
             return PrinterModelMatch(
                 model=model,
                 source=PrinterModelMatchSource.MODEL_NO,
+                protocol_family=model.protocol_family,
                 testing=model.testing,
                 testing_note=model.testing_note,
             )
@@ -184,14 +186,27 @@ class DeviceResolver:
             raise RuntimeError(f"Unknown printer model '{model_no}'")
         return model
 
-    def build_connection_attempts(self, resolved: ResolvedBluetoothDevice) -> List[DeviceInfo]:
+    def build_connection_attempts(
+        self,
+        resolved: ResolvedBluetoothDevice,
+        protocol_family: Optional[ProtocolFamily] = None,
+    ) -> List[DeviceInfo]:
         attempts: List[DeviceInfo] = []
         prefer_spp = resolved.model.use_spp
+        family = protocol_family or resolved.model_match.protocol_family
         ordered = [DeviceTransport.CLASSIC, DeviceTransport.BLE] if prefer_spp else [DeviceTransport.BLE, DeviceTransport.CLASSIC]
         for transport in ordered:
             endpoint = self._endpoint_for_transport(resolved, transport)
             if endpoint is not None:
-                attempts.append(endpoint)
+                attempts.append(
+                    DeviceInfo(
+                        name=endpoint.name,
+                        address=endpoint.address,
+                        paired=endpoint.paired,
+                        transport=endpoint.transport,
+                        protocol_family=family,
+                    )
+                )
         return attempts
 
     @staticmethod

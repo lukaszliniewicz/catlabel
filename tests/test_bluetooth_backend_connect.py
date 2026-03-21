@@ -43,7 +43,8 @@ class _Adapter:
         if self._pair_error:
             raise self._pair_error
 
-    def create_socket(self, _pairing_hint=None, reporter=None):
+    def create_socket(self, _pairing_hint=None, protocol_family=None, reporter=None):
+        _ = protocol_family
         _ = reporter
         return _Socket(fail=self._fail)
 

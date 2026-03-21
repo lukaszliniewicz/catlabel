@@ -59,8 +59,44 @@ class DevicesResolverTests(unittest.TestCase):
         ble_model = self.resolver.resolve_model_with_origin("CP01")
         d1 = ResolvedBluetoothDevice("X6H", spp_model, classic, ble, classic.address, "[classic+ble]")
         d2 = ResolvedBluetoothDevice("CP01", ble_model, classic, ble, classic.address, "[classic+ble]")
-        self.assertEqual(self.resolver.build_connection_attempts(d1), [classic, ble])
-        self.assertEqual(self.resolver.build_connection_attempts(d2), [ble, classic])
+        self.assertEqual(
+            self.resolver.build_connection_attempts(d1),
+            [
+                DeviceInfo(
+                    name=classic.name,
+                    address=classic.address,
+                    paired=classic.paired,
+                    transport=classic.transport,
+                    protocol_family=spp_model.protocol_family,
+                ),
+                DeviceInfo(
+                    name=ble.name,
+                    address=ble.address,
+                    paired=ble.paired,
+                    transport=ble.transport,
+                    protocol_family=spp_model.protocol_family,
+                ),
+            ],
+        )
+        self.assertEqual(
+            self.resolver.build_connection_attempts(d2),
+            [
+                DeviceInfo(
+                    name=ble.name,
+                    address=ble.address,
+                    paired=ble.paired,
+                    transport=ble.transport,
+                    protocol_family=ble_model.protocol_family,
+                ),
+                DeviceInfo(
+                    name=classic.name,
+                    address=classic.address,
+                    paired=classic.paired,
+                    transport=classic.transport,
+                    protocol_family=ble_model.protocol_family,
+                ),
+            ],
+        )
 
     def test_resolved_device_exposes_brand_conflict_label(self) -> None:
         classic = DeviceInfo(name="X1-ABCD", address="AA:BB:CC:DD:EE:01", transport=DeviceTransport.CLASSIC)

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import List
 
-from .commands import feed_paper_cmd, make_packet
+from .packet import make_packet
+from .family import ProtocolFamily
 
 
 def encode_run(color: int, count: int) -> List[int]:
@@ -66,7 +67,7 @@ def build_line_packets(
     speed: int,
     compress: bool,
     lsb_first: bool,
-    new_format: bool,
+    protocol_family: ProtocolFamily | str,
     line_feed_every: int,
 ) -> bytes:
     """Build data packets for all lines of a raster image."""
@@ -80,13 +81,13 @@ def build_line_packets(
         if compress:
             rle = rle_encode_line(line)
             if len(rle) <= width_bytes:
-                out += make_packet(0xBF, bytes(rle), new_format)
+                out += make_packet(0xBF, bytes(rle), protocol_family)
             else:
                 raw = pack_line(line, lsb_first)
-                out += make_packet(0xA2, raw, new_format)
+                out += make_packet(0xA2, raw, protocol_family)
         else:
             raw = pack_line(line, lsb_first)
-            out += make_packet(0xA2, raw, new_format)
+            out += make_packet(0xA2, raw, protocol_family)
         if line_feed_every and (row + 1) % line_feed_every == 0:
-            out += feed_paper_cmd(speed, new_format)
+            out += make_packet(0xBD, bytes([speed & 0xFF]), protocol_family)
     return bytes(out)

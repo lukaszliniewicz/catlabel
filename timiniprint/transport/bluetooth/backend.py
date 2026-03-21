@@ -201,7 +201,11 @@ class SppBackend:
                     short="Bluetooth",
                     detail=f"Trying RFCOMM channel {channel} for {device.address}",
                 )
-                sock = adapter.create_socket(pairing_hint, reporter=self._reporter)
+                sock = adapter.create_socket(
+                    pairing_hint,
+                    protocol_family=device.protocol_family,
+                    reporter=self._reporter,
+                )
                 set_timeout = getattr(sock, "settimeout", None)
                 if callable(set_timeout):
                     set_timeout(8)

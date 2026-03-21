@@ -4,6 +4,7 @@ import importlib
 import unittest
 
 from tests.helpers import install_crc8_stub, load_golden_hex
+from timiniprint.protocol.family import ProtocolFamily
 
 
 class ProtocolGoldenTests(unittest.TestCase):
@@ -23,13 +24,13 @@ class ProtocolGoldenTests(unittest.TestCase):
             blackening=3,
             compress=False,
             lsb_first=True,
-            new_format=False,
+            protocol_family=ProtocolFamily.LEGACY,
             feed_padding=12,
             dev_dpi=203,
         )
         self.assertEqual(data.hex(), self.golden["image_old"])
 
-    def test_golden_new_format(self) -> None:
+    def test_golden_prefixed_legacy_format(self) -> None:
         data = self.job.build_job(
             pixels=[1, 1, 0, 0, 1, 1, 0, 0],
             width=8,
@@ -39,7 +40,7 @@ class ProtocolGoldenTests(unittest.TestCase):
             blackening=4,
             compress=False,
             lsb_first=False,
-            new_format=True,
+            protocol_family=ProtocolFamily.LEGACY_PREFIXED,
             feed_padding=7,
             dev_dpi=300,
         )
@@ -55,11 +56,43 @@ class ProtocolGoldenTests(unittest.TestCase):
             blackening=2,
             compress=True,
             lsb_first=False,
-            new_format=False,
+            protocol_family=ProtocolFamily.LEGACY,
             feed_padding=6,
             dev_dpi=203,
         )
         self.assertEqual(data.hex(), self.golden["compress_fallback_raw"])
+
+    def test_golden_v5x_single_row(self) -> None:
+        data = self.job.build_job(
+            pixels=[1, 0, 1, 0, 1, 0, 1, 0],
+            width=8,
+            is_text=False,
+            speed=10,
+            energy=5000,
+            blackening=3,
+            compress=False,
+            lsb_first=True,
+            protocol_family=ProtocolFamily.V5X,
+            feed_padding=12,
+            dev_dpi=203,
+        )
+        self.assertEqual(data.hex(), self.golden["v5x_single_row"])
+
+    def test_golden_v5c_single_row(self) -> None:
+        data = self.job.build_job(
+            pixels=[1, 0, 1, 0, 1, 0, 1, 0],
+            width=8,
+            is_text=True,
+            speed=10,
+            energy=5000,
+            blackening=4,
+            compress=False,
+            lsb_first=True,
+            protocol_family=ProtocolFamily.V5C,
+            feed_padding=12,
+            dev_dpi=203,
+        )
+        self.assertEqual(data.hex(), self.golden["v5c_single_row"])
 
 
 if __name__ == "__main__":

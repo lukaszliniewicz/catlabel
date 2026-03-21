@@ -7,6 +7,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Iterable, Optional, List, Tuple, Set
 
+from ..protocol.family import ProtocolFamily
+
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "printer_models.json"
 ALIAS_PATH = DATA_PATH.with_name("printer_model_aliases.json")
 
@@ -62,7 +64,7 @@ class PrinterModel:
     text_energy: int
     has_id: bool
     use_spp: bool
-    new_format: bool
+    protocol_family: ProtocolFamily
     can_print_label: bool
     label_value: str
     back_paper_num: int
@@ -82,6 +84,7 @@ class PrinterModelMatch:
     model: PrinterModel
     source: PrinterModelMatchSource
     alias_kind: Optional[PrinterModelAliasKind] = None
+    protocol_family: ProtocolFamily = ProtocolFamily.LEGACY
     testing: bool = False
     testing_note: Optional[str] = None
     conflict_models: Tuple[str, ...] = ()
@@ -99,6 +102,7 @@ class PrinterModelMatch:
 class PrinterModelAliasMatch:
     target_head_name: str
     kind: PrinterModelAliasKind
+    protocol_family: Optional[ProtocolFamily] = None
     testing: bool = False
     testing_note: Optional[str] = None
 
@@ -107,6 +111,7 @@ class PrinterModelAliasMatch:
 class PrinterModelHeadAlias:
     prefixes: List[str]
     map_model_head_name: str
+    protocol_family: Optional[ProtocolFamily] = None
     testing: bool = False
     testing_note: Optional[str] = None
     _normalized_prefixes: Tuple[str, ...] = field(init=False, repr=False)
@@ -130,6 +135,7 @@ class PrinterModelMacAlias:
     suffixes: List[str]
     map_model_head_name: str
     only_for_targets: Tuple[str, ...] = ()
+    protocol_family: Optional[ProtocolFamily] = None
     testing: bool = False
     testing_note: Optional[str] = None
     _normalized_suffixes: Tuple[str, ...] = field(init=False, repr=False)
@@ -208,6 +214,7 @@ class PrinterModelAliasRegistry:
                     PrinterModelHeadAlias(
                         prefixes=list(prefixes),
                         map_model_head_name=map_model_head_name,
+                        protocol_family=PrinterModelAliasRegistry._parse_protocol_family(entry),
                         testing=bool(entry.get("testing", False)),
                         testing_note=entry.get("testing_note"),
                     )
@@ -233,6 +240,7 @@ class PrinterModelAliasRegistry:
                         suffixes=list(suffixes),
                         map_model_head_name=map_model_head_name,
                         only_for_targets=tuple(entry.get("only_for_targets", ())),
+                        protocol_family=PrinterModelAliasRegistry._parse_protocol_family(entry),
                         testing=bool(entry.get("testing", False)),
                         testing_note=entry.get("testing_note"),
                     )
@@ -240,6 +248,13 @@ class PrinterModelAliasRegistry:
                 continue
             raise ValueError("Alias entry must include head_name or mac")
         return head_aliases, mac_aliases
+
+    @staticmethod
+    def _parse_protocol_family(entry: Dict[str, object]) -> Optional[ProtocolFamily]:
+        value = entry.get("protocol_family")
+        if not value:
+            return None
+        return ProtocolFamily.from_value(str(value))
 
     def resolve(self, name: str, address: Optional[str]) -> Optional[PrinterModelAliasMatch]:
         if not name or not self._head_aliases:
@@ -256,18 +271,21 @@ class PrinterModelAliasRegistry:
             return None
         target = match.map_model_head_name
         match_kind = PrinterModelAliasKind.HEAD_NAME
+        protocol_family = match.protocol_family
         testing = match.testing
         testing_note = match.testing_note
         for mac_alias in self._mac_aliases:
             if mac_alias.matches(address) and mac_alias.applies_to(target):
                 target = mac_alias.map_model_head_name
                 match_kind = PrinterModelAliasKind.MAC
+                protocol_family = mac_alias.protocol_family or protocol_family
                 testing = mac_alias.testing
                 testing_note = mac_alias.testing_note
                 break
         return PrinterModelAliasMatch(
             target_head_name=target,
             kind=match_kind,
+            protocol_family=protocol_family,
             testing=testing,
             testing_note=testing_note,
         )
@@ -284,6 +302,7 @@ class PrinterModelAliasRegistry:
             head_match = PrinterModelAliasMatch(
                 target_head_name=alias.map_model_head_name,
                 kind=PrinterModelAliasKind.HEAD_NAME,
+                protocol_family=alias.protocol_family,
                 testing=alias.testing,
                 testing_note=alias.testing_note,
             )
@@ -297,6 +316,7 @@ class PrinterModelAliasRegistry:
                 mac_match = PrinterModelAliasMatch(
                     target_head_name=mac_alias.map_model_head_name,
                     kind=PrinterModelAliasKind.MAC,
+                    protocol_family=mac_alias.protocol_family,
                     testing=mac_alias.testing,
                     testing_note=mac_alias.testing_note,
                 )
@@ -322,11 +342,22 @@ class PrinterModelRegistry:
         if cached:
             return cached
         raw = json.loads(path.read_text(encoding="utf-8"))
-        models = [PrinterModel(**item) for item in raw]
+        models = [cls._parse_model(item) for item in raw]
         alias_registry = PrinterModelAliasRegistry.load(alias_path)
         registry = cls(models, alias_registry)
         cls._cache[key] = registry
         return registry
+
+    @staticmethod
+    def _parse_model(item: Dict[str, object]) -> PrinterModel:
+        payload = dict(item)
+        family_value = payload.pop("protocol_family", None)
+        if family_value is None:
+            protocol_family = ProtocolFamily.LEGACY
+        else:
+            protocol_family = ProtocolFamily.from_value(str(family_value))
+        payload["protocol_family"] = protocol_family
+        return PrinterModel(**payload)
 
     @property
     def models(self) -> List[PrinterModel]:
@@ -383,6 +414,7 @@ class PrinterModelRegistry:
             return PrinterModelMatch(
                 model=match,
                 source=PrinterModelMatchSource.HEAD_NAME,
+                protocol_family=match.protocol_family,
                 testing=match.testing,
                 testing_note=match.testing_note,
                 conflict_models=conflict_models(match.model_no),
@@ -392,6 +424,7 @@ class PrinterModelRegistry:
             return PrinterModelMatch(
                 model=match,
                 source=PrinterModelMatchSource.MODEL_NO,
+                protocol_family=match.protocol_family,
                 testing=match.testing,
                 testing_note=match.testing_note,
                 conflict_models=conflict_models(match.model_no),
@@ -401,6 +434,7 @@ class PrinterModelRegistry:
             return PrinterModelMatch(
                 model=match,
                 source=PrinterModelMatchSource.HEAD_NAME,
+                protocol_family=match.protocol_family,
                 testing=match.testing,
                 testing_note=match.testing_note,
                 conflict_models=conflict_models(match.model_no),
@@ -410,6 +444,7 @@ class PrinterModelRegistry:
             return PrinterModelMatch(
                 model=match,
                 source=PrinterModelMatchSource.MODEL_NO,
+                protocol_family=match.protocol_family,
                 testing=match.testing,
                 testing_note=match.testing_note,
                 conflict_models=conflict_models(match.model_no),
@@ -431,6 +466,7 @@ class PrinterModelRegistry:
             model=model,
             source=PrinterModelMatchSource.ALIAS,
             alias_kind=alias_match.kind,
+            protocol_family=alias_match.protocol_family or model.protocol_family,
             testing=alias_match.testing or model.testing,
             testing_note=alias_match.testing_note or model.testing_note,
             conflict_models=conflict_models(model.model_no),

@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from .base import _ClassicBluetoothAdapter
 from .macos_iobluetooth import _MacClassicBackend
+from ....protocol.family import ProtocolFamily
 from ..types import DeviceInfo, SocketLike
 from .... import reporting
 
@@ -18,8 +19,10 @@ class _MacClassicAdapter(_ClassicBluetoothAdapter):
     def create_socket(
         self,
         pairing_hint: Optional[bool] = None,
+        protocol_family: Optional[ProtocolFamily] = None,
         reporter: reporting.Reporter = reporting.DUMMY_REPORTER,
     ) -> SocketLike:
+        _ = protocol_family
         return self._backend.create_socket()
 
     def resolve_rfcomm_channels(self, address: str) -> List[int]:

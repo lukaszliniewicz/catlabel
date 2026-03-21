@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from ..protocol import build_job
+from ..protocol.family import ProtocolFamily
 from ..rendering.converters import Page, PageLoader
 from ..rendering.renderer import image_to_bw_pixels
 from ..devices.models import PrinterModel
@@ -36,10 +37,12 @@ class PrintJobBuilder:
     def __init__(
         self,
         model: PrinterModel,
+        protocol_family: Optional[ProtocolFamily] = None,
         settings: Optional[PrintSettings] = None,
         page_loader: Optional[PageLoader] = None,
     ) -> None:
         self.model = model
+        self.protocol_family = protocol_family or model.protocol_family
         self.settings = settings or PrintSettings()
         pdf_page_gap_px = self._mm_to_px(self.settings.pdf_page_gap_mm, self.model.dev_dpi)
         self.page_loader = page_loader or PageLoader(
@@ -71,7 +74,7 @@ class PrintJobBuilder:
                 blackening=self.settings.blackening,
                 compress=self._use_compress(),
                 lsb_first=self._lsb_first(),
-                new_format=self.model.new_format,
+                protocol_family=self.protocol_family,
                 feed_padding=self.settings.feed_padding,
                 dev_dpi=self.model.dev_dpi,
             )

@@ -7,6 +7,7 @@ import tempfile
 from typing import Optional, Sequence
 
 from ..devices import DeviceResolver, PrinterModel, PrinterModelRegistry
+from ..protocol import ProtocolFamily
 from ..transport.bluetooth import SppBackend
 from ..transport.bluetooth.types import DeviceTransport
 from ..transport.serial import SerialTransport
@@ -94,6 +95,7 @@ def scan_devices(reporter: reporting.Reporter) -> int:
 def build_print_data(
     model: PrinterModel,
     path: Optional[str],
+    protocol_family: Optional[ProtocolFamily] = None,
     text_mode: Optional[bool] = None,
     blackening: Optional[int] = None,
     text_input: Optional[str] = None,
@@ -119,7 +121,7 @@ def build_print_data(
     )
     if blackening is not None:
         settings.blackening = blackening
-    builder = PrintJobBuilder(model, settings)
+    builder = PrintJobBuilder(model, protocol_family=protocol_family, settings=settings)
     if text_input is None:
         if not path:
             raise RuntimeError("Missing file path")
@@ -135,13 +137,18 @@ def build_print_data(
             os.remove(temp_path)
 
 
-def build_paper_motion_data(model: PrinterModel, action: str) -> bytes:
+def build_paper_motion_data(
+    model: PrinterModel,
+    action: str,
+    protocol_family: Optional[ProtocolFamily] = None,
+) -> bytes:
     from ..protocol import advance_paper_cmd, retract_paper_cmd
 
+    family = protocol_family or model.protocol_family
     if action == "feed":
-        return advance_paper_cmd(model.dev_dpi, model.new_format)
+        return advance_paper_cmd(model.dev_dpi, family)
     if action == "retract":
-        return retract_paper_cmd(model.dev_dpi, model.new_format)
+        return retract_paper_cmd(model.dev_dpi, family)
     raise ValueError(f"Unknown paper motion action: {action}")
 
 
@@ -241,7 +248,8 @@ def print_bluetooth(
             match = resolver.resolve_model_with_origin(resolved.name or "", args.model, resolved.address)
         _warn_alias_usage(match, resolved, reporter)
         model = match.model
-        attempts = resolver.build_connection_attempts(resolved)
+        protocol_family = match.protocol_family
+        attempts = resolver.build_connection_attempts(resolved, protocol_family)
         reporter.debug(
             short="Bluetooth",
             detail=(
@@ -256,6 +264,7 @@ def print_bluetooth(
         data = build_print_data(
             model,
             args.path,
+            protocol_family,
             _resolve_text_mode(args),
             _resolve_blackening(args),
             _resolve_text_input(args),
@@ -291,6 +300,7 @@ def print_serial(args: argparse.Namespace) -> int:
     data = build_print_data(
         model,
         args.path,
+        model.protocol_family,
         _resolve_text_mode(args),
         _resolve_blackening(args),
         _resolve_text_input(args),
@@ -326,7 +336,8 @@ def paper_motion_bluetooth(
             match = resolver.resolve_model_with_origin(resolved.name or "", args.model, resolved.address)
         _warn_alias_usage(match, resolved, reporter)
         model = match.model
-        attempts = resolver.build_connection_attempts(resolved)
+        protocol_family = match.protocol_family
+        attempts = resolver.build_connection_attempts(resolved, protocol_family)
         reporter.debug(
             short="Bluetooth",
             detail=(
@@ -338,7 +349,7 @@ def paper_motion_bluetooth(
                 f"attempts={[f'{item.transport.value}:{item.address}' for item in attempts]}"
             ),
         )
-        data = build_paper_motion_data(model, action)
+        data = build_paper_motion_data(model, action, protocol_family)
         backend = SppBackend(reporter=reporter)
         try:
             await backend.connect_attempts(
@@ -360,7 +371,7 @@ def paper_motion_serial(args: argparse.Namespace, action: str) -> int:
     registry = PrinterModelRegistry.load()
     resolver = DeviceResolver(registry)
     model = resolver.require_model(args.model)
-    data = build_paper_motion_data(model, action)
+    data = build_paper_motion_data(model, action, model.protocol_family)
 
     async def run() -> None:
         transport = SerialTransport(args.serial)

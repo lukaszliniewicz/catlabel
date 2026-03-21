@@ -14,6 +14,7 @@ from tkinter import filedialog, ttk
 from .diagnostics import emit_startup_warnings
 from .. import reporting
 from ..devices import DeviceResolver, PrinterModelRegistry
+from ..protocol import ProtocolFamily
 from ..rendering.converters.text import TextConverter
 from ..transport.bluetooth import SppBackend
 from ..transport.bluetooth.types import DeviceTransport
@@ -76,6 +77,7 @@ class TiMiniPrintGUI(tk.Tk):
             value=reporting.MessageCatalog.resolve("status", reporting.STATUS_IDLE) or "Idle"
         )
         self.connected_model = None
+        self.connected_protocol_family: ProtocolFamily | None = None
         self._connecting = False
         self._paper_motion_action = None
         self._paper_motion_job = None
@@ -304,7 +306,7 @@ class TiMiniPrintGUI(tk.Tk):
         if not device:
             self._queue_error(reporting.ERROR_NO_DEVICE)
             return
-        attempts = self.resolver.build_connection_attempts(device)
+        attempts = self.resolver.build_connection_attempts(device, device.model_match.protocol_family)
         self._queue_status(reporting.STATUS_CONNECT_START)
         self.queue.put(("connecting", True))
 
@@ -440,7 +442,8 @@ class TiMiniPrintGUI(tk.Tk):
             pdf_pages=pdf_pages,
             pdf_page_gap_mm=pdf_page_gap_mm,
         )
-        builder = PrintJobBuilder(model, settings)
+        protocol_family = self.connected_protocol_family or model.protocol_family
+        builder = PrintJobBuilder(model, protocol_family=protocol_family, settings=settings)
 
         def done(fut):
             try:
@@ -452,7 +455,10 @@ class TiMiniPrintGUI(tk.Tk):
         async def run() -> None:
             if not self.backend.is_connected():
                 await self.backend.connect_attempts(
-                    self.resolver.build_connection_attempts(device),
+                    self.resolver.build_connection_attempts(
+                        device,
+                        self.connected_protocol_family or model.protocol_family,
+                    ),
                     pairing_hint=device.paired is False,
                 )
             self._queue_status(reporting.STATUS_PRINTING)
@@ -508,16 +514,17 @@ class TiMiniPrintGUI(tk.Tk):
 
         from ..protocol import advance_paper_cmd, retract_paper_cmd
 
+        family = self.connected_protocol_family or model.protocol_family
         if action == "feed":
-            data = advance_paper_cmd(model.dev_dpi, model.new_format)
+            data = advance_paper_cmd(model.dev_dpi, family)
         else:
-            data = retract_paper_cmd(model.dev_dpi, model.new_format)
+            data = retract_paper_cmd(model.dev_dpi, family)
         self._paper_motion_busy = True
 
         async def run() -> None:
             if not self.backend.is_connected():
                 await self.backend.connect_attempts(
-                    self.resolver.build_connection_attempts(device),
+                    self.resolver.build_connection_attempts(device, family),
                     pairing_hint=device.paired is False,
                 )
             if action == "feed":
@@ -539,9 +546,11 @@ class TiMiniPrintGUI(tk.Tk):
     def _set_connected_state(self, connected: bool, device=None) -> None:
         self._connecting = False
         self.connected_model = None
+        self.connected_protocol_family = None
         if connected and device:
             match = device.model_match
             self.connected_model = match.model
+            self.connected_protocol_family = match.protocol_family
             self.model_var.set(match.model.model_no)
             used_alias = getattr(match, "used_alias", False) is True
             is_testing = getattr(match, "testing", False) is True

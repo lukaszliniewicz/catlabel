@@ -170,6 +170,7 @@
       ]
     },
     "map_model_head_name": "GT02-",
+    "protocol_family": "v5x",
     "testing": true,
     "testing_note": "Experimental V5X family aliases mapped to GT02 defaults."
   },
@@ -186,6 +187,7 @@
       ]
     },
     "map_model_head_name": "GT02-",
+    "protocol_family": "v5x",
     "testing": true,
     "testing_note": "Experimental V5X_S family aliases mapped to GT02 defaults."
   },
@@ -199,6 +201,7 @@
       ]
     },
     "map_model_head_name": "D1-",
+    "protocol_family": "dck",
     "testing": true,
     "testing_note": "Experimental DCK-family aliases mapped to the existing D1 profile."
   },
@@ -219,6 +222,7 @@
       ]
     },
     "map_model_head_name": "GT01-",
+    "protocol_family": "v5c",
     "testing": true,
     "testing_note": "Experimental V5C-family alias mapped to GT01 defaults."
   },
@@ -231,6 +235,7 @@
     "only_for_targets": [
       "GT01-"
     ],
-    "map_model_head_name": "GT02-"
+    "map_model_head_name": "GT02-",
+    "protocol_family": "v5x"
   }
 ]

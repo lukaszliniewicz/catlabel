@@ -51,7 +51,9 @@ class _ClassicAdapter:
     def resolve_rfcomm_channels(self, _address: str):
         return []
 
-    def create_socket(self, _pairing_hint=None, reporter=None):
+    def create_socket(self, _pairing_hint=None, protocol_family=None, reporter=None):
+        _ = protocol_family
+        _ = reporter
         if self._fail:
             return _FailingSocket("classic connect failed")
         return _SuccessSocket()
@@ -68,7 +70,9 @@ class _BleAdapter:
     def resolve_rfcomm_channels(self, _address: str):
         return [1]
 
-    def create_socket(self, _pairing_hint=None, reporter=None):
+    def create_socket(self, _pairing_hint=None, protocol_family=None, reporter=None):
+        _ = protocol_family
+        _ = reporter
         if self._fail:
             return _FailingSocket("ble connect failed")
         return self.socket

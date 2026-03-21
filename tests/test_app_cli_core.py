@@ -3,6 +3,10 @@ from __future__ import annotations
 import argparse
 import unittest
 
+from tests.helpers import install_crc8_stub
+
+install_crc8_stub()
+
 from timiniprint.app import cli
 
 

@@ -123,11 +123,41 @@ class DeviceResolverLogicalDeviceTests(unittest.TestCase):
         )
         self.assertEqual(
             self.resolver.build_connection_attempts(spp_first),
-            [classic, ble],
+            [
+                DeviceInfo(
+                    name=classic.name,
+                    address=classic.address,
+                    paired=classic.paired,
+                    transport=classic.transport,
+                    protocol_family=x6h_match.protocol_family,
+                ),
+                DeviceInfo(
+                    name=ble.name,
+                    address=ble.address,
+                    paired=ble.paired,
+                    transport=ble.transport,
+                    protocol_family=x6h_match.protocol_family,
+                ),
+            ],
         )
         self.assertEqual(
             self.resolver.build_connection_attempts(ble_first),
-            [ble, classic],
+            [
+                DeviceInfo(
+                    name=ble.name,
+                    address=ble.address,
+                    paired=ble.paired,
+                    transport=ble.transport,
+                    protocol_family=cp01_match.protocol_family,
+                ),
+                DeviceInfo(
+                    name=classic.name,
+                    address=classic.address,
+                    paired=classic.paired,
+                    transport=classic.transport,
+                    protocol_family=cp01_match.protocol_family,
+                ),
+            ],
         )
 
     def test_single_endpoint_builds_single_attempt(self) -> None:
@@ -146,7 +176,18 @@ class DeviceResolverLogicalDeviceTests(unittest.TestCase):
             display_address=classic.address,
             transport_label="[classic]",
         )
-        self.assertEqual(self.resolver.build_connection_attempts(resolved), [classic])
+        self.assertEqual(
+            self.resolver.build_connection_attempts(resolved),
+            [
+                DeviceInfo(
+                    name=classic.name,
+                    address=classic.address,
+                    paired=classic.paired,
+                    transport=classic.transport,
+                    protocol_family=match.protocol_family,
+                )
+            ],
+        )
 
     def test_scan_retries_ble_when_classic_device_has_no_ble_pair(self) -> None:
         classic = DeviceInfo(

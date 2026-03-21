@@ -12,6 +12,7 @@ from timiniprint.devices.models import (
     PrinterModelMatchSource,
     PrinterModelRegistry,
 )
+from timiniprint.protocol.family import ProtocolFamily
 
 
 def _model(model_no: str, head_name: str) -> PrinterModel:
@@ -37,7 +38,7 @@ def _model(model_no: str, head_name: str) -> PrinterModel:
         text_energy=8000,
         has_id=False,
         use_spp=False,
-        new_format=False,
+        protocol_family=ProtocolFamily.LEGACY,
         can_print_label=False,
         label_value="",
         back_paper_num=0,
@@ -171,6 +172,21 @@ class DevicesModelsTests(unittest.TestCase):
                 self.assertEqual(match.source, PrinterModelMatchSource.ALIAS)
                 self.assertTrue(match.testing)
 
+    def test_experimental_aliases_override_protocol_family(self) -> None:
+        reg = PrinterModelRegistry.load()
+
+        jk01 = reg.detect_with_origin("JK01-ABCD")
+        self.assertIsNotNone(jk01)
+        self.assertEqual(jk01.protocol_family, ProtocolFamily.V5X)
+
+        dck = reg.detect_with_origin("C21-ABCD")
+        self.assertIsNotNone(dck)
+        self.assertEqual(dck.protocol_family, ProtocolFamily.DCK)
+
+        v5c = reg.detect_with_origin("YTB01-ABCD")
+        self.assertIsNotNone(v5c)
+        self.assertEqual(v5c.protocol_family, ProtocolFamily.V5C)
+
     def test_testing_flag_reaches_match_for_direct_and_alias_detection(self) -> None:
         reg = PrinterModelRegistry.load()
 
@@ -211,6 +227,7 @@ class DevicesModelsTests(unittest.TestCase):
         self.assertEqual(match.model.model_no, "GT02")
         self.assertEqual(match.source, PrinterModelMatchSource.ALIAS)
         self.assertEqual(match.alias_kind, PrinterModelAliasKind.MAC)
+        self.assertEqual(match.protocol_family, ProtocolFamily.V5X)
 
     def test_mac_suffix_59_does_not_override_unrelated_alias_families(self) -> None:
         reg = PrinterModelRegistry.load()

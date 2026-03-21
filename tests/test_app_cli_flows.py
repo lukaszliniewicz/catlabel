@@ -8,6 +8,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from tests.helpers import install_crc8_stub
+
+install_crc8_stub()
+
 from timiniprint.app import cli
 
 
