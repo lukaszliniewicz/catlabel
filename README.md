@@ -16,7 +16,7 @@ I bought a Chinese mini printer and could not find any decent desktop software t
 - If you're a developer, contributions and bug reports are always welcome—please jump in. Especially if you use or build on non-Linux systems, please consider contributing fixes or improvements
 
 ## Looking for broader support or implementation?
-- If you need reverse engineering (I mean security, obviously), broader commercial support, or a custom implementation, feel free to [reach out](https://inajiffy.eu/). I work on broken systems, neglected integrations, and projects that are already end-of-life, unsupported — or simply unsupportable. I also take on implementations that other teams are unwilling to touch.
+- If you need reverse (I mean security...) engineering, broader commercial support, or a custom implementation, feel free to [reach out](https://inajiffy.eu/). I work on broken systems, neglected integrations, and projects that are already end-of-life, unsupported — or simply unsupportable. I also take on implementations that other teams are unwilling to touch.
 
 # Requirements
 You can find the latest standalone executable files on the [releases page](https://github.com/Dejniel/TiMini-Print/releases) and choose the asset that starts with `TiMini-Print-GUI-...` or `TiMini-Print-Command-Line-...` for your platform, or you can build the project yourself.
