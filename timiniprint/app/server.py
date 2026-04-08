@@ -180,11 +180,15 @@ async def scan_printers():
     
     results = []
     for device in devices:
+        # Safely get the name, falling back to the model name if available
+        name = getattr(device, "name", None)
+        if not name and device.model:
+            name = device.model.name
+            
         results.append({
-            "name": device.name,
+            "name": name or "Unknown Printer",
             "address": device.address,
-            "display_address": device.display_address,
-            "transport": device.transport.value,
+            "display_address": getattr(device, "display_address", device.address),
             "paired": device.paired,
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
