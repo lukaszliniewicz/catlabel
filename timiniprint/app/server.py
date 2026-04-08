@@ -71,7 +71,20 @@ async def execute_print_job(mac_address: str, img: Any):
     
     pipeline_config = target_device.model.image_pipeline
     raster = image_to_raster(img, pipeline_config.default_format, dither=True)
-    job = build_job_from_raster(raster, target_device.model.protocol_family)
+    
+    job = build_job_from_raster(
+        raster=raster,
+        is_text=False,
+        speed=target_device.model.img_print_speed,
+        energy=target_device.model.moderation_energy or 5000,
+        blackening=3,
+        lsb_first=not target_device.model.a4xii,
+        protocol_family=target_device.model.protocol_family,
+        feed_padding=12,
+        dev_dpi=target_device.model.dev_dpi,
+        can_print_label=target_device.model.can_print_label,
+        image_pipeline=pipeline_config,
+    )
     
     backend = SppBackend()
     
