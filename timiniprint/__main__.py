@@ -1,4 +1,4 @@
-from .app.cli import main
+import uvicorn
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    uvicorn.run("timiniprint.app:app", host="0.0.0.0", port=8000, reload=False)
