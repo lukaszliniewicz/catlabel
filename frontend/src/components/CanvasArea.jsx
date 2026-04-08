@@ -37,6 +37,9 @@ export default function CanvasArea() {
                     text={item.text}
                     x={item.x}
                     y={item.y}
+                    width={item.width}
+                    align={item.align || 'left'}
+                    wrap="word"
                     fontSize={item.size}
                     draggable
                     onClick={() => selectItem(item.id)}

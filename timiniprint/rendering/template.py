@@ -44,7 +44,48 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             except IOError:
                 font = ImageFont.load_default()
                 
-            draw.text((x, y), text, fill="black", font=font)
+            box_width = item.get("width")
+            align = item.get("align", "left")
+            
+            if box_width:
+                lines = []
+                for paragraph in text.split('\n'):
+                    words = paragraph.split(' ')
+                    current_line = []
+                    for word in words:
+                        test_line = ' '.join(current_line + [word]) if current_line else word
+                        bbox = font.getbbox(test_line)
+                        w = bbox[2] - bbox[0]
+                        if w <= box_width:
+                            current_line.append(word)
+                        else:
+                            if current_line:
+                                lines.append(' '.join(current_line))
+                                current_line = [word]
+                            else:
+                                lines.append(word)
+                                current_line = []
+                    if current_line:
+                        lines.append(' '.join(current_line))
+                
+                y_offset = y
+                for line in lines:
+                    bbox = font.getbbox(line)
+                    line_w = bbox[2] - bbox[0]
+                    # Fallback for empty lines
+                    line_h = (bbox[3] - bbox[1]) if line.strip() else size
+                    
+                    if align == "center":
+                        line_x = x + (box_width - line_w) / 2
+                    elif align == "right":
+                        line_x = x + (box_width - line_w)
+                    else:
+                        line_x = x
+                        
+                    draw.text((line_x, y_offset), line, fill="black", font=font)
+                    y_offset += int(line_h * 1.2) # 1.2 line height multiplier
+            else:
+                draw.text((x, y), text, fill="black", font=font)
             
         elif item_type == "barcode":
             data = item.get("data", "")

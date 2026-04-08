@@ -30,7 +30,9 @@ export default function Sidebar() {
       x: 50,
       y: 50,
       size: 24,
-      font: 'arial.ttf'
+      font: 'arial.ttf',
+      width: canvasWidth - 100,
+      align: 'center'
     });
   };
 
