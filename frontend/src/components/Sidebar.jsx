@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter, theme, setTheme } = useStore();
   const [printers, setPrinters] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -120,21 +120,28 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 p-4 flex flex-col gap-4 shadow-sm z-10 overflow-y-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">Label Studio</h1>
+    <div className="w-72 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-6 flex flex-col gap-6 z-10 overflow-y-auto transition-colors duration-300">
+      <div>
+        <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white mb-1">Label Studio.</h1>
+        <div className="flex gap-3 text-[10px] uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          <button onClick={() => setTheme('light')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'light' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Light</button>
+          <button onClick={() => setTheme('dark')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'dark' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Dark</button>
+          <button onClick={() => setTheme('auto')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'auto' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Auto</button>
+        </div>
+      </div>
       
-      <div className="space-y-2 mb-4">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Templates</h2>
+      <div className="space-y-3">
+        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Templates</h2>
         <button 
           onClick={handleSaveTemplate} 
-          className="w-full bg-purple-50 text-purple-600 border border-purple-200 px-4 py-2 rounded hover:bg-purple-100 transition-colors text-sm font-medium"
+          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium"
         >
-          Save Current Template
+          Save Current
         </button>
         
         {templates.length > 0 && (
           <select 
-            className="w-full border border-gray-300 rounded p-2 text-sm mt-2"
+            className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors"
             onChange={handleLoadTemplate}
             defaultValue=""
           >
@@ -146,35 +153,35 @@ export default function Sidebar() {
         )}
       </div>
 
-      <div className="space-y-2 mb-4">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Tools</h2>
+      <div className="space-y-3">
+        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Tools</h2>
         <button 
           onClick={handleAddText} 
-          className="w-full bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded hover:bg-blue-100 transition-colors text-left font-medium"
+          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
         >
           + Add Text
         </button>
         <button 
           onClick={handleAddBarcode} 
-          className="w-full bg-green-50 text-green-600 border border-green-200 px-4 py-2 rounded hover:bg-green-100 transition-colors text-left font-medium"
+          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
         >
           + Add Barcode
         </button>
       </div>
 
-      <div className="space-y-2 mb-4">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Printers</h2>
+      <div className="space-y-3">
+        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
         <button 
           onClick={handleScan} 
           disabled={isScanning}
-          className="w-full bg-gray-50 text-gray-700 border border-gray-200 px-4 py-2 rounded hover:bg-gray-100 transition-colors text-sm font-medium disabled:opacity-50"
+          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium disabled:opacity-50"
         >
           {isScanning ? 'Scanning...' : 'Scan for Printers'}
         </button>
         
         {printers.length > 0 && (
           <select 
-            className="w-full border border-gray-300 rounded p-2 text-sm mt-2"
+            className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors"
             value={selectedPrinter || ''}
             onChange={(e) => setSelectedPrinter(e.target.value)}
           >
@@ -186,11 +193,11 @@ export default function Sidebar() {
         )}
       </div>
 
-      <div className="mt-auto pt-4 border-t border-gray-200">
+      <div className="mt-auto pt-6">
         <button 
           onClick={handlePrint}
           disabled={isPrinting || !selectedPrinter}
-          className="w-full bg-indigo-600 text-white px-4 py-3 rounded hover:bg-indigo-700 transition-colors font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 px-4 py-3 rounded-none hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPrinting ? 'Printing...' : 'Test Print'}
         </button>

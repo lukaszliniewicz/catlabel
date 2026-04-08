@@ -6,13 +6,13 @@ export default function CanvasArea() {
   const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight } = useStore();
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center overflow-auto p-8 bg-gray-100">
-      <div className="mb-4 text-gray-500 text-sm font-medium">
-        Canvas Size: {canvasWidth} x {canvasHeight} px
+    <div className="flex-1 flex flex-col items-center justify-center overflow-auto p-8 bg-neutral-100 dark:bg-neutral-900 transition-colors duration-300">
+      <div className="mb-6 text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold">
+        Canvas Size: {canvasWidth} × {canvasHeight} px
       </div>
       
       <div 
-        className="bg-white shadow-md border border-gray-300" 
+        className="bg-white shadow-2xl border border-neutral-200 dark:border-neutral-800" 
         style={{ width: canvasWidth, height: canvasHeight }}
       >
         <Stage
@@ -84,8 +84,8 @@ export default function CanvasArea() {
         </Stage>
       </div>
       
-      <div className="mt-4 text-gray-400 text-xs">
-        Drag items to move them. Click empty space to deselect.
+      <div className="mt-8 text-neutral-400 dark:text-neutral-600 text-[10px] uppercase tracking-widest">
+        Drag items to move. Click empty space to deselect.
       </div>
     </div>
   );

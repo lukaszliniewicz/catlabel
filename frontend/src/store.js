@@ -6,7 +6,9 @@ export const useStore = create((set) => ({
   canvasWidth: 384,
   canvasHeight: 384,
   selectedPrinter: null,
+  theme: 'auto',
   
+  setTheme: (theme) => set({ theme }),
   setSelectedPrinter: (mac) => set({ selectedPrinter: mac }),
   
   setItems: (items) => set({ items }),
