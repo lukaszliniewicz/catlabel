@@ -45,6 +45,51 @@ class PrintRequest(BaseModel):
     mac_address: str
     variables: Dict[str, str] = {}
 
+class DirectPrintRequest(BaseModel):
+    mac_address: str
+    canvas_state: Dict[str, Any]
+    variables: Dict[str, str] = {}
+
+async def execute_print_job(mac_address: str, img: Any):
+    """Helper function to handle scanning, connecting with retries, and printing."""
+    registry = PrinterModelRegistry.load()
+    resolver = DeviceResolver(registry)
+    
+    # Scan to find the device and its capabilities
+    devices, _ = await resolver.scan_printer_devices_with_failures(
+        include_classic=True,
+        include_ble=True,
+    )
+    
+    target_device = next((d for d in devices if d.address == mac_address), None)
+    if not target_device:
+        raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found in scan. Is it turned on?")
+        
+    from ..rendering.renderer import image_to_raster
+    from ..protocol.job import build_job_from_raster
+    from ..transport.bluetooth import SppBackend
+    
+    pipeline_config = target_device.model.image_pipeline
+    raster = image_to_raster(img, pipeline_config)
+    job = build_job_from_raster(raster, target_device.model.protocol_family)
+    
+    backend = SppBackend()
+    
+    # Robust retry loop for waking up sleeping printers
+    max_retries = 3
+    last_error = None
+    
+    for attempt in range(max_retries):
+        try:
+            async with backend.connect(target_device) as transport_session:
+                await transport_session.send(job)
+            return # Success!
+        except Exception as e:
+            last_error = e
+            await asyncio.sleep(1.5) # Wait before retrying
+            
+    raise HTTPException(status_code=500, detail=f"Failed to connect after {max_retries} attempts. Error: {str(last_error)}")
+
 @app.post("/api/templates")
 def create_template(template: TemplateCreate):
     with Session(engine) as session:
@@ -80,42 +125,27 @@ async def print_template(template_id: int, request: PrintRequest):
         
         template_data = json.loads(template.canvas_state_json)
         
-    # 1. Render the image using our new engine
+    # Render the image using our engine
     img = render_template(template_data, request.variables)
     
-    # 2. Find the printer
-    registry = PrinterModelRegistry.load()
-    resolver = DeviceResolver(registry)
-    devices, _ = await resolver.scan_printer_devices_with_failures(
-        include_classic=True,
-        include_ble=True,
-    )
-    
-    target_device = next((d for d in devices if d.address == request.mac_address), None)
-    if not target_device:
-        raise HTTPException(status_code=404, detail=f"Printer {request.mac_address} not found in scan")
-        
-    # 3. Print
-    from ..rendering.renderer import image_to_raster
-    from ..protocol.job import build_job_from_raster
-    
-    # The model defines the image pipeline (e.g. dithering, width)
-    pipeline_config = target_device.model.image_pipeline
-    
-    # Convert PIL Image to RasterBuffer
-    raster = image_to_raster(img, pipeline_config)
-    
-    # Build the protocol job
-    job = build_job_from_raster(raster, target_device.model.protocol_family)
-    
-    # Send it over Bluetooth
-    backend = SppBackend()
-    async with backend.connect(target_device) as transport_session:
-        await transport_session.send(job)
+    # Execute the print job with retries
+    await execute_print_job(request.mac_address, img)
     
     return {
         "status": "success", 
         "message": f"Template printed successfully to {request.mac_address}",
+        "mac_address": request.mac_address
+    }
+
+@app.post("/api/print/direct")
+async def print_direct(request: DirectPrintRequest):
+    """Endpoint for the frontend to test print without saving a template."""
+    img = render_template(request.canvas_state, request.variables)
+    await execute_print_job(request.mac_address, img)
+    
+    return {
+        "status": "success", 
+        "message": f"Direct print successful to {request.mac_address}",
         "mac_address": request.mac_address
     }
 
