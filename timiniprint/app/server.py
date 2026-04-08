@@ -5,6 +5,7 @@ import shutil
 from typing import Dict, Any, List
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlmodel import SQLModel, create_engine, Session, select
 
@@ -27,6 +28,14 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="TiMini Print Server", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Allows all origins for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class TemplateCreate(BaseModel):
     name: str

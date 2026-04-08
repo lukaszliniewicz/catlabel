@@ -5,6 +5,9 @@ export const useStore = create((set) => ({
   selectedId: null,
   canvasWidth: 384,
   canvasHeight: 384,
+  selectedPrinter: null,
+  
+  setSelectedPrinter: (mac) => set({ selectedPrinter: mac }),
   
   addItem: (item) => set((state) => ({ items: [...state.items, item] })),
   
