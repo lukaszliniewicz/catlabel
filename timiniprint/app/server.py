@@ -70,7 +70,7 @@ async def execute_print_job(mac_address: str, img: Any):
     from ..transport.bluetooth import SppBackend
     
     pipeline_config = target_device.model.image_pipeline
-    raster = image_to_raster(img, pipeline_config)
+    raster = image_to_raster(img, pipeline_config, dither=True)
     job = build_job_from_raster(raster, target_device.model.protocol_family)
     
     backend = SppBackend()
