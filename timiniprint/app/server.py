@@ -88,13 +88,18 @@ async def execute_print_job(mac_address: str, img: Any):
     
     backend = SppBackend()
     
+    # Get the connection attempts (BLE vs Classic)
+    attempts = resolver.build_connection_attempts(target_device)
+    if not attempts:
+        raise HTTPException(status_code=500, detail="No valid connection endpoints found for this printer.")
+        
     # Robust retry loop for waking up sleeping printers
     max_retries = 3
     last_error = None
     
     for attempt in range(max_retries):
         try:
-            await backend.connect(target_device)
+            await backend.connect_attempts(attempts)
             try:
                 # Send the job in chunks
                 await backend.write(job, chunk_size=128, interval_ms=0)
