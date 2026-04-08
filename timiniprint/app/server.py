@@ -94,8 +94,12 @@ async def execute_print_job(mac_address: str, img: Any):
     
     for attempt in range(max_retries):
         try:
-            async with backend.connect(target_device) as transport_session:
-                await transport_session.send(job)
+            await backend.connect(target_device)
+            try:
+                # Send the job in chunks
+                await backend.write(job, chunk_size=128, interval_ms=0)
+            finally:
+                await backend.disconnect()
             return # Success!
         except Exception as e:
             last_error = e
