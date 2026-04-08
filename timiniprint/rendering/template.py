@@ -31,8 +31,16 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
                 text = text.replace(f"{{{{{k}}}}}", str(v))
             
             size = item.get("size", 24)
+            font_name = item.get("font", "arial.ttf")
+            
+            # Try to load from local fonts directory first, then system
             try:
-                font = ImageFont.truetype(item.get("font", "arial.ttf"), size)
+                import os
+                local_font_path = os.path.join("fonts", font_name)
+                if os.path.exists(local_font_path):
+                    font = ImageFont.truetype(local_font_path, size)
+                else:
+                    font = ImageFont.truetype(font_name, size)
             except IOError:
                 font = ImageFont.load_default()
                 

@@ -1,8 +1,10 @@
 import asyncio
 import json
+import os
+import shutil
 from typing import Dict, Any, List
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from sqlmodel import SQLModel, create_engine, Session, select
 
@@ -72,15 +74,61 @@ async def print_template(template_id: int, request: PrintRequest):
     # 1. Render the image using our new engine
     img = render_template(template_data, request.variables)
     
-    # 2. Save to disk for debugging (we will wire up Bluetooth next)
-    debug_filename = f"debug_render_{template_id}.png"
-    img.save(debug_filename)
+    # 2. Find the printer
+    registry = PrinterModelRegistry.load()
+    resolver = DeviceResolver(registry)
+    devices, _ = await resolver.scan_printer_devices_with_failures(
+        include_classic=True,
+        include_ble=True,
+    )
+    
+    target_device = next((d for d in devices if d.address == request.mac_address), None)
+    if not target_device:
+        raise HTTPException(status_code=404, detail=f"Printer {request.mac_address} not found in scan")
+        
+    # 3. Print
+    from ..rendering.renderer import image_to_raster
+    from ..protocol.job import build_job_from_raster
+    
+    # The model defines the image pipeline (e.g. dithering, width)
+    pipeline_config = target_device.model.image_pipeline
+    
+    # Convert PIL Image to RasterBuffer
+    raster = image_to_raster(img, pipeline_config)
+    
+    # Build the protocol job
+    job = build_job_from_raster(raster, target_device.model.protocol_family)
+    
+    # Send it over Bluetooth
+    backend = SppBackend()
+    async with backend.connect(target_device) as transport_session:
+        await transport_session.send(job)
     
     return {
         "status": "success", 
-        "message": f"Template rendered and saved to {debug_filename}",
+        "message": f"Template printed successfully to {request.mac_address}",
         "mac_address": request.mac_address
     }
+
+@app.post("/api/fonts")
+async def upload_font(file: UploadFile = File(...)):
+    os.makedirs("fonts", exist_ok=True)
+    file_path = f"fonts/{file.filename}"
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    with Session(engine) as session:
+        db_font = Font(name=file.filename, file_path=file_path)
+        session.add(db_font)
+        session.commit()
+        session.refresh(db_font)
+        return db_font
+
+@app.get("/api/fonts")
+def list_fonts():
+    with Session(engine) as session:
+        fonts = session.exec(select(Font)).all()
+        return fonts
 
 @app.get("/api/printers/scan")
 async def scan_printers():
