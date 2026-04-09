@@ -113,13 +113,11 @@ export default function CanvasArea() {
               const approxHeight = item.height || (item.type === 'text' ? item.size * 1.2 * numLines : 50);
               const yOffset = item.y;
                 
+              const visualW = item.width || 100;
+                
               const commonProps = {
-                key: item.id, 
-                x: item.x, 
-                y: yOffset, 
-                width: item.width, 
-                height: item.height,
-                draggable: true, 
+                key: item.id, x: item.x, y: yOffset, width: item.width, height: item.height,
+                draggable: item.type !== 'cut_line_indicator', 
                 onClick: () => selectItem(item.id), 
                 onTap: () => selectItem(item.id),
                 onDragMove: (e) => handleDragMove(e, item), 
@@ -150,14 +148,19 @@ export default function CanvasArea() {
                 element = <Rect {...commonProps} fill="#e5e7eb" />;
               } else if (item.type === 'image') {
                 element = <URLImage item={item} commonProps={commonProps} isSelected={false} />;
+              } else if (item.type === 'html') {
+                // Dynamically build SVG data string to natively render the HTML payload.
+                const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;"><style>${item.css || ''}</style>${item.html || ''}</div></foreignObject></svg>`;
+                const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgPayload);
+                element = <URLImage item={{...item, src: url}} commonProps={{...commonProps, height: approxHeight}} isSelected={false} />;
+              } else if (item.type === 'cut_line_indicator') {
+                element = <Line points={item.isVertical ? [item.x, item.y, item.x, canvasHeight] : [item.x, item.y, canvasWidth, item.y]} stroke="gray" strokeWidth={1} dash={[10, 10]} listening={false} />;
               }
 
-              const visualW = item.width || 100;
               return (
                 <Group key={`${item.id}-wrap`}>
                   {element}
-                  
-                  {isSelected && <Rect x={item.x} y={item.y} width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
+                  {isSelected && item.type !== 'cut_line_indicator' && <Rect x={item.x} y={item.y} width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
                   
                   {item.border_style === 'box' && <Rect x={item.x} y={yOffset} width={visualW} height={approxHeight} stroke="black" strokeWidth={2} listening={false} />}
                   {item.border_style === 'top' && <Line points={[item.x, yOffset, item.x + visualW, yOffset]} stroke="black" strokeWidth={2} listening={false} />}

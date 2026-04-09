@@ -98,6 +98,46 @@ export const useStore = create((set) => ({
     return { items: [...state.items, ...newItems] };
   }),
 
+  // Superb utility to clone the entire workspace multiple times downwards!
+  multiplyWorkspace: (copies, gapMm, addCutLines) => set((state) => {
+    const gapPx = Math.round(gapMm * 8);
+    const feedAxis = state.isRotated ? 'x' : 'y';
+    const singleLength = state.isRotated ? state.canvasWidth : state.canvasHeight;
+    const step = singleLength + gapPx;
+    
+    let newItems = [...state.items];
+    
+    for (let i = 1; i <= copies; i++) {
+      const offset = i * step;
+      
+      const clones = state.items.map(item => ({
+        ...item,
+        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substr(2, 5),
+        [feedAxis]: item[feedAxis] + offset
+      }));
+      
+      newItems = [...newItems, ...clones];
+      
+      if (addCutLines && gapPx > 0) {
+         newItems.push({
+           id: Date.now().toString() + '-cut-' + i,
+           type: 'cut_line_indicator',
+           x: state.isRotated ? offset - Math.floor(gapPx/2) : 0,
+           y: state.isRotated ? 0 : offset - Math.floor(gapPx/2),
+           width: state.isRotated ? 1 : state.canvasWidth,
+           height: state.isRotated ? state.canvasHeight : 1,
+           isVertical: state.isRotated
+         });
+      }
+    }
+    
+    return {
+      items: newItems,
+      canvasWidth: state.isRotated ? state.canvasWidth + (step * copies) : state.canvasWidth,
+      canvasHeight: state.isRotated ? state.canvasHeight : state.canvasHeight + (step * copies)
+    };
+  }),
+
   updateItem: (id, newAttrs) => set((state) => ({
     items: state.items.map((item) => item.id === id ? { ...item, ...newAttrs } : item)
   })),

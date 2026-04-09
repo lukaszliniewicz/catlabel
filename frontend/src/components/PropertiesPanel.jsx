@@ -122,6 +122,11 @@ export default function PropertiesPanel() {
 
   const [dupCopies, setDupCopies] = useState(1);
   const [dupGap, setDupGap] = useState(10);
+  
+  // Workspace Multiplier Params
+  const [multCopies, setMultCopies] = useState(1);
+  const [multGap, setMultGap] = useState(10);
+  const [multCutLines, setMultCutLines] = useState(true);
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -207,6 +212,11 @@ export default function PropertiesPanel() {
     await updateSettingsAPI(localSettings);
     setTimeout(() => setIsSaving(false), 1500);
   };
+  
+  const handleMultiply = () => {
+    useStore.getState().multiplyWorkspace(multCopies, multGap, multCutLines);
+    alert('Workspace Expanded Successfully!');
+  };
 
   // Restrict one axis strictly to the hardware print width, letting the feed axis grow infinitely.
   const dotsPerMm = localSettings.default_dpi / 25.4;
@@ -290,7 +300,30 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
-            <div className="space-y-4 mt-4">
+            {/* WORKSPACE MULTIPLIER (Repeater logic) */}
+            <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Workspace Multiplier</h2>
+              <p className="text-[10px] text-neutral-500 mb-2">Easily prepare similar labels by expanding the canvas and cloning all current elements along the feed axis.</p>
+              
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Copies</label>
+                  <input type="number" min="1" value={multCopies} onChange={e => setMultCopies(parseInt(e.target.value)||1)} className={inputClass} />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Gap (mm)</label>
+                  <input type="number" min="0" value={multGap} onChange={e => setMultGap(parseFloat(e.target.value)||0)} className={inputClass} />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 dark:text-neutral-400 cursor-pointer mt-2">
+                <input type="checkbox" checked={multCutLines} onChange={e => setMultCutLines(e.target.checked)} /> Add Line Separators
+              </label>
+              <button onClick={handleMultiply} className="w-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-200 dark:border-blue-800 text-[10px] uppercase tracking-widest font-bold mt-2">
+                Extend & Multiply Workspace
+              </button>
+            </div>
+
+            <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Printer Config</h2>
               <div>
                 <label className={labelClass}>Speed (0 = Device Profile Auto)</label>
@@ -448,6 +481,23 @@ export default function PropertiesPanel() {
                 </>
               )}
 
+              {selectedItem.type === 'html' && (
+                <>
+                  <div>
+                    <label className={labelClass}>HTML Content</label>
+                    <textarea name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={4} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>CSS Styles</label>
+                    <textarea name="css" value={selectedItem.css || ''} onChange={handleChange} className={inputClass} rows={4} placeholder="body { ... }" />
+                  </div>
+                  <div className="flex gap-4">
+                    <MmScrubberInput name="width" label="Frame Width" value={selectedItem.width} onChange={handleChange} />
+                    <MmScrubberInput name="height" label="Frame Height" value={selectedItem.height} onChange={handleChange} />
+                  </div>
+                </>
+              )}
+
               {selectedItem.type === 'image' && (
                 <div className="flex gap-4">
                   <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
@@ -477,7 +527,7 @@ export default function PropertiesPanel() {
               )}
 
               <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                <label className={labelClass}>Duplicate Element</label>
+                <label className={labelClass}>Duplicate Element Only</label>
                 <div className="flex gap-4 mb-2">
                   <div className="flex-1">
                     <label className="block text-[10px] text-neutral-400 mb-1">Copies</label>
@@ -489,7 +539,7 @@ export default function PropertiesPanel() {
                   </div>
                 </div>
                 <button onClick={() => useStore.getState().duplicateItem(selectedId, dupCopies, dupGap)} className="w-full bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200 text-[10px] uppercase tracking-widest font-bold">
-                  Generate Copies
+                  Clone Item Down
                 </button>
               </div>
               <div className="mt-2 mb-2">

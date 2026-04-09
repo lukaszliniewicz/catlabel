@@ -51,6 +51,43 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             except Exception:
                 pass
 
+        elif item_type == "html":
+            item_w = int(item.get("width", 384))
+            item_h = int(item.get("height", 200))
+            html_str = item.get("html", "")
+            css_str = item.get("css", "")
+            
+            try:
+                from html2image import Html2Image
+                hti = Html2Image(custom_flags=['--no-sandbox', '--disable-gpu'])
+                tmp_path = f"html_{id(item)}.png"
+                hti.screenshot(html_str=html_str, css_str=css_str, save_as=tmp_path, size=(item_w, item_h))
+                
+                if os.path.exists(tmp_path):
+                    insert_img = Image.open(tmp_path).convert("RGBA")
+                    bg = Image.new("RGBA", insert_img.size, "WHITE")
+                    bg.paste(insert_img, (0, 0), insert_img)
+                    img.paste(bg.convert("RGB"), (x, y))
+                    os.remove(tmp_path)
+                actual_drawn_height = item_h
+            except Exception as e:
+                print(f"HTML Rendering Error: {e}")
+                draw.rectangle([x, y, x + item_w, y + item_h], outline="red", width=2)
+                draw.text((x + 5, y + 5), "HTML Render Failed (Check html2image)", fill="red")
+                actual_drawn_height = item_h
+                
+        elif item_type == "cut_line_indicator":
+            is_vert = item.get("isVertical", False)
+            w = int(item.get("width", width))
+            h = int(item.get("height", height))
+            
+            if is_vert:
+                for dash_y in range(y, y + h, 15):
+                    draw.line([(x, dash_y), (x, dash_y + 8)], fill="black", width=2)
+            else:
+                for dash_x in range(x, x + w, 15):
+                    draw.line([(dash_x, y), (dash_x + 8, y)], fill="black", width=2)
+
         elif item_type == "icon_text":
             b64_src = item.get("icon_src", "")
             if "," in b64_src:

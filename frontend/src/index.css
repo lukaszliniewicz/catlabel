@@ -7,3 +7,54 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+@layer base {
+  /* Force dropdown options to adapt to dark mode natively */
+  option {
+    @apply bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbars by default, making them transparent */
+  .overflow-auto, .overflow-y-auto, .overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  
+  /* Webkit Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.3s ease;
+  }
+
+  /* Show elegant thin scrollbar ONLY when hovering over the container */
+  *:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(163, 163, 163, 0.4); /* Tailwind neutral-400 */
+  }
+  
+  .dark *:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(82, 82, 82, 0.6); /* Tailwind neutral-600 */
+  }
+
+  /* Firefox scrollbar hover behavior */
+  *:hover {
+    scrollbar-color: rgba(163, 163, 163, 0.4) transparent;
+  }
+  
+  .dark *:hover {
+    scrollbar-color: rgba(82, 82, 82, 0.6) transparent;
+  }
+}
