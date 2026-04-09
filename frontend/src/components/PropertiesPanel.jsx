@@ -47,7 +47,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, setCanvasSize, settings, updateSettingsAPI, fonts } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   // Tab State
@@ -150,7 +150,7 @@ export default function PropertiesPanel() {
   // Warning check for Canvas stretching beyond printer limits
   const dotsPerMm = localSettings.default_dpi / 25.4;
   const printPx = Math.round(localSettings.print_width_mm * dotsPerMm);
-  const isCanvasTooWide = canvasWidth > printPx;
+  const isCanvasTooWide = isRotated ? canvasHeight > printPx : canvasWidth > printPx;
 
   return (
     <div className="w-80 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300">
@@ -184,6 +184,12 @@ export default function PropertiesPanel() {
           <>
             <div className="space-y-4">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Canvas Dimensions</h2>
+              <div className="flex gap-4 items-center">
+                <label className="flex items-center gap-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full">
+                  <input type="checkbox" checked={isRotated} onChange={(e) => setIsRotated(e.target.checked)} />
+                  Rotate Canvas 90° (Sideways)
+                </label>
+              </div>
               <div className="flex gap-4">
                 <ScrubberInput 
                   name="width" 
@@ -200,7 +206,7 @@ export default function PropertiesPanel() {
               </div>
               {isCanvasTooWide && (
                 <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 p-2 border border-red-200 dark:border-red-800">
-                  Warning: Canvas width ({canvasWidth}px) exceeds your printer's max width ({printPx}px). It will be truncated.
+                  Warning: The axis mapped to your printer feed ({isRotated ? canvasHeight : canvasWidth}px) exceeds max limit ({printPx}px). It will be truncated.
                 </p>
               )}
             </div>
@@ -299,6 +305,56 @@ export default function PropertiesPanel() {
                     <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} />
                     Auto-fit on print
                   </label>
+                </>
+              )}
+
+              {selectedItem.type === 'icon_text' && (
+                <>
+                  <div className="flex gap-2 mb-2 bg-neutral-50 dark:bg-neutral-900 p-1 border border-neutral-200 dark:border-neutral-800">
+                     <button onClick={() => {
+                        const newH = Math.max(selectedItem.icon_size, selectedItem.size);
+                        updateItem(selectedId, {
+                           icon_x: 0, icon_y: (newH - selectedItem.icon_size)/2,
+                           text_x: selectedItem.icon_size + 15, text_y: (newH - selectedItem.size)/2,
+                           width: selectedItem.icon_size + 15 + (selectedItem.text.length * selectedItem.size * 0.6),
+                           height: newH
+                        });
+                     }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Row</button>
+                     <button onClick={() => {
+                        updateItem(selectedId, {
+                           icon_x: (selectedItem.width - selectedItem.icon_size)/2, icon_y: 0,
+                           text_x: 0, text_y: selectedItem.icon_size + 10,
+                           height: selectedItem.icon_size + 10 + selectedItem.size
+                        });
+                     }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Col</button>
+                     <button onClick={() => {
+                        const totalW = selectedItem.icon_size + 15 + (selectedItem.text.length * selectedItem.size * 0.6);
+                        const scale = canvasWidth / totalW;
+                        updateItem(selectedId, {
+                           icon_size: selectedItem.icon_size * scale, size: selectedItem.size * scale,
+                           icon_x: 0, icon_y: 0,
+                           text_x: (selectedItem.icon_size * scale) + 15, text_y: 0,
+                           width: canvasWidth, height: Math.max(selectedItem.icon_size * scale, selectedItem.size * scale),
+                           x: 0
+                        });
+                     }} className="flex-1 text-[10px] uppercase font-bold text-blue-600 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">Fit Width</button>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Group Text</label>
+                    <input type="text" name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} />
+                  </div>
+                  <div className="flex gap-4 mt-2">
+                    <ScrubberInput name="size" label="Text Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
+                    <ScrubberInput name="icon_size" label="Icon Size" value={Math.round(selectedItem.icon_size)} onChange={handleChange} />
+                  </div>
+                  <div className="flex gap-4 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                    <ScrubberInput name="icon_x" label="Icon X Offset" value={Math.round(selectedItem.icon_x)} onChange={handleChange} />
+                    <ScrubberInput name="icon_y" label="Icon Y Offset" value={Math.round(selectedItem.icon_y)} onChange={handleChange} />
+                  </div>
+                  <div className="flex gap-4 mt-2">
+                    <ScrubberInput name="text_x" label="Text X Offset" value={Math.round(selectedItem.text_x)} onChange={handleChange} />
+                    <ScrubberInput name="text_y" label="Text Y Offset" value={Math.round(selectedItem.text_y)} onChange={handleChange} />
+                  </div>
                 </>
               )}
 

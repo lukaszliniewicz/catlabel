@@ -5,6 +5,7 @@ export const useStore = create((set) => ({
   selectedId: null,
   canvasWidth: 384,
   canvasHeight: 384,
+  isRotated: false,
   selectedPrinter: null,
   theme: 'auto',
   snapLines: [],
@@ -41,6 +42,13 @@ export const useStore = create((set) => ({
       console.error("Failed to fetch fonts", e);
     }
   },
+
+  setIsRotated: (val) => set((state) => {
+    if (val !== state.isRotated) {
+      return { isRotated: val, canvasWidth: state.canvasHeight, canvasHeight: state.canvasWidth };
+    }
+    return { isRotated: val };
+  }),
 
   setTheme: (theme) => set({ theme }),
   setSnapLines: (lines) => set({ snapLines: lines }),

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Stage, Layer, Text, Rect, Line, Image as KonvaImage } from 'react-konva';
+import { Stage, Layer, Text, Rect, Line, Group, Image as KonvaImage } from 'react-konva';
 import { useStore } from '../store';
 
 // Custom hook to load base64/url images into Konva
@@ -16,7 +16,7 @@ const useImageLoader = (url) => {
 
 // NEW: Component isolated to safely use the hook
 const URLImage = ({ item, commonProps, isSelected }) => {
-  const imgElement = useImageLoader(item.src);
+  const imgElement = useImageLoader(item.src || item.icon_src);
   return (
     <React.Fragment>
       <KonvaImage image={imgElement} {...commonProps} />
@@ -26,13 +26,15 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 };
 
 export default function CanvasArea() {
-  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, snapLines, setSnapLines, settings } = useStore();
+  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, snapLines, setSnapLines, settings, isRotated } = useStore();
   
   // Calculate Paper Visuals (assuming 8 dots per mm for 203 DPI)
   const dotsPerMm = settings.default_dpi / 25.4;
   const paperPx = Math.round(settings.paper_width_mm * dotsPerMm); 
   const printPx = Math.round(settings.print_width_mm * dotsPerMm); // usually 384
-  const sideMargin = (paperPx - printPx) / 2;
+  
+  const sideMarginX = isRotated ? 0 : (paperPx - printPx) / 2;
+  const sideMarginY = isRotated ? (paperPx - printPx) / 2 : 0;
 
   const handleDragMove = (e, item) => {
     const node = e.target;
@@ -48,7 +50,7 @@ export default function CanvasArea() {
     let lines = [];
 
     // --- Horizontal Snapping ---
-    const centerX = printPx / 2;
+    const centerX = canvasWidth / 2;
     if (Math.abs(x + w / 2 - centerX) < SNAP_T) {
       newX = centerX - w / 2;
       lines.push({ points: [centerX, -9999, centerX, 9999], stroke: '#06b6d4' });
@@ -59,9 +61,9 @@ export default function CanvasArea() {
       lines.push({ points: [0, -9999, 0, 9999], stroke: '#06b6d4' });
     }
     // Snap exactly to Right edge
-    if (Math.abs(x + w - printPx) < SNAP_T) {
-      newX = printPx - w;
-      lines.push({ points: [printPx, -9999, printPx, 9999], stroke: '#06b6d4' });
+    if (Math.abs(x + w - canvasWidth) < SNAP_T) {
+      newX = canvasWidth - w;
+      lines.push({ points: [canvasWidth, -9999, canvasWidth, 9999], stroke: '#06b6d4' });
     }
 
     // --- Vertical Snapping ---
@@ -99,16 +101,20 @@ export default function CanvasArea() {
       {/* Paper Visual Wrapper */}
       <div 
         className="bg-white shadow-2xl relative transition-all duration-300"
-        style={{ width: paperPx, height: canvasHeight }}
+        style={{ width: isRotated ? canvasWidth : paperPx, height: isRotated ? paperPx : canvasHeight }}
       >
         {/* Red dashed lines denoting printable area boundaries */}
-        <div style={{ position: 'absolute', left: sideMargin, width: printPx, top: 0, bottom: 0, borderLeft: '1px dashed #ef4444', borderRight: '1px dashed #ef4444', pointerEvents: 'none' }} />
+        {isRotated ? (
+           <div style={{ position: 'absolute', left: 0, right: 0, top: sideMarginY, height: printPx, borderTop: '1px dashed #ef4444', borderBottom: '1px dashed #ef4444', pointerEvents: 'none' }} />
+        ) : (
+           <div style={{ position: 'absolute', left: sideMarginX, width: printPx, top: 0, bottom: 0, borderLeft: '1px dashed #ef4444', borderRight: '1px dashed #ef4444', pointerEvents: 'none' }} />
+        )}
         
         {/* Actual Canvas offset to match the printable area */}
-        <div style={{ marginLeft: sideMargin }}>
+        <div style={{ marginLeft: isRotated ? 0 : sideMarginX, marginTop: isRotated ? sideMarginY : 0 }}>
           <Stage
-            width={printPx}
-            height={canvasHeight}
+            width={canvasWidth}
+            height={isRotated ? printPx : canvasHeight}
             onMouseDown={(e) => { if (e.target === e.target.getStage()) selectItem(null); }}
           >
             <Layer>
@@ -124,6 +130,17 @@ export default function CanvasArea() {
                   // REMOVED PADDING entirely and mapped word wrapping
                   const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
                   return <Text {...commonProps} text={item.text} align={item.align || 'left'} fontFamily={fontFamily} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={isSelected ? '#2563eb' : 'black'} padding={0} />;
+                }
+
+                if (item.type === 'icon_text') {
+                  const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+                  return (
+                    <Group {...commonProps}>
+                      <URLImage item={{icon_src: item.icon_src}} commonProps={{x: item.icon_x, y: item.icon_y, width: item.icon_size, height: item.icon_size}} isSelected={false} />
+                      <Text text={item.text} x={item.text_x} y={item.text_y} fontSize={item.size} fontFamily={fontFamily} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
+                      {isSelected && <Rect x={0} y={0} width={item.width || 100} height={item.height || 100} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
+                    </Group>
+                  )
                 }
                 
                 if (item.type === 'barcode') {

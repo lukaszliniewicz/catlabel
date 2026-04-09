@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import IconPicker from './IconPicker';
+import BatchPrintModal from './BatchPrintModal';
+import { Trash } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter, theme, setTheme } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated } = useStore();
   const [printers, setPrinters] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [currentTemplateId, setCurrentTemplateId] = useState(null);
+  
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [iconPickerMode, setIconPickerMode] = useState('icon');
+  const [showBatchModal, setShowBatchModal] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -30,7 +35,7 @@ export default function Sidebar() {
     addItem({
       id: Date.now().toString(),
       type: 'text',
-      text: 'Double click to edit',
+      text: 'Text',
       x: 0,
       y: 50,
       size: 24,
@@ -40,17 +45,23 @@ export default function Sidebar() {
     });
   };
 
-  const handleAddIcon = (base64Png) => {
+  const handleAddIconText = (base64Png) => {
     addItem({
-      id: Date.now().toString(),
-      type: 'image',
-      src: base64Png,
-      x: canvasWidth / 2 - 50,
-      y: canvasHeight / 2 - 50,
-      width: 100,
-      height: 100
+      id: Date.now().toString(), type: 'icon_text', x: 10, y: 10,
+      icon_src: base64Png, icon_x: 0, icon_y: 0, icon_size: 40,
+      text: 'Icon + Text', text_x: 50, text_y: 10, size: 24, font: 'arial.ttf', text_width: 150, align: 'left',
+      width: 200, height: 40
     });
     setShowIconPicker(false);
+  };
+
+  const handleAddIcon = (base64Png) => {
+    if (iconPickerMode === 'icon_text') {
+      handleAddIconText(base64Png);
+    } else {
+      addItem({ id: Date.now().toString(), type: 'image', src: base64Png, x: 0, y: 0, width: 100, height: 100 });
+      setShowIconPicker(false);
+    }
   };
 
   const handleAddBarcode = () => {
@@ -117,28 +128,20 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          canvas_state: { width: canvasWidth, height: canvasHeight, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, items }
         })
       });
-      alert("Template saved!");
       fetchTemplates();
     } catch (e) {
       console.error(e);
-      alert("Failed to save template.");
     }
   };
 
-  const handleLoadTemplate = (e) => {
-    const tplId = Number(e.target.value);
-    if (!tplId) return;
-    
-    setCurrentTemplateId(tplId);
-    const tpl = templates.find(t => t.id === tplId);
-    if (tpl) {
-      setCanvasSize(tpl.canvas_state.width || 384, tpl.canvas_state.height || 384);
-      setItems(tpl.canvas_state.items || []);
-    }
-    e.target.value = ""; // Reset dropdown
+  const handleLoadTemplate = (tpl) => {
+    setCurrentTemplateId(tpl.id);
+    setCanvasSize(tpl.canvas_state.width || 384, tpl.canvas_state.height || 384);
+    useStore.getState().setIsRotated(tpl.canvas_state.isRotated || false);
+    setItems(tpl.canvas_state.items || []);
   };
 
   const handleUpdateTemplate = async () => {
@@ -148,14 +151,23 @@ export default function Sidebar() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          canvas_state: { width: canvasWidth, height: canvasHeight, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, items }
         })
       });
-      alert("Template updated!");
       fetchTemplates();
     } catch (e) {
       console.error(e);
-      alert("Failed to update template.");
+    }
+  };
+
+  const handleDeleteTemplate = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this template?")) return;
+    try {
+      await fetch(`http://localhost:8000/api/templates/${id}`, { method: 'DELETE' });
+      fetchTemplates();
+      if (currentTemplateId === id) setCurrentTemplateId(null);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -168,7 +180,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           mac_address: selectedPrinter, 
-          canvas_state: { width: canvasWidth, height: canvasHeight, items },
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, items },
           variables: {} 
         })
       });
@@ -177,7 +189,6 @@ export default function Sidebar() {
         const err = await printRes.json();
         throw new Error(err.detail || "Print failed");
       }
-      alert("Print job sent successfully!");
     } catch (e) {
       console.error(e);
       alert(`Failed to print: ${e.message}`);
@@ -216,16 +227,14 @@ export default function Sidebar() {
         </div>
         
         {templates.length > 0 && (
-          <select 
-            className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors"
-            onChange={handleLoadTemplate}
-            defaultValue=""
-          >
-            <option value="" disabled>Load a template...</option>
+          <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-2">
             {templates.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+              <div key={t.id} className={`flex justify-between items-center bg-neutral-50 dark:bg-neutral-900 p-2 border ${currentTemplateId === t.id ? 'border-blue-500' : 'border-neutral-200 dark:border-neutral-800'}`}>
+                 <span className="text-xs cursor-pointer hover:text-blue-500 dark:text-white truncate flex-1" onClick={() => handleLoadTemplate(t)}>{t.name}</span>
+                 <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-500 hover:text-red-700 ml-2"><Trash size={14}/></button>
+              </div>
             ))}
-          </select>
+          </div>
         )}
       </div>
 
@@ -238,10 +247,16 @@ export default function Sidebar() {
           + Add Text
         </button>
         <button 
-          onClick={() => setShowIconPicker(true)} 
+          onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} 
           className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
         >
-          + Add Icon
+          + Add Icon + Text Group
+        </button>
+        <button 
+          onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} 
+          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
+        >
+          + Add Icon Only
         </button>
         <button 
           onClick={handleAddBarcode} 
@@ -286,15 +301,24 @@ export default function Sidebar() {
         )}
       </div>
 
-      <div className="mt-auto pt-6">
+      <div className="mt-auto pt-6 space-y-3">
         <button 
           onClick={handlePrint}
           disabled={isPrinting || !selectedPrinter}
           className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 px-4 py-3 rounded-none hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isPrinting ? 'Printing...' : 'Test Print'}
+          {isPrinting ? 'Printing...' : 'Test Single Print'}
+        </button>
+
+        <button 
+          onClick={() => setShowBatchModal(true)} 
+          className="w-full bg-transparent text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 px-4 py-3 rounded-none hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors text-xs uppercase tracking-widest font-bold"
+        >
+          Batch Print Engine
         </button>
       </div>
+
+      {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
     </div>
   );
 }

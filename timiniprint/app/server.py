@@ -54,53 +54,58 @@ class DirectPrintRequest(BaseModel):
     canvas_state: Dict[str, Any]
     variables: Dict[str, str] = {}
 
-async def execute_print_job(mac_address: str, img: Any):
-    """Helper function to handle scanning, connecting with retries, and printing."""
+class BatchPrintRequest(BaseModel):
+    mac_address: str
+    canvas_state: Dict[str, Any]
+    copies: int = 1
+    variables_list: List[Dict[str, str]] = []
+
+async def execute_print_jobs(mac_address: str, images: List[Any]):
+    """Handles scanning, continuous connection, and streaming multiple jobs efficiently."""
     with Session(engine) as session:
         settings = session.get(Settings, 1) or Settings()
 
     registry = PrinterModelRegistry.load()
     resolver = DeviceResolver(registry)
     
-    # Scan to find the device and its capabilities
     devices, _ = await resolver.scan_printer_devices_with_failures(
-        include_classic=True,
-        include_ble=True,
+        include_classic=True, include_ble=True
     )
     
     target_device = next((d for d in devices if d.address == mac_address), None)
     if not target_device:
-        raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found in scan. Is it turned on?")
+        raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found. Is it turned on?")
         
     from ..rendering.renderer import image_to_raster
     from ..protocol.job import build_job_from_raster
     from ..transport.bluetooth import SppBackend
     
     pipeline_config = target_device.model.image_pipeline
-    raster = image_to_raster(img, pipeline_config.default_format, dither=True)
     
-    job = build_job_from_raster(
-        raster=raster,
-        is_text=False,
-        speed=settings.speed if settings.speed > 0 else target_device.model.img_print_speed,
-        energy=settings.energy if settings.energy > 0 else (target_device.model.moderation_energy or 5000),
-        blackening=3,
-        lsb_first=not target_device.model.a4xii,
-        protocol_family=target_device.model.protocol_family,
-        feed_padding=settings.feed_lines,
-        dev_dpi=target_device.model.dev_dpi,
-        can_print_label=target_device.model.can_print_label,
-        image_pipeline=pipeline_config,
-    )
+    # Pre-render all raw protocol jobs
+    jobs = []
+    for img in images:
+        raster = image_to_raster(img, pipeline_config.default_format, dither=True)
+        job = build_job_from_raster(
+            raster=raster,
+            is_text=False,
+            speed=settings.speed if settings.speed > 0 else target_device.model.img_print_speed,
+            energy=settings.energy if settings.energy > 0 else (target_device.model.moderation_energy or 5000),
+            blackening=3,
+            lsb_first=not target_device.model.a4xii,
+            protocol_family=target_device.model.protocol_family,
+            feed_padding=settings.feed_lines,
+            dev_dpi=target_device.model.dev_dpi,
+            can_print_label=target_device.model.can_print_label,
+            image_pipeline=pipeline_config,
+        )
+        jobs.append(job)
     
     backend = SppBackend()
-    
-    # Get the connection attempts (BLE vs Classic)
     attempts = resolver.build_connection_attempts(target_device)
     if not attempts:
-        raise HTTPException(status_code=500, detail="No valid connection endpoints found for this printer.")
+        raise HTTPException(status_code=500, detail="No valid connection endpoints found.")
         
-    # Robust retry loop for waking up sleeping printers
     max_retries = 3
     last_error = None
     
@@ -108,16 +113,20 @@ async def execute_print_job(mac_address: str, img: Any):
         try:
             await backend.connect_attempts(attempts)
             try:
-                # Send the job in chunks
-                await backend.write(job, chunk_size=128, interval_ms=0)
+                # Stream all jobs continuously over the single open connection
+                for job in jobs:
+                    await backend.write(job, chunk_size=128, interval_ms=0)
             finally:
                 await backend.disconnect()
-            return # Success!
+            return
         except Exception as e:
             last_error = e
-            await asyncio.sleep(1.5) # Wait before retrying
+            await asyncio.sleep(1.5)
             
-    raise HTTPException(status_code=500, detail=f"Failed to connect after {max_retries} attempts. Error: {str(last_error)}")
+    raise HTTPException(status_code=500, detail=f"Failed to connect: {str(last_error)}")
+
+async def execute_print_job(mac_address: str, img: Any):
+    await execute_print_jobs(mac_address, [img])
 
 @app.get("/api/settings")
 def get_settings():
@@ -187,6 +196,16 @@ def update_template(template_id: int, template_update: TemplateUpdate):
         session.refresh(db_template)
         return db_template
 
+@app.delete("/api/templates/{template_id}")
+def delete_template(template_id: int):
+    with Session(engine) as session:
+        db_template = session.get(Template, template_id)
+        if not db_template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        session.delete(db_template)
+        session.commit()
+        return {"status": "deleted"}
+
 @app.post("/api/print/template/{template_id}")
 async def print_template(template_id: int, request: PrintRequest):
     with Session(engine) as session:
@@ -219,6 +238,22 @@ async def print_direct(request: DirectPrintRequest):
         "message": f"Direct print successful to {request.mac_address}",
         "mac_address": request.mac_address
     }
+
+@app.post("/api/print/batch")
+async def print_batch(request: BatchPrintRequest):
+    images = []
+    if request.variables_list:
+        for variables in request.variables_list:
+            for _ in range(request.copies):
+                img = render_template(request.canvas_state, variables)
+                images.append(img)
+    else:
+        img = render_template(request.canvas_state, {})
+        for _ in range(request.copies):
+            images.append(img)
+            
+    await execute_print_jobs(request.mac_address, images)
+    return {"status": "success", "printed": len(images)}
 
 @app.post("/api/fonts")
 async def upload_font(file: UploadFile = File(...)):

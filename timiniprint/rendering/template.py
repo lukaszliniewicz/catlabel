@@ -45,6 +45,49 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             except Exception as e:
                 print(f"Failed to render image item: {e}")
 
+        elif item_type == "icon_text":
+            # Icon Layer
+            b64_src = item.get("icon_src", "")
+            if "," in b64_src:
+                b64_src = b64_src.split(",")[1]
+            try:
+                img_data = base64.b64decode(b64_src)
+                insert_img = Image.open(BytesIO(img_data)).convert("RGBA")
+                icon_w = int(item.get("icon_size", 50))
+                insert_img = insert_img.resize((icon_w, icon_w), Image.Resampling.LANCZOS)
+                
+                bg = Image.new("RGBA", insert_img.size, "WHITE")
+                bg.paste(insert_img, (0, 0), insert_img)
+                
+                icon_x = x + int(item.get("icon_x", 0))
+                icon_y = y + int(item.get("icon_y", 0))
+                img.paste(bg.convert("RGB"), (icon_x, icon_y))
+            except Exception as e:
+                pass
+
+            # Text Layer
+            text = item.get("text", "")
+            for k, v in variables.items():
+                text = text.replace(f"{{{{ {k} }}}}", str(v))
+                text = text.replace(f"{{{{{k}}}}}", str(v))
+            
+            size = item.get("size", 24)
+            font_name = item.get("font", "arial.ttf")
+            def get_font(f_size):
+                local_font_path = os.path.join("fonts", font_name)
+                try:
+                    if os.path.exists(local_font_path):
+                        return ImageFont.truetype(local_font_path, f_size)
+                    return ImageFont.truetype(font_name, f_size)
+                except IOError:
+                    return ImageFont.load_default()
+            
+            font = get_font(size)
+            text_x = x + int(item.get("text_x", 0))
+            text_y = y + int(item.get("text_y", 0))
+            bbox = font.getbbox(text)
+            draw.text((text_x - bbox[0], text_y - bbox[1]), text, fill="black", font=font)
+
         elif item_type == "text":
             text = item.get("text", "")
             # Substitute variables (e.g., {{ sku }})
@@ -185,5 +228,9 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             qr_img = qr_img.resize((bw, bh))
             
             img.paste(qr_img, (x, y), qr_img)
+
+    # Automatically rotate hardware bounds for correct thermal paper feed orientation
+    if template_data.get("isRotated"):
+        img = img.rotate(90, expand=True)
 
     return img
