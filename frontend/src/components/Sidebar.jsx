@@ -29,11 +29,11 @@ export default function Sidebar() {
       id: Date.now().toString(),
       type: 'text',
       text: 'Double click to edit',
-      x: 50,
+      x: 0,
       y: 50,
       size: 24,
       font: 'arial.ttf',
-      width: canvasWidth - 100,
+      width: canvasWidth,
       align: 'center'
     });
   };

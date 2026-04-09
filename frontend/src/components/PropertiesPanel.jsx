@@ -103,6 +103,10 @@ export default function PropertiesPanel() {
     updateItem(selectedId, { y: (canvasHeight - itemH) / 2 });
   };
 
+  const handleMakeFullWidth = () => {
+    updateItem(selectedId, { x: 0, width: canvasWidth });
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let parsedValue = type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value);
@@ -126,6 +130,7 @@ export default function PropertiesPanel() {
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
     
     let low = 6;
     let high = 800; // Greatly increased upper bound
@@ -134,7 +139,7 @@ export default function PropertiesPanel() {
 
     while (low <= high) {
       let mid = Math.floor((low + high) / 2);
-      ctx.font = `${mid}px Arial`; 
+      ctx.font = `${mid}px ${fontFamily}`; 
       let textWidth = ctx.measureText(selectedItem.text.split('\n')[0]).width;
       
       if (textWidth <= targetWidth) {
@@ -162,6 +167,7 @@ export default function PropertiesPanel() {
           <div className="flex gap-2 mt-2">
             <button onClick={handleCenterH} className="flex-1 bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-1.5 text-[10px] uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Center H</button>
             <button onClick={handleCenterV} className="flex-1 bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-1.5 text-[10px] uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Center V</button>
+            <button onClick={handleMakeFullWidth} className="flex-1 bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-1.5 text-[10px] uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Full Width</button>
           </div>
         </div>
 

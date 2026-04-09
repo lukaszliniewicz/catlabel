@@ -122,7 +122,8 @@ export default function CanvasArea() {
 
                 if (item.type === 'text') {
                   // REMOVED PADDING entirely and mapped word wrapping
-                  return <Text {...commonProps} text={item.text} align={item.align || 'left'} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={isSelected ? '#2563eb' : 'black'} padding={0} />;
+                  const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+                  return <Text {...commonProps} text={item.text} align={item.align || 'left'} fontFamily={fontFamily} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={isSelected ? '#2563eb' : 'black'} padding={0} />;
                 }
                 
                 if (item.type === 'barcode') {
