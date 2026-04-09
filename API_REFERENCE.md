@@ -13,6 +13,31 @@ To allow an LLM agent to programmatically generate labels, it needs to understan
 2. **`POST /api/print/batch`**: Prints multiple copies or iterates over an array of variable dictionaries (CSV style).
 3. **`GET /api/printers/scan`**: Returns a list of available BLE/Serial printers and their MAC addresses.
 
+#### The Root Payloads
+
+**Direct Print (`POST /api/print/direct`)**
+```json
+{
+  "mac_address": "XX:XX:XX:XX:XX:XX",
+  "canvas_state": { ... },
+  "variables": {
+    "variable_name": "Replacement Value" 
+  }
+}
+```
+
+**Batch Print (`POST /api/print/batch`)**
+```json
+{
+  "mac_address": "XX:XX:XX:XX:XX:XX",
+  "copies": 1,
+  "canvas_state": { ... },
+  "variables_list": [
+    {"name": "Alice"}, {"name": "Bob"}
+  ]
+}
+```
+
 #### The `canvas_state` Payload
 The core of the printing engine is the `canvas_state`. Agents should construct this JSON object to define the label. 
 *Note: $1 \text{ mm} \approx 8 \text{ pixels}$. Standard 2-inch thermal tape is usually 384 pixels wide.*
@@ -45,9 +70,10 @@ The core of the printing engine is the `canvas_state`. Agents should construct t
   "align": "center",      // "left", "center", "right"
   "font": "arial.ttf",    // Or any uploaded font name
   "invert": false,        // White text on black box
-  "border_style": "none"  // "none", "box", "bottom", "cut_line"
+  "border_style": "none"  // "none", "box", "top", "bottom", "cut_line"
 }
 ```
+*AGENT TIP: To draw a solid horizontal separator line across the canvas, simply pass an empty text element with a border: `{"type": "text", "text": "", "x": 0, "y": 50, "width": 384, "size": 2, "border_style": "top"}`.*
 
 **2. Custom HTML / CSS** (Best for highly complex layouts)
 ```json
@@ -61,12 +87,23 @@ The core of the printing engine is the `canvas_state`. Agents should construct t
 }
 ```
 
-**3. Icon + Text Group** (Good for headers/warnings)
+**3. Base64 Image**
+```json
+{
+  "id": "img_1",
+  "type": "image",
+  "src": "data:image/png;base64,iVBORw0KGg...",
+  "x": 10, "y": 10,
+  "width": 150, "height": 150
+}
+```
+
+**4. Icon + Text Group** (Good for headers/warnings)
 ```json
 {
   "id": "icon_1",
   "type": "icon_text",
-  "icon_src": "data:image/png;base64,...", // Base64 image
+  "icon_src": "data:image/png;base64,...", 
   "icon_size": 40,
   "icon_x": 0, "icon_y": 0,
   "text": "WARNING: Fragile",
@@ -76,7 +113,7 @@ The core of the printing engine is the `canvas_state`. Agents should construct t
 }
 ```
 
-**4. Barcode / QR Code**
+**5. Barcode / QR Code**
 ```json
 {
   "id": "bc_1",
@@ -98,6 +135,7 @@ The core of the printing engine is the `canvas_state`. Agents should construct t
 ```json
 {
   "mac_address": "XX:XX:XX:XX:XX:XX",
+  "variables": {},
   "canvas_state": {
     "width": 384, "height": 150, "isRotated": false,
     "items": [{
