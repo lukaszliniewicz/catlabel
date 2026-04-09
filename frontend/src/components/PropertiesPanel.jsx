@@ -105,7 +105,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   // Tab State
@@ -119,6 +119,9 @@ export default function PropertiesPanel() {
   // Local settings state for explicit DB saving
   const [localSettings, setLocalSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [dupCopies, setDupCopies] = useState(1);
+  const [dupGap, setDupGap] = useState(10);
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -270,6 +273,20 @@ export default function PropertiesPanel() {
                   onChange={(e) => setCanvasSize(canvasWidth, Number(e.target.value))} 
                   disabled={isRotated}
                 />
+              </div>
+            </div>
+            
+            <div className="space-y-4 mt-4">
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Canvas Styling</h2>
+              <div>
+                <label className={labelClass}>Canvas Border / Cut line</label>
+                <select value={canvasBorder} onChange={(e) => setCanvasBorder(e.target.value)} className={inputClass}>
+                  <option value="none">None</option>
+                  <option value="box">Full Box</option>
+                  <option value="top">Top Border</option>
+                  <option value="bottom">Bottom Border</option>
+                  <option value="cut_line">Cut Line (Dashed Bottom)</option>
+                </select>
               </div>
             </div>
 
@@ -459,9 +476,21 @@ export default function PropertiesPanel() {
                 </>
               )}
 
-              <div className="flex gap-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                <ScrubberInput name="repeat_count" label="Repeat Count" value={selectedItem.repeat_count || 1} onChange={handleChange} />
-                <MmScrubberInput name="repeat_gap" label="Repeat Gap" value={selectedItem.repeat_gap || 0} onChange={handleChange} />
+              <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                <label className={labelClass}>Duplicate Element</label>
+                <div className="flex gap-4 mb-2">
+                  <div className="flex-1">
+                    <label className="block text-[10px] text-neutral-400 mb-1">Copies</label>
+                    <input type="number" min="1" value={dupCopies} onChange={e => setDupCopies(parseInt(e.target.value)||1)} className={inputClass} />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[10px] text-neutral-400 mb-1">Gap (mm)</label>
+                    <input type="number" min="0" value={dupGap} onChange={e => setDupGap(parseInt(e.target.value)||0)} className={inputClass} />
+                  </div>
+                </div>
+                <button onClick={() => useStore.getState().duplicateItem(selectedId, dupCopies, dupGap)} className="w-full bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200 text-[10px] uppercase tracking-widest font-bold">
+                  Generate Copies
+                </button>
               </div>
               <div className="mt-2 mb-2">
                   <label className={labelClass}>Styling Lines</label>

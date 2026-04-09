@@ -5,7 +5,7 @@ import BatchPrintModal from './BatchPrintModal';
 import { Trash } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated } = useStore();
   const [printers, setPrinters] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -98,6 +98,7 @@ export default function Sidebar() {
   const handleAddShippingLabel = () => {
     useStore.getState().setIsRotated(true);
     setCanvasSize(500, 384);
+    setCanvasBorder('none');
     setItems([
       { id: Date.now().toString()+'1', type: 'text', text: 'FROM: {{ sender_name }}\n{{ sender_address }}', x: 10, y: 10, size: 24, font: 'arial.ttf', width: 250 },
       { id: Date.now().toString()+'2', type: 'text', text: 'TO: {{ recipient_name }}\n{{ recipient_address }}\n{{ recipient_phone }}', x: 10, y: 120, size: 36, font: 'arial.ttf', width: 480 },
@@ -130,7 +131,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items }
         })
       });
       fetchTemplates();
@@ -142,6 +143,7 @@ export default function Sidebar() {
   const handleLoadTemplate = (tpl) => {
     setCurrentTemplateId(tpl.id);
     setCanvasSize(tpl.canvas_state.width || 384, tpl.canvas_state.height || 384);
+    setCanvasBorder(tpl.canvas_state.canvasBorder || 'none');
     useStore.getState().setIsRotated(tpl.canvas_state.isRotated || false);
     setItems(tpl.canvas_state.items || []);
   };
@@ -153,7 +155,7 @@ export default function Sidebar() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items }
         })
       });
       fetchTemplates();
@@ -182,7 +184,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           mac_address: selectedPrinter, 
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, items },
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items },
           variables: {} 
         })
       });
@@ -290,14 +292,14 @@ export default function Sidebar() {
           disabled={isPrinting || !selectedPrinter}
           className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 px-4 py-3 rounded-none hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isPrinting ? 'Printing...' : 'Test Single Print'}
+          {isPrinting ? 'Printing...' : 'Print Label'}
         </button>
 
         <button 
           onClick={() => setShowBatchModal(true)} 
           className="w-full bg-transparent text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 px-4 py-3 rounded-none hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors text-xs uppercase tracking-widest font-bold"
         >
-          Batch Print Engine
+          Print Multiple Copies
         </button>
       </div>
 

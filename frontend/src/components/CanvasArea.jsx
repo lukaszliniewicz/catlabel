@@ -26,7 +26,7 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 };
 
 export default function CanvasArea() {
-  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, snapLines, setSnapLines, settings, isRotated } = useStore();
+  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, snapLines, setSnapLines, settings, isRotated } = useStore();
   
   const handleDragMove = (e, item) => {
     const node = e.target;
@@ -100,68 +100,71 @@ export default function CanvasArea() {
           onMouseDown={(e) => { if (e.target === e.target.getStage()) selectItem(null); }}
         >
           <Layer>
+            {/* Canvas Border Background Renders */}
+            {canvasBorder === 'box' && <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} stroke="black" strokeWidth={2} listening={false} />}
+            {canvasBorder === 'top' && <Line points={[0, 0, canvasWidth, 0]} stroke="black" strokeWidth={2} listening={false} />}
+            {canvasBorder === 'bottom' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={2} listening={false} />}
+            {canvasBorder === 'cut_line' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={2} dash={[10, 10]} listening={false} />}
+
             {items.map((item) => {
-              const repeats = item.repeat_count || 1;
-              const gap = item.repeat_gap || 0;
+              const isSelected = item.id === selectedId;
               
-              return Array.from({ length: repeats }).map((_, idx) => {
-                const isSelected = item.id === selectedId && idx === 0;
-                const approxHeight = item.height || (item.type === 'text' ? item.size * 1.5 : 50);
-                const yOffset = item.y + idx * (approxHeight + gap);
+              const numLines = item.text ? String(item.text).split('\n').length : 1;
+              const approxHeight = item.height || (item.type === 'text' ? item.size * 1.2 * numLines : 50);
+              const yOffset = item.y;
                 
-                const commonProps = {
-                  key: `${item.id}-${idx}`, 
-                  x: item.x, 
-                  y: yOffset, 
-                  width: item.width, 
-                  height: item.height,
-                  draggable: idx === 0, 
-                  onClick: () => selectItem(item.id), 
-                  onTap: () => selectItem(item.id),
-                  onDragMove: idx === 0 ? (e) => handleDragMove(e, item) : undefined, 
-                  onDragEnd: idx === 0 ? (e) => handleDragEnd(e, item) : undefined
-                };
+              const commonProps = {
+                key: item.id, 
+                x: item.x, 
+                y: yOffset, 
+                width: item.width, 
+                height: item.height,
+                draggable: true, 
+                onClick: () => selectItem(item.id), 
+                onTap: () => selectItem(item.id),
+                onDragMove: (e) => handleDragMove(e, item), 
+                onDragEnd: (e) => handleDragEnd(e, item)
+              };
 
-                let element = null;
+              let element = null;
 
-                if (item.type === 'text') {
-                  const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-                  const fill = item.invert ? 'white' : (isSelected && idx === 0 ? '#2563eb' : 'black');
-                  const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
-                  element = (
-                    <Group {...commonProps}>
-                      {bgFill && <Rect width={item.width || canvasWidth} height={approxHeight} fill={bgFill} />}
-                      <Text text={item.text} width={item.width} align={item.align || 'left'} fontFamily={fontFamily} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={fill} padding={0} />
-                    </Group>
-                  );
-                } else if (item.type === 'icon_text') {
-                  const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-                  element = (
-                    <Group {...commonProps}>
-                      <URLImage item={{icon_src: item.icon_src}} commonProps={{x: item.icon_x, y: item.icon_y, width: item.icon_size, height: item.icon_size}} isSelected={false} />
-                      <Text text={item.text} x={item.text_x} y={item.text_y} fontSize={item.size} fontFamily={fontFamily} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
-                    </Group>
-                  )
-                } else if (item.type === 'barcode') {
-                  element = <Rect {...commonProps} fill="#e5e7eb" />;
-                } else if (item.type === 'image') {
-                  element = <URLImage item={item} commonProps={commonProps} isSelected={false} />;
-                }
-
-                const visualW = item.width || 100;
-                return (
-                  <Group key={`${item.id}-${idx}-wrap`}>
-                    {element}
-                    
-                    {isSelected && <Rect x={item.x} y={item.y} width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
-                    
-                    {item.border_style === 'box' && <Rect x={item.x} y={yOffset} width={visualW} height={approxHeight} stroke="black" strokeWidth={2} listening={false} />}
-                    {item.border_style === 'top' && <Line points={[item.x, yOffset, item.x + visualW, yOffset]} stroke="black" strokeWidth={2} listening={false} />}
-                    {item.border_style === 'bottom' && <Line points={[item.x, yOffset + approxHeight, item.x + visualW, yOffset + approxHeight]} stroke="black" strokeWidth={2} listening={false} />}
-                    {item.border_style === 'cut_line' && <Line points={[item.x, yOffset + approxHeight + (gap/2), item.x + visualW, yOffset + approxHeight + (gap/2)]} stroke="black" strokeWidth={2} dash={[10, 10]} listening={false} />}
+              if (item.type === 'text') {
+                const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+                const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
+                const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
+                element = (
+                  <Group {...commonProps}>
+                    {bgFill && <Rect width={item.width || canvasWidth} height={approxHeight} fill={bgFill} />}
+                    <Text text={item.text} width={item.width} align={item.align || 'left'} fontFamily={fontFamily} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={fill} padding={0} />
                   </Group>
                 );
-              });
+              } else if (item.type === 'icon_text') {
+                const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+                element = (
+                  <Group {...commonProps}>
+                    <URLImage item={{icon_src: item.icon_src}} commonProps={{x: item.icon_x, y: item.icon_y, width: item.icon_size, height: item.icon_size}} isSelected={false} />
+                    <Text text={item.text} x={item.text_x} y={item.text_y} fontSize={item.size} fontFamily={fontFamily} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
+                  </Group>
+                )
+              } else if (item.type === 'barcode') {
+                element = <Rect {...commonProps} fill="#e5e7eb" />;
+              } else if (item.type === 'image') {
+                element = <URLImage item={item} commonProps={commonProps} isSelected={false} />;
+              }
+
+              const visualW = item.width || 100;
+              return (
+                <Group key={`${item.id}-wrap`}>
+                  {element}
+                  
+                  {isSelected && <Rect x={item.x} y={item.y} width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
+                  
+                  {item.border_style === 'box' && <Rect x={item.x} y={yOffset} width={visualW} height={approxHeight} stroke="black" strokeWidth={2} listening={false} />}
+                  {item.border_style === 'top' && <Line points={[item.x, yOffset, item.x + visualW, yOffset]} stroke="black" strokeWidth={2} listening={false} />}
+                  {item.border_style === 'bottom' && <Line points={[item.x, yOffset + approxHeight, item.x + visualW, yOffset + approxHeight]} stroke="black" strokeWidth={2} listening={false} />}
+                  {item.border_style === 'cut_line' && <Line points={[item.x, yOffset + approxHeight + 2, item.x + visualW, yOffset + approxHeight + 2]} stroke="black" strokeWidth={2} dash={[10, 10]} listening={false} />}
+                </Group>
+              );
             })}
             
             {snapLines.map((line, i) => (

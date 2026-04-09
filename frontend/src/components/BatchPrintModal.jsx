@@ -3,7 +3,7 @@ import { X, Upload } from 'lucide-react';
 import { useStore } from '../store';
 
 export default function BatchPrintModal({ onClose }) {
-  const { canvasWidth, canvasHeight, items, selectedPrinter } = useStore();
+  const { canvasWidth, canvasHeight, canvasBorder, items, selectedPrinter } = useStore();
   const isRotated = useStore(state => state.isRotated);
   const [tab, setTab] = useState('copies');
   const [copies, setCopies] = useState(1);
@@ -41,7 +41,7 @@ export default function BatchPrintModal({ onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mac_address: selectedPrinter,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, items },
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items },
           copies: parseInt(copies, 10) || 1,
           variables_list: tab === 'csv' ? csvData : []
         })
@@ -63,7 +63,7 @@ export default function BatchPrintModal({ onClose }) {
       <div className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800">
         
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
-          <h3 className="font-serif text-lg dark:text-white">Batch Print Engine</h3>
+          <h3 className="font-serif text-lg dark:text-white">Print Multiple Copies</h3>
           <button onClick={onClose} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">
             <X size={20} />
           </button>

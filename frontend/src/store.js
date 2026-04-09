@@ -5,6 +5,7 @@ export const useStore = create((set) => ({
   selectedId: null,
   canvasWidth: 384,
   canvasHeight: 384,
+  canvasBorder: 'none',
   isRotated: false,
   selectedPrinter: null,
   theme: 'auto',
@@ -50,6 +51,7 @@ export const useStore = create((set) => ({
     return { isRotated: val };
   }),
 
+  setCanvasBorder: (val) => set({ canvasBorder: val }),
   setTheme: (theme) => set({ theme }),
   setSnapLines: (lines) => set({ snapLines: lines }),
   setSettings: (settings) => set({ settings }),
@@ -74,6 +76,28 @@ export const useStore = create((set) => ({
   
   addItem: (item) => set((state) => ({ items: [...state.items, item] })),
   
+  duplicateItem: (id, copies, gapMm) => set((state) => {
+    const itemToClone = state.items.find(i => i.id === id);
+    if (!itemToClone) return state;
+    
+    const newItems = [];
+    const gapPx = Math.round(gapMm * 8);
+    const numLines = itemToClone.text ? String(itemToClone.text).split('\n').length : 1;
+    const approxHeight = itemToClone.height || (itemToClone.type === 'text' ? itemToClone.size * 1.2 * numLines : 50);
+    
+    let currentY = itemToClone.y;
+    
+    for (let i = 1; i <= copies; i++) {
+      currentY += approxHeight + gapPx;
+      newItems.push({
+        ...itemToClone,
+        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substr(2, 5),
+        y: currentY
+      });
+    }
+    return { items: [...state.items, ...newItems] };
+  }),
+
   updateItem: (id, newAttrs) => set((state) => ({
     items: state.items.map((item) => item.id === id ? { ...item, ...newAttrs } : item)
   })),
