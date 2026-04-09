@@ -236,9 +236,28 @@ async def upload_font(file: UploadFile = File(...)):
 
 @app.get("/api/fonts")
 def list_fonts():
+    os.makedirs("fonts", exist_ok=True)
     with Session(engine) as session:
-        fonts = session.exec(select(Font)).all()
-        return fonts
+        # 1. Get existing fonts from the database
+        db_fonts = {f.name: f for f in session.exec(select(Font)).all()}
+        
+        # 2. Scan the 'fonts' folder on disk
+        disk_fonts = [f for f in os.listdir("fonts") if f.lower().endswith((".ttf", ".otf"))]
+        
+        # 3. Add any missing fonts from disk to the database
+        new_fonts = []
+        for f in disk_fonts:
+            if f not in db_fonts:
+                new_font = Font(name=f, file_path=f"fonts/{f}")
+                session.add(new_font)
+                new_fonts.append(new_font)
+        
+        # 4. Commit if we found new files
+        if new_fonts:
+            session.commit()
+            
+        # 5. Return the fully synced list
+        return session.exec(select(Font)).all()
 
 @app.get("/api/printers/scan")
 async def scan_printers():
