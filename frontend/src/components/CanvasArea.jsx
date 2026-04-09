@@ -110,7 +110,9 @@ export default function CanvasArea() {
               const isSelected = item.id === selectedId;
               
               const numLines = item.text ? String(item.text).split('\n').length : 1;
-              const approxHeight = item.height || (item.type === 'text' ? item.size * 1.2 * numLines : 50);
+              // Explicitly accommodate an internal padding offset if we invert/fill the box!
+              const textPadding = (item.type === 'text' && (item.invert || item.bg_white)) ? 16 : 0;
+              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.2 * numLines) + textPadding : 50);
               const yOffset = item.y;
                 
               const visualW = item.width || 100;
@@ -132,8 +134,19 @@ export default function CanvasArea() {
                 const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
                 element = (
                   <Group {...commonProps}>
-                    {bgFill && <Rect width={item.width || canvasWidth} height={approxHeight} fill={bgFill} />}
-                    <Text text={item.text} width={item.width} align={item.align || 'left'} fontFamily={fontFamily} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={fill} padding={0} />
+                    {bgFill && <Rect width={item.width || canvasWidth} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
+                    <Text 
+                      text={item.text} 
+                      width={item.width} 
+                      height={approxHeight} 
+                      verticalAlign="middle"
+                      align={item.align || 'left'} 
+                      fontFamily={fontFamily} 
+                      wrap={item.no_wrap ? "none" : "word"} 
+                      fontSize={item.size} 
+                      fill={fill} 
+                      padding={textPadding / 2} 
+                    />
                   </Group>
                 );
               } else if (item.type === 'icon_text') {

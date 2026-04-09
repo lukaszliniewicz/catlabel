@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import IconPicker from './IconPicker';
 import HtmlPickerModal from './HtmlPickerModal';
 import BatchPrintModal from './BatchPrintModal';
+import ShippingLabelModal from './ShippingLabelModal';
 import { Trash, ChevronDown, ChevronRight } from 'lucide-react';
 
 export default function Sidebar() {
@@ -18,10 +19,12 @@ export default function Sidebar() {
   const [iconPickerMode, setIconPickerMode] = useState('icon');
   const [showHtmlPicker, setShowHtmlPicker] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showShippingModal, setShowShippingModal] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
     useStore.getState().fetchSettings(); // <-- Load DB settings
+    useStore.getState().fetchAddresses();
   }, []);
 
   const fetchTemplates = async () => {
@@ -234,6 +237,11 @@ export default function Sidebar() {
 
       <div className="space-y-3">
         <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Tools</h2>
+        
+        <button onClick={() => setShowShippingModal(true)} className="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-4 py-2 rounded-none hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-xs uppercase tracking-wider font-bold text-left mb-2">
+          + Shipping Label Wizard
+        </button>
+
         <button onClick={handleAddText} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Text</button>
         <button onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Icon + Text</button>
         <button onClick={() => setShowHtmlPicker(true)} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Custom HTML Element</button>
@@ -290,6 +298,7 @@ export default function Sidebar() {
       </div>
 
       {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
+      {showShippingModal && <ShippingLabelModal onClose={() => setShowShippingModal(false)} />}
     </div>
   );
 }

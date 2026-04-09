@@ -26,3 +26,12 @@ class Settings(SQLModel, table=True):
     speed: int = 0
     energy: int = 0
     feed_lines: int = 100
+
+class Address(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    alias: str
+    name: str
+    street: str
+    zip: str
+    city: str
+    country: str

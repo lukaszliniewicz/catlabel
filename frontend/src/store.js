@@ -11,8 +11,41 @@ export const useStore = create((set) => ({
   theme: 'auto',
   snapLines: [],
   fonts: [],
+  addresses: [],
   settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100 },
   
+  fetchAddresses: async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/addresses');
+      const data = await res.json();
+      set({ addresses: data });
+    } catch (e) {
+      console.error("Failed to fetch addresses", e);
+    }
+  },
+
+  saveAddress: async (addr) => {
+    try {
+      await fetch('http://localhost:8000/api/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addr)
+      });
+      useStore.getState().fetchAddresses();
+    } catch (e) {
+      console.error("Failed to save address", e);
+    }
+  },
+
+  deleteAddress: async (id) => {
+    try {
+      await fetch(`http://localhost:8000/api/addresses/${id}`, { method: 'DELETE' });
+      useStore.getState().fetchAddresses();
+    } catch (e) {
+      console.error("Failed to delete address", e);
+    }
+  },
+
   // NEW: Fetch initial settings from SQLite 
   fetchSettings: async () => {
     try {

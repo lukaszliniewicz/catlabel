@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import SQLModel, create_engine, Session, select
 
-from .models import PrinterProfile, Font, Template, Settings
+from .models import PrinterProfile, Font, Template, Settings, Address
 from ..rendering.template import render_template
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
@@ -317,3 +317,25 @@ async def scan_printers():
             "paired": device.paired,
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
+
+@app.get("/api/addresses")
+def get_addresses():
+    with Session(engine) as session:
+        return session.exec(select(Address)).all()
+
+@app.post("/api/addresses")
+def create_address(address: Address):
+    with Session(engine) as session:
+        session.add(address)
+        session.commit()
+        session.refresh(address)
+        return address
+
+@app.delete("/api/addresses/{address_id}")
+def delete_address(address_id: int):
+    with Session(engine) as session:
+        db_address = session.get(Address, address_id)
+        if db_address:
+            session.delete(db_address)
+            session.commit()
+        return {"status": "deleted"}
