@@ -270,7 +270,8 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             
             bw = int(item.get("width", bc_img.width))
             bh = int(item.get("height", bc_img.height))
-            bc_img = bc_img.resize((bw, bh))
+            # CRITICAL: Use NEAREST to prevent anti-aliasing which breaks thermal dithering
+            bc_img = bc_img.resize((bw, bh), Image.Resampling.NEAREST)
             
             img.paste(bc_img, (x, y), bc_img)
             actual_drawn_height = bh
@@ -288,7 +289,8 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             
             bw = int(item.get("width", qr_img.width))
             bh = int(item.get("height", qr_img.height))
-            qr_img = qr_img.resize((bw, bh))
+            # CRITICAL: Use NEAREST to prevent anti-aliasing which breaks thermal dithering
+            qr_img = qr_img.resize((bw, bh), Image.Resampling.NEAREST)
             
             img.paste(qr_img, (x, y), qr_img)
             actual_drawn_height = bh

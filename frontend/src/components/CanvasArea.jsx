@@ -158,7 +158,19 @@ export default function CanvasArea() {
                   </Group>
                 )
               } else if (item.type === 'barcode') {
-                element = <Rect {...commonProps} fill="#e5e7eb" />;
+                element = (
+                  <Group {...commonProps}>
+                    <Rect width={visualW} height={approxHeight} fill="#e5e7eb" />
+                    <Text text="BARCODE" width={visualW} height={approxHeight} align="center" verticalAlign="middle" fill="#9ca3af" fontSize={14} fontStyle="bold" />
+                  </Group>
+                );
+              } else if (item.type === 'qrcode') {
+                element = (
+                  <Group {...commonProps}>
+                    <Rect width={visualW} height={approxHeight} fill="#e5e7eb" />
+                    <Text text="QR" width={visualW} height={approxHeight} align="center" verticalAlign="middle" fill="#9ca3af" fontSize={Math.min(visualW, approxHeight) * 0.3} fontStyle="bold" />
+                  </Group>
+                );
               } else if (item.type === 'image') {
                 element = <URLImage item={item} commonProps={commonProps} isSelected={false} />;
               } else if (item.type === 'html') {

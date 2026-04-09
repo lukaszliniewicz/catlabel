@@ -511,6 +511,22 @@ export default function PropertiesPanel() {
                 </div>
               )}
 
+              {selectedItem.type === 'qrcode' && (
+                <>
+                  <div>
+                    <label className={labelClass}>QR Data (Supports {'{{ var }}'})</label>
+                    <textarea name="data" value={selectedItem.data} onChange={handleChange} className={inputClass} rows={3} />
+                  </div>
+                  <div className="flex gap-4">
+                    {/* Scrubbing one axis updates both to maintain the square aspect ratio */}
+                    <MmScrubberInput name="width" label="Size" value={selectedItem.width} onChange={(e) => {
+                      handleChange({ target: { name: 'width', value: e.target.value, type: 'number' } });
+                      handleChange({ target: { name: 'height', value: e.target.value, type: 'number' } });
+                    }} />
+                  </div>
+                </>
+              )}
+
               {selectedItem.type === 'barcode' && (
                 <>
                   <div>
