@@ -28,14 +28,6 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 export default function CanvasArea() {
   const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, snapLines, setSnapLines, settings, isRotated } = useStore();
   
-  // Calculate Paper Visuals (assuming 8 dots per mm for 203 DPI)
-  const dotsPerMm = settings.default_dpi / 25.4;
-  const paperPx = Math.round(settings.paper_width_mm * dotsPerMm); 
-  const printPx = Math.round(settings.print_width_mm * dotsPerMm); // usually 384
-  
-  const sideMarginX = isRotated ? 0 : (paperPx - printPx) / 2;
-  const sideMarginY = isRotated ? (paperPx - printPx) / 2 : 0;
-
   const handleDragMove = (e, item) => {
     const node = e.target;
     const x = node.x();
@@ -93,74 +85,90 @@ export default function CanvasArea() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center overflow-auto p-8 bg-neutral-100 dark:bg-neutral-900 transition-colors duration-300">
+    <div className="flex-1 flex flex-col items-center overflow-auto p-8 bg-neutral-100 dark:bg-neutral-900 transition-colors duration-300">
       <div className="mb-6 text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold">
-        Paper Width: {settings.paper_width_mm}mm | Print Area: {settings.print_width_mm}mm
+        Canvas Feed Engine: {isRotated ? "Landscape" : "Portrait"}
       </div>
       
-      {/* Paper Visual Wrapper */}
       <div 
         className="bg-white shadow-2xl relative transition-all duration-300"
-        style={{ width: isRotated ? canvasWidth : paperPx, height: isRotated ? paperPx : canvasHeight }}
+        style={{ width: canvasWidth, height: canvasHeight }}
       >
-        {/* Red dashed lines denoting printable area boundaries */}
-        {isRotated ? (
-           <div style={{ position: 'absolute', left: 0, right: 0, top: sideMarginY, height: printPx, borderTop: '1px dashed #ef4444', borderBottom: '1px dashed #ef4444', pointerEvents: 'none' }} />
-        ) : (
-           <div style={{ position: 'absolute', left: sideMarginX, width: printPx, top: 0, bottom: 0, borderLeft: '1px dashed #ef4444', borderRight: '1px dashed #ef4444', pointerEvents: 'none' }} />
-        )}
-        
-        {/* Actual Canvas offset to match the printable area */}
-        <div style={{ marginLeft: isRotated ? 0 : sideMarginX, marginTop: isRotated ? sideMarginY : 0 }}>
-          <Stage
-            width={canvasWidth}
-            height={isRotated ? printPx : canvasHeight}
-            onMouseDown={(e) => { if (e.target === e.target.getStage()) selectItem(null); }}
-          >
-            <Layer>
-              {items.map((item) => {
-                const isSelected = item.id === selectedId;
+        <Stage
+          width={canvasWidth}
+          height={canvasHeight}
+          onMouseDown={(e) => { if (e.target === e.target.getStage()) selectItem(null); }}
+        >
+          <Layer>
+            {items.map((item) => {
+              const repeats = item.repeat_count || 1;
+              const gap = item.repeat_gap || 0;
+              
+              return Array.from({ length: repeats }).map((_, idx) => {
+                const isSelected = item.id === selectedId && idx === 0;
+                const approxHeight = item.height || (item.type === 'text' ? item.size * 1.5 : 50);
+                const yOffset = item.y + idx * (approxHeight + gap);
+                
                 const commonProps = {
-                  key: item.id, x: item.x, y: item.y, width: item.width, height: item.height,
-                  draggable: true, onClick: () => selectItem(item.id), onTap: () => selectItem(item.id),
-                  onDragMove: (e) => handleDragMove(e, item), onDragEnd: (e) => handleDragEnd(e, item)
+                  key: `${item.id}-${idx}`, 
+                  x: item.x, 
+                  y: yOffset, 
+                  width: item.width, 
+                  height: item.height,
+                  draggable: idx === 0, 
+                  onClick: () => selectItem(item.id), 
+                  onTap: () => selectItem(item.id),
+                  onDragMove: idx === 0 ? (e) => handleDragMove(e, item) : undefined, 
+                  onDragEnd: idx === 0 ? (e) => handleDragEnd(e, item) : undefined
                 };
 
-                if (item.type === 'text') {
-                  // REMOVED PADDING entirely and mapped word wrapping
-                  const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-                  return <Text {...commonProps} text={item.text} align={item.align || 'left'} fontFamily={fontFamily} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={isSelected ? '#2563eb' : 'black'} padding={0} />;
-                }
+                let element = null;
 
-                if (item.type === 'icon_text') {
+                if (item.type === 'text') {
                   const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-                  return (
+                  const fill = item.invert ? 'white' : (isSelected && idx === 0 ? '#2563eb' : 'black');
+                  const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
+                  element = (
+                    <Group {...commonProps}>
+                      {bgFill && <Rect width={item.width || canvasWidth} height={approxHeight} fill={bgFill} />}
+                      <Text text={item.text} width={item.width} align={item.align || 'left'} fontFamily={fontFamily} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={fill} padding={0} />
+                    </Group>
+                  );
+                } else if (item.type === 'icon_text') {
+                  const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+                  element = (
                     <Group {...commonProps}>
                       <URLImage item={{icon_src: item.icon_src}} commonProps={{x: item.icon_x, y: item.icon_y, width: item.icon_size, height: item.icon_size}} isSelected={false} />
                       <Text text={item.text} x={item.text_x} y={item.text_y} fontSize={item.size} fontFamily={fontFamily} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
-                      {isSelected && <Rect x={0} y={0} width={item.width || 100} height={item.height || 100} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
                     </Group>
                   )
-                }
-                
-                if (item.type === 'barcode') {
-                  return <Rect {...commonProps} fill="#e5e7eb" stroke={isSelected ? '#2563eb' : '#9ca3af'} strokeWidth={isSelected ? 2 : 1} dash={isSelected ? [4, 4] : []} />;
+                } else if (item.type === 'barcode') {
+                  element = <Rect {...commonProps} fill="#e5e7eb" />;
+                } else if (item.type === 'image') {
+                  element = <URLImage item={item} commonProps={commonProps} isSelected={false} />;
                 }
 
-                if (item.type === 'image') {
-                  // USE THE NEW ISOLATED COMPONENT
-                  return <URLImage key={item.id} item={item} commonProps={commonProps} isSelected={isSelected} />;
-                }
-                return null;
-              })}
-              
-              {/* Snapping Guides */}
-              {snapLines.map((line, i) => (
-                <Line key={i} points={line.points} stroke={line.stroke} strokeWidth={1} dash={[4, 4]} />
-              ))}
-            </Layer>
-          </Stage>
-        </div>
+                const visualW = item.width || 100;
+                return (
+                  <Group key={`${item.id}-${idx}-wrap`}>
+                    {element}
+                    
+                    {isSelected && <Rect x={item.x} y={item.y} width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
+                    
+                    {item.border_style === 'box' && <Rect x={item.x} y={yOffset} width={visualW} height={approxHeight} stroke="black" strokeWidth={2} listening={false} />}
+                    {item.border_style === 'top' && <Line points={[item.x, yOffset, item.x + visualW, yOffset]} stroke="black" strokeWidth={2} listening={false} />}
+                    {item.border_style === 'bottom' && <Line points={[item.x, yOffset + approxHeight, item.x + visualW, yOffset + approxHeight]} stroke="black" strokeWidth={2} listening={false} />}
+                    {item.border_style === 'cut_line' && <Line points={[item.x, yOffset + approxHeight + (gap/2), item.x + visualW, yOffset + approxHeight + (gap/2)]} stroke="black" strokeWidth={2} dash={[10, 10]} listening={false} />}
+                  </Group>
+                );
+              });
+            })}
+            
+            {snapLines.map((line, i) => (
+              <Line key={i} points={line.points} stroke={line.stroke} strokeWidth={1} dash={[4, 4]} />
+            ))}
+          </Layer>
+        </Stage>
       </div>
       
       <div className="mt-8 text-neutral-400 dark:text-neutral-600 text-[10px] uppercase tracking-widest">

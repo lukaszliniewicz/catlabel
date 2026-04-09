@@ -85,24 +85,26 @@ export default function Sidebar() {
       const img = new window.Image();
       img.src = ev.target.result;
       img.onload = () => {
-        // Automatically scale image to fit the 384px print area
         const ratio = img.width / img.height;
         const targetWidth = Math.min(img.width, canvasWidth);
         const targetHeight = targetWidth / ratio;
-
-        addItem({
-          id: Date.now().toString(),
-          type: 'image',
-          src: ev.target.result,
-          x: 0,
-          y: 0,
-          width: targetWidth,
-          height: targetHeight
-        });
+        addItem({ id: Date.now().toString(), type: 'image', src: ev.target.result, x: 0, y: 0, width: targetWidth, height: targetHeight });
       };
     };
     reader.readAsDataURL(file);
-    e.target.value = null; // reset input
+    e.target.value = null;
+  };
+
+  const handleAddShippingLabel = () => {
+    useStore.getState().setIsRotated(true);
+    setCanvasSize(500, 384);
+    setItems([
+      { id: Date.now().toString()+'1', type: 'text', text: 'FROM: {{ sender_name }}\n{{ sender_address }}', x: 10, y: 10, size: 24, font: 'arial.ttf', width: 250 },
+      { id: Date.now().toString()+'2', type: 'text', text: 'TO: {{ recipient_name }}\n{{ recipient_address }}\n{{ recipient_phone }}', x: 10, y: 120, size: 36, font: 'arial.ttf', width: 480 },
+      { id: Date.now().toString()+'3', type: 'barcode', data: '{{ tracking_number }}', barcode_type: 'code128', x: 10, y: 280, width: 480, height: 60 },
+      { id: Date.now().toString()+'4', type: 'text', text: 'PRIORITY', x: 280, y: 10, size: 48, font: 'arial.ttf', width: 200, align: 'center', border_style: 'box', invert: true },
+      { id: Date.now().toString()+'5', type: 'text', text: 'TRACKING #: {{ tracking_number }}', x: 10, y: 350, size: 20, font: 'arial.ttf', width: 480, align: 'center' },
+    ]);
   };
 
   const handleScan = async () => {
@@ -240,30 +242,11 @@ export default function Sidebar() {
 
       <div className="space-y-3">
         <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Tools</h2>
-        <button 
-          onClick={handleAddText} 
-          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
-        >
-          + Add Text
-        </button>
-        <button 
-          onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} 
-          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
-        >
-          + Add Icon + Text Group
-        </button>
-        <button 
-          onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} 
-          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
-        >
-          + Add Icon Only
-        </button>
-        <button 
-          onClick={handleAddBarcode} 
-          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
-        >
-          + Add Barcode
-        </button>
+        <button onClick={handleAddShippingLabel} className="w-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-4 py-2 rounded-none hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Shipping Label Preset</button>
+        <button onClick={handleAddText} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Text</button>
+        <button onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Icon + Text Group</button>
+        <button onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Icon Only</button>
+        <button onClick={handleAddBarcode} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Barcode</button>
         <label className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left cursor-pointer block">
           + Add Image
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />

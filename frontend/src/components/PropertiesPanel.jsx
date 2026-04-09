@@ -2,6 +2,64 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { AlignCenter, MoveHorizontal, Maximize2 } from 'lucide-react';
 
+const pxToMm = (px) => (px / 8).toFixed(1);
+const mmToPx = (mm) => Math.round(mm * 8);
+
+const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startVal, setStartVal] = useState(0);
+
+  const currentMm = value / 8;
+
+  const handleMouseDown = (e) => {
+    if (disabled) return;
+    setIsDragging(true);
+    setStartX(e.clientX);
+    setStartVal(currentMm);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - startX;
+      // 1 pixel drag = 0.5 mm change
+      const newMm = Math.max(0, startVal + dx * 0.5);
+      onChange({ target: { name, value: Math.round(newMm * 8), type: 'number' } });
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, startX, startVal, onChange, name]);
+
+  const handleChange = (e) => {
+    const mm = parseFloat(e.target.value);
+    if (!isNaN(mm)) {
+      onChange({ target: { name, value: Math.round(mm * 8), type: 'number' } });
+    }
+  };
+
+  return (
+    <div className="flex-1">
+      <label 
+        className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 transition-colors ${disabled ? 'text-neutral-300 dark:text-neutral-700' : 'text-neutral-400 dark:text-neutral-500 cursor-ew-resize hover:text-blue-500'}`} 
+        onMouseDown={handleMouseDown}
+        title={disabled ? "Locked" : "Drag left/right to adjust"}
+      >
+        {label} {disabled ? '🔒' : '⇹'}
+      </label>
+      <input 
+        type="number" step="0.1" name={name} value={currentMm.toFixed(1)} onChange={handleChange} disabled={disabled}
+        className={`w-full bg-transparent border rounded-none p-2 text-sm focus:outline-none transition-colors ${disabled ? 'border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-600' : 'border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white focus:border-blue-500'}`} 
+      />
+    </div>
+  );
+};
+
 const ScrubberInput = ({ name, value, onChange, label }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -147,10 +205,17 @@ export default function PropertiesPanel() {
     setTimeout(() => setIsSaving(false), 1500);
   };
 
-  // Warning check for Canvas stretching beyond printer limits
+  // Restrict one axis strictly to the hardware print width, letting the feed axis grow infinitely.
   const dotsPerMm = localSettings.default_dpi / 25.4;
   const printPx = Math.round(localSettings.print_width_mm * dotsPerMm);
-  const isCanvasTooWide = isRotated ? canvasHeight > printPx : canvasWidth > printPx;
+
+  useEffect(() => {
+    if (isRotated && canvasHeight !== printPx) {
+      setCanvasSize(canvasWidth, printPx);
+    } else if (!isRotated && canvasWidth !== printPx) {
+      setCanvasSize(printPx, canvasHeight);
+    }
+  }, [isRotated, printPx]);
 
   return (
     <div className="w-80 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300">
@@ -183,32 +248,29 @@ export default function PropertiesPanel() {
         {activeTab === 'canvas' && (
           <>
             <div className="space-y-4">
-              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Canvas Dimensions</h2>
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Dimensions</h2>
               <div className="flex gap-4 items-center">
                 <label className="flex items-center gap-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full">
                   <input type="checkbox" checked={isRotated} onChange={(e) => setIsRotated(e.target.checked)} />
-                  Rotate Canvas 90° (Sideways)
+                  Rotate Feed (Landscape View)
                 </label>
               </div>
               <div className="flex gap-4">
-                <ScrubberInput 
+                <MmScrubberInput 
                   name="width" 
-                  label="Width (px)" 
+                  label={isRotated ? "Paper Length" : "Print Width"} 
                   value={canvasWidth} 
                   onChange={(e) => setCanvasSize(Number(e.target.value), canvasHeight)} 
+                  disabled={!isRotated}
                 />
-                <ScrubberInput 
+                <MmScrubberInput 
                   name="height" 
-                  label="Height (px)" 
+                  label={isRotated ? "Print Width" : "Paper Length"} 
                   value={canvasHeight} 
                   onChange={(e) => setCanvasSize(canvasWidth, Number(e.target.value))} 
+                  disabled={isRotated}
                 />
               </div>
-              {isCanvasTooWide && (
-                <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 p-2 border border-red-200 dark:border-red-800">
-                  Warning: The axis mapped to your printer feed ({isRotated ? canvasHeight : canvasWidth}px) exceeds max limit ({printPx}px). It will be truncated.
-                </p>
-              )}
             </div>
 
             <div className="space-y-4 mt-4">
@@ -248,20 +310,19 @@ export default function PropertiesPanel() {
             <div className="space-y-4">
               <div>
                 <div className="flex gap-4">
-                  <ScrubberInput name="x" label="X Pos" value={Math.round(selectedItem.x)} onChange={handleChange} />
-                  <ScrubberInput name="y" label="Y Pos" value={Math.round(selectedItem.y)} onChange={handleChange} />
+                  <MmScrubberInput name="x" label="X Pos" value={selectedItem.x} onChange={handleChange} />
+                  <MmScrubberInput name="y" label="Y Pos" value={selectedItem.y} onChange={handleChange} />
                 </div>
                 
-                {/* Advanced Centering Controls */}
                 <div className="flex gap-2 mt-3">
-                  <button onClick={handleCenterAbsolute} title="Center Absolutely" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+                  <button onClick={handleCenterAbsolute} title="Center Absolutely" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200">
                     <AlignCenter size={16} />
                   </button>
-                  <button onClick={handleMakeFullWidth} title="Full Width" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+                  <button onClick={handleMakeFullWidth} title="Full Width" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200">
                     <MoveHorizontal size={16} />
                   </button>
                   {selectedItem.type === 'text' && (
-                    <button onClick={handleFitToWidth} title="Maximize Font to Width" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+                    <button onClick={handleFitToWidth} title="Maximize Font to Width" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200">
                       <Maximize2 size={16} />
                     </button>
                   )}
@@ -275,7 +336,7 @@ export default function PropertiesPanel() {
                     <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
                   </div>
                   <div className="flex gap-4">
-                    <ScrubberInput name="size" label="Size" value={selectedItem.size} onChange={handleChange} />
+                    <ScrubberInput name="size" label="Font Size" value={selectedItem.size} onChange={handleChange} />
                     <div className="flex-1">
                       <label className={labelClass}>Font</label>
                       <select name="font" value={selectedItem.font || 'arial.ttf'} onChange={handleChange} className={inputClass}>
@@ -287,7 +348,7 @@ export default function PropertiesPanel() {
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <ScrubberInput name="width" label="Width" value={selectedItem.width || 0} onChange={handleChange} />
+                    <MmScrubberInput name="width" label="Box Width" value={selectedItem.width || 0} onChange={handleChange} />
                     <div className="flex-1">
                       <label className={labelClass}>Align</label>
                       <select name="align" value={selectedItem.align || 'left'} onChange={handleChange} className={inputClass}>
@@ -297,14 +358,21 @@ export default function PropertiesPanel() {
                       </select>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer">
-                    <input type="checkbox" name="no_wrap" checked={selectedItem.no_wrap || false} onChange={handleChange} />
-                    Disable Word Wrap (Single Line)
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 mt-1 cursor-pointer">
-                    <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} />
-                    Auto-fit on print
-                  </label>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
+                      <input type="checkbox" name="no_wrap" checked={selectedItem.no_wrap || false} onChange={handleChange} /> Single Line
+                    </label>
+                    <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
+                      <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} /> Auto-Fit
+                    </label>
+                    <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
+                      <input type="checkbox" name="invert" checked={selectedItem.invert || false} onChange={handleChange} /> Invert Box
+                    </label>
+                    <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
+                      <input type="checkbox" name="bg_white" checked={selectedItem.bg_white || false} onChange={handleChange} /> Solid White BG
+                    </label>
+                  </div>
                 </>
               )}
 
@@ -321,20 +389,25 @@ export default function PropertiesPanel() {
                         });
                      }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Row</button>
                      <button onClick={() => {
+                        const newW = Math.max(selectedItem.icon_size, selectedItem.text.length * selectedItem.size * 0.6);
                         updateItem(selectedId, {
-                           icon_x: (selectedItem.width - selectedItem.icon_size)/2, icon_y: 0,
-                           text_x: 0, text_y: selectedItem.icon_size + 10,
+                           icon_x: (newW - selectedItem.icon_size)/2, icon_y: 0,
+                           text_x: (newW - (selectedItem.text.length * selectedItem.size * 0.6))/2, text_y: selectedItem.icon_size + 10,
+                           width: newW,
                            height: selectedItem.icon_size + 10 + selectedItem.size
                         });
                      }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Col</button>
                      <button onClick={() => {
-                        const totalW = selectedItem.icon_size + 15 + (selectedItem.text.length * selectedItem.size * 0.6);
-                        const scale = canvasWidth / totalW;
+                        const currentW = selectedItem.icon_size + 15 + (selectedItem.text.length * selectedItem.size * 0.6);
+                        const scale = canvasWidth / currentW;
+                        const newIconSize = selectedItem.icon_size * scale;
+                        const newTextSize = selectedItem.size * scale;
+                        const newH = Math.max(newIconSize, newTextSize);
                         updateItem(selectedId, {
-                           icon_size: selectedItem.icon_size * scale, size: selectedItem.size * scale,
-                           icon_x: 0, icon_y: 0,
-                           text_x: (selectedItem.icon_size * scale) + 15, text_y: 0,
-                           width: canvasWidth, height: Math.max(selectedItem.icon_size * scale, selectedItem.size * scale),
+                           icon_size: newIconSize, size: newTextSize,
+                           icon_x: 0, icon_y: (newH - newIconSize) / 2,
+                           text_x: newIconSize + 15 * scale, text_y: (newH - newTextSize) / 2,
+                           width: canvasWidth, height: newH,
                            x: 0
                         });
                      }} className="flex-1 text-[10px] uppercase font-bold text-blue-600 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">Fit Width</button>
@@ -345,23 +418,23 @@ export default function PropertiesPanel() {
                   </div>
                   <div className="flex gap-4 mt-2">
                     <ScrubberInput name="size" label="Text Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
-                    <ScrubberInput name="icon_size" label="Icon Size" value={Math.round(selectedItem.icon_size)} onChange={handleChange} />
+                    <MmScrubberInput name="icon_size" label="Icon Size" value={Math.round(selectedItem.icon_size)} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-                    <ScrubberInput name="icon_x" label="Icon X Offset" value={Math.round(selectedItem.icon_x)} onChange={handleChange} />
-                    <ScrubberInput name="icon_y" label="Icon Y Offset" value={Math.round(selectedItem.icon_y)} onChange={handleChange} />
+                    <MmScrubberInput name="icon_x" label="Icon X" value={Math.round(selectedItem.icon_x)} onChange={handleChange} />
+                    <MmScrubberInput name="icon_y" label="Icon Y" value={Math.round(selectedItem.icon_y)} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2">
-                    <ScrubberInput name="text_x" label="Text X Offset" value={Math.round(selectedItem.text_x)} onChange={handleChange} />
-                    <ScrubberInput name="text_y" label="Text Y Offset" value={Math.round(selectedItem.text_y)} onChange={handleChange} />
+                    <MmScrubberInput name="text_x" label="Text X" value={Math.round(selectedItem.text_x)} onChange={handleChange} />
+                    <MmScrubberInput name="text_y" label="Text Y" value={Math.round(selectedItem.text_y)} onChange={handleChange} />
                   </div>
                 </>
               )}
 
               {selectedItem.type === 'image' && (
                 <div className="flex gap-4">
-                  <ScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
-                  <ScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                  <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
+                  <MmScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
                 </div>
               )}
 
@@ -380,11 +453,26 @@ export default function PropertiesPanel() {
                     </select>
                   </div>
                   <div className="flex gap-4">
-                    <ScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
-                    <ScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                    <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
+                    <MmScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
                   </div>
                 </>
               )}
+
+              <div className="flex gap-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                <ScrubberInput name="repeat_count" label="Repeat Count" value={selectedItem.repeat_count || 1} onChange={handleChange} />
+                <MmScrubberInput name="repeat_gap" label="Repeat Gap" value={selectedItem.repeat_gap || 0} onChange={handleChange} />
+              </div>
+              <div className="mt-2 mb-2">
+                  <label className={labelClass}>Styling Lines</label>
+                  <select name="border_style" value={selectedItem.border_style || 'none'} onChange={handleChange} className={inputClass}>
+                    <option value="none">None</option>
+                    <option value="box">Box (Full)</option>
+                    <option value="top">Top Border</option>
+                    <option value="bottom">Bottom Border</option>
+                    <option value="cut_line">Cut Line (Dashed)</option>
+                  </select>
+              </div>
             </div>
 
             <div className="mt-auto pt-6">
