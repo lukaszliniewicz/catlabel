@@ -485,11 +485,7 @@ export default function PropertiesPanel() {
                 <>
                   <div>
                     <label className={labelClass}>HTML Content</label>
-                    <textarea name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={4} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>CSS Styles</label>
-                    <textarea name="css" value={selectedItem.css || ''} onChange={handleChange} className={inputClass} rows={4} placeholder="body { ... }" />
+                    <textarea name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={8} />
                   </div>
                   <div className="flex gap-4">
                     <MmScrubberInput name="width" label="Frame Width" value={selectedItem.width} onChange={handleChange} />

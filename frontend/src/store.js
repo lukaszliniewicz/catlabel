@@ -105,12 +105,13 @@ export const useStore = create((set) => ({
     const singleLength = state.isRotated ? state.canvasWidth : state.canvasHeight;
     const step = singleLength + gapPx;
     
-    let newItems = [...state.items];
+    const originalItems = [...state.items];
+    let newItems = [...originalItems];
     
     for (let i = 1; i <= copies; i++) {
       const offset = i * step;
       
-      const clones = state.items.map(item => ({
+      const clones = originalItems.map(item => ({
         ...item,
         id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substr(2, 5),
         [feedAxis]: item[feedAxis] + offset
@@ -122,8 +123,8 @@ export const useStore = create((set) => ({
          newItems.push({
            id: Date.now().toString() + '-cut-' + i,
            type: 'cut_line_indicator',
-           x: state.isRotated ? offset - Math.floor(gapPx/2) : 0,
-           y: state.isRotated ? 0 : offset - Math.floor(gapPx/2),
+           x: state.isRotated ? offset - gapPx : 0,
+           y: state.isRotated ? 0 : offset - gapPx,
            width: state.isRotated ? 1 : state.canvasWidth,
            height: state.isRotated ? state.canvasHeight : 1,
            isVertical: state.isRotated

@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import IconPicker from './IconPicker';
 import HtmlPickerModal from './HtmlPickerModal';
 import BatchPrintModal from './BatchPrintModal';
-import { Trash } from 'lucide-react';
+import { Trash, ChevronDown, ChevronRight } from 'lucide-react';
 
 export default function Sidebar() {
   const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated } = useStore();
@@ -12,6 +12,7 @@ export default function Sidebar() {
   const [isScanning, setIsScanning] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [currentTemplateId, setCurrentTemplateId] = useState(null);
+  const [showTemplates, setShowTemplates] = useState(true);
   
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [iconPickerMode, setIconPickerMode] = useState('icon');
@@ -37,8 +38,8 @@ export default function Sidebar() {
     addItem({ id: Date.now().toString(), type: 'text', text: 'Text', x: 0, y: 50, size: 24, font: 'arial.ttf', width: canvasWidth, align: 'center' });
   };
 
-  const handleAddHtml = (htmlContent, cssContent) => {
-    addItem({ id: Date.now().toString(), type: 'html', html: htmlContent, css: cssContent, x: 0, y: 0, width: canvasWidth, height: 200 });
+  const handleAddHtml = (htmlContent) => {
+    addItem({ id: Date.now().toString(), type: 'html', html: htmlContent, x: 0, y: 0, width: canvasWidth, height: canvasHeight });
     setShowHtmlPicker(false);
   };
 
@@ -187,45 +188,59 @@ export default function Sidebar() {
       </div>
       
       <div className="space-y-3">
-        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Templates</h2>
-        <div className="flex gap-2">
-          <button 
-            onClick={handleSaveTemplate} 
-            className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
-          >
-            Save As New
-          </button>
-          {currentTemplateId && (
-            <button 
-              onClick={handleUpdateTemplate} 
-              className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
-            >
-              Update Current
-            </button>
+        <div 
+          className="flex items-center justify-between cursor-pointer border-b border-neutral-100 dark:border-neutral-800 pb-2 group"
+          onClick={() => setShowTemplates(!showTemplates)}
+        >
+          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">Templates</h2>
+          {showTemplates ? (
+            <ChevronDown size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
+          ) : (
+            <ChevronRight size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
           )}
         </div>
         
-        {templates.length > 0 && (
-          <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-2">
-            {templates.map(t => (
-              <div key={t.id} className={`flex justify-between items-center bg-neutral-50 dark:bg-neutral-900 p-2 border ${currentTemplateId === t.id ? 'border-blue-500' : 'border-neutral-200 dark:border-neutral-800'}`}>
-                 <span className="text-xs cursor-pointer hover:text-blue-500 dark:text-white truncate flex-1" onClick={() => handleLoadTemplate(t)}>{t.name}</span>
-                 <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-500 hover:text-red-700 ml-2"><Trash size={14}/></button>
+        {showTemplates && (
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex gap-2">
+              <button 
+                onClick={handleSaveTemplate} 
+                className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
+              >
+                Save As New
+              </button>
+              {currentTemplateId && (
+                <button 
+                  onClick={handleUpdateTemplate} 
+                  className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
+                >
+                  Update Current
+                </button>
+              )}
+            </div>
+            {templates.length > 0 && (
+              <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-2">
+                {templates.map(t => (
+                  <div key={t.id} className={`flex justify-between items-center bg-neutral-50 dark:bg-neutral-900 p-2 border ${currentTemplateId === t.id ? 'border-blue-500' : 'border-neutral-200 dark:border-neutral-800'}`}>
+                     <span className="text-xs cursor-pointer hover:text-blue-500 dark:text-white truncate flex-1" onClick={() => handleLoadTemplate(t)}>{t.name}</span>
+                     <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-500 hover:text-red-700 ml-2"><Trash size={14}/></button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
 
       <div className="space-y-3">
         <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Tools</h2>
-        <button onClick={handleAddText} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Text</button>
-        <button onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Icon + Text</button>
-        <button onClick={() => setShowHtmlPicker(true)} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Custom HTML Element</button>
-        <button onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Icon Only</button>
-        <button onClick={handleAddBarcode} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Add Barcode</button>
+        <button onClick={handleAddText} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Text</button>
+        <button onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Icon + Text</button>
+        <button onClick={() => setShowHtmlPicker(true)} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Custom HTML Element</button>
+        <button onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Icon Only</button>
+        <button onClick={handleAddBarcode} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Barcode</button>
         <label className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left cursor-pointer block">
-          + Add Image
+          + Image
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
         </label>
       </div>

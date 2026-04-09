@@ -150,7 +150,7 @@ export default function CanvasArea() {
                 element = <URLImage item={item} commonProps={commonProps} isSelected={false} />;
               } else if (item.type === 'html') {
                 // Dynamically build SVG data string to natively render the HTML payload.
-                const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;"><style>${item.css || ''}</style>${item.html || ''}</div></foreignObject></svg>`;
+                const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;">${item.html || ''}</div></foreignObject></svg>`;
                 const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgPayload);
                 element = <URLImage item={{...item, src: url}} commonProps={{...commonProps, height: approxHeight}} isSelected={false} />;
               } else if (item.type === 'cut_line_indicator') {
