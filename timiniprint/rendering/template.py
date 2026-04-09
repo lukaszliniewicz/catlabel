@@ -68,8 +68,8 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
 
             # Auto fit to width logic
             if item.get("fit_to_width") and box_width:
-                low, high, best_size = 6, 200, size
-                test_text = text.split('\n')[0] # approximate based on longest line usually
+                low, high, best_size = 6, 800, size
+                test_text = text.split('\n')[0] 
                 while low <= high:
                     mid = (low + high) // 2
                     t_font = get_font(mid)
@@ -86,19 +86,21 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             
             if box_width:
                 if no_wrap:
-                    # RENDER EXACTLY AS IS (SINGLE LINE) FOR MAXIMIZED TEXT
-                    # Calculate position to respect alignment
                     bbox = font.getbbox(text)
+                    # Subtract offsets to force absolute edge contact
+                    left_offset = bbox[0]
+                    top_offset = bbox[1] 
                     line_w = bbox[2] - bbox[0]
+                    
                     if align == "center":
-                        line_x = x + (box_width - line_w) / 2
+                        line_x = x + (box_width - line_w) / 2 - left_offset
                     elif align == "right":
-                        line_x = x + (box_width - line_w)
+                        line_x = x + box_width - line_w - left_offset
                     else:
-                        line_x = x
-                    draw.text((line_x, y), text, fill="black", font=font)
+                        line_x = x - left_offset
+                    
+                    draw.text((line_x, y - top_offset), text, fill="black", font=font)
                 else:
-                    # STANDARD WRAPPING LOGIC
                     lines = []
                     for paragraph in text.split('\n'):
                         words = paragraph.split(' ')
@@ -119,23 +121,31 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
                             lines.append(' '.join(current_line))
                     
                     y_offset = y
-                    for line in lines:
+                    for i, line in enumerate(lines):
+                        if not line.strip():
+                            y_offset += size
+                            continue
+                            
                         bbox = font.getbbox(line)
+                        left_offset = bbox[0]
+                        top_offset = bbox[1]
                         line_w = bbox[2] - bbox[0]
-                        # Fallback for empty lines
-                        line_h = (bbox[3] - bbox[1]) if line.strip() else size
+                        line_h = bbox[3] - bbox[1]
                         
                         if align == "center":
-                            line_x = x + (box_width - line_w) / 2
+                            line_x = x + (box_width - line_w) / 2 - left_offset
                         elif align == "right":
-                            line_x = x + (box_width - line_w)
+                            line_x = x + box_width - line_w - left_offset
                         else:
-                            line_x = x
+                            line_x = x - left_offset
                             
-                        draw.text((line_x, y_offset), line, fill="black", font=font)
-                        y_offset += int(line_h * 1.2) # 1.2 line height multiplier
+                        # Snap the very first line firmly to the top edge 
+                        draw_y = y_offset - top_offset if i == 0 else y_offset
+                        draw.text((line_x, draw_y), line, fill="black", font=font)
+                        y_offset += int(line_h * 1.15) 
             else:
-                draw.text((x, y), text, fill="black", font=font)
+                bbox = font.getbbox(text)
+                draw.text((x - bbox[0], y - bbox[1]), text, fill="black", font=font)
             
         elif item_type == "barcode":
             data = item.get("data", "")

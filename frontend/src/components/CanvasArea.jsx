@@ -14,6 +14,17 @@ const useImageLoader = (url) => {
   return img;
 };
 
+// NEW: Component isolated to safely use the hook
+const URLImage = ({ item, commonProps, isSelected }) => {
+  const imgElement = useImageLoader(item.src);
+  return (
+    <React.Fragment>
+      <KonvaImage image={imgElement} {...commonProps} />
+      {isSelected && <Rect {...commonProps} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
+    </React.Fragment>
+  );
+};
+
 export default function CanvasArea() {
   const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, snapLines, setSnapLines, settings } = useStore();
   
@@ -27,8 +38,9 @@ export default function CanvasArea() {
     const node = e.target;
     const x = node.x();
     const y = node.y();
-    const w = node.width() || 100;
-    const h = node.height() || (item.type === 'text' ? item.size : 50); // Fallback for text height
+    // Use getClientRect to account for the actual bounding box
+    const w = node.getClientRect().width || item.width || 100;
+    const h = node.getClientRect().height || item.height || (item.type === 'text' ? item.size : 50);
 
     const SNAP_T = 10;
     let newX = x;
@@ -41,10 +53,12 @@ export default function CanvasArea() {
       newX = centerX - w / 2;
       lines.push({ points: [centerX, -9999, centerX, 9999], stroke: '#06b6d4' });
     }
+    // Snap exactly to Left edge
     if (Math.abs(x) < SNAP_T) {
       newX = 0;
       lines.push({ points: [0, -9999, 0, 9999], stroke: '#06b6d4' });
     }
+    // Snap exactly to Right edge
     if (Math.abs(x + w - printPx) < SNAP_T) {
       newX = printPx - w;
       lines.push({ points: [printPx, -9999, printPx, 9999], stroke: '#06b6d4' });
@@ -54,12 +68,14 @@ export default function CanvasArea() {
     const centerY = canvasHeight / 2;
     if (Math.abs(y + h / 2 - centerY) < SNAP_T) {
       newY = centerY - h / 2;
-      lines.push({ points: [-9999, centerY, 9999, centerY], stroke: '#ec4899' }); // Cyan/Pink guide
+      lines.push({ points: [-9999, centerY, 9999, centerY], stroke: '#ec4899' }); 
     }
+    // Snap exactly to Top edge
     if (Math.abs(y) < SNAP_T) {
       newY = 0;
       lines.push({ points: [-9999, 0, 9999, 0], stroke: '#ec4899' });
     }
+    // Snap exactly to Bottom edge
     if (Math.abs(y + h - canvasHeight) < SNAP_T) {
       newY = canvasHeight - h;
       lines.push({ points: [-9999, canvasHeight, 9999, canvasHeight], stroke: '#ec4899' });
@@ -105,7 +121,8 @@ export default function CanvasArea() {
                 };
 
                 if (item.type === 'text') {
-                  return <Text {...commonProps} text={item.text} align={item.align || 'left'} wrap="word" fontSize={item.size} fill={isSelected ? '#2563eb' : 'black'} padding={4} />;
+                  // REMOVED PADDING entirely and mapped word wrapping
+                  return <Text {...commonProps} text={item.text} align={item.align || 'left'} wrap={item.no_wrap ? "none" : "word"} fontSize={item.size} fill={isSelected ? '#2563eb' : 'black'} padding={0} />;
                 }
                 
                 if (item.type === 'barcode') {
@@ -113,13 +130,8 @@ export default function CanvasArea() {
                 }
 
                 if (item.type === 'image') {
-                  const imgElement = useImageLoader(item.src);
-                  return (
-                    <React.Fragment key={item.id}>
-                      <KonvaImage image={imgElement} {...commonProps} />
-                      {isSelected && <Rect {...commonProps} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
-                    </React.Fragment>
-                  );
+                  // USE THE NEW ISOLATED COMPONENT
+                  return <URLImage key={item.id} item={item} commonProps={commonProps} isSelected={isSelected} />;
                 }
                 return null;
               })}

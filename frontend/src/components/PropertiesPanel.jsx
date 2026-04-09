@@ -124,19 +124,17 @@ export default function PropertiesPanel() {
   const handleFitToWidth = () => {
     if (!selectedItem.width || !selectedItem.text) return;
     
-    // Create a temporary canvas to measure text exact width
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
     let low = 6;
-    let high = 300;
+    let high = 800; // Greatly increased upper bound
     let bestSize = selectedItem.size;
-    const targetWidth = selectedItem.width * 0.95; // 5% safety margin for OS font differences
+    const targetWidth = selectedItem.width; // Removed the 5% margin
 
-    // Binary search for exact font size
     while (low <= high) {
       let mid = Math.floor((low + high) / 2);
-      ctx.font = `${mid}px Arial`; // Approximation of chosen font
+      ctx.font = `${mid}px Arial`; 
       let textWidth = ctx.measureText(selectedItem.text.split('\n')[0]).width;
       
       if (textWidth <= targetWidth) {
@@ -147,8 +145,8 @@ export default function PropertiesPanel() {
       }
     }
     
-    // Apply visually to canvas and tell backend not to wrap
-    updateItem(selectedId, { size: bestSize, no_wrap: true });
+    // Add fit_to_width flag so template.py triggers absolute math at print time
+    updateItem(selectedId, { size: bestSize, no_wrap: true, fit_to_width: true });
   };
 
   return (

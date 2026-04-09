@@ -11,6 +11,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     fetchTemplates();
+    useStore.getState().fetchSettings(); // <-- Load DB settings
   }, []);
 
   const fetchTemplates = async () => {

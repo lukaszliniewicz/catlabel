@@ -10,6 +10,17 @@ export const useStore = create((set) => ({
   snapLines: [],
   settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 5000, feed_lines: 12 },
   
+  // NEW: Fetch initial settings from SQLite 
+  fetchSettings: async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/settings');
+      const data = await res.json();
+      set({ settings: data });
+    } catch (e) {
+      console.error("Failed to fetch settings", e);
+    }
+  },
+
   setTheme: (theme) => set({ theme }),
   setSnapLines: (lines) => set({ snapLines: lines }),
   setSettings: (settings) => set({ settings }),
