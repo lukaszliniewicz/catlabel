@@ -1,9 +1,11 @@
 import json
+import base64
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
 import qrcode
+import os
 
 def render_template(template_data: dict, variables: dict) -> Image.Image:
     """
@@ -20,10 +22,30 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
     items = template_data.get("items", [])
     for item in items:
         item_type = item.get("type")
-        x = item.get("x", 0)
-        y = item.get("y", 0)
+        x = int(item.get("x", 0))
+        y = int(item.get("y", 0))
         
-        if item_type == "text":
+        if item_type == "image":
+            b64_src = item.get("src", "")
+            if "," in b64_src:
+                b64_src = b64_src.split(",")[1]
+                
+            try:
+                img_data = base64.b64decode(b64_src)
+                insert_img = Image.open(BytesIO(img_data)).convert("RGBA")
+                iw = int(item.get("width", insert_img.width))
+                ih = int(item.get("height", insert_img.height))
+                insert_img = insert_img.resize((iw, ih), Image.Resampling.LANCZOS)
+                
+                # Create a temporary white background so transparent PNGs print nicely
+                bg = Image.new("RGBA", insert_img.size, "WHITE")
+                bg.paste(insert_img, (0, 0), insert_img)
+                
+                img.paste(bg.convert("RGB"), (x, y))
+            except Exception as e:
+                print(f"Failed to render image item: {e}")
+
+        elif item_type == "text":
             text = item.get("text", "")
             # Substitute variables (e.g., {{ sku }})
             for k, v in variables.items():
@@ -32,19 +54,33 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             
             size = item.get("size", 24)
             font_name = item.get("font", "arial.ttf")
-            
-            # Try to load from local fonts directory first, then system
-            try:
-                import os
-                local_font_path = os.path.join("fonts", font_name)
-                if os.path.exists(local_font_path):
-                    font = ImageFont.truetype(local_font_path, size)
-                else:
-                    font = ImageFont.truetype(font_name, size)
-            except IOError:
-                font = ImageFont.load_default()
-                
             box_width = item.get("width")
+            
+            def get_font(f_size):
+                local_font_path = os.path.join("fonts", font_name)
+                try:
+                    if os.path.exists(local_font_path):
+                        return ImageFont.truetype(local_font_path, f_size)
+                    return ImageFont.truetype(font_name, f_size)
+                except IOError:
+                    return ImageFont.load_default()
+
+            # Auto fit to width logic
+            if item.get("fit_to_width") and box_width:
+                low, high, best_size = 6, 200, size
+                test_text = text.split('\n')[0] # approximate based on longest line usually
+                while low <= high:
+                    mid = (low + high) // 2
+                    t_font = get_font(mid)
+                    bbox = t_font.getbbox(test_text)
+                    if (bbox[2] - bbox[0]) <= box_width:
+                        best_size = mid
+                        low = mid + 1
+                    else:
+                        high = mid - 1
+                size = best_size
+
+            font = get_font(size)
             align = item.get("align", "left")
             
             if box_width:
@@ -55,8 +91,7 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
                     for word in words:
                         test_line = ' '.join(current_line + [word]) if current_line else word
                         bbox = font.getbbox(test_line)
-                        w = bbox[2] - bbox[0]
-                        if w <= box_width:
+                        if (bbox[2] - bbox[0]) <= box_width:
                             current_line.append(word)
                         else:
                             if current_line:

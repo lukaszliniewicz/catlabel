@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlmodel import SQLModel, create_engine, Session, select
 
-from .models import PrinterProfile, Font, Template
+from .models import PrinterProfile, Font, Template, Settings
 from ..rendering.template import render_template
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
@@ -112,6 +112,30 @@ async def execute_print_job(mac_address: str, img: Any):
             
     raise HTTPException(status_code=500, detail=f"Failed to connect after {max_retries} attempts. Error: {str(last_error)}")
 
+@app.get("/api/settings")
+def get_settings():
+    with Session(engine) as session:
+        settings = session.get(Settings, 1)
+        if not settings:
+            settings = Settings()
+            session.add(settings)
+            session.commit()
+            session.refresh(settings)
+        return settings
+
+@app.post("/api/settings")
+def update_settings(new_settings: Settings):
+    with Session(engine) as session:
+        settings = session.get(Settings, 1)
+        if not settings:
+            settings = Settings()
+        settings.paper_width_mm = new_settings.paper_width_mm
+        settings.print_width_mm = new_settings.print_width_mm
+        settings.default_dpi = new_settings.default_dpi
+        session.add(settings)
+        session.commit()
+        return settings
+
 @app.post("/api/templates")
 def create_template(template: TemplateCreate):
     with Session(engine) as session:
@@ -137,6 +161,21 @@ def list_templates():
             } 
             for t in templates
         ]
+
+class TemplateUpdate(BaseModel):
+    canvas_state: Dict[str, Any]
+
+@app.put("/api/templates/{template_id}")
+def update_template(template_id: int, template_update: TemplateUpdate):
+    with Session(engine) as session:
+        db_template = session.get(Template, template_id)
+        if not db_template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        db_template.canvas_state_json = json.dumps(template_update.canvas_state)
+        session.add(db_template)
+        session.commit()
+        session.refresh(db_template)
+        return db_template
 
 @app.post("/api/print/template/{template_id}")
 async def print_template(template_id: int, request: PrintRequest):

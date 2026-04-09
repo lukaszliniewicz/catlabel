@@ -7,8 +7,12 @@ export const useStore = create((set) => ({
   canvasHeight: 384,
   selectedPrinter: null,
   theme: 'auto',
+  snapLines: [],
+  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203 },
   
   setTheme: (theme) => set({ theme }),
+  setSnapLines: (lines) => set({ snapLines: lines }),
+  setSettings: (settings) => set({ settings }),
   setSelectedPrinter: (mac) => set({ selectedPrinter: mac }),
   
   setItems: (items) => set({ items }),

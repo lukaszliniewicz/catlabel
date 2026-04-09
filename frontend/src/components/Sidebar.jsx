@@ -7,6 +7,7 @@ export default function Sidebar() {
   const [templates, setTemplates] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [currentTemplateId, setCurrentTemplateId] = useState(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -49,6 +50,34 @@ export default function Sidebar() {
     });
   };
 
+  const handleAddImage = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new window.Image();
+      img.src = ev.target.result;
+      img.onload = () => {
+        // Automatically scale image to fit the 384px print area
+        const ratio = img.width / img.height;
+        const targetWidth = Math.min(img.width, canvasWidth);
+        const targetHeight = targetWidth / ratio;
+
+        addItem({
+          id: Date.now().toString(),
+          type: 'image',
+          src: ev.target.result,
+          x: 0,
+          y: 0,
+          width: targetWidth,
+          height: targetHeight
+        });
+      };
+    };
+    reader.readAsDataURL(file);
+    e.target.value = null; // reset input
+  };
+
   const handleScan = async () => {
     setIsScanning(true);
     try {
@@ -84,15 +113,34 @@ export default function Sidebar() {
   };
 
   const handleLoadTemplate = (e) => {
-    const tplId = e.target.value;
+    const tplId = Number(e.target.value);
     if (!tplId) return;
     
-    const tpl = templates.find(t => t.id === parseInt(tplId));
+    setCurrentTemplateId(tplId);
+    const tpl = templates.find(t => t.id === tplId);
     if (tpl) {
       setCanvasSize(tpl.canvas_state.width || 384, tpl.canvas_state.height || 384);
       setItems(tpl.canvas_state.items || []);
     }
     e.target.value = ""; // Reset dropdown
+  };
+
+  const handleUpdateTemplate = async () => {
+    if (!currentTemplateId) return;
+    try {
+      await fetch(`http://localhost:8000/api/templates/${currentTemplateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          canvas_state: { width: canvasWidth, height: canvasHeight, items }
+        })
+      });
+      alert("Template updated!");
+      fetchTemplates();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update template.");
+    }
   };
 
   const handlePrint = async () => {
@@ -134,12 +182,22 @@ export default function Sidebar() {
       
       <div className="space-y-3">
         <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Templates</h2>
-        <button 
-          onClick={handleSaveTemplate} 
-          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium"
-        >
-          Save Current
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleSaveTemplate} 
+            className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
+          >
+            Save As New
+          </button>
+          {currentTemplateId && (
+            <button 
+              onClick={handleUpdateTemplate} 
+              className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
+            >
+              Update Current
+            </button>
+          )}
+        </div>
         
         {templates.length > 0 && (
           <select 
@@ -169,6 +227,10 @@ export default function Sidebar() {
         >
           + Add Barcode
         </button>
+        <label className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left cursor-pointer block">
+          + Add Image
+          <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
+        </label>
       </div>
 
       <div className="space-y-3">
