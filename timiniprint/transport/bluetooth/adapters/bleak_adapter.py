@@ -44,8 +44,8 @@ class _BleakSocket:
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._mtu_size = 180
         self._timeout = 30.0
-        self._write_delay_ms = 50
-        self._bulk_write_delay_ms = 10
+        self._write_delay_ms = 0
+        self._bulk_write_delay_ms = 0
         self._pairing_hint = pairing_hint is True and not IS_MACOS
         self._protocol_family = protocol_family
         self._reporter = reporter

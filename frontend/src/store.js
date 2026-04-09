@@ -8,7 +8,7 @@ export const useStore = create((set) => ({
   selectedPrinter: null,
   theme: 'auto',
   snapLines: [],
-  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 5000, feed_lines: 12 },
+  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 32, energy: 24000, feed_lines: 100 },
   
   // NEW: Fetch initial settings from SQLite 
   fetchSettings: async () => {

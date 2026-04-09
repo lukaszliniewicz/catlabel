@@ -16,7 +16,7 @@ def energy_cmd(energy: int, protocol_family: ProtocolFamily | str) -> bytes:
     """Build the energy command packet (empty if energy <= 0)."""
     if energy <= 0:
         return b""
-    payload = energy.to_bytes(2, "little", signed=False)
+    payload = energy.to_bytes(4, "little", signed=False)
     return make_packet(0xAF, payload, protocol_family)
 
 
@@ -26,10 +26,16 @@ def print_mode_cmd(is_text: bool, protocol_family: ProtocolFamily | str) -> byte
     return make_packet(0xBE, payload, protocol_family)
 
 
-def feed_paper_cmd(speed: int, protocol_family: ProtocolFamily | str) -> bytes:
-    """Build the feed paper command packet."""
+def print_speed_cmd(speed: int, protocol_family: ProtocolFamily | str) -> bytes:
+    """Build the print speed command packet."""
     payload = bytes([speed & 0xFF])
     return make_packet(0xBD, payload, protocol_family)
+
+
+def feed_lines_cmd(lines: int, protocol_family: ProtocolFamily | str) -> bytes:
+    """Build the hardware paper feed command packet (used for tear margins)."""
+    payload = lines.to_bytes(2, "little", signed=False)
+    return make_packet(0xA1, payload, protocol_family)
 
 
 def _paper_payload(dpi: int) -> bytes:
