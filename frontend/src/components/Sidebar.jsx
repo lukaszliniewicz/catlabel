@@ -7,7 +7,7 @@ import ShippingLabelModal from './ShippingLabelModal';
 import { Trash, ChevronDown, ChevronRight } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode } = useStore();
   const [printers, setPrinters] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -89,6 +89,47 @@ export default function Sidebar() {
     e.target.value = null;
   };
 
+  const handleAddPdf = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    try {
+      const res = await fetch('http://localhost:8000/api/pdf/convert', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error("PDF processing failed");
+      const data = await res.json();
+      
+      let currentY = 0;
+      for (let i = 0; i < data.images.length; i++) {
+        const b64 = data.images[i];
+        await new Promise((resolve) => {
+          const img = new window.Image();
+          img.src = b64;
+          img.onload = () => {
+            const ratio = img.width / img.height;
+            const targetWidth = Math.min(img.width, useStore.getState().canvasWidth);
+            const targetHeight = targetWidth / ratio;
+            useStore.getState().addItem({
+              id: Date.now().toString() + "-" + i, type: 'image', src: b64,
+              x: 0, y: currentY, width: targetWidth, height: targetHeight
+            });
+            currentY += targetHeight + 10;
+            resolve();
+          };
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to process PDF file.");
+    }
+    e.target.value = null;
+  };
+
   const handleScan = async () => {
     setIsScanning(true);
     try {
@@ -112,7 +153,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items }
         })
       });
       fetchTemplates();
@@ -125,6 +166,7 @@ export default function Sidebar() {
     setCurrentTemplateId(tpl.id);
     setCanvasSize(tpl.canvas_state.width || 384, tpl.canvas_state.height || 384);
     setCanvasBorder(tpl.canvas_state.canvasBorder || 'none');
+    useStore.getState().setSplitMode(tpl.canvas_state.splitMode || false);
     useStore.getState().setIsRotated(tpl.canvas_state.isRotated || false);
     setItems(tpl.canvas_state.items || []);
   };
@@ -136,7 +178,7 @@ export default function Sidebar() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items }
         })
       });
       fetchTemplates();
@@ -165,7 +207,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           mac_address: selectedPrinter, 
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items },
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items },
           variables: {} 
         })
       });
@@ -253,6 +295,10 @@ export default function Sidebar() {
         <label className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left cursor-pointer block">
           + Image
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
+        </label>
+        <label className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left cursor-pointer block">
+          + PDF Document
+          <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
         </label>
       </div>
 

@@ -1,6 +1,8 @@
 import asyncio
 import json
 import os
+import base64
+from io import BytesIO
 import shutil
 from typing import Dict, Any, List
 from contextlib import asynccontextmanager
@@ -8,6 +10,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import pypdfium2 as pdfium
 from sqlmodel import SQLModel, create_engine, Session, select
 
 from .models import PrinterProfile, Font, Template, Settings, Address
@@ -60,7 +63,7 @@ class BatchPrintRequest(BaseModel):
     copies: int = 1
     variables_list: List[Dict[str, str]] = []
 
-async def execute_print_jobs(mac_address: str, images: List[Any]):
+async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bool = False):
     """Handles scanning, continuous connection, and streaming multiple jobs efficiently."""
     with Session(engine) as session:
         settings = session.get(Settings, 1) or Settings()
@@ -80,11 +83,27 @@ async def execute_print_jobs(mac_address: str, images: List[Any]):
     from ..protocol.job import build_job_from_raster
     from ..transport.bluetooth import SppBackend
     
+    from PIL import Image
     pipeline_config = target_device.model.image_pipeline
+    print_width_px = target_device.model.width
     
+    final_images = []
+    for img in images:
+        # If split_mode is enabled and the image exceeds the hardware print width, slice it into strips
+        if split_mode and img.width > print_width_px:
+            for x in range(0, img.width, print_width_px):
+                strip = img.crop((x, 0, min(x + print_width_px, img.width), img.height))
+                if strip.width < print_width_px:
+                    padded = Image.new("RGB", (print_width_px, strip.height), "white")
+                    padded.paste(strip, (0, 0))
+                    strip = padded
+                final_images.append(strip)
+        else:
+            final_images.append(img)
+
     # Pre-render all raw protocol jobs
     jobs = []
-    for img in images:
+    for img in final_images:
         raster = image_to_raster(img, pipeline_config.default_format, dither=True)
         job = build_job_from_raster(
             raster=raster,
@@ -125,8 +144,8 @@ async def execute_print_jobs(mac_address: str, images: List[Any]):
             
     raise HTTPException(status_code=500, detail=f"Failed to connect: {str(last_error)}")
 
-async def execute_print_job(mac_address: str, img: Any):
-    await execute_print_jobs(mac_address, [img])
+async def execute_print_job(mac_address: str, img: Any, split_mode: bool = False):
+    await execute_print_jobs(mac_address, [img], split_mode)
 
 @app.get("/api/settings")
 def get_settings():
@@ -215,12 +234,13 @@ async def print_template(template_id: int, request: PrintRequest):
             raise HTTPException(status_code=404, detail="Template not found")
         
         template_data = json.loads(template.canvas_state_json)
+        split_mode = template_data.get("splitMode", False)
         
     # Render the image using our engine
     img = render_template(template_data, request.variables)
     
     # Execute the print job with retries
-    await execute_print_job(request.mac_address, img)
+    await execute_print_job(request.mac_address, img, split_mode)
     
     return {
         "status": "success", 
@@ -231,8 +251,9 @@ async def print_template(template_id: int, request: PrintRequest):
 @app.post("/api/print/direct")
 async def print_direct(request: DirectPrintRequest):
     """Endpoint for the frontend to test print without saving a template."""
+    split_mode = request.canvas_state.get("splitMode", False)
     img = render_template(request.canvas_state, request.variables)
-    await execute_print_job(request.mac_address, img)
+    await execute_print_job(request.mac_address, img, split_mode)
     
     return {
         "status": "success", 
@@ -242,6 +263,7 @@ async def print_direct(request: DirectPrintRequest):
 
 @app.post("/api/print/batch")
 async def print_batch(request: BatchPrintRequest):
+    split_mode = request.canvas_state.get("splitMode", False)
     images = []
     if request.variables_list:
         for variables in request.variables_list:
@@ -253,8 +275,29 @@ async def print_batch(request: BatchPrintRequest):
         for _ in range(request.copies):
             images.append(img)
             
-    await execute_print_jobs(request.mac_address, images)
+    await execute_print_jobs(request.mac_address, images, split_mode)
     return {"status": "success", "printed": len(images)}
+
+@app.post("/api/pdf/convert")
+async def convert_pdf(file: UploadFile = File(...)):
+    """Takes a PDF, renders it via PyPDFium2 to an image stream for Canvas extraction."""
+    try:
+        pdf_bytes = await file.read()
+        doc = pdfium.PdfDocument(pdf_bytes)
+        images = []
+        scale = 203 / 72.0  # Equivalent conversion scale targeting 203 DPI standard
+        for i in range(len(doc)):
+            page = doc[i]
+            pil_img = page.render(scale=scale).to_pil()
+            
+            buf = BytesIO()
+            pil_img.save(buf, format="PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            images.append(f"data:image/png;base64,{b64}")
+            
+        return {"images": images}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/fonts")
 async def upload_font(file: UploadFile = File(...)):

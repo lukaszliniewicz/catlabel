@@ -105,7 +105,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   // Tab State
@@ -223,12 +223,14 @@ export default function PropertiesPanel() {
   const printPx = Math.round(localSettings.print_width_mm * dotsPerMm);
 
   useEffect(() => {
+    if (splitMode) return; // Do not constrain canvas dimensions if the user is designing an oversized layout
+
     if (isRotated && canvasHeight !== printPx) {
       setCanvasSize(canvasWidth, printPx);
     } else if (!isRotated && canvasWidth !== printPx) {
       setCanvasSize(printPx, canvasHeight);
     }
-  }, [isRotated, printPx]);
+  }, [isRotated, printPx, splitMode]);
 
   return (
     <div className="w-80 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300">
@@ -262,6 +264,19 @@ export default function PropertiesPanel() {
           <>
             <div className="space-y-4">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Dimensions</h2>
+              
+              <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-red-600 dark:text-red-400 mt-2 cursor-pointer border px-3 py-2 border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 rounded hover:bg-red-100 dark:hover:bg-red-900/40 w-full transition-colors">
+                <input type="checkbox" checked={splitMode || false} onChange={(e) => setSplitMode(e.target.checked)} />
+                Oversize / Split Print Mode
+              </label>
+              
+              {splitMode && (
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => { setCanvasSize(840, 1184); setIsRotated(false); }} className="flex-1 py-2 bg-neutral-100 dark:bg-neutral-900 text-[10px] font-bold uppercase hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">A6</button>
+                  <button onClick={() => { setCanvasSize(1184, 1680); setIsRotated(false); }} className="flex-1 py-2 bg-neutral-100 dark:bg-neutral-900 text-[10px] font-bold uppercase hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">A5</button>
+                </div>
+              )}
+
               <div className="flex gap-4 items-center">
                 <label className="flex items-center gap-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full">
                   <input type="checkbox" checked={isRotated} onChange={(e) => setIsRotated(e.target.checked)} />

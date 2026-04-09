@@ -3,7 +3,7 @@ import { X, Upload } from 'lucide-react';
 import { useStore } from '../store';
 
 export default function BatchPrintModal({ onClose }) {
-  const { canvasWidth, canvasHeight, canvasBorder, items, selectedPrinter } = useStore();
+  const { canvasWidth, canvasHeight, canvasBorder, items, selectedPrinter, splitMode } = useStore();
   const isRotated = useStore(state => state.isRotated);
   const [tab, setTab] = useState('copies');
   const [copies, setCopies] = useState(1);
@@ -41,7 +41,7 @@ export default function BatchPrintModal({ onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mac_address: selectedPrinter,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, items },
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items },
           copies: parseInt(copies, 10) || 1,
           variables_list: tab === 'csv' ? csvData : []
         })

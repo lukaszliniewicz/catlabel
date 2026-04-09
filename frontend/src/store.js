@@ -6,6 +6,7 @@ export const useStore = create((set) => ({
   canvasWidth: 384,
   canvasHeight: 384,
   canvasBorder: 'none',
+  splitMode: false,
   isRotated: false,
   selectedPrinter: null,
   theme: 'auto',
@@ -85,6 +86,7 @@ export const useStore = create((set) => ({
   }),
 
   setCanvasBorder: (val) => set({ canvasBorder: val }),
+  setSplitMode: (val) => set({ splitMode: val }),
   setTheme: (theme) => set({ theme }),
   setSnapLines: (lines) => set({ snapLines: lines }),
   setSettings: (settings) => set({ settings }),

@@ -28,6 +28,10 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 export default function CanvasArea() {
   const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, snapLines, setSnapLines, settings, isRotated } = useStore();
   
+  const { splitMode } = useStore();
+  const dotsPerMm = settings.default_dpi / 25.4;
+  const printPx = Math.round(settings.print_width_mm * dotsPerMm);
+
   const handleDragMove = (e, item) => {
     const node = e.target;
     const x = node.x();
@@ -105,6 +109,21 @@ export default function CanvasArea() {
             {canvasBorder === 'top' && <Line points={[0, 0, canvasWidth, 0]} stroke="black" strokeWidth={2} listening={false} />}
             {canvasBorder === 'bottom' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={2} listening={false} />}
             {canvasBorder === 'cut_line' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={2} dash={[10, 10]} listening={false} />}
+            
+            {/* Oversize Strip Split Indicators */}
+            {splitMode && (
+              <>
+                {!isRotated ? (
+                  Array.from({ length: Math.ceil(canvasWidth / printPx) - 1 }).map((_, i) => (
+                    <Line key={`split-v-${i}`} points={[(i + 1) * printPx, 0, (i + 1) * printPx, canvasHeight]} stroke="#ef4444" strokeWidth={2} dash={[10, 10]} listening={false} />
+                  ))
+                ) : (
+                  Array.from({ length: Math.ceil(canvasHeight / printPx) - 1 }).map((_, i) => (
+                    <Line key={`split-h-${i}`} points={[0, (i + 1) * printPx, canvasWidth, (i + 1) * printPx]} stroke="#ef4444" strokeWidth={2} dash={[10, 10]} listening={false} />
+                  ))
+                )}
+              </>
+            )}
 
             {items.map((item) => {
               const isSelected = item.id === selectedId;
