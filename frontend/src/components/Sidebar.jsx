@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
+import IconPicker from './IconPicker';
 
 export default function Sidebar() {
   const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter, theme, setTheme } = useStore();
@@ -8,6 +9,7 @@ export default function Sidebar() {
   const [isScanning, setIsScanning] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [currentTemplateId, setCurrentTemplateId] = useState(null);
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -36,6 +38,19 @@ export default function Sidebar() {
       width: canvasWidth,
       align: 'center'
     });
+  };
+
+  const handleAddIcon = (base64Png) => {
+    addItem({
+      id: Date.now().toString(),
+      type: 'image',
+      src: base64Png,
+      x: canvasWidth / 2 - 50,
+      y: canvasHeight / 2 - 50,
+      width: 100,
+      height: 100
+    });
+    setShowIconPicker(false);
   };
 
   const handleAddBarcode = () => {
@@ -223,6 +238,12 @@ export default function Sidebar() {
           + Add Text
         </button>
         <button 
+          onClick={() => setShowIconPicker(true)} 
+          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
+        >
+          + Add Icon
+        </button>
+        <button 
           onClick={handleAddBarcode} 
           className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left"
         >
@@ -233,6 +254,13 @@ export default function Sidebar() {
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
         </label>
       </div>
+
+      {showIconPicker && (
+        <IconPicker 
+          onClose={() => setShowIconPicker(false)} 
+          onSelect={handleAddIcon} 
+        />
+      )}
 
       <div className="space-y-3">
         <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>

@@ -6,6 +6,7 @@ from typing import Dict, Any, List
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import SQLModel, create_engine, Session, select
 
@@ -28,6 +29,9 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="TiMini Print Server", lifespan=lifespan)
+
+os.makedirs("fonts", exist_ok=True)
+app.mount("/fonts", StaticFiles(directory="fonts"), name="fonts")
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,7 +83,7 @@ async def execute_print_job(mac_address: str, img: Any):
         raster=raster,
         is_text=False,
         speed=settings.speed if settings.speed > 0 else target_device.model.img_print_speed,
-        energy=settings.energy,
+        energy=settings.energy if settings.energy > 0 else (target_device.model.moderation_energy or 5000),
         blackening=3,
         lsb_first=not target_device.model.a4xii,
         protocol_family=target_device.model.protocol_family,

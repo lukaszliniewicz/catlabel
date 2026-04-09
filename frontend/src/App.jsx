@@ -6,8 +6,11 @@ import { useStore } from './store';
 
 function App() {
   const theme = useStore((state) => state.theme);
+  const fetchFonts = useStore((state) => state.fetchFonts);
 
   useEffect(() => {
+    fetchFonts();
+    
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     

@@ -8,7 +8,8 @@ export const useStore = create((set) => ({
   selectedPrinter: null,
   theme: 'auto',
   snapLines: [],
-  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 32, energy: 24000, feed_lines: 100 },
+  fonts: [],
+  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100 },
   
   // NEW: Fetch initial settings from SQLite 
   fetchSettings: async () => {
@@ -18,6 +19,26 @@ export const useStore = create((set) => ({
       set({ settings: data });
     } catch (e) {
       console.error("Failed to fetch settings", e);
+    }
+  },
+
+  fetchFonts: async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/fonts');
+      const data = await res.json();
+      set({ fonts: data });
+      
+      // Dynamically inject @font-face rules
+      const style = document.createElement('style');
+      let css = '';
+      data.forEach(font => {
+        const fontName = font.name.split('.')[0];
+        css += `@font-face { font-family: '${fontName}'; src: url('http://localhost:8000/${font.file_path}'); }\n`;
+      });
+      style.appendChild(document.createTextNode(css));
+      document.head.appendChild(style);
+    } catch (e) {
+      console.error("Failed to fetch fonts", e);
     }
   },
 

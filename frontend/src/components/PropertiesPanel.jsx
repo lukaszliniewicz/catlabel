@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
+import { AlignCenter, MoveHorizontal, Maximize2 } from 'lucide-react';
 
 const ScrubberInput = ({ name, value, onChange, label }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -39,103 +40,63 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
       </label>
       <input 
         type="number" name={name} value={value} onChange={onChange} 
-        className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors" 
+        className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors" 
       />
     </div>
   );
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, setCanvasSize, settings, updateSettingsAPI } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, setCanvasSize, settings, updateSettingsAPI, fonts } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
-  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors";
+  // Tab State
+  const [activeTab, setActiveTab] = useState('canvas');
+  
+  // Automatically switch tabs based on selection
+  useEffect(() => {
+    if (selectedItem) setActiveTab('element');
+  }, [selectedId]);
+
+  // Local settings state for explicit DB saving
+  const [localSettings, setLocalSettings] = useState(settings);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
+  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors";
   const labelClass = "block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5";
 
-  if (!selectedItem) {
-    const handleSettingChange = (e) => {
-      updateSettingsAPI({ ...settings, [e.target.name]: Number(e.target.value) });
-    };
+  // --- Actions ---
 
-    return (
-      <div className="w-72 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 p-6 flex flex-col gap-6 z-10 transition-colors duration-300 overflow-y-auto">
-        <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas.</h2>
-        <div className="space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className={labelClass}>Width (px)</label>
-              <input type="number" value={canvasWidth} onChange={(e) => setCanvasSize(Number(e.target.value), canvasHeight)} className={inputClass} />
-            </div>
-            <div className="flex-1">
-              <label className={labelClass}>Height (px)</label>
-              <input type="number" value={canvasHeight} onChange={(e) => setCanvasSize(canvasWidth, Number(e.target.value))} className={inputClass} />
-            </div>
-          </div>
-        </div>
-
-        <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white border-b border-neutral-100 dark:border-neutral-800 pb-2 mt-4">Printer Config.</h2>
-        <div className="space-y-4">
-          <div>
-            <label className={labelClass}>Speed (0 = Auto)</label>
-            <input type="number" name="speed" value={settings.speed} onChange={handleSettingChange} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Print Energy (Darkness)</label>
-            <input type="number" name="energy" value={settings.energy} onChange={handleSettingChange} step="500" className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Feed Lines (Tear Padding)</label>
-            <input type="number" name="feed_lines" value={settings.feed_lines} onChange={handleSettingChange} className={inputClass} />
-          </div>
-        </div>
-        <p className="text-neutral-400 dark:text-neutral-600 text-xs uppercase tracking-widest text-center mt-10">Select an item to edit</p>
-      </div>
-    );
-  }
-
-  const handleCenterH = () => {
+  const handleCenterAbsolute = () => {
+    if (!selectedItem) return;
     const itemW = selectedItem.width || 0;
-    updateItem(selectedId, { x: (canvasWidth - itemW) / 2 });
-  };
-
-  const handleCenterV = () => {
     const itemH = selectedItem.height || (selectedItem.type === 'text' ? selectedItem.size : 0);
-    updateItem(selectedId, { y: (canvasHeight - itemH) / 2 });
+    updateItem(selectedId, { 
+      x: (canvasWidth - itemW) / 2, 
+      y: (canvasHeight - itemH) / 2 
+    });
   };
 
   const handleMakeFullWidth = () => {
-    updateItem(selectedId, { x: 0, width: canvasWidth });
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    let parsedValue = type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value);
-    
-    // Auto-preserve image aspect ratio
-    if (selectedItem.type === 'image' && (name === 'width' || name === 'height')) {
-      const ratio = selectedItem.width / selectedItem.height;
-      if (name === 'width') {
-        updateItem(selectedId, { width: parsedValue, height: Math.round(parsedValue / ratio) });
-      } else {
-        updateItem(selectedId, { height: parsedValue, width: Math.round(parsedValue * ratio) });
-      }
-      return;
-    }
-    
-    updateItem(selectedId, { [name]: parsedValue });
+    if (!selectedItem) return;
+    updateItem(selectedId, { x: 0, width: canvasWidth, align: 'center' });
   };
 
   const handleFitToWidth = () => {
-    if (!selectedItem.width || !selectedItem.text) return;
+    if (!selectedItem || !selectedItem.width || !selectedItem.text) return;
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
     
     let low = 6;
-    let high = 800; // Greatly increased upper bound
+    let high = 800; 
     let bestSize = selectedItem.size;
-    const targetWidth = selectedItem.width; // Removed the 5% margin
+    const targetWidth = canvasWidth; // Force stretch to full canvas width
 
     while (low <= high) {
       let mid = Math.floor((low + high) / 2);
@@ -150,106 +111,236 @@ export default function PropertiesPanel() {
       }
     }
     
-    // Add fit_to_width flag so template.py triggers absolute math at print time
-    updateItem(selectedId, { size: bestSize, no_wrap: true, fit_to_width: true });
+    updateItem(selectedId, { 
+      x: 0, 
+      width: canvasWidth,
+      size: bestSize, 
+      no_wrap: true, 
+      fit_to_width: true,
+      align: 'center'
+    });
   };
 
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    let parsedValue = type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value);
+    
+    if (selectedItem.type === 'image' && (name === 'width' || name === 'height')) {
+      const ratio = selectedItem.width / selectedItem.height;
+      if (name === 'width') {
+        updateItem(selectedId, { width: parsedValue, height: Math.round(parsedValue / ratio) });
+      } else {
+        updateItem(selectedId, { height: parsedValue, width: Math.round(parsedValue * ratio) });
+      }
+      return;
+    }
+    updateItem(selectedId, { [name]: parsedValue });
+  };
+
+  const handleLocalSettingChange = (e) => {
+    setLocalSettings({ ...localSettings, [e.target.name]: Number(e.target.value) });
+  };
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    await updateSettingsAPI(localSettings);
+    setTimeout(() => setIsSaving(false), 1500);
+  };
+
+  // Warning check for Canvas stretching beyond printer limits
+  const dotsPerMm = localSettings.default_dpi / 25.4;
+  const printPx = Math.round(localSettings.print_width_mm * dotsPerMm);
+  const isCanvasTooWide = canvasWidth > printPx;
+
   return (
-    <div className="w-72 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 p-6 flex flex-col gap-6 z-10 overflow-y-auto transition-colors duration-300">
-      <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white border-b border-neutral-100 dark:border-neutral-800 pb-2">Properties.</h2>
+    <div className="w-80 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300">
       
-      <div className="space-y-4">
-        <div>
-          <div className="flex gap-4">
-            <ScrubberInput name="x" label="X Pos" value={Math.round(selectedItem.x)} onChange={handleChange} />
-            <ScrubberInput name="y" label="Y Pos" value={Math.round(selectedItem.y)} onChange={handleChange} />
-          </div>
-          <div className="flex gap-2 mt-2">
-            <button onClick={handleCenterH} className="flex-1 bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-1.5 text-[10px] uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Center H</button>
-            <button onClick={handleCenterV} className="flex-1 bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-1.5 text-[10px] uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Center V</button>
-            <button onClick={handleMakeFullWidth} className="flex-1 bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-1.5 text-[10px] uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Full Width</button>
-          </div>
-        </div>
-
-        {selectedItem.type === 'text' && (
-          <>
-            <div>
-              <label className={labelClass}>Text Content</label>
-              <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
-            </div>
-            <div className="flex gap-4">
-              <ScrubberInput name="size" label="Size" value={selectedItem.size} onChange={handleChange} />
-              <div className="flex-1">
-                <label className={labelClass}>Font</label>
-                <input type="text" name="font" value={selectedItem.font} onChange={handleChange} className={inputClass} placeholder="arial.ttf" />
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <ScrubberInput name="width" label="Width" value={selectedItem.width || 0} onChange={handleChange} />
-              <div className="flex-1">
-                <label className={labelClass}>Align</label>
-                <select name="align" value={selectedItem.align || 'left'} onChange={handleChange} className={inputClass}>
-                  <option value="left">Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
-                </select>
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 mt-2">
-              <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} />
-              Auto-fit font size to Width
-            </label>
-            <div className="flex items-center gap-2 mt-4">
-              <button 
-                onClick={handleFitToWidth}
-                className="w-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-[10px] uppercase tracking-widest font-bold"
-              >
-                Maximize Font to Width
-              </button>
-            </div>
-            <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer">
-              <input type="checkbox" name="no_wrap" checked={selectedItem.no_wrap || false} onChange={handleChange} />
-              Disable Word Wrap (Single Line)
-            </label>
-          </>
-        )}
-
-        {selectedItem.type === 'image' && (
-          <div className="flex gap-4">
-            <ScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
-            <ScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
-          </div>
-        )}
-
-        {selectedItem.type === 'barcode' && (
-          <>
-            <div>
-              <label className={labelClass}>Barcode Data</label>
-              <input type="text" name="data" value={selectedItem.data} onChange={handleChange} className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>Type</label>
-              <select name="barcode_type" value={selectedItem.barcode_type} onChange={handleChange} className={inputClass}>
-                <option value="code128">Code 128</option>
-                <option value="code39">Code 39</option>
-                <option value="ean13">EAN-13</option>
-              </select>
-            </div>
-            <div className="flex gap-4">
-              <ScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
-              <ScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
-            </div>
-          </>
-        )}
+      {/* TABS */}
+      <div className="flex border-b border-neutral-200 dark:border-neutral-800">
+        <button 
+          onClick={() => setActiveTab('element')}
+          disabled={!selectedItem}
+          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors
+            ${!selectedItem ? 'text-neutral-300 dark:text-neutral-700 cursor-not-allowed' : 
+            activeTab === 'element' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+          `}
+        >
+          Element
+        </button>
+        <button 
+          onClick={() => setActiveTab('canvas')}
+          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors
+            ${activeTab === 'canvas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+          `}
+        >
+          Canvas & Printer
+        </button>
       </div>
 
-      <div className="mt-auto pt-6">
-        <button 
-          onClick={() => deleteItem(selectedId)} 
-          className="w-full bg-transparent text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 px-4 py-2 rounded-none hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs uppercase tracking-widest font-medium"
-        >
-          Delete Item
-        </button>
+      <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
+        
+        {/* === CANVAS & PRINTER TAB === */}
+        {activeTab === 'canvas' && (
+          <>
+            <div className="space-y-4">
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Canvas Dimensions</h2>
+              <div className="flex gap-4">
+                <ScrubberInput 
+                  name="width" 
+                  label="Width (px)" 
+                  value={canvasWidth} 
+                  onChange={(e) => setCanvasSize(Number(e.target.value), canvasHeight)} 
+                />
+                <ScrubberInput 
+                  name="height" 
+                  label="Height (px)" 
+                  value={canvasHeight} 
+                  onChange={(e) => setCanvasSize(canvasWidth, Number(e.target.value))} 
+                />
+              </div>
+              {isCanvasTooWide && (
+                <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 p-2 border border-red-200 dark:border-red-800">
+                  Warning: Canvas width ({canvasWidth}px) exceeds your printer's max width ({printPx}px). It will be truncated.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-4 mt-4">
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Printer Config</h2>
+              <div>
+                <label className={labelClass}>Speed (0 = Device Profile Auto)</label>
+                <input type="number" name="speed" value={localSettings.speed} onChange={handleLocalSettingChange} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Print Energy / Darkness (0 = Auto)</label>
+                <input type="number" name="energy" value={localSettings.energy} onChange={handleLocalSettingChange} step="500" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Feed Lines (Tear Padding)</label>
+                <input type="number" name="feed_lines" value={localSettings.feed_lines} onChange={handleLocalSettingChange} className={inputClass} />
+              </div>
+            </div>
+
+            <div className="mt-auto pt-6">
+              <button 
+                onClick={handleSaveSettings} 
+                disabled={isSaving}
+                className={`w-full py-3 rounded-none transition-colors text-xs uppercase tracking-widest font-bold border 
+                  ${isSaving 
+                    ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200' 
+                    : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent hover:bg-neutral-800 dark:hover:bg-neutral-200'}`}
+              >
+                {isSaving ? 'Settings Saved ✓' : 'Save Printer Settings'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* === ELEMENT TAB === */}
+        {activeTab === 'element' && selectedItem && (
+          <>
+            <div className="space-y-4">
+              <div>
+                <div className="flex gap-4">
+                  <ScrubberInput name="x" label="X Pos" value={Math.round(selectedItem.x)} onChange={handleChange} />
+                  <ScrubberInput name="y" label="Y Pos" value={Math.round(selectedItem.y)} onChange={handleChange} />
+                </div>
+                
+                {/* Advanced Centering Controls */}
+                <div className="flex gap-2 mt-3">
+                  <button onClick={handleCenterAbsolute} title="Center Absolutely" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+                    <AlignCenter size={16} />
+                  </button>
+                  <button onClick={handleMakeFullWidth} title="Full Width" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+                    <MoveHorizontal size={16} />
+                  </button>
+                  {selectedItem.type === 'text' && (
+                    <button onClick={handleFitToWidth} title="Maximize Font to Width" className="flex-1 flex justify-center items-center bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+                      <Maximize2 size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {selectedItem.type === 'text' && (
+                <>
+                  <div>
+                    <label className={labelClass}>Text Content</label>
+                    <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
+                  </div>
+                  <div className="flex gap-4">
+                    <ScrubberInput name="size" label="Size" value={selectedItem.size} onChange={handleChange} />
+                    <div className="flex-1">
+                      <label className={labelClass}>Font</label>
+                      <select name="font" value={selectedItem.font || 'arial.ttf'} onChange={handleChange} className={inputClass}>
+                        <option value="arial.ttf">System Arial</option>
+                        {fonts.map(f => (
+                          <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <ScrubberInput name="width" label="Width" value={selectedItem.width || 0} onChange={handleChange} />
+                    <div className="flex-1">
+                      <label className={labelClass}>Align</label>
+                      <select name="align" value={selectedItem.align || 'left'} onChange={handleChange} className={inputClass}>
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                        <option value="right">Right</option>
+                      </select>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer">
+                    <input type="checkbox" name="no_wrap" checked={selectedItem.no_wrap || false} onChange={handleChange} />
+                    Disable Word Wrap (Single Line)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 mt-1 cursor-pointer">
+                    <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} />
+                    Auto-fit on print
+                  </label>
+                </>
+              )}
+
+              {selectedItem.type === 'image' && (
+                <div className="flex gap-4">
+                  <ScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
+                  <ScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                </div>
+              )}
+
+              {selectedItem.type === 'barcode' && (
+                <>
+                  <div>
+                    <label className={labelClass}>Barcode Data</label>
+                    <input type="text" name="data" value={selectedItem.data} onChange={handleChange} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Type</label>
+                    <select name="barcode_type" value={selectedItem.barcode_type} onChange={handleChange} className={inputClass}>
+                      <option value="code128">Code 128</option>
+                      <option value="code39">Code 39</option>
+                      <option value="ean13">EAN-13</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-4">
+                    <ScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
+                    <ScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-auto pt-6">
+              <button 
+                onClick={() => deleteItem(selectedId)} 
+                className="w-full bg-transparent text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 px-4 py-2 rounded-none hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs uppercase tracking-widest font-medium"
+              >
+                Delete Item
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
