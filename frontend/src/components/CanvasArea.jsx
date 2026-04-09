@@ -28,28 +28,41 @@ export default function CanvasArea() {
     const x = node.x();
     const y = node.y();
     const w = node.width() || 100;
-    const h = node.height() || 50;
+    const h = node.height() || (item.type === 'text' ? item.size : 50); // Fallback for text height
 
     const SNAP_T = 10;
     let newX = x;
     let newY = y;
     let lines = [];
 
-    // Center X
+    // --- Horizontal Snapping ---
     const centerX = printPx / 2;
     if (Math.abs(x + w / 2 - centerX) < SNAP_T) {
       newX = centerX - w / 2;
-      lines.push({ points: [centerX, -9999, centerX, 9999], stroke: '#06b6d4' }); // Cyan guide
+      lines.push({ points: [centerX, -9999, centerX, 9999], stroke: '#06b6d4' });
     }
-    // Left Edge
     if (Math.abs(x) < SNAP_T) {
       newX = 0;
       lines.push({ points: [0, -9999, 0, 9999], stroke: '#06b6d4' });
     }
-    // Right Edge
     if (Math.abs(x + w - printPx) < SNAP_T) {
       newX = printPx - w;
       lines.push({ points: [printPx, -9999, printPx, 9999], stroke: '#06b6d4' });
+    }
+
+    // --- Vertical Snapping ---
+    const centerY = canvasHeight / 2;
+    if (Math.abs(y + h / 2 - centerY) < SNAP_T) {
+      newY = centerY - h / 2;
+      lines.push({ points: [-9999, centerY, 9999, centerY], stroke: '#ec4899' }); // Cyan/Pink guide
+    }
+    if (Math.abs(y) < SNAP_T) {
+      newY = 0;
+      lines.push({ points: [-9999, 0, 9999, 0], stroke: '#ec4899' });
+    }
+    if (Math.abs(y + h - canvasHeight) < SNAP_T) {
+      newY = canvasHeight - h;
+      lines.push({ points: [-9999, canvasHeight, 9999, canvasHeight], stroke: '#ec4899' });
     }
 
     node.position({ x: newX, y: newY });

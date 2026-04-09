@@ -23,3 +23,6 @@ class Settings(SQLModel, table=True):
     paper_width_mm: float = 58.0
     print_width_mm: float = 48.0
     default_dpi: int = 203
+    speed: int = 0
+    energy: int = 5000
+    feed_lines: int = 12

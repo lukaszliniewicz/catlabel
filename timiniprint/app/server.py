@@ -52,6 +52,9 @@ class DirectPrintRequest(BaseModel):
 
 async def execute_print_job(mac_address: str, img: Any):
     """Helper function to handle scanning, connecting with retries, and printing."""
+    with Session(engine) as session:
+        settings = session.get(Settings, 1) or Settings()
+
     registry = PrinterModelRegistry.load()
     resolver = DeviceResolver(registry)
     
@@ -75,12 +78,12 @@ async def execute_print_job(mac_address: str, img: Any):
     job = build_job_from_raster(
         raster=raster,
         is_text=False,
-        speed=target_device.model.img_print_speed,
-        energy=target_device.model.moderation_energy or 5000,
+        speed=settings.speed if settings.speed > 0 else target_device.model.img_print_speed,
+        energy=settings.energy,
         blackening=3,
         lsb_first=not target_device.model.a4xii,
         protocol_family=target_device.model.protocol_family,
-        feed_padding=12,
+        feed_padding=settings.feed_lines,
         dev_dpi=target_device.model.dev_dpi,
         can_print_label=target_device.model.can_print_label,
         image_pipeline=pipeline_config,
@@ -132,6 +135,9 @@ def update_settings(new_settings: Settings):
         settings.paper_width_mm = new_settings.paper_width_mm
         settings.print_width_mm = new_settings.print_width_mm
         settings.default_dpi = new_settings.default_dpi
+        settings.speed = new_settings.speed
+        settings.energy = new_settings.energy
+        settings.feed_lines = new_settings.feed_lines
         session.add(settings)
         session.commit()
         return settings

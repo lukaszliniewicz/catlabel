@@ -55,6 +55,7 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             size = item.get("size", 24)
             font_name = item.get("font", "arial.ttf")
             box_width = item.get("width")
+            no_wrap = item.get("no_wrap", False)
             
             def get_font(f_size):
                 local_font_path = os.path.join("fonts", font_name)
@@ -84,41 +85,55 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             align = item.get("align", "left")
             
             if box_width:
-                lines = []
-                for paragraph in text.split('\n'):
-                    words = paragraph.split(' ')
-                    current_line = []
-                    for word in words:
-                        test_line = ' '.join(current_line + [word]) if current_line else word
-                        bbox = font.getbbox(test_line)
-                        if (bbox[2] - bbox[0]) <= box_width:
-                            current_line.append(word)
-                        else:
-                            if current_line:
-                                lines.append(' '.join(current_line))
-                                current_line = [word]
-                            else:
-                                lines.append(word)
-                                current_line = []
-                    if current_line:
-                        lines.append(' '.join(current_line))
-                
-                y_offset = y
-                for line in lines:
-                    bbox = font.getbbox(line)
+                if no_wrap:
+                    # RENDER EXACTLY AS IS (SINGLE LINE) FOR MAXIMIZED TEXT
+                    # Calculate position to respect alignment
+                    bbox = font.getbbox(text)
                     line_w = bbox[2] - bbox[0]
-                    # Fallback for empty lines
-                    line_h = (bbox[3] - bbox[1]) if line.strip() else size
-                    
                     if align == "center":
                         line_x = x + (box_width - line_w) / 2
                     elif align == "right":
                         line_x = x + (box_width - line_w)
                     else:
                         line_x = x
+                    draw.text((line_x, y), text, fill="black", font=font)
+                else:
+                    # STANDARD WRAPPING LOGIC
+                    lines = []
+                    for paragraph in text.split('\n'):
+                        words = paragraph.split(' ')
+                        current_line = []
+                        for word in words:
+                            test_line = ' '.join(current_line + [word]) if current_line else word
+                            bbox = font.getbbox(test_line)
+                            if (bbox[2] - bbox[0]) <= box_width:
+                                current_line.append(word)
+                            else:
+                                if current_line:
+                                    lines.append(' '.join(current_line))
+                                    current_line = [word]
+                                else:
+                                    lines.append(word)
+                                    current_line = []
+                        if current_line:
+                            lines.append(' '.join(current_line))
+                    
+                    y_offset = y
+                    for line in lines:
+                        bbox = font.getbbox(line)
+                        line_w = bbox[2] - bbox[0]
+                        # Fallback for empty lines
+                        line_h = (bbox[3] - bbox[1]) if line.strip() else size
                         
-                    draw.text((line_x, y_offset), line, fill="black", font=font)
-                    y_offset += int(line_h * 1.2) # 1.2 line height multiplier
+                        if align == "center":
+                            line_x = x + (box_width - line_w) / 2
+                        elif align == "right":
+                            line_x = x + (box_width - line_w)
+                        else:
+                            line_x = x
+                            
+                        draw.text((line_x, y_offset), line, fill="black", font=font)
+                        y_offset += int(line_h * 1.2) # 1.2 line height multiplier
             else:
                 draw.text((x, y), text, fill="black", font=font)
             
