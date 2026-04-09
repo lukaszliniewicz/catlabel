@@ -22,7 +22,7 @@ export default function ShippingLabelModal({ onClose }) {
   };
 
   const handleGenerate = () => {
-    // Thermal profiles usually report width at 384. A standard label needs Landscape orientation (~576px depth).
+    // Thermal profiles usually report width at 384. A standard label needs Landscape orientation (~576px+ depth).
     const targetW = Math.max(canvasWidth, canvasHeight, 576); 
     const targetH = Math.min(canvasWidth, canvasHeight, 384);
     
@@ -33,54 +33,59 @@ export default function ShippingLabelModal({ onClose }) {
     const timestamp = Date.now().toString();
     
     const fLines = [fromData.name, fromData.street, `${fromData.zip} ${fromData.city}`.trim(), fromData.country].filter(Boolean);
-    const tLines = [toData.name, toData.street, `${toData.zip} ${toData.city}`.trim(), toData.country].filter(Boolean);
+    const tLines = [toData.street, `${toData.zip} ${toData.city}`.trim(), toData.country].filter(Boolean);
 
-    // 1. Sender Details (Top Left)
+    // 1. Sender Details (Top Left, compact text size)
     newItems.push({
       id: `${timestamp}-fdet`, type: 'text', 
       text: `FROM:\n${fLines.join('\n')}`, 
       x: 16, y: 16, size: 16, font: 'arial.ttf',
-      width: targetW * 0.5, align: 'left', no_wrap: false
+      width: targetW * 0.45, align: 'left', no_wrap: false
     });
     
-    const senderBottom = 16 + (fLines.length + 1) * 16 * 1.2 + 8;
-    
-    // 2. Horizontal Separator Line
+    // 2. Bold Horizontal Divider
     newItems.push({
       id: `${timestamp}-line1`, type: 'text', text: '', 
-      x: 0, y: senderBottom, width: targetW, size: 2, border_style: 'top'
+      x: 0, y: 110, width: targetW, size: 2, border_style: 'top', border_thickness: 3
     });
 
     const hasCustomText = customText.trim().length > 0;
-    const customH = hasCustomText ? 32 : 0;
 
-    // 3. Recipient "SHIP TO:" Label
+    // 3. Inverted "SHIP TO:" Label pop-out
     newItems.push({
       id: `${timestamp}-tlbl`, type: 'text', 
       text: `SHIP TO:`, 
-      x: 24, y: senderBottom + 16, size: 18, font: 'arial.ttf',
-      width: targetW - 48, align: 'left', no_wrap: true
+      x: 16, y: 130, size: 20, font: 'arial.ttf',
+      width: 100, align: 'center', no_wrap: true, invert: true, border_style: 'box'
     });
 
-    // 4. Recipient Details (Large, properly spaced)
+    // 4. Auto-Sized huge Recipient Name
+    newItems.push({
+      id: `${timestamp}-tname`, type: 'text', 
+      text: toData.name || 'Recipient Name', 
+      x: 16, y: 170, size: 60, font: 'arial.ttf',
+      width: targetW - 32, align: 'left', no_wrap: true, fit_to_width: true
+    });
+
+    // 5. Large Address Body underneath
     newItems.push({
       id: `${timestamp}-tdet`, type: 'text', 
       text: tLines.join('\n'), 
-      x: 48, y: senderBottom + 40, size: 32, font: 'arial.ttf',
-      width: targetW - 64, align: 'left', no_wrap: false
+      x: 16, y: 240, size: 32, font: 'arial.ttf',
+      width: targetW - 32, align: 'left', no_wrap: false
     });
 
-    // 5. Optional Custom Text / Reference at the bottom
+    // 6. Optional Custom Text Bar
     if (hasCustomText) {
       newItems.push({
         id: `${timestamp}-line2`, type: 'text', text: '', 
-        x: 0, y: targetH - customH - 8, width: targetW, size: 2, border_style: 'top'
+        x: 0, y: targetH - 40, width: targetW, size: 2, border_style: 'top', border_thickness: 2
       });
       newItems.push({
         id: `${timestamp}-custom`, type: 'text', 
         text: customText.trim(), 
-        x: 16, y: targetH - customH + 4, size: 18, font: 'arial.ttf',
-        width: targetW - 32, align: 'center', no_wrap: true
+        x: 16, y: targetH - 32, size: 20, font: 'arial.ttf',
+        width: targetW - 32, align: 'center', no_wrap: true, fit_to_width: true
       });
     }
 

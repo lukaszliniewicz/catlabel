@@ -105,7 +105,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   // Tab State
@@ -303,15 +303,23 @@ export default function PropertiesPanel() {
             
             <div className="space-y-4 mt-4">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Canvas Styling</h2>
-              <div>
-                <label className={labelClass}>Canvas Border / Cut line</label>
-                <select value={canvasBorder} onChange={(e) => setCanvasBorder(e.target.value)} className={inputClass}>
-                  <option value="none">None</option>
-                  <option value="box">Full Box</option>
-                  <option value="top">Top Border</option>
-                  <option value="bottom">Bottom Border</option>
-                  <option value="cut_line">Cut Line (Dashed Bottom)</option>
-                </select>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className={labelClass}>Canvas Border / Cut line</label>
+                  <select value={canvasBorder} onChange={(e) => setCanvasBorder(e.target.value)} className={inputClass}>
+                    <option value="none">None</option>
+                    <option value="box">Full Box</option>
+                    <option value="top">Top Border</option>
+                    <option value="bottom">Bottom Border</option>
+                    <option value="cut_line">Cut Line (Dashed Bottom)</option>
+                  </select>
+                </div>
+                <ScrubberInput 
+                  name="canvasBorderThickness" 
+                  label="Thickness" 
+                  value={canvasBorderThickness || 2} 
+                  onChange={(e) => setCanvasBorderThickness(Number(e.target.value))} 
+                />
               </div>
             </div>
 
@@ -473,17 +481,40 @@ export default function PropertiesPanel() {
                         });
                      }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Col</button>
                      <button onClick={() => {
-                        const currentW = selectedItem.icon_size + 15 + (selectedItem.text.length * selectedItem.size * 0.6);
-                        const scale = canvasWidth / currentW;
-                        const newIconSize = selectedItem.icon_size * scale;
-                        const newTextSize = selectedItem.size * scale;
-                        const newH = Math.max(newIconSize, newTextSize);
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
+                        
+                        let low = 6; let high = 400;
+                        let bestScale = 1; let bestTextSize = selectedItem.size;
+                        
+                        while (low <= high) {
+                            let mid = Math.floor((low + high) / 2);
+                            ctx.font = `${mid}px ${fontFamily}`;
+                            let tWidth = ctx.measureText(selectedItem.text || '').width;
+                            let testScale = mid / selectedItem.size;
+                            let totalW = (selectedItem.icon_size * testScale) + (15 * testScale) + tWidth;
+                            
+                            if (totalW <= canvasWidth) {
+                                bestTextSize = mid; bestScale = testScale;
+                                low = mid + 1;
+                            } else {
+                                high = mid - 1;
+                            }
+                        }
+                        
+                        const newIconSize = selectedItem.icon_size * bestScale;
+                        const newH = Math.max(newIconSize, bestTextSize);
+                        ctx.font = `${bestTextSize}px ${fontFamily}`;
+                        const actualTextW = ctx.measureText(selectedItem.text || '').width;
+                        const finalW = newIconSize + (15 * bestScale) + actualTextW;
+                        
                         updateItem(selectedId, {
-                           icon_size: newIconSize, size: newTextSize,
-                           icon_x: 0, icon_y: (newH - newIconSize) / 2,
-                           text_x: newIconSize + 15 * scale, text_y: (newH - newTextSize) / 2,
-                           width: canvasWidth, height: newH,
-                           x: 0
+                            icon_size: newIconSize, size: bestTextSize,
+                            icon_x: 0, icon_y: (newH - newIconSize) / 2,
+                            text_x: newIconSize + (15 * bestScale), text_y: (newH - bestTextSize) / 2,
+                            width: finalW, height: newH,
+                            x: (canvasWidth - finalW) / 2
                         });
                      }} className="flex-1 text-[10px] uppercase font-bold text-blue-600 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">Fit Width</button>
                   </div>
@@ -579,15 +610,18 @@ export default function PropertiesPanel() {
                   Clone Item Down
                 </button>
               </div>
-              <div className="mt-2 mb-2">
-                  <label className={labelClass}>Styling Lines</label>
-                  <select name="border_style" value={selectedItem.border_style || 'none'} onChange={handleChange} className={inputClass}>
-                    <option value="none">None</option>
-                    <option value="box">Box (Full)</option>
-                    <option value="top">Top Border</option>
-                    <option value="bottom">Bottom Border</option>
-                    <option value="cut_line">Cut Line (Dashed)</option>
-                  </select>
+              <div className="mt-2 mb-2 flex gap-4">
+                  <div className="flex-1">
+                    <label className={labelClass}>Styling Lines</label>
+                    <select name="border_style" value={selectedItem.border_style || 'none'} onChange={handleChange} className={inputClass}>
+                      <option value="none">None</option>
+                      <option value="box">Box (Full)</option>
+                      <option value="top">Top Border</option>
+                      <option value="bottom">Bottom Border</option>
+                      <option value="cut_line">Cut Line (Dashed)</option>
+                    </select>
+                  </div>
+                  <ScrubberInput name="border_thickness" label="Thickness" value={selectedItem.border_thickness || 2} onChange={handleChange} />
               </div>
             </div>
 

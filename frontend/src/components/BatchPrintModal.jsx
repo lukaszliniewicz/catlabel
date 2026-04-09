@@ -35,13 +35,14 @@ export default function BatchPrintModal({ onClose }) {
 
   const handlePrint = async () => {
     setIsPrinting(true);
+    const thickness = useStore.getState().canvasBorderThickness || 2;
     try {
       const res = await fetch('http://localhost:8000/api/print/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mac_address: selectedPrinter,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items },
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items },
           copies: parseInt(copies, 10) || 1,
           variables_list: tab === 'csv' ? csvData : []
         })

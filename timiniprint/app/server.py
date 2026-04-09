@@ -89,8 +89,8 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
     
     final_images = []
     for img in images:
-        # If split_mode is enabled and the image exceeds the hardware print width, slice it into strips
         if split_mode and img.width > print_width_px:
+            # Slice image horizontally into printer-sized vertical strips
             for x in range(0, img.width, print_width_px):
                 strip = img.crop((x, 0, min(x + print_width_px, img.width), img.height))
                 if strip.width < print_width_px:
@@ -99,11 +99,21 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
                     strip = padded
                 final_images.append(strip)
         else:
+            # Protect protocol buffer wrapping: scale non-split items to exact hardware width if they over/underflow
+            if img.width != print_width_px:
+                ratio = print_width_px / float(img.width)
+                new_height = max(1, int(img.height * ratio))
+                img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
             final_images.append(img)
 
     # Pre-render all raw protocol jobs
     jobs = []
-    for img in final_images:
+    total_images = len(final_images)
+    for i, img in enumerate(final_images):
+        # 1. Apply feed padding only to the very last segment in a batch sequence
+        is_last = (i == total_images - 1)
+        current_feed = settings.feed_lines if is_last else 0
+        
         raster = image_to_raster(img, pipeline_config.default_format, dither=True)
         job = build_job_from_raster(
             raster=raster,
@@ -113,7 +123,7 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
             blackening=3,
             lsb_first=not target_device.model.a4xii,
             protocol_family=target_device.model.protocol_family,
-            feed_padding=settings.feed_lines,
+            feed_padding=current_feed,
             dev_dpi=target_device.model.dev_dpi,
             can_print_label=target_device.model.can_print_label,
             image_pipeline=pipeline_config,

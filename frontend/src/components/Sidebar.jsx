@@ -146,6 +146,7 @@ export default function Sidebar() {
   const handleSaveTemplate = async () => {
     const name = prompt("Enter a name for this template:");
     if (!name) return;
+    const thickness = useStore.getState().canvasBorderThickness || 2;
     
     try {
       await fetch('http://localhost:8000/api/templates', {
@@ -153,7 +154,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items }
         })
       });
       fetchTemplates();
@@ -173,12 +174,13 @@ export default function Sidebar() {
 
   const handleUpdateTemplate = async () => {
     if (!currentTemplateId) return;
+    const thickness = useStore.getState().canvasBorderThickness || 2;
     try {
       await fetch(`http://localhost:8000/api/templates/${currentTemplateId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items }
         })
       });
       fetchTemplates();
@@ -201,13 +203,14 @@ export default function Sidebar() {
   const handlePrint = async () => {
     if (!selectedPrinter) return alert("Please select a printer first!");
     setIsPrinting(true);
+    const thickness = useStore.getState().canvasBorderThickness || 2;
     try {
       const printRes = await fetch(`http://localhost:8000/api/print/direct`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           mac_address: selectedPrinter, 
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, splitMode, items },
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items },
           variables: {} 
         })
       });
@@ -234,6 +237,30 @@ export default function Sidebar() {
         </div>
       </div>
       
+      <div className="space-y-3">
+        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
+        
+        {printers.length > 0 && (
+          <select 
+            className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors mb-2"
+            value={selectedPrinter || ''}
+            onChange={(e) => setSelectedPrinter(e.target.value)}
+          >
+            <option value="" disabled>Select a printer...</option>
+            {printers.map(p => (
+              <option key={p.address} value={p.address}>{p.name || p.display_address}</option>
+            ))}
+          </select>
+        )}
+        <button 
+          onClick={handleScan} 
+          disabled={isScanning}
+          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium disabled:opacity-50"
+        >
+          {isScanning ? 'Scanning...' : 'Scan for Printers'}
+        </button>
+      </div>
+
       <div className="space-y-3">
         <div 
           className="flex items-center justify-between cursor-pointer border-b border-neutral-100 dark:border-neutral-800 pb-2 group"
@@ -304,30 +331,6 @@ export default function Sidebar() {
 
       {showIconPicker && <IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} />}
       {showHtmlPicker && <HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} />}
-
-      <div className="space-y-3">
-        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
-        <button 
-          onClick={handleScan} 
-          disabled={isScanning}
-          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium disabled:opacity-50"
-        >
-          {isScanning ? 'Scanning...' : 'Scan for Printers'}
-        </button>
-        
-        {printers.length > 0 && (
-          <select 
-            className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors"
-            value={selectedPrinter || ''}
-            onChange={(e) => setSelectedPrinter(e.target.value)}
-          >
-            <option value="" disabled>Select a printer...</option>
-            {printers.map(p => (
-              <option key={p.address} value={p.address}>{p.name || p.display_address}</option>
-            ))}
-          </select>
-        )}
-      </div>
 
       <div className="mt-auto pt-6 space-y-3">
         <button 

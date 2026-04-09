@@ -26,9 +26,10 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 };
 
 export default function CanvasArea() {
-  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, snapLines, setSnapLines, settings, isRotated } = useStore();
+  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated } = useStore();
   
   const { splitMode } = useStore();
+  const cvThick = canvasBorderThickness || 2;
   const dotsPerMm = settings.default_dpi / 25.4;
   const printPx = Math.round(settings.print_width_mm * dotsPerMm);
 
@@ -105,10 +106,10 @@ export default function CanvasArea() {
         >
           <Layer>
             {/* Canvas Border Background Renders */}
-            {canvasBorder === 'box' && <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} stroke="black" strokeWidth={2} listening={false} />}
-            {canvasBorder === 'top' && <Line points={[0, 0, canvasWidth, 0]} stroke="black" strokeWidth={2} listening={false} />}
-            {canvasBorder === 'bottom' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={2} listening={false} />}
-            {canvasBorder === 'cut_line' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={2} dash={[10, 10]} listening={false} />}
+            {canvasBorder === 'box' && <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} stroke="black" strokeWidth={cvThick} listening={false} />}
+            {canvasBorder === 'top' && <Line points={[0, 0, canvasWidth, 0]} stroke="black" strokeWidth={cvThick} listening={false} />}
+            {canvasBorder === 'bottom' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={cvThick} listening={false} />}
+            {canvasBorder === 'cut_line' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={cvThick} dash={[10, 10]} listening={false} />}
             
             {/* Oversize Strip Split Indicators */}
             {splitMode && (
@@ -201,15 +202,16 @@ export default function CanvasArea() {
                 element = <Line points={item.isVertical ? [item.x, item.y, item.x, canvasHeight] : [item.x, item.y, canvasWidth, item.y]} stroke="gray" strokeWidth={1} dash={[10, 10]} listening={false} />;
               }
 
+              const bThick = item.border_thickness || 2;
               return (
                 <Group key={`${item.id}-wrap`}>
                   {element}
                   {isSelected && item.type !== 'cut_line_indicator' && <Rect x={item.x} y={item.y} width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
                   
-                  {item.border_style === 'box' && <Rect x={item.x} y={yOffset} width={visualW} height={approxHeight} stroke="black" strokeWidth={2} listening={false} />}
-                  {item.border_style === 'top' && <Line points={[item.x, yOffset, item.x + visualW, yOffset]} stroke="black" strokeWidth={2} listening={false} />}
-                  {item.border_style === 'bottom' && <Line points={[item.x, yOffset + approxHeight, item.x + visualW, yOffset + approxHeight]} stroke="black" strokeWidth={2} listening={false} />}
-                  {item.border_style === 'cut_line' && <Line points={[item.x, yOffset + approxHeight + 2, item.x + visualW, yOffset + approxHeight + 2]} stroke="black" strokeWidth={2} dash={[10, 10]} listening={false} />}
+                  {item.border_style === 'box' && <Rect x={item.x} y={yOffset} width={visualW} height={approxHeight} stroke="black" strokeWidth={bThick} listening={false} />}
+                  {item.border_style === 'top' && <Line points={[item.x, yOffset, item.x + visualW, yOffset]} stroke="black" strokeWidth={bThick} listening={false} />}
+                  {item.border_style === 'bottom' && <Line points={[item.x, yOffset + approxHeight, item.x + visualW, yOffset + approxHeight]} stroke="black" strokeWidth={bThick} listening={false} />}
+                  {item.border_style === 'cut_line' && <Line points={[item.x, yOffset + approxHeight + 2, item.x + visualW, yOffset + approxHeight + 2]} stroke="black" strokeWidth={bThick} dash={[10, 10]} listening={false} />}
                 </Group>
               );
             })}

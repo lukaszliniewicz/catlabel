@@ -296,32 +296,34 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
             actual_drawn_height = bh
 
         border = item.get("border_style", "none")
+        b_thick = int(item.get("border_thickness", 2))
         if border != "none":
             item_w = int(item.get("width", 100))
             if border == "box":
-                draw.rectangle([x, y, x + item_w, y + actual_drawn_height], outline="black", width=2)
+                draw.rectangle([x, y, x + item_w, y + actual_drawn_height], outline="black", width=b_thick)
             elif border == "top":
-                draw.line([(x, y), (x + item_w, y)], fill="black", width=2)
+                draw.line([(x, y), (x + item_w, y)], fill="black", width=b_thick)
             elif border == "bottom":
-                draw.line([(x, y + actual_drawn_height), (x + item_w, y + actual_drawn_height)], fill="black", width=2)
+                draw.line([(x, y + actual_drawn_height), (x + item_w, y + actual_drawn_height)], fill="black", width=b_thick)
             elif border == "cut_line":
                 for dash_x in range(x, x + item_w, 15):
-                    draw.line([(dash_x, y + actual_drawn_height + 2), (dash_x + 8, y + actual_drawn_height + 2)], fill="black", width=2)
+                    draw.line([(dash_x, y + actual_drawn_height + 2), (dash_x + 8, y + actual_drawn_height + 2)], fill="black", width=b_thick)
 
         if "height" not in item:
             item["height"] = actual_drawn_height
 
     canvas_border = template_data.get("canvasBorder", "none")
+    cv_thick = int(template_data.get("canvasBorderThickness", 2))
     if canvas_border != "none":
         if canvas_border == "box":
-            draw.rectangle([0, 0, width - 1, height - 1], outline="black", width=2)
+            draw.rectangle([0, 0, width - 1, height - 1], outline="black", width=cv_thick)
         elif canvas_border == "top":
-            draw.line([(0, 0), (width, 0)], fill="black", width=2)
+            draw.line([(0, 0), (width, 0)], fill="black", width=cv_thick)
         elif canvas_border == "bottom":
-            draw.line([(0, height - 1), (width, height - 1)], fill="black", width=2)
+            draw.line([(0, height - 1), (width, height - 1)], fill="black", width=cv_thick)
         elif canvas_border == "cut_line":
             for dash_x in range(0, width, 15):
-                draw.line([(dash_x, height - 1), (dash_x + 8, height - 1)], fill="black", width=2)
+                draw.line([(dash_x, height - 1), (dash_x + 8, height - 1)], fill="black", width=cv_thick)
 
     if template_data.get("isRotated"):
         img = img.rotate(90, expand=True)
