@@ -38,7 +38,8 @@ export default function Sidebar() {
   };
 
   const handleAddText = () => {
-    addItem({ id: Date.now().toString(), type: 'text', text: 'Text', x: 0, y: 50, size: 24, font: 'arial.ttf', width: canvasWidth, align: 'center' });
+    const defaultFont = useStore.getState().settings.default_font || 'arial.ttf';
+    addItem({ id: Date.now().toString(), type: 'text', text: 'Text', x: 0, y: 50, size: 24, font: defaultFont, width: canvasWidth, align: 'center' });
   };
 
   const handleAddHtml = (htmlContent) => {
@@ -47,10 +48,11 @@ export default function Sidebar() {
   };
 
   const handleAddIconText = (base64Png) => {
+    const defaultFont = useStore.getState().settings.default_font || 'arial.ttf';
     addItem({
       id: Date.now().toString(), type: 'icon_text', x: 10, y: 10,
       icon_src: base64Png, icon_x: 0, icon_y: 0, icon_size: 40,
-      text: 'Icon + Text', text_x: 50, text_y: 10, size: 24, font: 'arial.ttf', text_width: 150, align: 'left',
+      text: 'Icon + Text', text_x: 50, text_y: 10, size: 24, font: defaultFont, text_width: 150, align: 'left',
       width: 200, height: 40
     });
     setShowIconPicker(false);

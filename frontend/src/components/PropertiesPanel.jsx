@@ -337,6 +337,16 @@ export default function PropertiesPanel() {
                 <label className={labelClass}>Feed Lines (Tear Padding)</label>
                 <input type="number" name="feed_lines" value={localSettings.feed_lines} onChange={handleLocalSettingChange} className={inputClass} />
               </div>
+              <div className="pt-2">
+                <label className={labelClass}>Global Default Font</label>
+                <select name="default_font" value={localSettings.default_font || 'arial.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
+                  <option value="arial.ttf">System Arial</option>
+                  {fonts.map(f => (
+                    <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-neutral-400 mt-1">Applies to all newly created text items.</p>
+              </div>
             </div>
 
             <div className="mt-auto pt-6">

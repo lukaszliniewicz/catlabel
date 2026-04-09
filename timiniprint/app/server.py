@@ -151,6 +151,7 @@ def update_settings(new_settings: Settings):
         settings.speed = new_settings.speed
         settings.energy = new_settings.energy
         settings.feed_lines = new_settings.feed_lines
+        settings.default_font = new_settings.default_font
         session.add(settings)
         session.commit()
         return settings

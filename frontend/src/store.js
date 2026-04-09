@@ -12,7 +12,7 @@ export const useStore = create((set) => ({
   snapLines: [],
   fonts: [],
   addresses: [],
-  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100 },
+  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100, default_font: 'arial.ttf' },
   
   fetchAddresses: async () => {
     try {
