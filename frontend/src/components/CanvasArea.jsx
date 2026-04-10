@@ -131,7 +131,7 @@ export default function CanvasArea() {
               
               const numLines = item.text ? String(item.text).split('\n').length : 1;
               const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
-              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.1 * numLines) + (pad * 2) : 50);
+              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.15 * numLines) + (pad * 2) : 50);
               const yOffset = item.y;
                 
               const visualW = item.width || 100;
@@ -151,25 +151,29 @@ export default function CanvasArea() {
                 const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
                 const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
                 const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
+                const capHeight = item.size * 0.71;
+                const lineHeightPx = item.size * 1.15;
+                const availWidth = Math.max(0, visualW - (pad * 2));
+                const availHeight = Math.max(0, approxHeight - (pad * 2));
+                const boxCenterY = pad + (availHeight / 2);
+                const firstBaselineY = boxCenterY + (capHeight / 2) - ((numLines - 1) * lineHeightPx / 2);
+                const konvaY = firstBaselineY - (item.size * 0.76);
                 
                 element = (
                   <Group {...commonProps}>
                     {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
                     <Text 
                       text={item.text} 
-                      x={0}
-                      y={0}
-                      width={visualW} 
-                      height={approxHeight} 
-                      padding={pad}
+                      x={pad}
+                      y={konvaY}
+                      width={availWidth}
                       align={item.align || 'left'} 
-                      verticalAlign="middle"
                       fontFamily={fontFamily} 
                       fontStyle={(item.weight || 700).toString()}
                       wrap={item.no_wrap ? "none" : "word"} 
                       fontSize={item.size} 
                       fill={fill} 
-                      lineHeight={1.1}
+                      lineHeight={1.15}
                     />
                   </Group>
                 );

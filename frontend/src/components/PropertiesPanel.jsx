@@ -164,7 +164,7 @@ export default function PropertiesPanel() {
     if (!itemH && selectedItem.type === 'text') {
       const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      itemH = (selectedItem.size * 1.1 * numLines) + (pad * 2);
+      itemH = (selectedItem.size * 1.15 * numLines) + (pad * 2);
     }
     
     updateItem(selectedId, { 
@@ -204,7 +204,7 @@ export default function PropertiesPanel() {
         maxLineWidth = Math.max(maxLineWidth, ctx.measureText(l).width);
       }
       
-      let textBlockHeight = mid * 1.1 * lines.length;
+      let textBlockHeight = mid * 1.15 * lines.length;
       
       if (maxLineWidth <= targetWidth && textBlockHeight <= targetHeight) {
         bestSize = mid;
@@ -220,7 +220,7 @@ export default function PropertiesPanel() {
       finalMaxW = Math.max(finalMaxW, ctx.measureText(l).width);
     }
     
-    const finalInkHeight = bestSize * 1.1 * lines.length;
+    const finalInkHeight = bestSize * 1.15 * lines.length;
     const finalBoxWidth = finalMaxW + (pad * 2);
     const finalBoxHeight = finalInkHeight + (pad * 2);
 

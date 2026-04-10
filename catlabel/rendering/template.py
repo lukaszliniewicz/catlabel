@@ -194,16 +194,14 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
 
             if item.get("fit_to_width") and box_width:
                 target_height = item.get("height", height)
-                
                 low, high, best_size = 6, 800, size
                 lines_to_test = text.split('\n')
                 
                 while low <= high:
                     mid = (low + high) // 2
                     t_font = get_font(mid)
-                    
                     tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    th = mid * 1.1 * len(lines_to_test)
+                    th = mid * 1.15 * len(lines_to_test)
                     
                     if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
                         best_size = mid
@@ -237,12 +235,12 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 lines = wrapped_lines
                 
             num_lines = max(1, len(lines))
-            line_height_px = size * 1.1
-            total_visual_h = line_height_px * num_lines
+            line_height_px = size * 1.15
+            cap_height = size * 0.71
             
             approx_height = item.get("height")
             if not approx_height:
-                approx_height = int(total_visual_h) + (pad * 2)
+                approx_height = int((line_height_px * num_lines) + (pad * 2))
             else:
                 approx_height = int(approx_height)
                 
@@ -256,25 +254,26 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             avail_h = approx_height - (pad * 2)
             avail_w = box_width - (pad * 2)
-            start_y = y + pad + (avail_h / 2) - (total_visual_h / 2)
+            box_center_y = y + pad + (avail_h / 2)
+            first_baseline_y = box_center_y + (cap_height / 2) - ((num_lines - 1) * line_height_px / 2)
             
             for i, line in enumerate(lines):
                 if not line.strip():
                     continue
                 
-                line_cy = start_y + (i * line_height_px) + (line_height_px / 2)
+                line_baseline_y = first_baseline_y + (i * line_height_px)
                 
                 if align == "center":
                     line_cx = x + pad + (avail_w / 2)
-                    anchor = "mm"
+                    anchor = "ms"
                 elif align == "right":
                     line_cx = x + box_width - pad
-                    anchor = "rm"
+                    anchor = "rs"
                 else:
                     line_cx = x + pad
-                    anchor = "lm"
+                    anchor = "ls"
                     
-                draw.text((line_cx, line_cy), line, fill=text_color, font=font, anchor=anchor)
+                draw.text((line_cx, line_baseline_y), line, fill=text_color, font=font, anchor=anchor)
             
         elif item_type == "barcode":
             data = item.get("data", "")
