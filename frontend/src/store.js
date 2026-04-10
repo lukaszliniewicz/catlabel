@@ -140,26 +140,47 @@ export const useStore = create((set) => ({
     let newW = state.canvasWidth;
     let newH = state.canvasHeight;
     let rot = state.isRotated;
+    let border = state.canvasBorder;
 
-    // Smart Defaults for Niimbot
-    if (info && info.vendor === 'niimbot') {
-       if (!state.selectedPrinterInfo || state.selectedPrinterInfo.vendor !== 'niimbot') {
-           if (info.model === 'd11' || info.model === 'd110') {
-               newW = Math.round(40 * 8); // 40mm length
-               newH = Math.round(12 * 8); // 12mm width
-               rot = true;
-           } else if (info.model === 'b1' || info.model === 'b21') {
-               newW = Math.round(50 * 8); // 50mm length
-               newH = Math.round(30 * 8); // 30mm width
-               rot = true;
+    if (info) {
+       const model = info.model_id ? info.model_id.toLowerCase() : '';
+       const isNewPrinter = !state.selectedPrinterInfo || state.selectedPrinterInfo.address !== mac;
+       
+       if (isNewPrinter) {
+           if (info.vendor === 'niimbot') {
+               if (model === 'd11' || model === 'd110') {
+                   newW = Math.round(40 * 8);
+                   newH = Math.round(12 * 8);
+                   rot = true;
+                   border = 'box';
+               } else if (model === 'b1' || model === 'b21' || model === 'b18') {
+                   newW = Math.round(50 * 8);
+                   newH = Math.round(30 * 8);
+                   rot = true;
+                   border = 'box';
+               }
+           } else {
+               // Generic printer fallback
+               const hardwareWidth = info.width_px || 384;
+               
+               // For standard Chinese cat printers (usually ~48mm/384px or 576px)
+               if (hardwareWidth === 384) {
+                   newW = 384;
+                   newH = 384;
+                   rot = false;
+               } else if (hardwareWidth > 384) {
+                   // Shipping label style
+                   newW = hardwareWidth;
+                   newH = Math.round(hardwareWidth * 1.5);
+                   rot = false;
+               } else {
+                   // Narrow tape (like D11 clones)
+                   newW = Math.round(40 * 8);
+                   newH = hardwareWidth;
+                   rot = true;
+                   border = 'box';
+               }
            }
-       }
-    } else {
-       // Generic printer fallback
-       const hardwareWidth = info ? info.width_px : 384;
-       if (!state.selectedPrinterInfo || state.selectedPrinterInfo.width_px !== hardwareWidth) {
-           if (rot) newH = hardwareWidth;
-           else newW = hardwareWidth;
        }
     }
 
@@ -168,7 +189,8 @@ export const useStore = create((set) => ({
       selectedPrinterInfo: info,
       canvasWidth: newW,
       canvasHeight: newH,
-      isRotated: rot
+      isRotated: rot,
+      canvasBorder: border
     };
   }),
   

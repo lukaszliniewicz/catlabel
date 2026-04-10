@@ -34,13 +34,23 @@ NIIMBOT_MODELS = {
     "B21":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b21"},
 }
 
-def identify_printer_hardware(name: str):
+def identify_printer_hardware(name: str, device=None):
     name_upper = (name or "").upper()
     for prefix, info in NIIMBOT_MODELS.items():
         if name_upper.startswith(prefix):
             return info
-    # Fallback for Generic Chinese Printers (existing CatLabel logic)
-    return {"vendor": "generic", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "generic"}
+            
+    # Generic Chinese Printer Logic
+    # If we have the device object from TiMini-Print's scanner, extract true hardware limits
+    hw_info = {"vendor": "generic", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "generic"}
+    
+    if device and hasattr(device, "model") and device.model:
+        hw_info["width_px"] = device.model.width
+        hw_info["dpi"] = device.model.dev_dpi
+        hw_info["width_mm"] = round(device.model.width / device.model.dev_dpi * 25.4, 1)
+        hw_info["model"] = device.model.model_no
+    
+    return hw_info
 
 os.makedirs("data", exist_ok=True)
 sqlite_file_name = "data/catlabel.db"
@@ -185,7 +195,7 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
         raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found. Is it turned on?")
         
     # 2. Check Vendor
-    hardware_info = identify_printer_hardware(target_device.name)
+    hardware_info = identify_printer_hardware(target_device.name, target_device)
     print_width_px = hardware_info["width_px"]
     
     from PIL import Image
@@ -521,11 +531,11 @@ async def scan_printers():
     for device in devices:
         # Safely get the name, falling back to the model name if available
         name = getattr(device, "name", None)
-        if not name and device.model:
-            name = device.model.name
+        if not name and hasattr(device, "model") and device.model:
+            name = getattr(device.model, "head_name", "").strip('-')
         
         name = name or "Unknown Printer"
-        hardware_info = identify_printer_hardware(name)
+        hardware_info = identify_printer_hardware(name, device)
             
         results.append({
             "name": name,
