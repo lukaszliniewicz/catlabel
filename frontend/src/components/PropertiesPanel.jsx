@@ -204,7 +204,7 @@ export default function PropertiesPanel() {
         maxLineWidth = Math.max(maxLineWidth, ctx.measureText(l).width);
       }
       
-      // Strict 1.0 multiplier for tight bounding boxes
+      // Calculate tight block bounds using 1.0 line height
       let textBlockHeight = mid * 1.0 * lines.length;
       
       if (maxLineWidth <= targetWidth && textBlockHeight <= targetHeight) {
@@ -219,7 +219,7 @@ export default function PropertiesPanel() {
 
     updateItem(selectedId, { 
       x: 0, 
-      y: (canvasHeight - finalHeight) / 2, // Perfectly center the new tight box vertically
+      y: (canvasHeight - finalHeight) / 2, // Centered physically, not typographically
       width: canvasWidth,
       height: finalHeight, 
       size: bestSize, 

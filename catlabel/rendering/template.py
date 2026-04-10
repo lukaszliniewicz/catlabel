@@ -192,27 +192,6 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                         f = ImageFont.load_default()
                 return apply_font_weight(f, weight)
 
-            # --- SYNCHRONIZED FIT_TO_WIDTH MATH ---
-            if item.get("fit_to_width") and box_width:
-                target_height = item.get("height", height)
-                
-                low, high, best_size = 6, 800, size
-                lines_to_test = text.split('\n')
-                
-                while low <= high:
-                    mid = (low + high) // 2
-                    t_font = get_font(mid)
-                    
-                    tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    th = (mid * 1.0) * len(lines_to_test)
-                    
-                    if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
-                        best_size = mid
-                        low = mid + 1
-                    else:
-                        high = mid - 1
-                size = best_size
-
             font = get_font(size)
             align = item.get("align", "left")
             lines = text.split('\n')
@@ -239,7 +218,6 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 
             num_lines = max(1, len(lines))
             
-            # --- PRECISE KONVA ALIGNMENT ---
             line_height_px = size * 1.0
             total_text_h = line_height_px * num_lines
             
@@ -257,31 +235,27 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             if bg_color:
                 draw.rectangle([x, y, x + box_width, y + approx_height], fill=bg_color)
             
-            # Available inner box
             avail_h = approx_height - (pad * 2)
             avail_w = box_width - (pad * 2)
-            
-            # Start Y so the entire text block is perfectly centered vertically in the box
             start_y = y + pad + (avail_h - total_text_h) / 2
             
             for i, line in enumerate(lines):
                 if not line.strip():
                     continue
                 
-                # Pillow's 'm' anchor aligns to the exact vertical middle of the text line
-                line_cy = start_y + (i * line_height_px) + (line_height_px / 2)
+                line_y = start_y + (i * line_height_px)
                 
                 if align == "center":
                     line_cx = x + pad + (avail_w / 2)
-                    anchor = "mm"
+                    anchor = "mt"
                 elif align == "right":
                     line_cx = x + box_width - pad
-                    anchor = "rm"
+                    anchor = "rt"
                 else:
                     line_cx = x + pad
-                    anchor = "lm"
+                    anchor = "lt"
                     
-                draw.text((line_cx, line_cy), line, fill=text_color, font=font, anchor=anchor)
+                draw.text((line_cx, line_y), line, fill=text_color, font=font, anchor=anchor)
             
         elif item_type == "barcode":
             data = item.get("data", "")

@@ -152,24 +152,29 @@ export default function CanvasArea() {
                 const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
                 const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
                 
+                const textBlockHeight = item.size * 1.0 * numLines;
+                const availH = approxHeight - (pad * 2);
+                const availW = visualW - (pad * 2);
+                const startY = pad + (availH - textBlockHeight) / 2;
+                
                 element = (
                   <Group {...commonProps}>
                     {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
                     <Text 
                       text={item.text} 
-                      x={0}
-                      y={0}
-                      width={visualW} 
-                      height={approxHeight} 
-                      padding={pad}
+                      x={pad}
+                      y={startY}
+                      width={availW} 
+                      height={textBlockHeight} 
                       align={item.align || 'left'} 
-                      verticalAlign="middle"
+                      verticalAlign="top"
                       fontFamily={fontFamily} 
                       fontStyle={(item.weight || 700).toString()}
                       wrap={item.no_wrap ? "none" : "word"} 
                       fontSize={item.size} 
                       fill={fill} 
                       lineHeight={1.0}
+                      padding={0}
                     />
                   </Group>
                 );
