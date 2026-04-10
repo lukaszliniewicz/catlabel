@@ -9,7 +9,6 @@ from sqlmodel import Session, select
 import litellm
 
 from .models import AIConfig
-from .server import engine, get_agent_context
 from .ai_tools import TOOLS_SCHEMA, execute_tool
 
 router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
@@ -21,6 +20,7 @@ class ChatRequest(BaseModel):
 
 @router.get("/config")
 def get_config():
+    from .server import engine
     with Session(engine) as session:
         config = session.get(AIConfig, 1)
         if not config:
@@ -32,6 +32,7 @@ def get_config():
 
 @router.post("/config")
 def update_config(new_config: AIConfig):
+    from .server import engine
     with Session(engine) as session:
         config = session.get(AIConfig, 1)
         if not config:
@@ -47,6 +48,7 @@ def update_config(new_config: AIConfig):
 
 @router.post("/chat")
 def chat_with_agent(req: ChatRequest):
+    from .server import engine, get_agent_context
     with Session(engine) as session:
         config = session.get(AIConfig, 1) or AIConfig()
 
