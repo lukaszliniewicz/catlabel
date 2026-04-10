@@ -234,7 +234,7 @@ export default function Sidebar() {
   return (
     <div className="w-72 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-6 flex flex-col gap-6 z-10 overflow-y-auto transition-colors duration-300">
       <div>
-        <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white mb-1">Label Studio.</h1>
+        <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white mb-1">CatLabel.</h1>
         <div className="flex gap-3 text-[10px] uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
           <button onClick={() => setTheme('light')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'light' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Light</button>
           <button onClick={() => setTheme('dark')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'dark' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Dark</button>

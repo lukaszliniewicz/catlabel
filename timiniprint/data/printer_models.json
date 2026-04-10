@@ -6245,7 +6245,7 @@
     "a4xii": false,
     "add_mor_pix": null,
     "testing": true,
-    "testing_note": "Experimental wide-format family proxy. TiMini Print uses a fixed 832 px profile here as a best-effort fallback.",
+    "testing_note": "Experimental wide-format family proxy. CatLabel uses a fixed 832 px profile here as a best-effort fallback.",
     "image_pipeline_formats": [
       "bw1"
     ],
@@ -6279,7 +6279,7 @@
     "a4xii": false,
     "add_mor_pix": null,
     "testing": true,
-    "testing_note": "Experimental high-dpi wide-format family proxy. TiMini Print uses a fixed 1280 px profile here as a best-effort fallback.",
+    "testing_note": "Experimental high-dpi wide-format family proxy. CatLabel uses a fixed 1280 px profile here as a best-effort fallback.",
     "image_pipeline_formats": [
       "bw1"
     ],

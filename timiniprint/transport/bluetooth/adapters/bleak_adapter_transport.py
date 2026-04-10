@@ -792,7 +792,7 @@ class _BleakTransportSession:
         head_type: str,
         coverage_ratio: float,
     ) -> int:
-        # TiMini Print always sends one logical print job at a time, so keep the
+        # CatLabel always sends one logical print job at a time, so keep the
         # higher single-job threshold that avoids over-adjusting at lower temperatures.
         if temperature_c <= 60:
             return user_density

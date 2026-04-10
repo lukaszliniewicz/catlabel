@@ -71,7 +71,7 @@ def chat_with_agent(req: ChatRequest):
 
     context = get_agent_context()
     
-    sys_prompt = f"""You are an expert Label Design AI Assistant for TiMini Print.
+    sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
 Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions on behalf of the user.
 
 CONTEXT:

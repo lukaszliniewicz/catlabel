@@ -5,7 +5,7 @@ import { useStore } from '../store';
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi! I am the TiMini Print AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }
+    { role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

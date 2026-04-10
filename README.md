@@ -1,3 +1,14 @@
+# CatLabel
+
+**CatLabel** is a hard fork of the excellent [TiMini Print](https://github.com/Dejniel/TiMini-Print) project by Dejniel. 
+While the original TiMini Print provides a robust CLI and Tkinter-based GUI, CatLabel reimagines the interface as a modern web application using **FastAPI** for the backend and **React** for the frontend.
+
+We deeply acknowledge and thank the original author for the core Bluetooth communication, protocol reverse-engineering, and rendering engine that makes this possible. This project is distributed under the Apache 2.0 License, preserving all original copyright notices.
+
+---
+
+## Original TiMini Print Readme
+
 # TiMini Print Bluetooth Printer Tool
 Alternative [desktop software for Chinese Bluetooth thermal printers](https://github.com/Dejniel/TiMini-Print/releases) that use proprietary protocols (not ESC/POS), as a replacement for apps like “Tiny Print”, “Fun Print”, “Phomemo”, or “iBleem”.
 It supports almost all mini printers! Check the huge list of [supported Bluetooth printer models](#supported-printer-models), or report missing ones.

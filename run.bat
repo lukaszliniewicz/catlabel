@@ -1,6 +1,6 @@
 @echo off
 setlocal
-echo === TiMini Print Bootstrapper ===
+echo === CatLabel Bootstrapper ===
 
 if not exist "env\" (
     echo [1/4] Environment not found. Starting installation...
@@ -37,5 +37,5 @@ if not exist "env\" (
     echo -----------------------------------
 )
 
-echo Starting TiMini Print Server (http://localhost:8000)...
-bin\micromamba.exe run -p .\env python -m timiniprint
+echo Starting CatLabel Server (http://localhost:8000)...
+bin\micromamba.exe run -p .\env python -m catlabel

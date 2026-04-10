@@ -26,7 +26,7 @@ from .ai_agent import router as ai_router
 from .. import reporting
 
 os.makedirs("data", exist_ok=True)
-sqlite_file_name = "data/timiniprint.db"
+sqlite_file_name = "data/catlabel.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=False)
 
@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
     download_default_fonts()
     yield
 
-app = FastAPI(title="TiMini Print Server", lifespan=lifespan)
+app = FastAPI(title="CatLabel Server", lifespan=lifespan)
 
 os.makedirs("data/fonts", exist_ok=True)
 app.mount("/fonts", StaticFiles(directory="data/fonts"), name="fonts")

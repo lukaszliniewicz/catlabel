@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== TiMini Print Bootstrapper ==="
+echo "=== CatLabel Bootstrapper ==="
 
 if [ ! -d "env" ]; then
     echo "[1/4] Environment not found. Starting installation..."
@@ -35,5 +35,5 @@ if [ ! -d "env" ]; then
     echo "-----------------------------------"
 fi
 
-echo "Starting TiMini Print Server (http://localhost:8000)..."
-./bin/micromamba run -p ./env python -m timiniprint
+echo "Starting CatLabel Server (http://localhost:8000)..."
+./bin/micromamba run -p ./env python -m catlabel

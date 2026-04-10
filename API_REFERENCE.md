@@ -1,4 +1,4 @@
-# TiMini Print Server API Reference
+# CatLabel API Reference
 
 This document is optimized for LLM Agents and programmatic generation. It explains how to construct payloads, handle spatial reasoning, and execute complex batch workflows with minimal token overhead.
 
