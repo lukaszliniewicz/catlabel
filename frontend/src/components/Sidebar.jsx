@@ -36,7 +36,7 @@ export default function Sidebar() {
       
       // Auto-Select the first printer if none is already chosen
       if (data.devices && data.devices.length > 0 && !useStore.getState().selectedPrinter) {
-        setSelectedPrinter(data.devices[0].address);
+        setSelectedPrinter(data.devices[0].address, data.devices[0]);
       }
     } catch (e) {
       console.error(e);
@@ -273,11 +273,17 @@ export default function Sidebar() {
             <select 
               className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors mb-2"
               value={selectedPrinter || ''}
-              onChange={(e) => setSelectedPrinter(e.target.value)}
+              onChange={(e) => {
+                const selectedMac = e.target.value;
+                const printerData = printers.find(p => p.address === selectedMac);
+                setSelectedPrinter(selectedMac, printerData);
+              }}
             >
               <option value="" disabled>Select a printer...</option>
               {printers.map(p => (
-                <option key={p.address} value={p.address}>{p.name || p.display_address}</option>
+                <option key={p.address} value={p.address}>
+                  {p.name || p.display_address} ({p.width_mm}mm)
+                </option>
               ))}
             </select>
           )}

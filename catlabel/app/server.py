@@ -25,6 +25,23 @@ from ..transport.bluetooth import SppBackend
 from .ai_agent import router as ai_router
 from .. import reporting
 
+NIIMBOT_MODELS = {
+    "D110": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d110"},
+    "D11":  {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d11"},
+    "D101": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d101"},
+    "B1":   {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b1"},
+    "B18":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b18"},
+    "B21":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b21"},
+}
+
+def identify_printer_hardware(name: str):
+    name_upper = (name or "").upper()
+    for prefix, info in NIIMBOT_MODELS.items():
+        if name_upper.startswith(prefix):
+            return info
+    # Fallback for Generic Chinese Printers (existing CatLabel logic)
+    return {"vendor": "generic", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "generic"}
+
 os.makedirs("data", exist_ok=True)
 sqlite_file_name = "data/catlabel.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -165,13 +182,11 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
     if not target_device:
         raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found. Is it turned on?")
         
-    from ..rendering.renderer import image_to_raster
-    from ..protocol.job import build_job_from_raster
-    from ..transport.bluetooth import SppBackend
+    # 2. Check Vendor
+    hardware_info = identify_printer_hardware(target_device.name)
+    print_width_px = hardware_info["width_px"]
     
     from PIL import Image
-    pipeline_config = target_device.model.image_pipeline
-    print_width_px = target_device.model.width
     
     final_images = []
     for img in images:
@@ -200,60 +215,98 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
                     img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
             final_images.append(img)
 
-    # Pre-render all raw protocol jobs
-    jobs = []
-    total_images = len(final_images)
-    for i, img in enumerate(final_images):
-        # 1. Apply feed padding only to the very last segment in a batch sequence
-        is_last = (i == total_images - 1)
-        current_feed = settings.feed_lines if is_last else 0
-        
-        raster = image_to_raster(img, pipeline_config.default_format, dither=True)
-        job = build_job_from_raster(
-            raster=raster,
-            is_text=False,
-            speed=settings.speed if settings.speed > 0 else target_device.model.img_print_speed,
-            energy=settings.energy if settings.energy > 0 else (target_device.model.moderation_energy or 5000),
-            blackening=3,
-            lsb_first=not target_device.model.a4xii,
-            protocol_family=target_device.model.protocol_family,
-            feed_padding=current_feed,
-            dev_dpi=target_device.model.dev_dpi,
-            can_print_label=target_device.model.can_print_label,
-            image_pipeline=pipeline_config,
-        )
-        jobs.append(job)
+    # ==========================================
+    # BRANCH: ROUTE TO SPECIFIC VENDOR ENGINE
+    # ==========================================
     
-    backend = SppBackend()
-    attempts = resolver.build_connection_attempts(target_device)
-    if not attempts:
-        raise HTTPException(status_code=500, detail="No valid connection endpoints found.")
+    if hardware_info["vendor"] == "niimbot":
+        # Route to Niimbot Engine
+        from .vendors.niimbot.printer import PrinterClient
+        from .vendors.niimbot.bluetooth import BLETransport
         
-    max_retries = 3
-    last_error = None
-    
-    for attempt in range(max_retries):
-        try:
-            await backend.connect_attempts(attempts)
-            try:
-                # Stream all jobs continuously over the single open connection
-                for i, job in enumerate(jobs):
-                    await backend.write(job, chunk_size=128, interval_ms=0)
-                    
-                    # Thermal cooling pauses for long print batches
-                    if i < len(jobs) - 1:
-                        if (i + 1) % 3 == 0:
-                            await asyncio.sleep(2.0)  # Let thermal head cool down
-                        else:
-                            await asyncio.sleep(0.3)  # Small gap between jobs
-            finally:
-                await backend.disconnect()
-            return
-        except Exception as e:
-            last_error = e
-            await asyncio.sleep(1.5)
+        # NiimPrintX expects a 'device' object with an address attribute
+        class FakeBleakDevice:
+            def __init__(self, address):
+                self.address = address
+                self.name = target_device.name
+        
+        device = FakeBleakDevice(mac_address)
+        printer = PrinterClient(device)
+        
+        if not await printer.connect():
+            raise HTTPException(status_code=500, detail="Failed to connect to Niimbot")
             
-    raise HTTPException(status_code=500, detail=f"Failed to connect: {str(last_error)}")
+        try:
+            for img in final_images:
+                # Niimbot engine handles print quantity differently, we are passing 1 
+                # because batch print iterates over `final_images` already.
+                await printer.print_image(img, density=3, quantity=1)
+                await asyncio.sleep(1.0) # Thermal cooldown
+        finally:
+            await printer.disconnect()
+
+    else:
+        # Route to Generic Chinese Engine (CatLabel default)
+        from ..rendering.renderer import image_to_raster
+        from ..protocol.job import build_job_from_raster
+        from ..transport.bluetooth import SppBackend
+        
+        pipeline_config = target_device.model.image_pipeline
+        
+        # Pre-render all raw protocol jobs
+        jobs = []
+        total_images = len(final_images)
+        for i, img in enumerate(final_images):
+            # 1. Apply feed padding only to the very last segment in a batch sequence
+            is_last = (i == total_images - 1)
+            current_feed = settings.feed_lines if is_last else 0
+            
+            raster = image_to_raster(img, pipeline_config.default_format, dither=True)
+            job = build_job_from_raster(
+                raster=raster,
+                is_text=False,
+                speed=settings.speed if settings.speed > 0 else target_device.model.img_print_speed,
+                energy=settings.energy if settings.energy > 0 else (target_device.model.moderation_energy or 5000),
+                blackening=3,
+                lsb_first=not target_device.model.a4xii,
+                protocol_family=target_device.model.protocol_family,
+                feed_padding=current_feed,
+                dev_dpi=target_device.model.dev_dpi,
+                can_print_label=target_device.model.can_print_label,
+                image_pipeline=pipeline_config,
+            )
+            jobs.append(job)
+        
+        backend = SppBackend()
+        attempts = resolver.build_connection_attempts(target_device)
+        if not attempts:
+            raise HTTPException(status_code=500, detail="No valid connection endpoints found.")
+            
+        max_retries = 3
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                await backend.connect_attempts(attempts)
+                try:
+                    # Stream all jobs continuously over the single open connection
+                    for i, job in enumerate(jobs):
+                        await backend.write(job, chunk_size=128, interval_ms=0)
+                        
+                        # Thermal cooling pauses for long print batches
+                        if i < len(jobs) - 1:
+                            if (i + 1) % 3 == 0:
+                                await asyncio.sleep(2.0)  # Let thermal head cool down
+                            else:
+                                await asyncio.sleep(0.3)  # Small gap between jobs
+                finally:
+                    await backend.disconnect()
+                return
+            except Exception as e:
+                last_error = e
+                await asyncio.sleep(1.5)
+                
+        raise HTTPException(status_code=500, detail=f"Failed to connect: {str(last_error)}")
 
 async def execute_print_job(mac_address: str, img: Any, split_mode: bool = False):
     await execute_print_jobs(mac_address, [img], split_mode)
@@ -462,12 +515,19 @@ async def scan_printers():
         name = getattr(device, "name", None)
         if not name and device.model:
             name = device.model.name
+        
+        name = name or "Unknown Printer"
+        hardware_info = identify_printer_hardware(name)
             
         results.append({
-            "name": name or "Unknown Printer",
+            "name": name,
             "address": device.address,
             "display_address": getattr(device, "display_address", device.address),
             "paired": device.paired,
+            "vendor": hardware_info["vendor"],
+            "width_px": hardware_info["width_px"],
+            "width_mm": hardware_info["width_mm"],
+            "model_id": hardware_info["model"]
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
 

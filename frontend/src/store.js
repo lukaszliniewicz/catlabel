@@ -10,6 +10,7 @@ export const useStore = create((set) => ({
   splitMode: false,
   isRotated: false,
   selectedPrinter: null,
+  selectedPrinterInfo: null,
   theme: 'auto',
   snapLines: [],
   fonts: [],
@@ -135,7 +136,16 @@ export const useStore = create((set) => ({
     }
   },
   
-  setSelectedPrinter: (mac) => set({ selectedPrinter: mac }),
+  setSelectedPrinter: (mac, info) => set((state) => {
+    // Automatically adjust the canvas width to match the printer hardware
+    const newWidth = info ? info.width_px : 384;
+    return { 
+      selectedPrinter: mac, 
+      selectedPrinterInfo: info,
+      canvasWidth: state.isRotated ? state.canvasHeight : newWidth,
+      canvasHeight: state.isRotated ? newWidth : state.canvasHeight
+    };
+  }),
   
   setItems: (items) => set({ items }),
   clearCanvas: () => set({ items: [], selectedId: null }),
