@@ -22,14 +22,14 @@ if not exist "env\" (
     if errorlevel 1 exit /b 1
 
     echo [3/4] Installing backend dependencies...
-    bin\micromamba.exe run -p .\env pip install -r requirements.txt
+    bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt
     if errorlevel 1 exit /b 1
 
     echo [4/4] Building optimized frontend UI...
     cd frontend
-    ..\bin\micromamba.exe run -p ..\env npm install
+    ..\bin\micromamba.exe run -p ..\env cmd.exe /c npm install
     if errorlevel 1 exit /b 1
-    ..\bin\micromamba.exe run -p ..\env npm run build
+    ..\bin\micromamba.exe run -p ..\env cmd.exe /c npm run build
     if errorlevel 1 exit /b 1
     cd ..
 

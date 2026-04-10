@@ -23,7 +23,7 @@ if [ ! -d "env" ]; then
     ./bin/micromamba create -p ./env -c conda-forge python=3.11 pip nodejs -y
 
     echo "[3/4] Installing backend dependencies..."
-    ./bin/micromamba run -p ./env pip install -r requirements.txt
+    ./bin/micromamba run -p ./env python -m pip install -r requirements.txt
 
     echo "[4/4] Building optimized frontend UI..."
     cd frontend
