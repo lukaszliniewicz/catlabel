@@ -164,7 +164,7 @@ export default function PropertiesPanel() {
     if (!itemH && selectedItem.type === 'text') {
       const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      itemH = (selectedItem.size * 1.2 * numLines) + (pad * 2);
+      itemH = (selectedItem.size * 1.0 * numLines) + (pad * 2);
     }
     
     updateItem(selectedId, { 
@@ -197,15 +197,17 @@ export default function PropertiesPanel() {
 
     while (low <= high) {
       let mid = Math.floor((low + high) / 2);
-      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`;
+      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; 
       
-      const maxLineWidth = Math.max(
-        ...lines.map((line) => ctx.measureText(line).width),
-        0
-      );
-      const totalVisualHeight = (mid * 1.2) * lines.length;
+      let maxLineWidth = 0;
+      for (let l of lines) {
+        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(l).width);
+      }
       
-      if (maxLineWidth <= targetWidth && totalVisualHeight <= targetHeight) {
+      // Strict 1.0 multiplier for tight bounding boxes
+      let textBlockHeight = mid * 1.0 * lines.length;
+      
+      if (maxLineWidth <= targetWidth && textBlockHeight <= targetHeight) {
         bestSize = mid;
         low = mid + 1;
       } else {
@@ -213,11 +215,13 @@ export default function PropertiesPanel() {
       }
     }
     
+    const finalHeight = (bestSize * 1.0 * lines.length) + (pad * 2);
+
     updateItem(selectedId, { 
       x: 0, 
-      y: 0, 
+      y: (canvasHeight - finalHeight) / 2, // Perfectly center the new tight box vertically
       width: canvasWidth,
-      height: canvasHeight, 
+      height: finalHeight, 
       size: bestSize, 
       no_wrap: lines.length === 1,
       fit_to_width: true,

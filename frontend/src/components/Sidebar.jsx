@@ -71,7 +71,7 @@ export default function Sidebar() {
       weight: 700,
       font: defaultFont,
       width: canvasWidth,
-      height: Math.round(24 * 1.2),
+      height: 24,
       align: 'center'
     });
   };

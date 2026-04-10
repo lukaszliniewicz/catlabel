@@ -204,9 +204,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                     t_font = get_font(mid)
                     
                     tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    
-                    # Mirror Konva's exact layout assumption for height
-                    th = (mid * 1.2) * len(lines_to_test)
+                    th = (mid * 1.0) * len(lines_to_test)
                     
                     if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
                         best_size = mid
@@ -242,7 +240,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             num_lines = max(1, len(lines))
             
             # --- PRECISE KONVA ALIGNMENT ---
-            line_height_px = size * 1.2
+            line_height_px = size * 1.0
             total_text_h = line_height_px * num_lines
             
             approx_height = item.get("height")
