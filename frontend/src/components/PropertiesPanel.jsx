@@ -158,19 +158,27 @@ export default function PropertiesPanel() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
-    const fontWeight = selectedItem.weight || 700; // MUST Capture weight
+    const fontWeight = selectedItem.weight || 700;
     
+    const pad = (selectedItem.invert || selectedItem.bg_white) ? 4 : 0;
+    const targetWidth = canvasWidth - (pad * 2);
+
     let low = 6;
     let high = 800; 
     let bestSize = selectedItem.size;
-    const targetWidth = canvasWidth; // Force stretch to full canvas width
+    const lines = String(selectedItem.text).split('\n');
 
     while (low <= high) {
       let mid = Math.floor((low + high) / 2);
-      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; // Apply quotes & weight properly
-      let textWidth = ctx.measureText(selectedItem.text.split('\n')[0]).width;
+      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; 
       
-      if (textWidth <= targetWidth) {
+      let maxLineWidth = 0;
+      for (let l of lines) {
+        let w = ctx.measureText(l).width;
+        if (w > maxLineWidth) maxLineWidth = w;
+      }
+      
+      if (maxLineWidth <= targetWidth) {
         bestSize = mid;
         low = mid + 1;
       } else {

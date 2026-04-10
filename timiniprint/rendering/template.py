@@ -7,6 +7,12 @@ from barcode.writer import ImageWriter
 import qrcode
 import os
 
+def safe_getlength(font, text):
+    """Safely measure text width across different Pillow versions."""
+    if hasattr(font, "getlength"):
+        return font.getlength(text)
+    return font.getsize(text)[0]
+
 def apply_font_weight(font: ImageFont.FreeTypeFont, weight: int) -> ImageFont.FreeTypeFont:
     """Safely applies OpenType Variable Font weights (e.g., 100-900) if supported."""
     try:
@@ -188,12 +194,12 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
 
             if item.get("fit_to_width") and box_width:
                 low, high, best_size = 6, 800, size
-                test_text = text.split('\n')[0] 
+                lines_to_test = text.split('\n')
                 while low <= high:
                     mid = (low + high) // 2
                     t_font = get_font(mid)
-                    bbox = t_font.getbbox(test_text)
-                    if (bbox[2] - bbox[0]) <= box_width:
+                    tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
+                    if tw <= (box_width - (pad * 2)):
                         best_size = mid
                         low = mid + 1
                     else:
@@ -202,79 +208,72 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
 
             font = get_font(size)
             align = item.get("align", "left")
+            lines = text.split('\n')
             
-            if box_width:
-                if no_wrap:
-                    text_bbox = draw.textbbox((0, y + pad), text, font=font)
-                    line_w = text_bbox[2] - text_bbox[0]
-                    
-                    if align == "center":
-                        line_x = x + (box_width - line_w) / 2
-                    elif align == "right":
-                        line_x = x + box_width - line_w
-                    else:
-                        line_x = x
-                    
-                    text_bbox = draw.textbbox((line_x, y + pad), text, font=font)
-                    
-                    if bg_color:
-                        draw.rectangle([x, y, x + box_width, text_bbox[3] + pad], fill=bg_color)
-                    
-                    draw.text((line_x, y + pad), text, fill=text_color, font=font)
-                    actual_drawn_height = (text_bbox[3] - y) + pad
-                else:
-                    lines = []
-                    for paragraph in text.split('\n'):
-                        words = paragraph.split(' ')
-                        current_line = []
-                        for word in words:
-                            test_line = ' '.join(current_line + [word]) if current_line else word
-                            bbox = draw.textbbox((0, 0), test_line, font=font)
-                            if (bbox[2] - bbox[0]) <= box_width:
-                                current_line.append(word)
-                            else:
-                                if current_line:
-                                    lines.append(' '.join(current_line))
-                                    current_line = [word]
-                                else:
-                                    lines.append(word)
-                                    current_line = []
-                        if current_line:
-                            lines.append(' '.join(current_line))
-                    
-                    y_offset = y + pad
-                    test_bbox = draw.textbbox((0, 0), "Ag", font=font)
-                    line_spacing = (test_bbox[3] - test_bbox[1]) * 1.15
-                    total_h = len(lines) * line_spacing
-                    
-                    if bg_color:
-                        draw.rectangle([x, y, x + box_width, y + total_h + (pad * 2)], fill=bg_color)
-                        
-                    for j, line in enumerate(lines):
-                        if not line.strip():
-                            y_offset += line_spacing
-                            continue
-                            
-                        line_bbox = draw.textbbox((0, 0), line, font=font)
-                        line_w = line_bbox[2] - line_bbox[0]
-                        
-                        if align == "center":
-                            line_x = x + (box_width - line_w) / 2
-                        elif align == "right":
-                            line_x = x + box_width - line_w
+            if box_width and not no_wrap:
+                wrapped_lines = []
+                for paragraph in lines:
+                    words = paragraph.split(' ')
+                    current_line = []
+                    for word in words:
+                        test_line = ' '.join(current_line + [word]) if current_line else word
+                        if safe_getlength(font, test_line) <= (box_width - (pad * 2)):
+                            current_line.append(word)
                         else:
-                            line_x = x
-                            
-                        draw.text((line_x, y_offset), line, fill=text_color, font=font)
-                        y_offset += line_spacing
-                        
-                    actual_drawn_height = int(total_h) + (pad * 2)
+                            if current_line:
+                                wrapped_lines.append(' '.join(current_line))
+                                current_line = [word]
+                            else:
+                                wrapped_lines.append(word)
+                                current_line = []
+                    if current_line:
+                        wrapped_lines.append(' '.join(current_line))
+                lines = wrapped_lines
+                
+            num_lines = max(1, len(lines))
+            
+            approx_height = item.get("height")
+            if not approx_height:
+                approx_height = int(size * 1.2 * num_lines) + (pad * 2)
             else:
-                bbox = draw.multiline_textbbox((x, y + pad), text, font=font)
-                if bg_color:
-                    draw.rectangle([bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad], fill=bg_color)
-                draw.multiline_text((x, y + pad), text, fill=text_color, font=font, align=align)
-                actual_drawn_height = (bbox[3] - y) + pad
+                approx_height = int(approx_height)
+                
+            actual_drawn_height = approx_height
+            
+            if bg_color and box_width:
+                draw.rectangle([x, y, x + box_width, y + approx_height], fill=bg_color)
+            elif bg_color:
+                tw = max([safe_getlength(font, l) for l in lines] + [0])
+                draw.rectangle([x, y, x + tw + (pad * 2), y + approx_height], fill=bg_color)
+            
+            line_spacing = size * 1.2
+            total_text_h = line_spacing * num_lines
+            
+            # Perfect mathematical centering bounds exactly equivalent to Konva
+            start_y = y + pad + ((approx_height - (pad * 2)) - total_text_h) / 2
+            y_offset = start_y
+            
+            for line in lines:
+                if not line.strip():
+                    y_offset += line_spacing
+                    continue
+                
+                line_w = safe_getlength(font, line)
+                
+                if box_width:
+                    if align == "center":
+                        line_x = x + pad + ((box_width - (pad * 2)) - line_w) / 2
+                    elif align == "right":
+                        line_x = x + box_width - pad - line_w
+                    else:
+                        line_x = x + pad
+                else:
+                    line_x = x + pad
+                    
+                # anchor="la" (left-ascender) ensures the font is forced uniformly downwards regardless of descenders.
+                # size * 0.1 accounts for the padding inside the line's 1.2 height box.
+                draw.text((line_x, y_offset + (size * 0.1)), line, fill=text_color, font=font, anchor="la")
+                y_offset += line_spacing
             
         elif item_type == "barcode":
             data = item.get("data", "")
