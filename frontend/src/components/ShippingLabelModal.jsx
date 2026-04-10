@@ -39,7 +39,7 @@ export default function ShippingLabelModal({ onClose }) {
     newItems.push({
       id: `${timestamp}-fdet`, type: 'text', 
       text: `FROM:\n${fLines.join('\n')}`, 
-      x: 16, y: 16, size: 16, font: 'arial.ttf',
+      x: 16, y: 16, size: 16, font: 'Roboto-Bold.ttf',
       width: targetW * 0.45, align: 'left', no_wrap: false
     });
     
@@ -55,7 +55,7 @@ export default function ShippingLabelModal({ onClose }) {
     newItems.push({
       id: `${timestamp}-tlbl`, type: 'text', 
       text: `SHIP TO:`, 
-      x: 16, y: 130, size: 20, font: 'arial.ttf',
+      x: 16, y: 130, size: 20, font: 'Roboto-Bold.ttf',
       width: 100, align: 'center', no_wrap: true, invert: true, border_style: 'box'
     });
 
@@ -63,7 +63,7 @@ export default function ShippingLabelModal({ onClose }) {
     newItems.push({
       id: `${timestamp}-tname`, type: 'text', 
       text: toData.name || 'Recipient Name', 
-      x: 16, y: 170, size: 60, font: 'arial.ttf',
+      x: 16, y: 170, size: 60, font: 'Roboto-Bold.ttf',
       width: targetW - 32, align: 'left', no_wrap: true, fit_to_width: true
     });
 
@@ -71,7 +71,7 @@ export default function ShippingLabelModal({ onClose }) {
     newItems.push({
       id: `${timestamp}-tdet`, type: 'text', 
       text: tLines.join('\n'), 
-      x: 16, y: 240, size: 32, font: 'arial.ttf',
+      x: 16, y: 240, size: 32, font: 'Roboto-Bold.ttf',
       width: targetW - 32, align: 'left', no_wrap: false
     });
 
@@ -84,7 +84,7 @@ export default function ShippingLabelModal({ onClose }) {
       newItems.push({
         id: `${timestamp}-custom`, type: 'text', 
         text: customText.trim(), 
-        x: 16, y: targetH - 32, size: 20, font: 'arial.ttf',
+        x: 16, y: targetH - 32, size: 20, font: 'Roboto-Bold.ttf',
         width: targetW - 32, align: 'center', no_wrap: true, fit_to_width: true
       });
     }

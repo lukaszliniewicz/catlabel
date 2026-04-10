@@ -33,7 +33,7 @@ export default function Sidebar() {
   }, []);
 
   const handleAddText = () => {
-    const defaultFont = useStore.getState().settings.default_font || 'arial.ttf';
+    const defaultFont = useStore.getState().settings.default_font || 'Roboto-Bold.ttf';
     addItem({ id: Date.now().toString(), type: 'text', text: 'Text', x: 0, y: 50, size: 24, font: defaultFont, width: canvasWidth, align: 'center' });
   };
 
@@ -43,7 +43,7 @@ export default function Sidebar() {
   };
 
   const handleAddIconText = (base64Png) => {
-    const defaultFont = useStore.getState().settings.default_font || 'arial.ttf';
+    const defaultFont = useStore.getState().settings.default_font || 'Roboto-Bold.ttf';
     addItem({
       id: Date.now().toString(), type: 'icon_text', x: 10, y: 10,
       icon_src: base64Png, icon_x: 0, icon_y: 0, icon_size: 40,

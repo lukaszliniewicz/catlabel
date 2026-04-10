@@ -362,7 +362,7 @@ export default function PropertiesPanel() {
               </div>
               <div className="pt-2">
                 <label className={labelClass}>Global Default Font</label>
-                <select name="default_font" value={localSettings.default_font || 'arial.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
+                <select name="default_font" value={localSettings.default_font || 'Roboto-Bold.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
                   <option value="arial.ttf">System Arial</option>
                   {fonts.map(f => (
                     <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
@@ -422,7 +422,7 @@ export default function PropertiesPanel() {
                     <ScrubberInput name="size" label="Font Size" value={selectedItem.size} onChange={handleChange} />
                     <div className="flex-1">
                       <label className={labelClass}>Font</label>
-                      <select name="font" value={selectedItem.font || 'arial.ttf'} onChange={handleChange} className={inputClass}>
+                      <select name="font" value={selectedItem.font || 'Roboto-Bold.ttf'} onChange={handleChange} className={inputClass}>
                         <option value="arial.ttf">System Arial</option>
                         {fonts.map(f => (
                           <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>

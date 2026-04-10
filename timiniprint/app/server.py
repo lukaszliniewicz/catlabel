@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import base64
+import urllib.request
 from io import BytesIO
 import shutil
 from typing import Dict, Any, List, Optional
@@ -27,9 +28,29 @@ engine = create_engine(sqlite_url, echo=False)
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
+DEFAULT_FONTS = {
+    "Roboto-Regular.ttf": "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Regular.ttf",
+    "Roboto-Bold.ttf": "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Bold.ttf",
+    "FiraCode-Bold.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/firacode/FiraCode-Bold.ttf",
+    "Oswald-Bold.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/static/Oswald-Bold.ttf"
+}
+
+def download_default_fonts():
+    """Silently downloads missing default fonts on first boot."""
+    os.makedirs("data/fonts", exist_ok=True)
+    for filename, url in DEFAULT_FONTS.items():
+        filepath = os.path.join("data/fonts", filename)
+        if not os.path.exists(filepath):
+            try:
+                print(f"Downloading default font: {filename}...")
+                urllib.request.urlretrieve(url, filepath)
+            except Exception as e:
+                print(f"Failed to download {filename}: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    download_default_fonts()
     yield
 
 app = FastAPI(title="TiMini Print Server", lifespan=lifespan)
@@ -304,7 +325,7 @@ async def print_direct(request: DirectPrintRequest):
     """Endpoint for the frontend to test print without saving a template."""
     with Session(engine) as session:
         settings = session.get(Settings, 1)
-        default_font = settings.default_font if settings else "arial.ttf"
+        default_font = settings.default_font if settings else "Roboto-Bold.ttf"
 
     split_mode = request.canvas_state.get("splitMode", False)
     img = render_template(request.canvas_state, request.variables, default_font=default_font)
@@ -320,7 +341,7 @@ async def print_direct(request: DirectPrintRequest):
 async def print_batch(request: BatchPrintRequest):
     with Session(engine) as session:
         settings = session.get(Settings, 1)
-        default_font = settings.default_font if settings else "arial.ttf"
+        default_font = settings.default_font if settings else "Roboto-Bold.ttf"
 
     split_mode = request.canvas_state.get("splitMode", False)
     images = []
