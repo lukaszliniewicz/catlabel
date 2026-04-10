@@ -192,6 +192,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                         f = ImageFont.load_default()
                 return apply_font_weight(f, weight)
 
+            # --- SYNCHRONIZED FIT_TO_WIDTH MATH ---
             if item.get("fit_to_width") and box_width:
                 target_height = item.get("height", height)
                 
@@ -204,15 +205,8 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                     
                     tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
                     
-                    visual_height = mid * 1.0
-                    bbox = t_font.getbbox("Mjg|")
-                    if bbox:
-                        visual_height = bbox[3] - bbox[1]
-                    
-                    if len(lines_to_test) > 1:
-                        th = (len(lines_to_test) - 1) * (mid * 1.2) + visual_height
-                    else:
-                        th = visual_height
+                    # Mirror Konva's exact layout assumption for height
+                    th = (mid * 1.2) * len(lines_to_test)
                     
                     if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
                         best_size = mid
@@ -247,6 +241,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 
             num_lines = max(1, len(lines))
             
+            # --- PRECISE KONVA ALIGNMENT ---
             line_height_px = size * 1.2
             total_text_h = line_height_px * num_lines
             
@@ -264,26 +259,31 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             if bg_color:
                 draw.rectangle([x, y, x + box_width, y + approx_height], fill=bg_color)
             
-            start_y = y + pad + ((approx_height - (pad * 2)) - total_text_h) / 2
-            y_offset = start_y
+            # Available inner box
+            avail_h = approx_height - (pad * 2)
+            avail_w = box_width - (pad * 2)
             
-            for line in lines:
+            # Start Y so the entire text block is perfectly centered vertically in the box
+            start_y = y + pad + (avail_h - total_text_h) / 2
+            
+            for i, line in enumerate(lines):
                 if not line.strip():
-                    y_offset += line_height_px
                     continue
                 
-                line_w = safe_getlength(font, line)
-                if align == "center":
-                    line_x = x + pad + (box_width - (pad * 2) - line_w) / 2
-                elif align == "right":
-                    line_x = x + box_width - pad - line_w
-                else:
-                    line_x = x + pad
-                    
-                draw_y = y_offset + (line_height_px - size) / 2
+                # Pillow's 'm' anchor aligns to the exact vertical middle of the text line
+                line_cy = start_y + (i * line_height_px) + (line_height_px / 2)
                 
-                draw.text((line_x, draw_y), line, fill=text_color, font=font, anchor="lt")
-                y_offset += line_height_px
+                if align == "center":
+                    line_cx = x + pad + (avail_w / 2)
+                    anchor = "mm"
+                elif align == "right":
+                    line_cx = x + box_width - pad
+                    anchor = "rm"
+                else:
+                    line_cx = x + pad
+                    anchor = "lm"
+                    
+                draw.text((line_cx, line_cy), line, fill=text_color, font=font, anchor=anchor)
             
         elif item_type == "barcode":
             data = item.get("data", "")

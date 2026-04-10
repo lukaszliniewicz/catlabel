@@ -152,12 +152,12 @@ export const useStore = create((set) => ({
                    newW = Math.round(40 * 8);
                    newH = Math.round(12 * 8);
                    rot = true;
-                   border = 'box';
+                   border = 'none';
                } else if (model === 'b1' || model === 'b21' || model === 'b18') {
                    newW = Math.round(50 * 8);
                    newH = Math.round(30 * 8);
                    rot = true;
-                   border = 'box';
+                   border = 'none';
                }
            } else {
                // Generic printer fallback
@@ -178,7 +178,7 @@ export const useStore = create((set) => ({
                    newW = Math.round(40 * 8);
                    newH = hardwareWidth;
                    rot = true;
-                   border = 'box';
+                   border = 'none';
                }
            }
        }

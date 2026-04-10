@@ -197,21 +197,13 @@ export default function PropertiesPanel() {
 
     while (low <= high) {
       let mid = Math.floor((low + high) / 2);
-      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; 
+      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`;
       
-      let maxLineWidth = 0;
-      let maxVisualHeight = 0;
-      
-      for (let l of lines) {
-        const metrics = ctx.measureText(l);
-        if (metrics.width > maxLineWidth) maxLineWidth = metrics.width;
-        const h = (metrics.actualBoundingBoxAscent || (mid * 0.8)) + (metrics.actualBoundingBoxDescent || (mid * 0.2));
-        if (h > maxVisualHeight) maxVisualHeight = h;
-      }
-      
-      let totalVisualHeight = (lines.length > 1) 
-        ? ((lines.length - 1) * (mid * 1.2) + maxVisualHeight) 
-        : maxVisualHeight;
+      const maxLineWidth = Math.max(
+        ...lines.map((line) => ctx.measureText(line).width),
+        0
+      );
+      const totalVisualHeight = (mid * 1.2) * lines.length;
       
       if (maxLineWidth <= targetWidth && totalVisualHeight <= targetHeight) {
         bestSize = mid;

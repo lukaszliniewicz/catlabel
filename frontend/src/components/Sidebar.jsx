@@ -61,7 +61,19 @@ export default function Sidebar() {
 
   const handleAddText = () => {
     const defaultFont = useStore.getState().settings.default_font || 'Roboto.ttf';
-    addItem({ id: Date.now().toString(), type: 'text', text: 'Text', x: 0, y: 50, size: 24, weight: 700, font: defaultFont, width: canvasWidth, align: 'center' });
+    addItem({
+      id: Date.now().toString(),
+      type: 'text',
+      text: 'Text',
+      x: 0,
+      y: 50,
+      size: 24,
+      weight: 700,
+      font: defaultFont,
+      width: canvasWidth,
+      height: Math.round(24 * 1.2),
+      align: 'center'
+    });
   };
 
   const handleAddHtml = (htmlContent) => {
