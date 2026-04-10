@@ -66,20 +66,37 @@ class PrinterClient:
         logger.info(f"Printer {self.device.name} disconnected.")
 
     async def find_characteristics(self):
-        if not self.transport.client or not self.transport.client.services:
+        if not self.transport.client:
+            raise PrinterException("BLE client is not connected.")
+
+        # 1. Explicitly fetch services to guarantee they are loaded (crucial for Win/Mac)
+        services_collection = await self.transport.client.get_services()
+        if not services_collection:
             raise PrinterException("No services found on device.")
             
-        for service in self.transport.client.services:
+        services_map = {}
+        for service in services_collection:
+            s =[]
             for char in service.characteristics:
-                props = char.properties
-                # Niimbots use a characteristic that supports write-without-response and notify
-                if 'write-without-response' in props and 'notify' in props:
-                    self.char_uuid = char.uuid
+                s.append({
+                    "id": char.uuid,
+                    "handle": char.handle,
+                    "properties": char.properties
+                })
+            services_map[service.uuid] = s
+
+        # 2. Restore NiimPrintX's strict structural matching logic
+        for service_id, characteristics in services_map.items():
+            if len(characteristics) == 1:  # Check if there's exactly one characteristic
+                props = characteristics[0]['properties']
+                # Must exactly contain all three capabilities to avoid matching OTA endpoints
+                if 'read' in props and 'write-without-response' in props and 'notify' in props:
+                    self.char_uuid = characteristics[0]['id']
                     logger.debug(f"Found Niimbot characteristic: {self.char_uuid}")
                     return
 
         if not self.char_uuid:
-            raise PrinterException("Cannot find bluetooth characteristics.")
+            raise PrinterException("Cannot find Niimbot bluetooth characteristics.")
 
     async def send_command(self, request_code, data, timeout=10):
         try:
