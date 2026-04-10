@@ -5,9 +5,28 @@ While the original TiMini Print provides a robust CLI and Tkinter-based GUI, Cat
 
 We deeply acknowledge and thank the original author for the core Bluetooth communication, protocol reverse-engineering, and rendering engine that makes this possible. This project is distributed under the Apache 2.0 License, preserving all original copyright notices.
 
+## Quick Start (CatLabel)
+
+To run CatLabel, simply execute the bootstrapper script for your platform. It will automatically set up an isolated environment, install dependencies, build the React frontend, and start the FastAPI server.
+
+**Windows:**
+```cmd
+run.bat
+```
+
+**Linux / macOS:**
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+Once the server starts, open your browser to [http://localhost:8000](http://localhost:8000).
+
 ---
 
-## Original TiMini Print Readme
+## Original TiMini Print Readme (Historical)
+
+*Note: The following is the original documentation for TiMini Print, preserved for attribution and reference regarding the core protocol and supported hardware. The CLI and Tkinter GUI instructions below do not apply to CatLabel.*
 
 # TiMini Print Bluetooth Printer Tool
 Alternative [desktop software for Chinese Bluetooth thermal printers](https://github.com/Dejniel/TiMini-Print/releases) that use proprietary protocols (not ESC/POS), as a replacement for apps like “Tiny Print”, “Fun Print”, “Phomemo”, or “iBleem”.
