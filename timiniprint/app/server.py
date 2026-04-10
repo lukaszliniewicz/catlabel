@@ -7,6 +7,8 @@ import zipfile
 import io
 from io import BytesIO
 import shutil
+import subprocess
+import tempfile
 from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
@@ -31,38 +33,62 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
 def download_default_fonts():
-    """Silently downloads missing default fonts on first boot via Google Fonts."""
-    fonts_to_download = {
-        "Roboto": ["Roboto-Regular.ttf", "Roboto-Bold.ttf"],
-        "Oswald": ["Oswald-Bold.ttf"],
-        "Fira+Code": ["FiraCode-Bold.ttf"]
+    """Uses a blobless git clone to dynamically find and download fonts."""
+    fonts_to_find = {
+        "Roboto-Regular.ttf", 
+        "Roboto-Bold.ttf", 
+        "FiraCode-Bold.ttf", 
+        "Oswald-Bold.ttf"
     }
     
     os.makedirs("data/fonts", exist_ok=True)
     
-    for family, files_needed in fonts_to_download.items():
-        # Check if we already have all needed files for this family
-        if all(os.path.exists(os.path.join("data/fonts", f)) for f in files_needed):
-            continue
-            
-        url = f"https://fonts.google.com/download?family={family}"
+    # Check if we already have them
+    if all(os.path.exists(os.path.join("data/fonts", f)) for f in fonts_to_find):
+        return
+        
+    print("Locating fonts in the Google Fonts repository via git metadata...")
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
         try:
-            print(f"Downloading font family: {family.replace('+', ' ')}...")
-            # We supply a generic User-Agent so Google doesn't block the request
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response:
-                # Read the ZIP entirely into memory
-                with zipfile.ZipFile(io.BytesIO(response.read())) as z:
-                    for file_in_zip in z.namelist():
-                        # Extract basename to ignore internal ZIP folders like 'static/'
-                        basename = os.path.basename(file_in_zip)
-                        if basename in files_needed:
-                            target_path = os.path.join("data/fonts", basename)
-                            if not os.path.exists(target_path):
-                                with open(target_path, "wb") as f:
-                                    f.write(z.read(file_in_zip))
+            # 1. Blobless bare clone (downloads ONLY the directory structure, very fast, ~few MBs)
+            subprocess.run([
+                "git", "clone", "--bare", "--depth", "1", 
+                "--filter=blob:none", 
+                "https://github.com/google/fonts.git", 
+                tmpdir
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            # 2. List all files currently in the repo tree
+            result = subprocess.run([
+                "git", "--git-dir", tmpdir, "ls-tree", "-r", "HEAD", "--name-only"
+            ], check=True, stdout=subprocess.PIPE, text=True)
+            
+            repo_files = result.stdout.splitlines()
+            
+            # 3. Match the files we need and download them via Raw CDN
+            for font_name in fonts_to_find:
+                target_path = os.path.join("data/fonts", font_name)
+                if os.path.exists(target_path):
+                    continue
+                    
+                # Find the exact path in the repo (e.g. ofl/roboto/Roboto-Bold.ttf)
+                repo_path = next((path for path in repo_files if path.endswith(font_name)), None)
+                
+                if repo_path:
+                    print(f"Downloading {font_name}...")
+                    raw_url = f"https://raw.githubusercontent.com/google/fonts/main/{repo_path}"
+                    
+                    # Use a generic User-Agent for the Raw CDN
+                    req = urllib.request.Request(raw_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req) as response:
+                        with open(target_path, "wb") as f:
+                            f.write(response.read())
+                else:
+                    print(f"Warning: {font_name} not found in Google Fonts repository.")
+                    
         except Exception as e:
-            print(f"Failed to download {family}: {e}")
+            print(f"Failed to download fonts via git: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

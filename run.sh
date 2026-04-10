@@ -19,8 +19,8 @@ if [ ! -d "env" ]; then
         curl -Ls "https://micro.mamba.pm/api/micromamba/${OS}-${ARCH}/latest" | tar -xvj -C bin bin/micromamba --strip-components=1
     fi
 
-    echo "[2/4] Creating isolated environment (Python & Node.js)..."
-    ./bin/micromamba create -p ./env -c conda-forge python=3.11 pip nodejs -y
+    echo "[2/4] Creating isolated environment (Python & Node.js & Git)..."
+    ./bin/micromamba create -p ./env -c conda-forge python=3.11 pip nodejs git -y
 
     echo "[3/4] Installing backend dependencies..."
     ./bin/micromamba run -p ./env python -m pip install -r requirements.txt
