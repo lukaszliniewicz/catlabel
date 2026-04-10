@@ -147,7 +147,8 @@ export const useStore = create((set) => ({
     const newItems = [];
     const gapPx = Math.round(gapMm * 8);
     const numLines = itemToClone.text ? String(itemToClone.text).split('\n').length : 1;
-    const approxHeight = itemToClone.height || (itemToClone.type === 'text' ? itemToClone.size * 1.2 * numLines : 50);
+    const pad = itemToClone.padding !== undefined ? Number(itemToClone.padding) : ((itemToClone.invert || itemToClone.bg_white) ? 4 : 0);
+    const approxHeight = itemToClone.height || (itemToClone.type === 'text' ? (itemToClone.size * 1.2 * numLines) + (pad * 2) : 50);
     
     let currentY = itemToClone.y;
     

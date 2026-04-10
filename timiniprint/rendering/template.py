@@ -178,7 +178,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             bg_white = item.get("bg_white", False)
             text_color = "white" if invert else "black"
             bg_color = "black" if invert else ("white" if bg_white else None)
-            pad = 4 if bg_color else 0
+            pad = int(item.get("padding", 4 if (invert or bg_white) else 0))
             
             def get_font(f_size):
                 local_font_path = os.path.join("data", "fonts", font_name)
@@ -240,16 +240,15 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 
             actual_drawn_height = approx_height
             
-            if bg_color and box_width:
+            if not box_width:
+                box_width = max([int(safe_getlength(font, l)) for l in lines] + [0]) + (pad * 2)
+
+            if bg_color:
                 draw.rectangle([x, y, x + box_width, y + approx_height], fill=bg_color)
-            elif bg_color:
-                tw = max([safe_getlength(font, l) for l in lines] + [0])
-                draw.rectangle([x, y, x + tw + (pad * 2), y + approx_height], fill=bg_color)
             
             line_spacing = size * 1.2
             total_text_h = line_spacing * num_lines
             
-            # Perfect mathematical centering bounds exactly equivalent to Konva
             start_y = y + pad + ((approx_height - (pad * 2)) - total_text_h) / 2
             y_offset = start_y
             
@@ -258,21 +257,17 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                     y_offset += line_spacing
                     continue
                 
-                line_w = safe_getlength(font, line)
-                
-                if box_width:
-                    if align == "center":
-                        line_x = x + pad + ((box_width - (pad * 2)) - line_w) / 2
-                    elif align == "right":
-                        line_x = x + box_width - pad - line_w
-                    else:
-                        line_x = x + pad
+                if align == "center":
+                    line_x = x + pad + (box_width - (pad * 2)) / 2
+                    anchor = "mm"
+                elif align == "right":
+                    line_x = x + box_width - pad
+                    anchor = "rm"
                 else:
                     line_x = x + pad
+                    anchor = "lm"
                     
-                # anchor="la" (left-ascender) ensures the font is forced uniformly downwards regardless of descenders.
-                # size * 0.1 accounts for the padding inside the line's 1.2 height box.
-                draw.text((line_x, y_offset + (size * 0.1)), line, fill=text_color, font=font, anchor="la")
+                draw.text((line_x, y_offset + (line_spacing / 2)), line, fill=text_color, font=font, anchor=anchor)
                 y_offset += line_spacing
             
         elif item_type == "barcode":

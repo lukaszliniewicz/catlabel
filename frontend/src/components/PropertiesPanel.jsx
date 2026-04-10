@@ -140,7 +140,14 @@ export default function PropertiesPanel() {
   const handleCenterAbsolute = () => {
     if (!selectedItem) return;
     const itemW = selectedItem.width || 0;
-    const itemH = selectedItem.height || (selectedItem.type === 'text' ? selectedItem.size : 0);
+    
+    let itemH = selectedItem.height || 0;
+    if (!itemH && selectedItem.type === 'text') {
+      const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
+      const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
+      itemH = (selectedItem.size * 1.2 * numLines) + (pad * 2);
+    }
+    
     updateItem(selectedId, { 
       x: (canvasWidth - itemW) / 2, 
       y: (canvasHeight - itemH) / 2 
@@ -160,7 +167,7 @@ export default function PropertiesPanel() {
     const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
     const fontWeight = selectedItem.weight || 700;
     
-    const pad = (selectedItem.invert || selectedItem.bg_white) ? 4 : 0;
+    const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
     const targetWidth = canvasWidth - (pad * 2);
 
     let low = 6;
@@ -430,6 +437,7 @@ export default function PropertiesPanel() {
                   <div className="flex gap-4">
                     <ScrubberInput name="size" label="Font Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
                     <ScrubberInput name="weight" label="Weight (100-900)" value={selectedItem.weight || 700} onChange={handleChange} />
+                    <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0)} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2">
                     <div className="flex-1">

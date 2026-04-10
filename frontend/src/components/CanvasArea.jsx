@@ -130,9 +130,8 @@ export default function CanvasArea() {
               const isSelected = item.id === selectedId;
               
               const numLines = item.text ? String(item.text).split('\n').length : 1;
-              // Explicitly accommodate an internal padding offset if we invert/fill the box!
-              const textPadding = (item.type === 'text' && (item.invert || item.bg_white)) ? 16 : 0;
-              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.2 * numLines) + textPadding : 50);
+              const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
+              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.2 * numLines) + (pad * 2) : 50);
               const yOffset = item.y;
                 
               const visualW = item.width || 100;
@@ -152,10 +151,6 @@ export default function CanvasArea() {
                 const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
                 const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
                 const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
-                
-                // Unify to 4px padding so we are 1:1 with Pillow
-                const pad = (item.invert || item.bg_white) ? 4 : 0;
-                const approxHeight = item.height || ((item.size * 1.2 * numLines) + (pad * 2));
                 
                 element = (
                   <Group {...commonProps}>
