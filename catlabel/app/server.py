@@ -248,7 +248,12 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
                 self.address = address
                 self.name = target_device.name
         
-        device = FakeBleakDevice(mac_address)
+        # Ensure we connect to the BLE endpoint (UUID on macOS, BLE MAC on Win/Lin)
+        ble_address = mac_address
+        if hasattr(target_device, "ble_endpoint") and target_device.ble_endpoint:
+            ble_address = target_device.ble_endpoint.address
+
+        device = FakeBleakDevice(ble_address)
         printer = PrinterClient(device)
         
         if not await printer.connect():

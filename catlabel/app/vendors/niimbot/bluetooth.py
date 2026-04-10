@@ -57,7 +57,9 @@ class BLETransport:
                 # Fallback to discover
                 devices = await BleakScanner.discover(timeout=5.0)
                 device = next((d for d in devices if d.address.upper() == address.upper()), None)
-            self.client = BleakClient(device or address)
+            
+            # Use resolved BLEDevice directly if available, fallback to address
+            self.client = BleakClient(device if device else address)
             
         try:
             if not self.client.is_connected:

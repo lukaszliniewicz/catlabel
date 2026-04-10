@@ -95,6 +95,15 @@ class PrinterClient:
                     logger.debug(f"Found Niimbot characteristic: {self.char_uuid}")
                     return
 
+        # Fallback if strict condition fails
+        for service in services_collection:
+            for char in service.characteristics:
+                props = char.properties
+                if 'write-without-response' in props and 'notify' in props:
+                    self.char_uuid = char.uuid
+                    logger.debug(f"Found fallback Niimbot characteristic: {self.char_uuid}")
+                    return
+
         if not self.char_uuid:
             raise PrinterException("Cannot find Niimbot bluetooth characteristics.")
 
@@ -180,7 +189,12 @@ class PrinterClient:
         for y in range(img.height):
             line_data = [img.getpixel((x, y)) for x in range(img.width)]
             line_data = "".join("0" if pix == 0 else "1" for pix in line_data)
-            line_data = int(line_data, 2).to_bytes(math.ceil(img.width / 8), "big")
+            
+            # Pad to multiple of 8 to avoid bit-shifting from int(..., 2)
+            if len(line_data) % 8 != 0:
+                line_data += "0" * (8 - (len(line_data) % 8))
+            
+            line_data = int(line_data, 2).to_bytes(len(line_data) // 8, "big")
             counts = (0, 0, 0)  # It seems like you can always send zeros
             header = struct.pack(">H3BB", y, *counts, 1)
             pkt = NiimbotPacket(0x85, header + line_data)
