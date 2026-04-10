@@ -2,6 +2,8 @@ import json
 import os
 import tempfile
 import logging
+import base64
+from io import BytesIO
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -9,12 +11,12 @@ from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 import litellm
 
-# Set up dedicated logging for deep visibility into the Agent loop
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] AI_AGENT: %(message)s")
 
-from .models import AIConfig, AIConversation
+from .models import AIConfig, AIAgentProfile, AIConversation
 from .ai_tools import TOOLS_SCHEMA, execute_tool
+from ..rendering.template import render_template
 
 router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
 
@@ -24,53 +26,74 @@ class ChatRequest(BaseModel):
     mac_address: Optional[str] = None
 
 def serialize_msg(msg) -> Dict[str, Any]:
-    """
-    Safely handle Pydantic v1/v2 or dicts from LiteLLM and sanitize them.
-    Ensures no internal Litellm metadata is leaked back into the message history.
-    """
-    if hasattr(msg, "model_dump"):
-        d = msg.model_dump(exclude_none=True)
-    elif hasattr(msg, "dict"):
-        d = msg.dict(exclude_none=True)
-    else:
-        d = dict(msg)
-        
+    if hasattr(msg, "model_dump"): d = msg.model_dump(exclude_none=True)
+    elif hasattr(msg, "dict"): d = msg.dict(exclude_none=True)
+    else: d = dict(msg)
     allowed_keys = {"role", "content", "name", "tool_calls", "tool_call_id"}
     clean_d = {k: v for k, v in d.items() if k in allowed_keys}
-    
-    # Provider APIs require 'content' key even if null when assistant calls a tool
     if clean_d.get("role") == "assistant" and "content" not in clean_d:
         clean_d["content"] = None
-        
     return clean_d
 
+def get_canvas_b64(canvas_state, default_font):
+    """Renders the canvas state to base64 JPEG for Vision models."""
+    try:
+        img = render_template(canvas_state, {}, default_font=default_font)
+        buf = BytesIO()
+        # Max resolution bound to save tokens, RGB conversion for JPEG
+        img.convert("RGB").save(buf, format="JPEG", quality=70)
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception as e:
+        logger.error(f"Canvas render failed for vision: {e}")
+        return None
+
 @router.get("/config")
-def get_config():
+def get_profiles():
     from .server import engine
     with Session(engine) as session:
-        config = session.get(AIConfig, 1)
-        if not config:
-            config = AIConfig()
-            session.add(config)
+        profiles = session.exec(select(AIAgentProfile)).all()
+        if not profiles:
+            old = session.get(AIConfig, 1)
+            p = AIAgentProfile(
+                name="Default Profile",
+                provider=old.provider if old else "openai",
+                model_name=old.model_name if old else "gpt-4o",
+                api_key=old.api_key if old else "",
+                base_url=old.base_url if old else "",
+                use_env=old.use_env if old else False,
+                vision_capable=True,
+                is_active=True
+            )
+            session.add(p)
             session.commit()
-            session.refresh(config)
-        return config
+            session.refresh(p)
+            profiles = [p]
+        return profiles
 
 @router.post("/config")
-def update_config(new_config: AIConfig):
+def save_profile(profile: AIAgentProfile):
     from .server import engine
     with Session(engine) as session:
-        config = session.get(AIConfig, 1)
-        if not config:
-            config = AIConfig()
-        config.provider = new_config.provider
-        config.model_name = new_config.model_name
-        config.api_key = new_config.api_key
-        config.base_url = new_config.base_url
-        config.use_env = new_config.use_env
-        session.add(config)
+        if profile.is_active:
+            # Deactivate all others
+            all_p = session.exec(select(AIAgentProfile)).all()
+            for p in all_p:
+                p.is_active = False
+                session.add(p)
+        session.add(profile)
         session.commit()
-        return config
+        session.refresh(profile)
+        return profile
+
+@router.delete("/config/{profile_id}")
+def delete_profile(profile_id: int):
+    from .server import engine
+    with Session(engine) as session:
+        p = session.get(AIAgentProfile, profile_id)
+        if p:
+            session.delete(p)
+            session.commit()
+        return {"status": "ok"}
 
 @router.get("/history")
 def get_histories():
@@ -126,60 +149,70 @@ def delete_history(conv_id: int):
 def chat_with_agent(req: ChatRequest):
     from .server import engine, get_agent_context
     with Session(engine) as session:
-        config = session.get(AIConfig, 1) or AIConfig()
+        active_profile = session.exec(select(AIAgentProfile).where(AIAgentProfile.is_active == True)).first()
+        if not active_profile:
+            active_profile = session.exec(select(AIAgentProfile)).first() or AIAgentProfile()
 
     kwargs = {
-        "model": f"{config.provider}/{config.model_name}" if config.provider != "custom" else config.model_name,
+        "model": f"{active_profile.provider}/{active_profile.model_name}" if active_profile.provider != "custom" else active_profile.model_name,
         "tools": TOOLS_SCHEMA,
         "tool_choice": "auto"
     }
 
-    if not config.use_env:
-        if config.provider == "vertex_ai":
+    if not active_profile.use_env:
+        if active_profile.provider == "vertex_ai":
             with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
-                f.write(config.api_key)
+                f.write(active_profile.api_key)
                 kwargs["vertex_credentials"] = f.name
         else:
-            kwargs["api_key"] = config.api_key
+            kwargs["api_key"] = active_profile.api_key
             
-        if config.base_url:
-            kwargs["api_base"] = config.base_url
+        if active_profile.base_url:
+            kwargs["api_base"] = active_profile.base_url
 
     context = get_agent_context()
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
-Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions on behalf of the user.
+Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions.
 
 CONTEXT:
-- Today's Date: {datetime.now().strftime('%A, %B %d, %Y')}
-- Hardware Print Width: {context['engine_rules']['hardware_width_px']} pixels ({context['engine_rules']['hardware_width_mm']}mm)
+- Hardware Print Width: {context['engine_rules']['hardware_width_px']} pixels
 - 1 mm = 8 pixels. ALWAYS use pixels for canvas dimensions and positions.
 - Default Font: {context['global_default_font']}
 
-TOOL USAGE RULES:
-1. Dates & Text: Use `add_text_element` for general layout. You already know today's date from the context above.
-2. Shipping Labels: DO NOT build them manually element by element. ALWAYS use `create_shipping_label` for perfect formatting.
-3. Batches & Variables: If the user wants multiple varying labels, clear the canvas, design ONE template using `{{{{ variable_name }}}}` syntax, then call `multiply_workspace_with_variables` providing the list of dictionaries for the batch.
-4. Printing & Saving: You can print the canvas or save it to the database for the user by using `trigger_ui_action`. ONLY do this if explicitly asked to "print it" or "save it".
-5. Be highly proactive. If a user asks "Make a label for X", execute the tools and say "I've created the layout for you."
+RULES:
+1. Standard Text: Use `add_text_element` for fast native rendering.
+2. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
+3. Group Alignment: If you create multiple elements (text, html, etc) that should be centered together, call `align_group` passing their IDs.
+4. Vision Feedback: If enabled, you will automatically be shown an image of the canvas before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
+5. Be highly proactive. Do not give code back to the user; execute the tools directly.
 """
 
-    messages =[{"role": "system", "content": sys_prompt}] + req.messages
+    messages = [{"role": "system", "content": sys_prompt}] + req.messages
     canvas_state_copy = dict(req.canvas_state)
 
     try:
-        logger.info(f"Processing incoming chat request with {len(req.messages)} history messages.")
-        
-        MAX_ITERATIONS = 20 # Safety ceiling to prevent infinite loops
+        MAX_ITERATIONS = 15
         iteration = 0
-        new_messages =[]
+        new_messages = []
         
-        # AGENT LOOP: Keep calling LLM as long as it returns tools to execute
         while iteration < MAX_ITERATIONS:
             iteration += 1
-            logger.info(f"LLM Call Iteration {iteration}...")
             
-            response = litellm.completion(messages=messages, **kwargs)
+            # --- VISION TRANSIENT INJECTION ---
+            temp_messages = messages.copy()
+            if active_profile.vision_capable:
+                b64 = get_canvas_b64(canvas_state_copy, context['global_default_font'])
+                if b64:
+                    temp_messages.append({
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "[SYSTEM AUTO-INJECT] Current visual render of the canvas. Evaluate your layout:"},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                        ]
+                    })
+            
+            response = litellm.completion(messages=temp_messages, **kwargs)
             resp_msg = response.choices[0].message
             resp_dict = serialize_msg(resp_msg)
             
@@ -187,10 +220,7 @@ TOOL USAGE RULES:
             new_messages.append(resp_dict)
             
             if hasattr(resp_msg, 'tool_calls') and resp_msg.tool_calls:
-                logger.info(f"LLM issued {len(resp_msg.tool_calls)} tool call(s).")
-                
                 for tool_call in resp_msg.tool_calls:
-                    # Litellm sometimes maps tool_calls to dicts, sometimes objects depending on model
                     if isinstance(tool_call, dict):
                         fn_name = tool_call.get("function", {}).get("name")
                         args_str = tool_call.get("function", {}).get("arguments", "{}")
@@ -202,15 +232,8 @@ TOOL USAGE RULES:
                         
                     try:
                         fn_args = json.loads(args_str)
-                        logger.info(f"Executing tool: {fn_name} with args: {fn_args}")
                         tool_result = execute_tool(fn_name, fn_args, canvas_state_copy)
-                        logger.info(f"Tool {fn_name} completed successfully.")
-                    except json.JSONDecodeError as e:
-                        # Auto-correction: If model truncated JSON, catch it and feed the error back
-                        logger.error(f"JSON decode error in tool {fn_name}. Received: {args_str}")
-                        tool_result = f"Error: Invalid JSON arguments returned by model: {str(e)}"
                     except Exception as e:
-                        logger.error(f"Error executing tool {fn_name}: {str(e)}")
                         tool_result = f"Error executing tool {fn_name}: {str(e)}"
                     
                     tool_msg = {
@@ -221,26 +244,14 @@ TOOL USAGE RULES:
                     }
                     messages.append(tool_msg)
                     new_messages.append(tool_msg)
-                    
-                # Tools executed. Loop continues back to `litellm.completion()` to let the model evaluate the results.
             else:
-                logger.info("LLM responded with a final conversational reply.")
-                break # Exit the agent loop
+                break
                 
-        if iteration == MAX_ITERATIONS:
-            logger.warning("Reached maximum tool execution iterations.")
-            msg = {
-                "role": "assistant",
-                "content": "I've reached my safety limit for consecutive tool executions. Please review the layout so far and let me know how to proceed."
-            }
-            messages.append(msg)
-            new_messages.append(msg)
-
         return {
             "new_messages": new_messages,
             "canvas_state": canvas_state_copy
         }
         
     except Exception as e:
-        logger.exception("Catastrophic error during Litellm chat generation.")
+        logger.exception("Error during Litellm chat generation.")
         return {"error": str(e), "canvas_state": req.canvas_state}

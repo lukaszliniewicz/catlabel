@@ -44,6 +44,40 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "add_html_element",
+            "description": "Add an HTML/CSS/SVG element to the canvas. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "html": {"type": "string", "description": "The full HTML/SVG content including <style> tags."},
+                    "x": {"type": "integer"},
+                    "y": {"type": "integer"},
+                    "width": {"type": "integer"},
+                    "height": {"type": "integer"}
+                },
+                "required": ["html", "x", "y", "width", "height"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "align_group",
+            "description": "Aligns or centers a group of items relative to the canvas collectively.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "item_ids": {"type": "array", "items": {"type": "string"}, "description": "List of element IDs to move together."},
+                    "horizontal": {"type": "string", "enum": ["left", "center", "right", "none"], "default": "center"},
+                    "vertical": {"type": "string", "enum": ["top", "center", "bottom", "none"], "default": "center"}
+                },
+                "required": ["item_ids"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "set_canvas_dimensions",
             "description": "Change the global canvas size or orientation.",
             "parameters": {
@@ -146,6 +180,60 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         }
         canvas_state.setdefault("items", []).append(item)
         return f"{args['type']} added with ID {item['id']}."
+
+    elif name == "add_html_element":
+        item = {
+            "id": str(uuid.uuid4()),
+            "type": "html",
+            "html": args["html"],
+            "x": args.get("x", 0),
+            "y": args.get("y", 0),
+            "width": args.get("width", canvas_state.get("width", 384)),
+            "height": args.get("height", 200)
+        }
+        canvas_state.setdefault("items", []).append(item)
+        return f"HTML/SVG element added with ID {item['id']}."
+
+    elif name == "align_group":
+        item_ids = args.get("item_ids", [])
+        h_align = args.get("horizontal", "center")
+        v_align = args.get("vertical", "center")
+
+        target_items = [i for i in canvas_state.get("items", []) if i.get("id") in item_ids]
+        if not target_items:
+            return "No items found matching the provided IDs."
+
+        min_x = min(i.get("x", 0) for i in target_items)
+        min_y = min(i.get("y", 0) for i in target_items)
+        max_x = max(i.get("x", 0) + i.get("width", 384) for i in target_items)
+        
+        def get_h(item):
+            if "height" in item: return item["height"]
+            if item["type"] == "text": return item.get("size", 24) * 1.2
+            return 50
+            
+        max_y = max(i.get("y", 0) + get_h(i) for i in target_items)
+
+        group_w = max_x - min_x
+        group_h = max_y - min_y
+        cw = canvas_state.get("width", 384)
+        ch = canvas_state.get("height", 384)
+
+        delta_x = 0
+        if h_align == "center": delta_x = (cw - group_w) / 2 - min_x
+        elif h_align == "left": delta_x = -min_x
+        elif h_align == "right": delta_x = cw - group_w - min_x
+
+        delta_y = 0
+        if v_align == "center": delta_y = (ch - group_h) / 2 - min_y
+        elif v_align == "top": delta_y = -min_y
+        elif v_align == "bottom": delta_y = ch - group_h - min_y
+
+        for i in target_items:
+            i["x"] = int(i.get("x", 0) + delta_x)
+            i["y"] = int(i.get("y", 0) + delta_y)
+
+        return f"Group of {len(target_items)} items successfully aligned {h_align}/{v_align}."
 
     elif name == "set_canvas_dimensions":
         canvas_state["width"] = args["width"]
