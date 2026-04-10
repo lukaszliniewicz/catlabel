@@ -257,16 +257,6 @@ export default function PropertiesPanel() {
   const dotsPerMm = localSettings.default_dpi / 25.4;
   const printPx = Math.round(localSettings.print_width_mm * dotsPerMm);
 
-  useEffect(() => {
-    if (splitMode) return; // Do not constrain canvas dimensions if the user is designing an oversized layout
-
-    if (isRotated && canvasHeight !== printPx) {
-      setCanvasSize(canvasWidth, printPx);
-    } else if (!isRotated && canvasWidth !== printPx) {
-      setCanvasSize(printPx, canvasHeight);
-    }
-  }, [isRotated, printPx, splitMode]);
-
   return (
     <div 
       className="bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300 relative shrink-0"

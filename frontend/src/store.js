@@ -137,13 +137,38 @@ export const useStore = create((set) => ({
   },
   
   setSelectedPrinter: (mac, info) => set((state) => {
-    // Automatically adjust the canvas width to match the printer hardware
-    const newWidth = info ? info.width_px : 384;
+    let newW = state.canvasWidth;
+    let newH = state.canvasHeight;
+    let rot = state.isRotated;
+
+    // Smart Defaults for Niimbot
+    if (info && info.vendor === 'niimbot') {
+       if (!state.selectedPrinterInfo || state.selectedPrinterInfo.vendor !== 'niimbot') {
+           if (info.model === 'd11' || info.model === 'd110') {
+               newW = Math.round(40 * 8); // 40mm length
+               newH = Math.round(12 * 8); // 12mm width
+               rot = true;
+           } else if (info.model === 'b1' || info.model === 'b21') {
+               newW = Math.round(50 * 8); // 50mm length
+               newH = Math.round(30 * 8); // 30mm width
+               rot = true;
+           }
+       }
+    } else {
+       // Generic printer fallback
+       const hardwareWidth = info ? info.width_px : 384;
+       if (!state.selectedPrinterInfo || state.selectedPrinterInfo.width_px !== hardwareWidth) {
+           if (rot) newH = hardwareWidth;
+           else newW = hardwareWidth;
+       }
+    }
+
     return { 
       selectedPrinter: mac, 
       selectedPrinterInfo: info,
-      canvasWidth: state.isRotated ? state.canvasHeight : newWidth,
-      canvasHeight: state.isRotated ? newWidth : state.canvasHeight
+      canvasWidth: newW,
+      canvasHeight: newH,
+      isRotated: rot
     };
   }),
   

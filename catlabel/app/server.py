@@ -93,10 +93,12 @@ app.add_middleware(
 app.include_router(ai_router)
 
 STANDARD_PRESETS = [
-    {"name": "Standard Tape (Full Width)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "border": "none"},
+    {"name": "Standard Tape (Full Width 48mm)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "border": "none"},
+    {"name": "Niimbot D11 (12x40mm)", "width_mm": 40, "height_mm": 12, "is_rotated": True, "border": "box"},
+    {"name": "Niimbot D11 (15x30mm)", "width_mm": 30, "height_mm": 15, "is_rotated": True, "border": "box"},
+    {"name": "Niimbot B1/B21 (50x30mm)", "width_mm": 50, "height_mm": 30, "is_rotated": True, "border": "box"},
     {"name": "Gridfinity Bin Label (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "border": "box"},
     {"name": "Cable Flag / Wire Wrap (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "border": "cut_line"},
-    {"name": "Folder Tab (50x15mm)", "width_mm": 50, "height_mm": 15, "is_rotated": False, "border": "box"},
     {"name": "A6 Shipping (105x148mm - Oversize)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "box"},
 ]
 
@@ -200,20 +202,26 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
                     strip = padded
                 final_images.append(strip)
         else:
-            # CRITICAL FIX: Pad narrower canvases, only downscale if strictly oversize
-            if img.width != print_width_px:
-                if img.width < print_width_px:
-                    # User designed a narrow label (e.g. 12mm). Center it on the 48mm tape.
-                    padded = Image.new("RGB", (print_width_px, img.height), "white")
-                    offset_x = (print_width_px - img.width) // 2
-                    padded.paste(img, (offset_x, 0))
-                    img = padded
-                else:
-                    # Image is larger than tape but not in split mode; scale it down
+            if hardware_info["vendor"] == "niimbot":
+                # CRITICAL FIX: Do NOT pad Niimbot labels. Let the Niimbot engine set actual dimensions.
+                if img.width > print_width_px:
                     ratio = print_width_px / float(img.width)
                     new_height = max(1, int(img.height * ratio))
                     img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
-            final_images.append(img)
+                final_images.append(img)
+            else:
+                # Generic Chinese Printers MUST pad narrower canvases to physical head width
+                if img.width != print_width_px:
+                    if img.width < print_width_px:
+                        padded = Image.new("RGB", (print_width_px, img.height), "white")
+                        offset_x = (print_width_px - img.width) // 2
+                        padded.paste(img, (offset_x, 0))
+                        img = padded
+                    else:
+                        ratio = print_width_px / float(img.width)
+                        new_height = max(1, int(img.height * ratio))
+                        img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
+                final_images.append(img)
 
     # ==========================================
     # BRANCH: ROUTE TO SPECIFIC VENDOR ENGINE
@@ -237,11 +245,11 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
             raise HTTPException(status_code=500, detail="Failed to connect to Niimbot")
             
         try:
+            # FIX: Map density correctly from UI settings (1-5 scale)
+            density = settings.energy if 1 <= settings.energy <= 5 else 3
             for img in final_images:
-                # Niimbot engine handles print quantity differently, we are passing 1 
-                # because batch print iterates over `final_images` already.
-                await printer.print_image(img, density=3, quantity=1)
-                await asyncio.sleep(1.0) # Thermal cooldown
+                await printer.print_image(img, density=density, quantity=1)
+                await asyncio.sleep(1.0)
         finally:
             await printer.disconnect()
 

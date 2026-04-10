@@ -51,7 +51,9 @@ class BLETransport:
 
     async def connect(self, address):
         if self.client is None:
-            self.client = BleakClient(address)
+            # Resolve the actual BLEDevice to prevent BleakDeviceNotFoundError on Win/Mac
+            device = await BleakScanner.find_device_by_address(address, timeout=5.0)
+            self.client = BleakClient(device or address)
         if not self.client.is_connected:
             return await self.client.connect()
         return False
