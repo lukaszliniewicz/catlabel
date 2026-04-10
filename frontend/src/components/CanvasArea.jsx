@@ -131,7 +131,7 @@ export default function CanvasArea() {
               
               const numLines = item.text ? String(item.text).split('\n').length : 1;
               const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
-              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.0 * numLines) + (pad * 2) : 50);
+              const approxHeight = item.height || (item.type === 'text' ? (item.size * 0.75 * numLines) + (pad * 2) : 50);
               const yOffset = item.y;
                 
               const visualW = item.width || 100;
@@ -152,29 +152,28 @@ export default function CanvasArea() {
                 const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
                 const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
                 
-                const textBlockHeight = item.size * 1.0 * numLines;
-                const availH = approxHeight - (pad * 2);
-                const availW = visualW - (pad * 2);
-                const startY = pad + (availH - textBlockHeight) / 2;
+                // Konva centers the em-square, so shift slightly upward to better center the visible ink.
+                const visualCenterOffset = item.size * 0.08;
                 
                 element = (
                   <Group {...commonProps}>
                     {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
                     <Text 
                       text={item.text} 
-                      x={pad}
-                      y={startY}
-                      width={availW} 
-                      height={textBlockHeight} 
+                      x={0}
+                      y={0}
+                      offsetY={visualCenterOffset}
+                      width={visualW} 
+                      height={approxHeight} 
+                      padding={pad}
                       align={item.align || 'left'} 
-                      verticalAlign="top"
+                      verticalAlign="middle"
                       fontFamily={fontFamily} 
                       fontStyle={(item.weight || 700).toString()}
                       wrap={item.no_wrap ? "none" : "word"} 
                       fontSize={item.size} 
                       fill={fill} 
                       lineHeight={1.0}
-                      padding={0}
                     />
                   </Group>
                 );

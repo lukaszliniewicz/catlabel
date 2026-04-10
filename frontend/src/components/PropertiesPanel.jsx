@@ -164,7 +164,7 @@ export default function PropertiesPanel() {
     if (!itemH && selectedItem.type === 'text') {
       const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      itemH = (selectedItem.size * 1.0 * numLines) + (pad * 2);
+      itemH = (selectedItem.size * 0.75 * numLines) + (pad * 2);
     }
     
     updateItem(selectedId, { 
@@ -204,8 +204,9 @@ export default function PropertiesPanel() {
         maxLineWidth = Math.max(maxLineWidth, ctx.measureText(l).width);
       }
       
-      // Calculate tight block bounds using 1.0 line height
-      let textBlockHeight = mid * 1.0 * lines.length;
+      // Use 0.75 multiplier to approximate true visual ink height (Cap height + baseline)
+      // rather than the full em-square which artificially restricts growth.
+      let textBlockHeight = (mid * 0.75 * lines.length) + (lines.length > 1 ? mid * 0.2 * (lines.length - 1) : 0);
       
       if (maxLineWidth <= targetWidth && textBlockHeight <= targetHeight) {
         bestSize = mid;
@@ -215,13 +216,21 @@ export default function PropertiesPanel() {
       }
     }
     
-    const finalHeight = (bestSize * 1.0 * lines.length) + (pad * 2);
+    ctx.font = `${fontWeight} ${bestSize}px "${fontFamily}"`;
+    let finalMaxW = 0;
+    for (let l of lines) {
+      finalMaxW = Math.max(finalMaxW, ctx.measureText(l).width);
+    }
+    
+    const finalInkHeight = (bestSize * 0.75 * lines.length) + (lines.length > 1 ? bestSize * 0.2 * (lines.length - 1) : 0);
+    const finalBoxWidth = finalMaxW + (pad * 2);
+    const finalBoxHeight = finalInkHeight + (pad * 2);
 
     updateItem(selectedId, { 
-      x: 0, 
-      y: (canvasHeight - finalHeight) / 2, // Centered physically, not typographically
-      width: canvasWidth,
-      height: finalHeight, 
+      x: (canvasWidth - finalBoxWidth) / 2, 
+      y: (canvasHeight - finalBoxHeight) / 2, 
+      width: finalBoxWidth,
+      height: finalBoxHeight, 
       size: bestSize, 
       no_wrap: lines.length === 1,
       fit_to_width: true,

@@ -192,6 +192,26 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                         f = ImageFont.load_default()
                 return apply_font_weight(f, weight)
 
+            if item.get("fit_to_width") and box_width:
+                target_height = item.get("height", height)
+                
+                low, high, best_size = 6, 800, size
+                lines_to_test = text.split('\n')
+                
+                while low <= high:
+                    mid = (low + high) // 2
+                    t_font = get_font(mid)
+                    
+                    tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
+                    th = (mid * 0.75 * len(lines_to_test)) + (mid * 0.2 * (len(lines_to_test) - 1) if len(lines_to_test) > 1 else 0)
+                    
+                    if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
+                        best_size = mid
+                        low = mid + 1
+                    else:
+                        high = mid - 1
+                size = best_size
+
             font = get_font(size)
             align = item.get("align", "left")
             lines = text.split('\n')
@@ -217,13 +237,13 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 lines = wrapped_lines
                 
             num_lines = max(1, len(lines))
-            
-            line_height_px = size * 1.0
-            total_text_h = line_height_px * num_lines
+            visual_line_h = size * 0.75
+            line_gap = size * 0.2
+            total_visual_h = (num_lines * visual_line_h) + ((num_lines - 1) * line_gap)
             
             approx_height = item.get("height")
             if not approx_height:
-                approx_height = int(total_text_h) + (pad * 2)
+                approx_height = int(total_visual_h) + (pad * 2)
             else:
                 approx_height = int(approx_height)
                 
@@ -237,25 +257,25 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             avail_h = approx_height - (pad * 2)
             avail_w = box_width - (pad * 2)
-            start_y = y + pad + (avail_h - total_text_h) / 2
+            start_y = y + pad + (avail_h - total_visual_h) / 2
             
             for i, line in enumerate(lines):
                 if not line.strip():
                     continue
                 
-                line_y = start_y + (i * line_height_px)
+                line_cy = start_y + (i * (visual_line_h + line_gap)) + (visual_line_h / 2)
                 
                 if align == "center":
                     line_cx = x + pad + (avail_w / 2)
-                    anchor = "mt"
+                    anchor = "mm"
                 elif align == "right":
                     line_cx = x + box_width - pad
-                    anchor = "rt"
+                    anchor = "rm"
                 else:
                     line_cx = x + pad
-                    anchor = "lt"
+                    anchor = "lm"
                     
-                draw.text((line_cx, line_y), line, fill=text_color, font=font, anchor=anchor)
+                draw.text((line_cx, line_cy), line, fill=text_color, font=font, anchor=anchor)
             
         elif item_type == "barcode":
             data = item.get("data", "")
