@@ -193,13 +193,21 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 return apply_font_weight(f, weight)
 
             if item.get("fit_to_width") and box_width:
+                # NEW: Constrain by target height to prevent vertical overflow 
+                # Fall back to the main canvas height if the item height isn't explicitly set
+                target_height = item.get("height", height)
+                
                 low, high, best_size = 6, 800, size
                 lines_to_test = text.split('\n')
+                
                 while low <= high:
                     mid = (low + high) // 2
                     t_font = get_font(mid)
+                    
                     tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    if tw <= (box_width - (pad * 2)):
+                    th = mid * 1.2 * len(lines_to_test)
+                    
+                    if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
                         best_size = mid
                         low = mid + 1
                     else:

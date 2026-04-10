@@ -179,7 +179,7 @@ export default function PropertiesPanel() {
   };
 
   const handleFitToWidth = () => {
-    if (!selectedItem || !selectedItem.width || !selectedItem.text) return;
+    if (!selectedItem || !selectedItem.text) return;
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -188,6 +188,9 @@ export default function PropertiesPanel() {
     
     const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
     const targetWidth = canvasWidth - (pad * 2);
+    
+    // NEW: Constrain by canvas height to prevent vertical overflow on narrow labels
+    const targetHeight = canvasHeight - (pad * 2);
 
     let low = 6;
     let high = 800; 
@@ -204,7 +207,10 @@ export default function PropertiesPanel() {
         if (w > maxLineWidth) maxLineWidth = w;
       }
       
-      if (maxLineWidth <= targetWidth) {
+      // Calculate total text height (1.2 is the standard line-height multiplier)
+      let totalTextHeight = mid * 1.2 * lines.length;
+      
+      if (maxLineWidth <= targetWidth && totalTextHeight <= targetHeight) {
         bestSize = mid;
         low = mid + 1;
       } else {
@@ -214,9 +220,11 @@ export default function PropertiesPanel() {
     
     updateItem(selectedId, { 
       x: 0, 
+      y: 0, // Automatically snap to top
       width: canvasWidth,
+      height: canvasHeight, // Fill the whole canvas bounding box to ensure perfect vertical centering
       size: bestSize, 
-      no_wrap: true, 
+      no_wrap: lines.length === 1, // Only force no_wrap if it's actually 1 line
       fit_to_width: true,
       align: 'center'
     });
