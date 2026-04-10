@@ -22,6 +22,7 @@ from .models import PrinterProfile, Font, Project, Settings, Address
 from ..rendering.template import render_template
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
+from .ai_agent import router as ai_router
 from .. import reporting
 
 os.makedirs("data", exist_ok=True)
@@ -71,6 +72,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(ai_router)
 
 STANDARD_PRESETS = [
     {"name": "Standard Tape (Full Width)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "border": "none"},

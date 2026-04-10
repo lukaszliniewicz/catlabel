@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { AlignCenter, MoveHorizontal, Maximize2 } from 'lucide-react';
+import AIAssistant from './AIAssistant';
 
 const pxToMm = (px) => (px / 8).toFixed(1);
 const mmToPx = (mm) => Math.round(mm * 8);
@@ -270,6 +271,14 @@ export default function PropertiesPanel() {
           `}
         >
           Canvas & Printer
+        </button>
+        <button 
+          onClick={() => setActiveTab('assistant')}
+          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors
+            ${activeTab === 'assistant' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+          `}
+        >
+          Assistant
         </button>
       </div>
 
@@ -658,6 +667,11 @@ export default function PropertiesPanel() {
               </button>
             </div>
           </>
+        )}
+
+        {/* === ASSISTANT TAB === */}
+        {activeTab === 'assistant' && (
+           <AIAssistant />
         )}
       </div>
     </div>

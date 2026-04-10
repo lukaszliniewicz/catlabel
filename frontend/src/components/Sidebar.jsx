@@ -4,6 +4,7 @@ import IconPicker from './IconPicker';
 import HtmlPickerModal from './HtmlPickerModal';
 import BatchPrintModal from './BatchPrintModal';
 import ShippingLabelModal from './ShippingLabelModal';
+import DateToolModal from './DateToolModal';
 import { Trash, ChevronDown, ChevronRight, LayoutTemplate } from 'lucide-react';
 
 export default function Sidebar() {
@@ -20,6 +21,7 @@ export default function Sidebar() {
   const [showHtmlPicker, setShowHtmlPicker] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [showShippingModal, setShowShippingModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -337,6 +339,7 @@ export default function Sidebar() {
         </button>
 
         <button onClick={handleAddText} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Text</button>
+        <button onClick={() => setShowDateModal(true)} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Date</button>
         <button onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Icon + Text</button>
         <button onClick={() => setShowHtmlPicker(true)} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Custom HTML Element</button>
         <button onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Icon Only</button>
@@ -374,6 +377,7 @@ export default function Sidebar() {
 
       {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
       {showShippingModal && <ShippingLabelModal onClose={() => setShowShippingModal(false)} />}
+      {showDateModal && <DateToolModal onClose={() => setShowDateModal(false)} />}
     </div>
   );
 }

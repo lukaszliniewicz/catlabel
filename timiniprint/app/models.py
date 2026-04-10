@@ -36,3 +36,11 @@ class Address(SQLModel, table=True):
     zip: str
     city: str
     country: str
+
+class AIConfig(SQLModel, table=True):
+    id: Optional[int] = Field(default=1, primary_key=True)
+    provider: str = "openai" # 'openai', 'gemini', 'vertex_ai', 'custom'
+    model_name: str = "gpt-4o"
+    api_key: str = ""
+    base_url: str = ""
+    use_env: bool = False
