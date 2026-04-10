@@ -51,7 +51,11 @@ class PrinterClient:
     async def connect(self):
         if await self.transport.connect(self.device.address):
             if not self.char_uuid:
-                await self.find_characteristics()
+                try:
+                    await self.find_characteristics()
+                except Exception as e:
+                    logger.error(f"Failed to find printer characteristics: {e}")
+                    return False
             logger.info(f"Successfully connected to {self.device.name}")
             return True
         logger.error("Connection failed.")
@@ -62,23 +66,18 @@ class PrinterClient:
         logger.info(f"Printer {self.device.name} disconnected.")
 
     async def find_characteristics(self):
-        services = {}
+        if not self.transport.client or not self.transport.client.services:
+            raise PrinterException("No services found on device.")
+            
         for service in self.transport.client.services:
-            s = []
             for char in service.characteristics:
-                s.append({
-                    "id": char.uuid,
-                    "handle": char.handle,
-                    "properties": char.properties
-                })
+                props = char.properties
+                # Niimbots use a characteristic that supports write-without-response and notify
+                if 'write-without-response' in props and 'notify' in props:
+                    self.char_uuid = char.uuid
+                    logger.debug(f"Found Niimbot characteristic: {self.char_uuid}")
+                    return
 
-            services[service.uuid] = s
-
-        for service_id, characteristics in services.items():
-            if len(characteristics) == 1:  # Check if there's exactly one characteristic
-                props = characteristics[0]['properties']
-                if 'read' in props and 'write-without-response' in props and 'notify' in props:
-                    self.char_uuid = characteristics[0]['id']  # Return the service ID that meets the criteria
         if not self.char_uuid:
             raise PrinterException("Cannot find bluetooth characteristics.")
 
