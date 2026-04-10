@@ -14,6 +14,20 @@ This document is optimized for LLM Agents and programmatic generation. It explai
 
 ---
 
+## Dynamic Context (CRITICAL FOR AGENTS)
+Before generating new payloads or guessing standard sizes, you should query `GET /api/agent/context`.
+This will provide you with:
+1. `1mm = 8px` conversion rules and padding logic.
+2. Standard presets (e.g., Gridfinity is 42x12mm -> 336x96px).
+3. The exact list of `.ttf` fonts installed on the user's system.
+4. The IDs and Names of the user's saved Projects.
+
+## Sizing & Padding Rules
+*   **Narrow Labels**: If the user asks for a "12mm label", set the canvas width to `96` (12 * 8). The backend will automatically center and pad the 12mm design onto the 48mm hardware tape. **Do not** manually calculate offsets to center a small design on a 384px canvas. Let the engine handle the padding.
+*   **Coordinates**: All `x`, `y`, `width`, `height`, and `size` properties in your JSON payload must be provided in **pixels**, not millimeters. Multiply requested mm by 8.
+
+---
+
 ## 1. Endpoints
 
 ### `POST /api/print/direct`

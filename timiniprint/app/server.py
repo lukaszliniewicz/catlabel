@@ -45,6 +45,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+STANDARD_PRESETS = [
+    {"name": "Standard Tape (Full Width)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "border": "none"},
+    {"name": "Gridfinity Bin Label (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "border": "box"},
+    {"name": "Cable Flag / Wire Wrap (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "border": "cut_line"},
+    {"name": "Folder Tab (50x15mm)", "width_mm": 50, "height_mm": 15, "is_rotated": False, "border": "box"},
+    {"name": "A6 Shipping (105x148mm - Oversize)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "box"},
+]
+
+@app.get("/api/presets")
+def list_presets():
+    """Provides standard layout dimensions to the UI and LLM."""
+    return STANDARD_PRESETS
+
+@app.get("/api/agent/context")
+def get_agent_context():
+    """
+    Highly optimized endpoint specifically for LLM System Prompt injection.
+    Gives the agent total situational awareness of the physical layout rules and database state.
+    """
+    with Session(engine) as session:
+        # Get active settings & hardware limits
+        settings = session.get(Settings, 1) or Settings()
+        
+        # Get available fonts to prevent LLM hallucination
+        fonts = session.exec(select(Font)).all()
+        font_names = [f.name for f in fonts]
+        
+        # Get user's saved projects so the LLM can reference or print them by ID
+        projects = session.exec(select(Project)).all()
+        project_summaries = [{"id": p.id, "name": p.name} for p in projects]
+
+    return {
+        "engine_rules": {
+            "coordinate_system": "1 mm = 8 pixels. ALWAYS use pixels for canvas width/height and element x/y/width/height.",
+            "hardware_width_mm": settings.print_width_mm,
+            "hardware_width_px": int(settings.print_width_mm * 8),
+            "behavior_padding": "If you define a canvas narrower than the hardware width, the engine will automatically center and pad it with white space. Do NOT stretch elements to fit the hardware if the user wants a small label.",
+            "behavior_oversize": "If canvas width exceeds hardware width and splitMode=false, the engine scales it down. If splitMode=true, it slices it into parallel printable strips.",
+            "feed_axis": "Thermal tape is infinitely long. Leave splitMode=false and set canvas height to whatever you need for long banners."
+        },
+        "standard_presets": STANDARD_PRESETS,
+        "available_fonts": font_names,
+        "saved_projects": project_summaries,
+        "global_default_font": settings.default_font
+    }
+
 class ProjectCreate(BaseModel):
     name: str
     canvas_state: Dict[str, Any]

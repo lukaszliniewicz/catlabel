@@ -6,16 +6,9 @@ import BatchPrintModal from './BatchPrintModal';
 import ShippingLabelModal from './ShippingLabelModal';
 import { Trash, ChevronDown, ChevronRight, LayoutTemplate } from 'lucide-react';
 
-const PRESETS = [
-  { name: 'Standard Tape (Full Width)', w: 48, h: 48, rotated: false },
-  { name: 'Gridfinity Bin Label (42x12mm)', w: 42, h: 12, rotated: false, border: 'box' },
-  { name: 'Cable Flag / Wire Wrap (30x48mm)', w: 30, h: 48, rotated: false, border: 'cut_line' },
-  { name: 'Folder Tab (50x15mm)', w: 50, h: 15, rotated: false, border: 'box' },
-  { name: 'A6 Shipping (105x148mm - Oversize)', w: 105, h: 148, rotated: false, splitMode: true, border: 'box' },
-];
-
 export default function Sidebar() {
   const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects } = useStore();
+  const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -32,6 +25,11 @@ export default function Sidebar() {
     useStore.getState().fetchProjects();
     useStore.getState().fetchSettings(); // <-- Load DB settings
     useStore.getState().fetchAddresses();
+    
+    fetch('/api/presets')
+      .then(res => res.json())
+      .then(data => setPresets(data))
+      .catch(e => console.error(e));
   }, []);
 
   const handleAddText = () => {
@@ -263,14 +261,17 @@ export default function Sidebar() {
         <select 
             className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
             onChange={(e) => {
-              if(e.target.value !== "") applyPreset(PRESETS[e.target.value]);
+              if(e.target.value !== "") {
+                const p = presets[e.target.value];
+                applyPreset({ w: p.width_mm, h: p.height_mm, rotated: p.is_rotated, splitMode: p.split_mode, border: p.border });
+              }
               e.target.value = "";
             }}
             defaultValue=""
           >
             <option value="" disabled>Select physical layout...</option>
-            {PRESETS.map((p, idx) => (
-              <option key={idx} value={idx}>{p.name}</option>
+            {presets.map((p, idx) => (
+              <option key={idx} value={idx}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
             ))}
         </select>
       </div>
