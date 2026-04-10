@@ -164,7 +164,7 @@ export default function PropertiesPanel() {
     if (!itemH && selectedItem.type === 'text') {
       const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      itemH = (selectedItem.size * (1 + 1.2 * (numLines - 1))) + (pad * 2);
+      itemH = (selectedItem.size * 1.2 * numLines) + (pad * 2);
     }
     
     updateItem(selectedId, { 
@@ -188,8 +188,6 @@ export default function PropertiesPanel() {
     
     const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
     const targetWidth = canvasWidth - (pad * 2);
-    
-    // NEW: Constrain by canvas height to prevent vertical overflow on narrow labels
     const targetHeight = canvasHeight - (pad * 2);
 
     let low = 6;
@@ -202,15 +200,20 @@ export default function PropertiesPanel() {
       ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; 
       
       let maxLineWidth = 0;
+      let maxVisualHeight = 0;
+      
       for (let l of lines) {
-        let w = ctx.measureText(l).width;
-        if (w > maxLineWidth) maxLineWidth = w;
+        const metrics = ctx.measureText(l);
+        if (metrics.width > maxLineWidth) maxLineWidth = metrics.width;
+        const h = (metrics.actualBoundingBoxAscent || (mid * 0.8)) + (metrics.actualBoundingBoxDescent || (mid * 0.2));
+        if (h > maxVisualHeight) maxVisualHeight = h;
       }
       
-      // Calculate total text height while only applying line-height spacing between lines
-      let totalTextHeight = mid * (1 + 1.2 * (lines.length - 1));
+      let totalVisualHeight = (lines.length > 1) 
+        ? ((lines.length - 1) * (mid * 1.2) + maxVisualHeight) 
+        : maxVisualHeight;
       
-      if (maxLineWidth <= targetWidth && totalTextHeight <= targetHeight) {
+      if (maxLineWidth <= targetWidth && totalVisualHeight <= targetHeight) {
         bestSize = mid;
         low = mid + 1;
       } else {
@@ -220,11 +223,11 @@ export default function PropertiesPanel() {
     
     updateItem(selectedId, { 
       x: 0, 
-      y: 0, // Automatically snap to top
+      y: 0, 
       width: canvasWidth,
-      height: canvasHeight, // Fill the whole canvas bounding box to ensure perfect vertical centering
+      height: canvasHeight, 
       size: bestSize, 
-      no_wrap: lines.length === 1, // Only force no_wrap if it's actually 1 line
+      no_wrap: lines.length === 1,
       fit_to_width: true,
       align: 'center'
     });

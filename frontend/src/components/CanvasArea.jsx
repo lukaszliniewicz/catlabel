@@ -131,7 +131,7 @@ export default function CanvasArea() {
               
               const numLines = item.text ? String(item.text).split('\n').length : 1;
               const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
-              const approxHeight = item.height || (item.type === 'text' ? (item.size * (1 + 1.2 * (numLines - 1))) + (pad * 2) : 50);
+              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.2 * numLines) + (pad * 2) : 50);
               const yOffset = item.y;
                 
               const visualW = item.width || 100;

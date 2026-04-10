@@ -193,8 +193,6 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 return apply_font_weight(f, weight)
 
             if item.get("fit_to_width") and box_width:
-                # NEW: Constrain by target height to prevent vertical overflow 
-                # Fall back to the main canvas height if the item height isn't explicitly set
                 target_height = item.get("height", height)
                 
                 low, high, best_size = 6, 800, size
@@ -205,7 +203,16 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                     t_font = get_font(mid)
                     
                     tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    th = mid * (1 + 1.2 * (len(lines_to_test) - 1))
+                    
+                    visual_height = mid * 1.0
+                    bbox = t_font.getbbox("Mjg|")
+                    if bbox:
+                        visual_height = bbox[3] - bbox[1]
+                    
+                    if len(lines_to_test) > 1:
+                        th = (len(lines_to_test) - 1) * (mid * 1.2) + visual_height
+                    else:
+                        th = visual_height
                     
                     if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
                         best_size = mid
@@ -240,8 +247,8 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 
             num_lines = max(1, len(lines))
             
-            line_spacing = size * 1.2
-            total_text_h = size + line_spacing * (num_lines - 1)
+            line_height_px = size * 1.2
+            total_text_h = line_height_px * num_lines
             
             approx_height = item.get("height")
             if not approx_height:
@@ -262,21 +269,21 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             for line in lines:
                 if not line.strip():
-                    y_offset += line_spacing
+                    y_offset += line_height_px
                     continue
                 
+                line_w = safe_getlength(font, line)
                 if align == "center":
-                    line_x = x + pad + (box_width - (pad * 2)) / 2
-                    anchor = "mm"
+                    line_x = x + pad + (box_width - (pad * 2) - line_w) / 2
                 elif align == "right":
-                    line_x = x + box_width - pad
-                    anchor = "rm"
+                    line_x = x + box_width - pad - line_w
                 else:
                     line_x = x + pad
-                    anchor = "lm"
                     
-                draw.text((line_x, y_offset + (size / 2)), line, fill=text_color, font=font, anchor=anchor)
-                y_offset += line_spacing
+                draw_y = y_offset + (line_height_px - size) / 2
+                
+                draw.text((line_x, draw_y), line, fill=text_color, font=font, anchor="lt")
+                y_offset += line_height_px
             
         elif item_type == "barcode":
             data = item.get("data", "")
