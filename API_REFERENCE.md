@@ -7,8 +7,10 @@ This document is optimized for LLM Agents and programmatic generation. It explai
 *   **Coordinate System**: Canvas coordinates are in pixels. **1 mm ≈ 8 pixels**. Standard 2-inch tape printable width is **384 pixels** (48mm).
 *   **Spatial Math Bypass**: Avoid calculating exact `x` offsets to center text. Instead, set `x: 0`, `width: 384`, and `align: "center"`.
 *   **Dynamic Height**: Omit the `height` property for text elements unless you want to force a strict bounding box. The engine will dynamically calculate vertical height based on text size and line breaks.
-*   **Oversize / Continuous Labels**: To print long, continuous banners that exceed standard dimensions, set `"splitMode": true` in the `canvas_state` and expand your `height` or `width` safely.
-*   **Default Font**: If `font` is omitted, the engine automatically falls back to the user's globally configured Default Font (stored in the UI settings).
+*   **Banners vs. Oversize (CRITICAL)**: 
+    *   **Long Banners**: Thermal printers can print infinitely along the feed axis. To print a long banner on a *single* strip of tape, set `"isRotated": true`, make the `width` as long as you need (e.g., 1000), and keep `height: 384`. **Do NOT use splitMode**.
+    *   **Giant Multi-Strip Decals**: Only set `"splitMode": true` if the user explicitly wants a giant graphic (like a huge QR code) stitched together from *multiple parallel strips of tape*. If the user's intent is ambiguous, ask them to clarify.
+*   **Default Font**: If `font` is omitted, the engine automatically falls back to the user's globally configured Default Font.
 
 ---
 
@@ -135,19 +137,38 @@ Use Jinja-like `{{ var }}` syntax for dynamic replacement.
 }
 ```
 
-### Scenario B: The Horizontal Banner
+### Scenario B: The Horizontal Banner (Single Tape Width)
 **Request:** *"Print a continuous banner saying 'FRAGILE - DO NOT DROP'."*
-**Agent Thought Process:** A standard label is 384px. A banner needs continuous feeding. I will set `isRotated: true`, `splitMode: true`, and define a very long canvas width (e.g., 1000px).
+**Agent Thought Process:** A standard label is 384px wide. The user just wants a long text banner. Thermal printers feed infinitely, so I don't need `splitMode`. I will set `isRotated: true`, make the canvas width long enough to fit the text (e.g., 1000px), and keep the height at exactly 384px so it fits perfectly on one strip of tape.
 **Payload:**
 ```json
 {
   "mac_address": "XX:XX:XX:XX:XX:XX",
   "canvas_state": {
-    "width": 1000, "height": 384, "isRotated": true, "splitMode": true,
+    "width": 1000, "height": 384, "isRotated": true, "splitMode": false,
     "items": [
       {
         "id": "banner_text", "type": "text", "text": "FRAGILE - DO NOT DROP",
         "x": 0, "y": 80, "width": 1000, "size": 150, "align": "center", "fit_to_width": true, "no_wrap": true
+      }
+    ]
+  }
+}
+```
+
+### Scenario C: The Oversize Multi-Strip Decal
+**Request:** *"Print a giant 100x100mm QR code for my warehouse wall."*
+**Agent Thought Process:** 100mm is ~800 pixels. The printer head is only 384 pixels wide. Because both the width and height exceed a single strip of tape, I *must* use `splitMode: true`. The backend will automatically slice the 800x800 image into 3 parallel strips that the user can stick together.
+**Payload:**
+```json
+{
+  "mac_address": "XX:XX:XX:XX:XX:XX",
+  "canvas_state": {
+    "width": 800, "height": 800, "isRotated": false, "splitMode": true,
+    "items": [
+      {
+        "id": "qr_1", "type": "qrcode", "data": "WH-A1-BIN-99",
+        "x": 0, "y": 0, "width": 800, "height": 800
       }
     ]
   }
