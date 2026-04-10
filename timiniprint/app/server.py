@@ -3,6 +3,8 @@ import json
 import os
 import base64
 import urllib.request
+import zipfile
+import io
 from io import BytesIO
 import shutil
 from typing import Dict, Any, List, Optional
@@ -28,24 +30,39 @@ engine = create_engine(sqlite_url, echo=False)
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-DEFAULT_FONTS = {
-    "Roboto-Regular.ttf": "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Regular.ttf",
-    "Roboto-Bold.ttf": "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Bold.ttf",
-    "FiraCode-Bold.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/firacode/FiraCode-Bold.ttf",
-    "Oswald-Bold.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/static/Oswald-Bold.ttf"
-}
-
 def download_default_fonts():
-    """Silently downloads missing default fonts on first boot."""
+    """Silently downloads missing default fonts on first boot via Google Fonts."""
+    fonts_to_download = {
+        "Roboto": ["Roboto-Regular.ttf", "Roboto-Bold.ttf"],
+        "Oswald": ["Oswald-Bold.ttf"],
+        "Fira+Code": ["FiraCode-Bold.ttf"]
+    }
+    
     os.makedirs("data/fonts", exist_ok=True)
-    for filename, url in DEFAULT_FONTS.items():
-        filepath = os.path.join("data/fonts", filename)
-        if not os.path.exists(filepath):
-            try:
-                print(f"Downloading default font: {filename}...")
-                urllib.request.urlretrieve(url, filepath)
-            except Exception as e:
-                print(f"Failed to download {filename}: {e}")
+    
+    for family, files_needed in fonts_to_download.items():
+        # Check if we already have all needed files for this family
+        if all(os.path.exists(os.path.join("data/fonts", f)) for f in files_needed):
+            continue
+            
+        url = f"https://fonts.google.com/download?family={family}"
+        try:
+            print(f"Downloading font family: {family.replace('+', ' ')}...")
+            # We supply a generic User-Agent so Google doesn't block the request
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req) as response:
+                # Read the ZIP entirely into memory
+                with zipfile.ZipFile(io.BytesIO(response.read())) as z:
+                    for file_in_zip in z.namelist():
+                        # Extract basename to ignore internal ZIP folders like 'static/'
+                        basename = os.path.basename(file_in_zip)
+                        if basename in files_needed:
+                            target_path = os.path.join("data/fonts", basename)
+                            if not os.path.exists(target_path):
+                                with open(target_path, "wb") as f:
+                                    f.write(z.read(file_in_zip))
+        except Exception as e:
+            print(f"Failed to download {family}: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
