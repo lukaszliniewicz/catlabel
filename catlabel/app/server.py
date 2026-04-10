@@ -104,12 +104,12 @@ app.include_router(ai_router)
 
 STANDARD_PRESETS = [
     {"name": "Standard Tape (Full Width 48mm)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "border": "none"},
-    {"name": "Niimbot D11 (12x40mm)", "width_mm": 40, "height_mm": 12, "is_rotated": True, "border": "box"},
-    {"name": "Niimbot D11 (15x30mm)", "width_mm": 30, "height_mm": 15, "is_rotated": True, "border": "box"},
-    {"name": "Niimbot B1/B21 (50x30mm)", "width_mm": 50, "height_mm": 30, "is_rotated": True, "border": "box"},
-    {"name": "Gridfinity Bin Label (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "border": "box"},
+    {"name": "Niimbot D11 (12x40mm)", "width_mm": 40, "height_mm": 12, "is_rotated": True, "border": "none"},
+    {"name": "Niimbot D11 (15x30mm)", "width_mm": 30, "height_mm": 15, "is_rotated": True, "border": "none"},
+    {"name": "Niimbot B1/B21 (50x30mm)", "width_mm": 50, "height_mm": 30, "is_rotated": True, "border": "none"},
+    {"name": "Gridfinity Bin Label (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "border": "none"},
     {"name": "Cable Flag / Wire Wrap (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "border": "cut_line"},
-    {"name": "A6 Shipping (105x148mm - Oversize)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "box"},
+    {"name": "A6 Shipping (105x148mm - Oversize)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "none"},
 ]
 
 @app.get("/api/presets")

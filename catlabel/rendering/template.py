@@ -205,7 +205,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                     t_font = get_font(mid)
                     
                     tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    th = mid * 1.2 * len(lines_to_test)
+                    th = mid * (1 + 1.2 * (len(lines_to_test) - 1))
                     
                     if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
                         best_size = mid
@@ -240,9 +240,12 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 
             num_lines = max(1, len(lines))
             
+            line_spacing = size * 1.2
+            total_text_h = size + line_spacing * (num_lines - 1)
+            
             approx_height = item.get("height")
             if not approx_height:
-                approx_height = int(size * 1.2 * num_lines) + (pad * 2)
+                approx_height = int(total_text_h) + (pad * 2)
             else:
                 approx_height = int(approx_height)
                 
@@ -253,9 +256,6 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
 
             if bg_color:
                 draw.rectangle([x, y, x + box_width, y + approx_height], fill=bg_color)
-            
-            line_spacing = size * 1.2
-            total_text_h = line_spacing * num_lines
             
             start_y = y + pad + ((approx_height - (pad * 2)) - total_text_h) / 2
             y_offset = start_y
@@ -275,7 +275,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                     line_x = x + pad
                     anchor = "lm"
                     
-                draw.text((line_x, y_offset + (line_spacing / 2)), line, fill=text_color, font=font, anchor=anchor)
+                draw.text((line_x, y_offset + (size / 2)), line, fill=text_color, font=font, anchor=anchor)
                 y_offset += line_spacing
             
         elif item_type == "barcode":

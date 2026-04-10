@@ -164,7 +164,7 @@ export default function PropertiesPanel() {
     if (!itemH && selectedItem.type === 'text') {
       const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      itemH = (selectedItem.size * 1.2 * numLines) + (pad * 2);
+      itemH = (selectedItem.size * (1 + 1.2 * (numLines - 1))) + (pad * 2);
     }
     
     updateItem(selectedId, { 
@@ -207,8 +207,8 @@ export default function PropertiesPanel() {
         if (w > maxLineWidth) maxLineWidth = w;
       }
       
-      // Calculate total text height (1.2 is the standard line-height multiplier)
-      let totalTextHeight = mid * 1.2 * lines.length;
+      // Calculate total text height while only applying line-height spacing between lines
+      let totalTextHeight = mid * (1 + 1.2 * (lines.length - 1));
       
       if (maxLineWidth <= targetWidth && totalTextHeight <= targetHeight) {
         bestSize = mid;
