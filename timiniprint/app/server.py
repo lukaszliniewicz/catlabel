@@ -29,6 +29,8 @@ sqlite_file_name = "data/timiniprint.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=False)
 
+_scanned_devices_cache: List[Any] = []
+
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
@@ -138,17 +140,25 @@ class BatchPrintRequest(BaseModel):
 
 async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bool = False):
     """Handles scanning, continuous connection, and streaming multiple jobs efficiently."""
+    global _scanned_devices_cache
+    
     with Session(engine) as session:
         settings = session.get(Settings, 1) or Settings()
 
     registry = PrinterModelRegistry.load()
     resolver = DeviceResolver(registry)
     
-    devices, _ = await resolver.scan_printer_devices_with_failures(
-        include_classic=True, include_ble=True
-    )
+    # 1. Try to fetch from recent scans first
+    target_device = next((d for d in _scanned_devices_cache if d.address == mac_address), None)
     
-    target_device = next((d for d in devices if d.address == mac_address), None)
+    # 2. If not found, scan the environment (e.g., first print after backend restart)
+    if not target_device:
+        devices, _ = await resolver.scan_printer_devices_with_failures(
+            include_classic=True, include_ble=True
+        )
+        _scanned_devices_cache = devices
+        target_device = next((d for d in _scanned_devices_cache if d.address == mac_address), None)
+        
     if not target_device:
         raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found. Is it turned on?")
         
@@ -434,12 +444,14 @@ def list_fonts():
 
 @app.get("/api/printers/scan")
 async def scan_printers():
+    global _scanned_devices_cache
     registry = PrinterModelRegistry.load()
     resolver = DeviceResolver(registry)
     devices, failures = await resolver.scan_printer_devices_with_failures(
         include_classic=True,
         include_ble=True,
     )
+    _scanned_devices_cache = devices
     
     results = []
     for device in devices:

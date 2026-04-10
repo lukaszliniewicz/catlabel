@@ -158,6 +158,7 @@ export default function PropertiesPanel() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
+    const fontWeight = selectedItem.weight || 700; // MUST Capture weight
     
     let low = 6;
     let high = 800; 
@@ -166,7 +167,7 @@ export default function PropertiesPanel() {
 
     while (low <= high) {
       let mid = Math.floor((low + high) / 2);
-      ctx.font = `${mid}px ${fontFamily}`; 
+      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; // Apply quotes & weight properly
       let textWidth = ctx.measureText(selectedItem.text.split('\n')[0]).width;
       
       if (textWidth <= targetWidth) {
@@ -487,13 +488,14 @@ export default function PropertiesPanel() {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
                         const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
+                        const fontWeight = selectedItem.weight || 700; // ADD WEIGHT
                         
                         let low = 6; let high = 400;
                         let bestScale = 1; let bestTextSize = selectedItem.size;
                         
                         while (low <= high) {
                             let mid = Math.floor((low + high) / 2);
-                            ctx.font = `${mid}px ${fontFamily}`;
+                            ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; // Apply properly
                             let tWidth = ctx.measureText(selectedItem.text || '').width;
                             let testScale = mid / selectedItem.size;
                             let totalW = (selectedItem.icon_size * testScale) + (15 * testScale) + tWidth;
@@ -508,7 +510,7 @@ export default function PropertiesPanel() {
                         
                         const newIconSize = selectedItem.icon_size * bestScale;
                         const newH = Math.max(newIconSize, bestTextSize);
-                        ctx.font = `${bestTextSize}px ${fontFamily}`;
+                        ctx.font = `${fontWeight} ${bestTextSize}px "${fontFamily}"`; // Apply properly here too
                         const actualTextW = ctx.measureText(selectedItem.text || '').width;
                         const finalW = newIconSize + (15 * bestScale) + actualTextW;
                         

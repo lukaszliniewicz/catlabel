@@ -165,13 +165,14 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             size = int(item.get("size", 24))
             font_name = item.get("font", default_font)
-            weight = int(item.get("weight", 700)) # Default to Bold (700) for thermal clarity
+            weight = int(item.get("weight", 700))
             box_width = item.get("width")
             no_wrap = item.get("no_wrap", False)
             invert = item.get("invert", False)
             bg_white = item.get("bg_white", False)
             text_color = "white" if invert else "black"
             bg_color = "black" if invert else ("white" if bg_white else None)
+            pad = 4 if bg_color else 0
             
             def get_font(f_size):
                 local_font_path = os.path.join("data", "fonts", font_name)
@@ -204,24 +205,23 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             if box_width:
                 if no_wrap:
-                    bbox = font.getbbox(text)
-                    left_offset = bbox[0]
-                    top_offset = bbox[1] 
-                    line_w = bbox[2] - bbox[0]
-                    line_h = bbox[3] - bbox[1]
+                    text_bbox = draw.textbbox((0, y + pad), text, font=font)
+                    line_w = text_bbox[2] - text_bbox[0]
                     
                     if align == "center":
-                        line_x = x + (box_width - line_w) / 2 - left_offset
+                        line_x = x + (box_width - line_w) / 2
                     elif align == "right":
-                        line_x = x + box_width - line_w - left_offset
+                        line_x = x + box_width - line_w
                     else:
-                        line_x = x - left_offset
+                        line_x = x
+                    
+                    text_bbox = draw.textbbox((line_x, y + pad), text, font=font)
                     
                     if bg_color:
-                        draw.rectangle([x, y, x + box_width, y + line_h + 4], fill=bg_color)
+                        draw.rectangle([x, y, x + box_width, text_bbox[3] + pad], fill=bg_color)
                     
-                    draw.text((line_x, y - top_offset), text, fill=text_color, font=font)
-                    actual_drawn_height = line_h + 4
+                    draw.text((line_x, y + pad), text, fill=text_color, font=font)
+                    actual_drawn_height = (text_bbox[3] - y) + pad
                 else:
                     lines = []
                     for paragraph in text.split('\n'):
@@ -229,7 +229,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                         current_line = []
                         for word in words:
                             test_line = ' '.join(current_line + [word]) if current_line else word
-                            bbox = font.getbbox(test_line)
+                            bbox = draw.textbbox((0, 0), test_line, font=font)
                             if (bbox[2] - bbox[0]) <= box_width:
                                 current_line.append(word)
                             else:
@@ -242,47 +242,39 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                         if current_line:
                             lines.append(' '.join(current_line))
                     
-                    y_offset = y
+                    y_offset = y + pad
+                    test_bbox = draw.textbbox((0, 0), "Ag", font=font)
+                    line_spacing = (test_bbox[3] - test_bbox[1]) * 1.15
+                    total_h = len(lines) * line_spacing
                     
-                    total_h = 0
-                    for line in lines:
-                        if not line.strip():
-                            total_h += size
-                        else:
-                            bbox = font.getbbox(line)
-                            total_h += int((bbox[3] - bbox[1]) * 1.15)
-                            
                     if bg_color:
-                        draw.rectangle([x, y, x + box_width, y + total_h], fill=bg_color)
+                        draw.rectangle([x, y, x + box_width, y + total_h + (pad * 2)], fill=bg_color)
                         
                     for j, line in enumerate(lines):
                         if not line.strip():
-                            y_offset += size
+                            y_offset += line_spacing
                             continue
                             
-                        bbox = font.getbbox(line)
-                        left_offset = bbox[0]
-                        top_offset = bbox[1]
-                        line_w = bbox[2] - bbox[0]
-                        line_h = bbox[3] - bbox[1]
+                        line_bbox = draw.textbbox((0, 0), line, font=font)
+                        line_w = line_bbox[2] - line_bbox[0]
                         
                         if align == "center":
-                            line_x = x + (box_width - line_w) / 2 - left_offset
+                            line_x = x + (box_width - line_w) / 2
                         elif align == "right":
-                            line_x = x + box_width - line_w - left_offset
+                            line_x = x + box_width - line_w
                         else:
-                            line_x = x - left_offset
+                            line_x = x
                             
-                        draw_y = y_offset - top_offset if j == 0 else y_offset
-                        draw.text((line_x, draw_y), line, fill=text_color, font=font)
-                        y_offset += int(line_h * 1.15) 
-                    actual_drawn_height = total_h
+                        draw.text((line_x, y_offset), line, fill=text_color, font=font)
+                        y_offset += line_spacing
+                        
+                    actual_drawn_height = int(total_h) + (pad * 2)
             else:
-                bbox = draw.multiline_textbbox((x, y), text, font=font)
+                bbox = draw.multiline_textbbox((x, y + pad), text, font=font)
                 if bg_color:
-                    draw.rectangle([bbox[0], bbox[1], bbox[2], bbox[3] + 4], fill=bg_color)
-                draw.multiline_text((x, y), text, fill=text_color, font=font)
-                actual_drawn_height = (bbox[3] - bbox[1]) + 4
+                    draw.rectangle([bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad], fill=bg_color)
+                draw.multiline_text((x, y + pad), text, fill=text_color, font=font, align=align)
+                actual_drawn_height = (bbox[3] - y) + pad
             
         elif item_type == "barcode":
             data = item.get("data", "")

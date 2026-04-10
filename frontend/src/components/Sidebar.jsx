@@ -21,6 +21,24 @@ export default function Sidebar() {
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [showShippingModal, setShowShippingModal] = useState(false);
 
+  const handleScan = async () => {
+    setIsScanning(true);
+    try {
+      const res = await fetch('/api/printers/scan');
+      const data = await res.json();
+      setPrinters(data.devices || []);
+      
+      // Auto-Select the first printer if none is already chosen
+      if (data.devices && data.devices.length > 0 && !useStore.getState().selectedPrinter) {
+        setSelectedPrinter(data.devices[0].address);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to scan for printers. Is the backend running on port 8000?");
+    }
+    setIsScanning(false);
+  };
+
   useEffect(() => {
     useStore.getState().fetchProjects();
     useStore.getState().fetchSettings(); // <-- Load DB settings
@@ -30,6 +48,9 @@ export default function Sidebar() {
       .then(res => res.json())
       .then(data => setPresets(data))
       .catch(e => console.error(e));
+
+    // Execute silent background scan on mount
+    handleScan();
   }, []);
 
   const handleAddText = () => {
@@ -123,19 +144,6 @@ export default function Sidebar() {
       alert("Failed to process PDF file.");
     }
     e.target.value = null;
-  };
-
-  const handleScan = async () => {
-    setIsScanning(true);
-    try {
-      const res = await fetch('/api/printers/scan');
-      const data = await res.json();
-      setPrinters(data.devices || []);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to scan for printers. Is the backend running on port 8000?");
-    }
-    setIsScanning(false);
   };
 
   const handleSaveProject = async () => {

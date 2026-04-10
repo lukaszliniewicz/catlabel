@@ -152,21 +152,26 @@ export default function CanvasArea() {
                 const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
                 const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
                 const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
+                
+                // Unify to 4px padding so we are 1:1 with Pillow
+                const pad = (item.invert || item.bg_white) ? 4 : 0;
+                const approxHeight = item.height || ((item.size * 1.2 * numLines) + (pad * 2));
+                
                 element = (
                   <Group {...commonProps}>
-                    {bgFill && <Rect width={item.width || canvasWidth} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
+                    {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
                     <Text 
                       text={item.text} 
+                      x={0}
+                      y={pad}
                       width={item.width} 
                       height={approxHeight} 
-                      verticalAlign="middle"
                       align={item.align || 'left'} 
                       fontFamily={fontFamily} 
                       fontStyle={(item.weight || 700).toString()}
                       wrap={item.no_wrap ? "none" : "word"} 
                       fontSize={item.size} 
                       fill={fill} 
-                      padding={textPadding / 2} 
                     />
                   </Group>
                 );
