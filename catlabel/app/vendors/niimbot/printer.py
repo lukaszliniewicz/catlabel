@@ -67,35 +67,28 @@ class PrinterClient:
 
     async def find_characteristics(self):
         if not self.transport.client:
-            raise PrinterException("BLE client is not connected.")
+            raise PrinterException("No services found on device (client is None).")
 
-        # 1. Explicitly fetch services to guarantee they are loaded (crucial for Win/Mac)
-        services_collection = await self.transport.client.get_services()
+        # Safely fetch services using either the method or the property
+        services_collection = None
+        if hasattr(self.transport.client, "get_services"):
+            services_collection = await self.transport.client.get_services()
+        elif hasattr(self.transport.client, "services"):
+            services_collection = self.transport.client.services
+            
         if not services_collection:
             raise PrinterException("No services found on device.")
-            
-        services_map = {}
-        for service in services_collection:
-            s =[]
-            for char in service.characteristics:
-                s.append({
-                    "id": char.uuid,
-                    "handle": char.handle,
-                    "properties": char.properties
-                })
-            services_map[service.uuid] = s
 
-        # 2. Restore NiimPrintX's strict structural matching logic
-        for service_id, characteristics in services_map.items():
-            if len(characteristics) == 1:  # Check if there's exactly one characteristic
-                props = characteristics[0]['properties']
-                # Must exactly contain all three capabilities to avoid matching OTA endpoints
+        # Pass 1: Strict Check (Niimbots typically have this specific characteristic)
+        for service in services_collection:
+            for char in service.characteristics:
+                props = char.properties
                 if 'read' in props and 'write-without-response' in props and 'notify' in props:
-                    self.char_uuid = characteristics[0]['id']
+                    self.char_uuid = char.uuid
                     logger.debug(f"Found Niimbot characteristic: {self.char_uuid}")
                     return
 
-        # Fallback if strict condition fails
+        # Pass 2: Fallback (Ignore read property)
         for service in services_collection:
             for char in service.characteristics:
                 props = char.properties
@@ -105,7 +98,7 @@ class PrinterClient:
                     return
 
         if not self.char_uuid:
-            raise PrinterException("Cannot find Niimbot bluetooth characteristics.")
+            raise PrinterException("Cannot find bluetooth characteristics.")
 
     async def send_command(self, request_code, data, timeout=10):
         try:
@@ -321,10 +314,13 @@ class PrinterClient:
 
     async def get_print_status(self):
         packet = await self.send_command(RequestCodeEnum.GET_PRINT_STATUS, b"\x01")
-        if not packet:
+        if not packet or not packet.data or len(packet.data) < 4:
             return None
-        page, progress1, progress2 = struct.unpack(">HBB", packet.data)
-        return {"page": page, "progress1": progress1, "progress2": progress2}
+        try:
+            page, progress1, progress2 = struct.unpack(">HBB", packet.data[:4])
+            return {"page": page, "progress1": progress1, "progress2": progress2}
+        except struct.error:
+            return None
 
     def __del__(self):
         if self.transport.client and self.transport.client.is_connected:

@@ -62,12 +62,22 @@ class BLETransport:
             self.client = BleakClient(device if device else address)
             
         try:
-            if not self.client.is_connected:
+            # Support both older bleak callables and modern properties safely
+            is_conn = self.client.is_connected
+            if callable(is_conn):
+                is_conn = await is_conn()
+                
+            if not is_conn:
                 await self.client.connect()
+                
         except Exception as e:
             logger.error(f"Bleak connection failed: {e}")
+            return False
             
-        return self.client.is_connected
+        is_conn = self.client.is_connected
+        if callable(is_conn):
+            return await is_conn()
+        return is_conn
 
     async def disconnect(self):
         if self.client and self.client.is_connected:
