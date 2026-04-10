@@ -13,7 +13,7 @@ import litellm
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] AI_AGENT: %(message)s")
 
-from .models import AIConfig
+from .models import AIConfig, AIConversation
 from .ai_tools import TOOLS_SCHEMA, execute_tool
 
 router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
@@ -71,6 +71,56 @@ def update_config(new_config: AIConfig):
         session.add(config)
         session.commit()
         return config
+
+@router.get("/history")
+def get_histories():
+    from .server import engine
+    with Session(engine) as session:
+        convos = session.exec(select(AIConversation).order_by(AIConversation.updated_at.desc())).all()
+        return [{"id": c.id, "title": c.title, "updated_at": c.updated_at} for c in convos]
+
+@router.get("/history/{conv_id}")
+def get_history(conv_id: int):
+    from .server import engine
+    with Session(engine) as session:
+        c = session.get(AIConversation, conv_id)
+        if not c: raise HTTPException(status_code=404)
+        return {"id": c.id, "title": c.title, "messages": json.loads(c.messages_json)}
+
+@router.post("/history")
+def create_history(data: dict):
+    from .server import engine
+    with Session(engine) as session:
+        title = data.get("title", "New Conversation")
+        messages = data.get("messages", [])
+        c = AIConversation(title=title, messages_json=json.dumps(messages))
+        session.add(c)
+        session.commit()
+        session.refresh(c)
+        return {"id": c.id}
+
+@router.put("/history/{conv_id}")
+def update_history(conv_id: int, data: dict):
+    from .server import engine
+    with Session(engine) as session:
+        c = session.get(AIConversation, conv_id)
+        if not c: raise HTTPException(status_code=404)
+        if "title" in data: c.title = data["title"]
+        if "messages" in data: c.messages_json = json.dumps(data["messages"])
+        c.updated_at = datetime.utcnow()
+        session.add(c)
+        session.commit()
+        return {"status": "ok"}
+
+@router.delete("/history/{conv_id}")
+def delete_history(conv_id: int):
+    from .server import engine
+    with Session(engine) as session:
+        c = session.get(AIConversation, conv_id)
+        if c:
+            session.delete(c)
+            session.commit()
+        return {"status": "ok"}
 
 @router.post("/chat")
 def chat_with_agent(req: ChatRequest):

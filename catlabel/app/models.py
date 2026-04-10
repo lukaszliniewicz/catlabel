@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from sqlmodel import Field, SQLModel
 
@@ -44,3 +45,9 @@ class AIConfig(SQLModel, table=True):
     api_key: str = ""
     base_url: str = ""
     use_env: bool = False
+
+class AIConversation(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = "New Conversation"
+    messages_json: str = "[]"
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

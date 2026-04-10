@@ -109,6 +109,8 @@ export default function PropertiesPanel() {
   const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
+  const [panelWidth, setPanelWidth] = useState(320);
+
   // Tab State
   const [activeTab, setActiveTab] = useState('canvas');
   
@@ -132,6 +134,22 @@ export default function PropertiesPanel() {
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
+
+  const handleResizeMouseDown = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = panelWidth;
+    const onMouseMove = (moveEvent) => {
+      const deltaX = startX - moveEvent.clientX; // Moving left makes it wider
+      setPanelWidth(Math.max(250, Math.min(600, startWidth + deltaX)));
+    };
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors";
   const labelClass = "block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 truncate";
@@ -250,7 +268,14 @@ export default function PropertiesPanel() {
   }, [isRotated, printPx, splitMode]);
 
   return (
-    <div className="w-80 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300">
+    <div 
+      className="bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300 relative shrink-0"
+      style={{ width: panelWidth }}
+    >
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-50 transition-colors"
+        onMouseDown={handleResizeMouseDown}
+      />
       
       {/* TABS */}
       <div className="flex border-b border-neutral-200 dark:border-neutral-800">

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Send, Settings, Sparkles, Loader2, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, Settings, Sparkles, Loader2, Copy, Check, History, Trash, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AIConfigModal from './AIConfigModal';
@@ -62,8 +62,22 @@ export default function AIAssistant() {
   const [loading, setLoading] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  const [currentConvId, setCurrentConvId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [histories, setHistories] = useState([]);
 
   const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder } = useStore();
+
+  useEffect(() => {
+    fetchHistories();
+  }, []);
+
+  const fetchHistories = async () => {
+    const res = await fetch('/api/ai/history');
+    const data = await res.json();
+    setHistories(data);
+  };
 
   const handleCopyHistory = () => {
     const text = messages.map(m => {
@@ -83,6 +97,44 @@ export default function AIAssistant() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const saveConversation = async (msgs, convId = currentConvId) => {
+    try {
+      if (convId) {
+        await fetch(`/api/ai/history/${convId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: msgs })
+        });
+      } else {
+        const title = msgs.length > 1 ? msgs[1].content.substring(0, 30) + '...' : 'New Conversation';
+        const res = await fetch('/api/ai/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, messages: msgs })
+        });
+        const data = await res.json();
+        setCurrentConvId(data.id);
+        fetchHistories();
+      }
+    } catch (e) {
+      console.error("Failed to save AI history", e);
+    }
+  };
+
+  const loadHistory = async (id) => {
+    const res = await fetch(`/api/ai/history/${id}`);
+    const data = await res.json();
+    setMessages(data.messages);
+    setCurrentConvId(id);
+    setShowHistory(false);
+  };
+
+  const deleteHistory = async (id) => {
+    await fetch(`/api/ai/history/${id}`, { method: 'DELETE' });
+    if (currentConvId === id) setCurrentConvId(null);
+    fetchHistories();
   };
 
   const handleSend = async () => {
@@ -112,8 +164,9 @@ export default function AIAssistant() {
       if (data.error) {
         setMessages(prev =>[...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
       } else if (data.new_messages) {
-        // Correctly append all intermediate tool calls and the final response
-        setMessages(prev =>[...prev, ...data.new_messages]);
+        const finalMessages = [...newMessages, ...data.new_messages];
+        setMessages(finalMessages);
+        saveConversation(finalMessages, currentConvId);
         
         if (data.canvas_state) {
             setItems(data.canvas_state.items ||[]);
@@ -186,6 +239,9 @@ export default function AIAssistant() {
           <Sparkles size={18} className="text-blue-500" /> AI Assistant
         </h2>
         <div className="flex gap-1">
+          <button onClick={() => setShowHistory(!showHistory)} className={`p-1.5 transition-colors ${showHistory ? 'text-blue-500' : 'text-neutral-400 hover:text-neutral-900 dark:hover:text-white'}`} title="Chat History">
+            <History size={16} />
+          </button>
           <button onClick={handleCopyHistory} className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors" title="Copy Chat History">
             {copied ? <Check size={16} className="text-green-500"/> : <Copy size={16} />}
           </button>
@@ -195,18 +251,35 @@ export default function AIAssistant() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 pr-2 flex flex-col">
-        {messages.map((m, i) => (
-          <MessageRow key={i} m={m} />
-        ))}
-        {loading && (
-          <div className="flex justify-start my-2">
-            <div className="p-3 rounded-lg bg-neutral-100 dark:bg-neutral-900 text-neutral-500 flex items-center gap-2 text-sm">
-              <Loader2 size={14} className="animate-spin text-blue-500" /> Thinking & Executing Tools...
+      {showHistory ? (
+        <div className="flex-1 overflow-y-auto py-4 pr-2 flex flex-col">
+          <button onClick={() => { setMessages([{ role: 'assistant', content: 'Hi! Tell me what kind of label you want to design.' }]); setCurrentConvId(null); setShowHistory(false); }} className="mb-4 text-blue-500 font-bold text-xs uppercase tracking-widest flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors">
+            <Plus size={16} /> Start New Conversation
+          </button>
+          {histories.map(h => (
+            <div key={h.id} className="flex items-center justify-between p-3 border border-neutral-200 dark:border-neutral-800 mb-2 rounded cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors" onClick={() => loadHistory(h.id)}>
+              <div className="text-sm font-medium truncate flex-1 dark:text-white pr-4">{h.title}</div>
+              <button onClick={(e) => { e.stopPropagation(); deleteHistory(h.id); }} className="text-neutral-400 hover:text-red-500 transition-colors">
+                <Trash size={14} />
+              </button>
             </div>
-          </div>
-        )}
-      </div>
+          ))}
+          {histories.length === 0 && <div className="text-xs text-neutral-500 text-center mt-10">No saved conversations yet.</div>}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto py-4 pr-2 flex flex-col">
+          {messages.map((m, i) => (
+            <MessageRow key={i} m={m} />
+          ))}
+          {loading && (
+            <div className="flex justify-start my-2">
+              <div className="p-3 rounded-lg bg-neutral-100 dark:bg-neutral-900 text-neutral-500 flex items-center gap-2 text-sm">
+                <Loader2 size={14} className="animate-spin text-blue-500" /> Thinking & Executing Tools...
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 mt-auto">
         <form onSubmit={e => { e.preventDefault(); handleSend(); }} className="flex gap-2">

@@ -5,10 +5,14 @@ import HtmlPickerModal from './HtmlPickerModal';
 import BatchPrintModal from './BatchPrintModal';
 import ShippingLabelModal from './ShippingLabelModal';
 import DateToolModal from './DateToolModal';
-import { Trash, ChevronDown, ChevronRight, LayoutTemplate } from 'lucide-react';
+import { 
+  Trash, ChevronDown, ChevronRight, LayoutTemplate, 
+  Menu, Package, Type, Calendar, ImagePlus, Code, Smile, 
+  Barcode, QrCode, Image as ImageIcon, FileText, Printer, Wifi, Search, Archive
+} from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, isSidebarCollapsed, toggleSidebar } = useStore();
   const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -231,62 +235,86 @@ export default function Sidebar() {
     setIsPrinting(false);
   };
 
+  const SidebarButton = ({ icon: Icon, label, onClick, primary = false }) => (
+    <button 
+      onClick={onClick} 
+      title={isSidebarCollapsed ? label : undefined}
+      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium 
+        ${primary 
+          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40' 
+          : 'bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900'}`}
+    >
+      <Icon size={16} className="shrink-0" />
+      {!isSidebarCollapsed && <span className="truncate">{label}</span>}
+    </button>
+  );
+
   return (
-    <div className="w-72 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-6 flex flex-col gap-6 z-10 overflow-y-auto transition-colors duration-300">
-      <div>
-        <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white mb-1">CatLabel.</h1>
+    <div className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-4 flex flex-col gap-6 z-10 overflow-y-auto overflow-x-hidden transition-all duration-300 shrink-0`}>
+      <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} mb-2`}>
+        {!isSidebarCollapsed && <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white">CatLabel.</h1>}
+        <button onClick={toggleSidebar} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors flex-shrink-0">
+          <Menu size={24} />
+        </button>
+      </div>
+      
+      {!isSidebarCollapsed && (
         <div className="flex gap-3 text-[10px] uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
           <button onClick={() => setTheme('light')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'light' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Light</button>
           <button onClick={() => setTheme('dark')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'dark' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Dark</button>
           <button onClick={() => setTheme('auto')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'auto' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Auto</button>
         </div>
-      </div>
-      
-      <div className="space-y-3">
-        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
-        
-        {printers.length > 0 && (
+      )}
+
+      {!isSidebarCollapsed ? (
+        <div className="space-y-3">
+          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
+          {printers.length > 0 && (
+            <select 
+              className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors mb-2"
+              value={selectedPrinter || ''}
+              onChange={(e) => setSelectedPrinter(e.target.value)}
+            >
+              <option value="" disabled>Select a printer...</option>
+              {printers.map(p => (
+                <option key={p.address} value={p.address}>{p.name || p.display_address}</option>
+              ))}
+            </select>
+          )}
+          <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
+        </div>
+      ) : (
+        <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
+      )}
+
+      {!isSidebarCollapsed ? (
+        <div className="space-y-3">
+          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas Presets</h2>
           <select 
-            className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors mb-2"
-            value={selectedPrinter || ''}
-            onChange={(e) => setSelectedPrinter(e.target.value)}
-          >
-            <option value="" disabled>Select a printer...</option>
-            {printers.map(p => (
-              <option key={p.address} value={p.address}>{p.name || p.display_address}</option>
-            ))}
+              className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
+              onChange={(e) => {
+                if(e.target.value !== "") {
+                  const p = presets[e.target.value];
+                  applyPreset({ w: p.width_mm, h: p.height_mm, rotated: p.is_rotated, splitMode: p.split_mode, border: p.border });
+                }
+                e.target.value = "";
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>Select physical layout...</option>
+              {presets.map((p, idx) => (
+                <option key={idx} value={idx}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
+              ))}
           </select>
-        )}
-        <button 
-          onClick={handleScan} 
-          disabled={isScanning}
-          className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium disabled:opacity-50"
-        >
-          {isScanning ? 'Scanning...' : 'Scan for Printers'}
-        </button>
-      </div>
+        </div>
+      ) : (
+        <SidebarButton icon={LayoutTemplate} label="Presets (Expand to view)" onClick={toggleSidebar} />
+      )}
 
-      <div className="space-y-3">
-        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas Presets</h2>
-        <select 
-            className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
-            onChange={(e) => {
-              if(e.target.value !== "") {
-                const p = presets[e.target.value];
-                applyPreset({ w: p.width_mm, h: p.height_mm, rotated: p.is_rotated, splitMode: p.split_mode, border: p.border });
-              }
-              e.target.value = "";
-            }}
-            defaultValue=""
-          >
-            <option value="" disabled>Select physical layout...</option>
-            {presets.map((p, idx) => (
-              <option key={idx} value={idx}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
-            ))}
-        </select>
-      </div>
-
-      <div className="space-y-3">
+      {isSidebarCollapsed ? (
+        <SidebarButton icon={Archive} label="Saved Projects (Expand to view)" onClick={toggleSidebar} />
+      ) : (
+       <div className="space-y-3">
         <div 
           className="flex items-center justify-between cursor-pointer border-b border-neutral-100 dark:border-neutral-800 pb-2 group"
           onClick={() => setShowProjects(!showProjects)}
@@ -329,28 +357,41 @@ export default function Sidebar() {
             )}
           </div>
         )}
-      </div>
+       </div>
+      )}
 
       <div className="space-y-3">
-        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Tools</h2>
+        {!isSidebarCollapsed && <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Tools</h2>}
         
-        <button onClick={() => setShowShippingModal(true)} className="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-4 py-2 rounded-none hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-xs uppercase tracking-wider font-bold text-left mb-2">
-          + Shipping Label Wizard
-        </button>
+        <div className="mb-2">
+          <SidebarButton icon={Package} label="Shipping Wizard" onClick={() => setShowShippingModal(true)} primary />
+        </div>
 
-        <button onClick={handleAddText} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Text</button>
-        <button onClick={() => setShowDateModal(true)} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Date</button>
-        <button onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Icon + Text</button>
-        <button onClick={() => setShowHtmlPicker(true)} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Custom HTML Element</button>
-        <button onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Icon Only</button>
-        <button onClick={handleAddBarcode} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ Barcode</button>
-        <button onClick={() => addItem({ id: Date.now().toString(), type: 'qrcode', data: 'https://example.com', x: 50, y: 100, width: 120, height: 120 })} className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left">+ QR Code</button>
-        <label className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left cursor-pointer block">
-          + Image
+        <div className="space-y-1">
+          <SidebarButton icon={Type} label="Add Text" onClick={handleAddText} />
+          <SidebarButton icon={Calendar} label="Add Date" onClick={() => setShowDateModal(true)} />
+          <SidebarButton icon={ImagePlus} label="Icon + Text" onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} />
+          <SidebarButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
+          <SidebarButton icon={Smile} label="Icon Only" onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} />
+          <SidebarButton icon={Barcode} label="Barcode" onClick={handleAddBarcode} />
+          <SidebarButton icon={QrCode} label="QR Code" onClick={() => addItem({ id: Date.now().toString(), type: 'qrcode', data: 'https://example.com', x: 50, y: 100, width: 120, height: 120 })} />
+        </div>
+
+        <label 
+          title={isSidebarCollapsed ? "Add Image" : undefined}
+          className={`mt-1 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium cursor-pointer bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900`}
+        >
+          <ImageIcon size={16} className="shrink-0" />
+          {!isSidebarCollapsed && <span>+ Image</span>}
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
         </label>
-        <label className="w-full bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-4 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-xs uppercase tracking-wider font-medium text-left cursor-pointer block">
-          + PDF Document
+
+        <label 
+          title={isSidebarCollapsed ? "Add PDF" : undefined}
+          className={`mt-1 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium cursor-pointer bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900`}
+        >
+          <FileText size={16} className="shrink-0" />
+          {!isSidebarCollapsed && <span>+ PDF Doc</span>}
           <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
         </label>
       </div>
@@ -358,21 +399,13 @@ export default function Sidebar() {
       {showIconPicker && <IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} />}
       {showHtmlPicker && <HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} />}
 
-      <div className="mt-auto pt-6 space-y-3">
-        <button 
-          onClick={handlePrint}
-          disabled={isPrinting || !selectedPrinter}
-          className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 px-4 py-3 rounded-none hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isPrinting ? 'Printing...' : 'Print Label'}
-        </button>
-
-        <button 
-          onClick={() => setShowBatchModal(true)} 
-          className="w-full bg-transparent text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 px-4 py-3 rounded-none hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors text-xs uppercase tracking-widest font-bold"
-        >
-          Print Data Stream Batch
-        </button>
+      <div className="mt-auto pt-6 flex flex-col gap-2">
+        <div className={`w-full ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <SidebarButton icon={Printer} label={isPrinting ? 'Printing...' : 'Print Label'} onClick={handlePrint} primary />
+        </div>
+        <div className="w-full">
+          <SidebarButton icon={LayoutTemplate} label="Batch Print Stream" onClick={() => setShowBatchModal(true)} />
+        </div>
       </div>
 
       {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
