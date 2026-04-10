@@ -203,7 +203,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                     t_font = get_font(mid)
                     
                     tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    th = (mid * 0.75 * len(lines_to_test)) + (mid * 0.2 * (len(lines_to_test) - 1) if len(lines_to_test) > 1 else 0)
+                    th = mid * 1.1 * len(lines_to_test)
                     
                     if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
                         best_size = mid
@@ -237,9 +237,8 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 lines = wrapped_lines
                 
             num_lines = max(1, len(lines))
-            visual_line_h = size * 0.75
-            line_gap = size * 0.2
-            total_visual_h = (num_lines * visual_line_h) + ((num_lines - 1) * line_gap)
+            line_height_px = size * 1.1
+            total_visual_h = line_height_px * num_lines
             
             approx_height = item.get("height")
             if not approx_height:
@@ -257,13 +256,13 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             avail_h = approx_height - (pad * 2)
             avail_w = box_width - (pad * 2)
-            start_y = y + pad + (avail_h - total_visual_h) / 2
+            start_y = y + pad + (avail_h / 2) - (total_visual_h / 2)
             
             for i, line in enumerate(lines):
                 if not line.strip():
                     continue
                 
-                line_cy = start_y + (i * (visual_line_h + line_gap)) + (visual_line_h / 2)
+                line_cy = start_y + (i * line_height_px) + (line_height_px / 2)
                 
                 if align == "center":
                     line_cx = x + pad + (avail_w / 2)

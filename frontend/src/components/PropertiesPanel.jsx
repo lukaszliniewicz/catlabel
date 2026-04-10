@@ -164,7 +164,7 @@ export default function PropertiesPanel() {
     if (!itemH && selectedItem.type === 'text') {
       const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      itemH = (selectedItem.size * 0.75 * numLines) + (pad * 2);
+      itemH = (selectedItem.size * 1.1 * numLines) + (pad * 2);
     }
     
     updateItem(selectedId, { 
@@ -204,9 +204,7 @@ export default function PropertiesPanel() {
         maxLineWidth = Math.max(maxLineWidth, ctx.measureText(l).width);
       }
       
-      // Use 0.75 multiplier to approximate true visual ink height (Cap height + baseline)
-      // rather than the full em-square which artificially restricts growth.
-      let textBlockHeight = (mid * 0.75 * lines.length) + (lines.length > 1 ? mid * 0.2 * (lines.length - 1) : 0);
+      let textBlockHeight = mid * 1.1 * lines.length;
       
       if (maxLineWidth <= targetWidth && textBlockHeight <= targetHeight) {
         bestSize = mid;
@@ -222,7 +220,7 @@ export default function PropertiesPanel() {
       finalMaxW = Math.max(finalMaxW, ctx.measureText(l).width);
     }
     
-    const finalInkHeight = (bestSize * 0.75 * lines.length) + (lines.length > 1 ? bestSize * 0.2 * (lines.length - 1) : 0);
+    const finalInkHeight = bestSize * 1.1 * lines.length;
     const finalBoxWidth = finalMaxW + (pad * 2);
     const finalBoxHeight = finalInkHeight + (pad * 2);
 

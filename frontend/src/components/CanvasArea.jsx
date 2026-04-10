@@ -131,7 +131,7 @@ export default function CanvasArea() {
               
               const numLines = item.text ? String(item.text).split('\n').length : 1;
               const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
-              const approxHeight = item.height || (item.type === 'text' ? (item.size * 0.75 * numLines) + (pad * 2) : 50);
+              const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.1 * numLines) + (pad * 2) : 50);
               const yOffset = item.y;
                 
               const visualW = item.width || 100;
@@ -152,9 +152,6 @@ export default function CanvasArea() {
                 const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
                 const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
                 
-                // Konva centers the em-square, so shift slightly upward to better center the visible ink.
-                const visualCenterOffset = item.size * 0.08;
-                
                 element = (
                   <Group {...commonProps}>
                     {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
@@ -162,7 +159,6 @@ export default function CanvasArea() {
                       text={item.text} 
                       x={0}
                       y={0}
-                      offsetY={visualCenterOffset}
                       width={visualW} 
                       height={approxHeight} 
                       padding={pad}
@@ -173,7 +169,7 @@ export default function CanvasArea() {
                       wrap={item.no_wrap ? "none" : "word"} 
                       fontSize={item.size} 
                       fill={fill} 
-                      lineHeight={1.0}
+                      lineHeight={1.1}
                     />
                   </Group>
                 );
