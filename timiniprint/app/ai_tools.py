@@ -5,7 +5,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "add_text_element",
-            "description": "Add a new text element to the canvas.",
+            "description": "Add a new text element to the canvas. Use this for standard layout or dates.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -65,6 +65,54 @@ TOOLS_SCHEMA = [
             "description": "Deletes all elements from the canvas.",
             "parameters": {"type": "object", "properties": {}}
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_shipping_label",
+            "description": "Macro to instantly create a perfectly formatted shipping label.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sender_lines": {"type": "array", "items": {"type": "string"}},
+                    "recipient_name": {"type": "string"},
+                    "recipient_address": {"type": "array", "items": {"type": "string"}},
+                    "bottom_text": {"type": "string"}
+                },
+                "required": ["recipient_name", "recipient_address"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "multiply_workspace_with_variables",
+            "description": "Used for Batching. Expands the canvas and duplicates existing elements down the feed axis for each record provided, substituting {{ var }} syntax.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "variables_list": {"type": "array", "items": {"type": "object"}, "description": "List of dictionaries mapping variable names to values."},
+                    "gap_mm": {"type": "integer", "default": 5, "description": "Gap between labels in mm."},
+                    "add_cut_lines": {"type": "boolean", "default": True}
+                },
+                "required": ["variables_list"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_ui_action",
+            "description": "Executes physical actions on behalf of the user, such as sending the design directly to the printer or saving it to the database.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["print", "save_project"]},
+                    "project_name": {"type": "string", "description": "Required if action is save_project."}
+                },
+                "required": ["action"]
+            }
+        }
     }
 ]
 
@@ -111,5 +159,86 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
     elif name == "clear_canvas":
         canvas_state["items"] = []
         return "Canvas cleared."
+
+    elif name == "create_shipping_label":
+        sender = args.get("sender_lines", [])
+        recipient_name = args.get("recipient_name", "Recipient")
+        recipient_addr = args.get("recipient_address", [])
+        custom_text = args.get("bottom_text", "")
+
+        target_w, target_h = 576, 384
+        canvas_state.update({"width": target_w, "height": target_h, "isRotated": True, "splitMode": False, "items": []})
+
+        ts = uuid.uuid4().hex[:6]
+        items = canvas_state["items"]
+        
+        items.append({"id": f"s-f-{ts}", "type": "text", "text": "FROM:\n" + "\n".join(sender), "x": 16, "y": 16, "size": 16, "weight": 700, "width": int(target_w * 0.45), "align": "left", "no_wrap": False})
+        items.append({"id": f"s-l1-{ts}", "type": "text", "text": "", "x": 0, "y": 110, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4})
+        items.append({"id": f"s-st-{ts}", "type": "text", "text": "SHIP TO:", "x": 16, "y": 130, "size": 20, "weight": 700, "width": 100, "align": "center", "no_wrap": True, "invert": True, "border_style": "box"})
+        items.append({"id": f"s-rn-{ts}", "type": "text", "text": recipient_name, "x": 16, "y": 170, "size": 60, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": True, "fit_to_width": True})
+        items.append({"id": f"s-ra-{ts}", "type": "text", "text": "\n".join(recipient_addr), "x": 16, "y": 240, "size": 32, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": False})
+
+        if custom_text:
+            items.append({"id": f"s-l2-{ts}", "type": "text", "text": "", "x": 0, "y": target_h - 40, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4})
+            items.append({"id": f"s-ct-{ts}", "type": "text", "text": custom_text, "x": 16, "y": target_h - 32, "size": 20, "weight": 700, "width": target_w - 32, "align": "center", "no_wrap": True, "fit_to_width": True})
+            
+        return "Shipping label created."
+
+    elif name == "multiply_workspace_with_variables":
+        variables_list = args.get("variables_list", [])
+        gap_px = int(args.get("gap_mm", 5) * 8)
+        add_cut_lines = args.get("add_cut_lines", True)
+
+        original_items = canvas_state.get("items", [])
+        if not original_items or not variables_list: return "Canvas is empty or no variables provided."
+
+        is_rotated = canvas_state.get("isRotated", False)
+        feed_axis = "x" if is_rotated else "y"
+
+        max_feed = 0
+        for item in original_items:
+            item_pos = item.get(feed_axis, 0)
+            item_dim = item.get("width" if is_rotated else "height", 50)
+            if item_pos + item_dim > max_feed: max_feed = item_pos + item_dim
+
+        step = max_feed + gap_px
+        new_items = []
+
+        for i, variables in enumerate(variables_list):
+            offset = i * step
+            for item in original_items:
+                cloned = dict(item)
+                cloned["id"] = f"{item.get('id', 'id')}-{i}-{uuid.uuid4().hex[:5]}"
+                cloned[feed_axis] = cloned.get(feed_axis, 0) + offset
+
+                for field_name in ["text", "data"]:
+                    if field_name in cloned and isinstance(cloned[field_name], str):
+                        for k, v in variables.items():
+                            cloned[field_name] = cloned[field_name].replace(f"{{{{ {k} }}}}", str(v)).replace(f"{{{{{k}}}}}", str(v))
+                new_items.append(cloned)
+
+            if add_cut_lines and i < len(variables_list) - 1:
+                new_items.append({
+                    "id": f"cut-{i}-{uuid.uuid4().hex[:5]}", "type": "cut_line_indicator",
+                    "x": (offset + max_feed + (gap_px // 2)) if is_rotated else 0,
+                    "y": 0 if is_rotated else (offset + max_feed + (gap_px // 2)),
+                    "width": 1 if is_rotated else canvas_state.get("width", 384),
+                    "height": canvas_state.get("height", 384) if is_rotated else 1,
+                    "isVertical": is_rotated
+                })
+
+        canvas_state["items"] = new_items
+        if is_rotated: canvas_state["width"] = step * len(variables_list) - gap_px
+        else: canvas_state["height"] = step * len(variables_list) - gap_px
+
+        return f"Workspace visually multiplied for {len(variables_list)} records."
+
+    elif name == "trigger_ui_action":
+        action = args.get("action")
+        # Add side-channel array to state for the frontend to intercept
+        canvas_state.setdefault("__actions__", []).append({
+            "action": action, "project_name": args.get("project_name")
+        })
+        return f"Instructed the frontend interface to execute {action}."
 
     return f"Error: Unknown tool {name}"

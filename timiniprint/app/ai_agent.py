@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+from datetime import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
 class ChatRequest(BaseModel):
     messages: List[Dict[str, str]]
     canvas_state: Dict[str, Any]
+    mac_address: str = None  # Capture printer address for context if available
 
 @router.get("/config")
 def get_config():
@@ -67,13 +69,27 @@ def chat_with_agent(req: ChatRequest):
         if config.base_url:
             kwargs["api_base"] = config.base_url
 
-    # Construct System Prompt with Canvas Context
     context = get_agent_context()
-    sys_prompt = f"""You are a helpful Label Design AI Assistant for TiMini Print.
-    Your job is to help the user design thermal printer labels by reasoning about their request and using your tools to manipulate the canvas.
-    CURRENT CANVAS STATE: {json.dumps(req.canvas_state)}
-    HARDWARE/CONTEXT: {json.dumps(context)}
-    NOTE: Respond conversationally, but automatically use tools to apply changes when the user asks you to create/modify something."""
+    
+    sys_prompt = f"""You are an expert Label Design AI Assistant for TiMini Print.
+Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions on behalf of the user.
+
+CONTEXT:
+- Today's Date: {datetime.now().strftime('%A, %B %d, %Y')}
+- Hardware Print Width: {context['engine_rules']['hardware_width_px']} pixels ({context['engine_rules']['hardware_width_mm']}mm)
+- 1 mm = 8 pixels. ALWAYS use pixels for canvas dimensions and positions.
+- Default Font: {context['global_default_font']}
+
+TOOL USAGE RULES:
+1. Dates & Text: Use `add_text_element` for general layout. You already know today's date from the context above.
+2. Shipping Labels: DO NOT build them manually element by element. ALWAYS use `create_shipping_label` for perfect formatting.
+3. Batches & Variables: If the user wants multiple varying labels (e.g., 5 different names, or sizes M3 to M8), DO NOT just tell them to use the CSV tool. Instead:
+   a) Clear the canvas.
+   b) Design ONE template label using `{{{{ variable_name }}}}` syntax.
+   c) Immediately call `multiply_workspace_with_variables` providing the list of dictionaries for the batch. This visually generates the entire batch in the UI for them!
+4. Printing & Saving: You can literally print the canvas or save it to the database for the user by using `trigger_ui_action`. ONLY do this if explicitly asked to "print it" or "save it".
+5. Be highly proactive. If a user asks "Make a label for X", just execute the tools and say "I've created the layout for you."
+"""
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
     canvas_state_copy = dict(req.canvas_state)

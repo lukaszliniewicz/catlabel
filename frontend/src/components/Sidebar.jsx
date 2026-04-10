@@ -70,8 +70,8 @@ export default function Sidebar() {
     addItem({
       id: Date.now().toString(), type: 'icon_text', x: 10, y: 10,
       icon_src: base64Png, icon_x: 0, icon_y: 0, icon_size: 40,
-      text: 'Icon + Text', text_x: 50, text_y: 10, size: 24, weight: 700, font: defaultFont, text_width: 150, align: 'left',
-      width: 200, height: 40
+      text: 'Icon + Text', text_x: 46, text_y: 10, size: 24, weight: 700, font: defaultFont, text_width: 150, align: 'left',
+      width: 196, height: 40
     });
     setShowIconPicker(false);
   };

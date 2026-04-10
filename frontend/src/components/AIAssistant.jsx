@@ -11,8 +11,8 @@ export default function AIAssistant() {
   const [loading, setLoading] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
 
-  // Read current state & setters from Zustand
-  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder } = useStore();
+  // Add canvasBorderThickness and selectedPrinter from Zustand to power the print command
+  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder } = useStore();
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -29,7 +29,11 @@ export default function AIAssistant() {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, canvas_state: currentState })
+        body: JSON.stringify({ 
+           messages: newMessages, 
+           canvas_state: currentState,
+           mac_address: selectedPrinter || null
+        })
       });
       
       const data = await res.json();
@@ -48,6 +52,41 @@ export default function AIAssistant() {
             if (data.canvas_state.isRotated !== undefined) setIsRotated(data.canvas_state.isRotated);
             if (data.canvas_state.splitMode !== undefined) setSplitMode(data.canvas_state.splitMode);
             if (data.canvas_state.canvasBorder !== undefined) setCanvasBorder(data.canvas_state.canvasBorder);
+            
+            // NEW: Execute intercepted UI actions from the agent
+            if (data.canvas_state.__actions__) {
+                data.canvas_state.__actions__.forEach(action => {
+                    if (action.action === 'print') {
+                        if (!selectedPrinter) {
+                            alert("The AI attempted to print, but no printer is currently selected!");
+                            return;
+                        }
+                        const thickness = canvasBorderThickness || 4;
+                        fetch('/api/print/direct', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                mac_address: selectedPrinter,
+                                canvas_state: { ...data.canvas_state, canvasBorderThickness: thickness },
+                                variables: {}
+                            })
+                        }).then(r => r.json()).then(resp => {
+                            if (resp.error || resp.detail) alert(`AI Print Failed: ${resp.error || resp.detail}`);
+                        });
+                    } else if (action.action === 'save_project') {
+                        fetch('/api/projects', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: action.project_name || "AI Generated Project",
+                                canvas_state: data.canvas_state
+                            })
+                        }).then(() => {
+                            useStore.getState().fetchProjects();
+                        });
+                    }
+                });
+            }
         }
       }
     } catch (err) {
