@@ -162,6 +162,7 @@ export default function CanvasArea() {
                       verticalAlign="middle"
                       align={item.align || 'left'} 
                       fontFamily={fontFamily} 
+                      fontStyle={(item.weight || 700).toString()}
                       wrap={item.no_wrap ? "none" : "word"} 
                       fontSize={item.size} 
                       fill={fill} 
@@ -174,7 +175,7 @@ export default function CanvasArea() {
                 element = (
                   <Group {...commonProps}>
                     <URLImage item={{icon_src: item.icon_src}} commonProps={{x: item.icon_x, y: item.icon_y, width: item.icon_size, height: item.icon_size}} isSelected={false} />
-                    <Text text={item.text} x={item.text_x} y={item.text_y} fontSize={item.size} fontFamily={fontFamily} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
+                    <Text text={item.text} x={item.text_x} y={item.text_y} fontSize={item.size} fontFamily={fontFamily} fontStyle={(item.weight || 700).toString()} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
                   </Group>
                 )
               } else if (item.type === 'barcode') {

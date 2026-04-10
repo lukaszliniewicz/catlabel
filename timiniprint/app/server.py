@@ -33,62 +33,23 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
 def download_default_fonts():
-    """Uses a blobless git clone to dynamically find and download fonts."""
-    fonts_to_find = {
-        "Roboto-Regular.ttf", 
-        "Roboto-Bold.ttf", 
-        "FiraCode-Bold.ttf", 
-        "Oswald-Bold.ttf"
+    """Silently downloads Variable Fonts from Google Fonts raw CDN."""
+    fonts = {
+        "Roboto.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto%5Bwdth%2Cwght%5D.ttf",
+        "FiraCode.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/firacode/FiraCode%5Bwght%5D.ttf",
+        "Oswald.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald%5Bwght%5D.ttf"
     }
-    
     os.makedirs("data/fonts", exist_ok=True)
-    
-    # Check if we already have them
-    if all(os.path.exists(os.path.join("data/fonts", f)) for f in fonts_to_find):
-        return
-        
-    print("Locating fonts in the Google Fonts repository via git metadata...")
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        try:
-            # 1. Blobless bare clone (downloads ONLY the directory structure, very fast, ~few MBs)
-            subprocess.run([
-                "git", "clone", "--bare", "--depth", "1", 
-                "--filter=blob:none", 
-                "https://github.com/google/fonts.git", 
-                tmpdir
-            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            # 2. List all files currently in the repo tree
-            result = subprocess.run([
-                "git", "--git-dir", tmpdir, "ls-tree", "-r", "HEAD", "--name-only"
-            ], check=True, stdout=subprocess.PIPE, text=True)
-            
-            repo_files = result.stdout.splitlines()
-            
-            # 3. Match the files we need and download them via Raw CDN
-            for font_name in fonts_to_find:
-                target_path = os.path.join("data/fonts", font_name)
-                if os.path.exists(target_path):
-                    continue
-                    
-                # Find the exact path in the repo (e.g. ofl/roboto/Roboto-Bold.ttf)
-                repo_path = next((path for path in repo_files if path.endswith(font_name)), None)
-                
-                if repo_path:
-                    print(f"Downloading {font_name}...")
-                    raw_url = f"https://raw.githubusercontent.com/google/fonts/main/{repo_path}"
-                    
-                    # Use a generic User-Agent for the Raw CDN
-                    req = urllib.request.Request(raw_url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req) as response:
-                        with open(target_path, "wb") as f:
-                            f.write(response.read())
-                else:
-                    print(f"Warning: {font_name} not found in Google Fonts repository.")
-                    
-        except Exception as e:
-            print(f"Failed to download fonts via git: {e}")
+    for filename, url in fonts.items():
+        target = os.path.join("data/fonts", filename)
+        if not os.path.exists(target):
+            print(f"Downloading Variable Font: {filename}...")
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response, open(target, 'wb') as f:
+                    f.write(response.read())
+            except Exception as e:
+                print(f"Failed to download {filename}: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -368,7 +329,7 @@ async def print_direct(request: DirectPrintRequest):
     """Endpoint for the frontend to test print without saving a template."""
     with Session(engine) as session:
         settings = session.get(Settings, 1)
-        default_font = settings.default_font if settings else "Roboto-Bold.ttf"
+        default_font = settings.default_font if settings else "Roboto.ttf"
 
     split_mode = request.canvas_state.get("splitMode", False)
     img = render_template(request.canvas_state, request.variables, default_font=default_font)
@@ -384,7 +345,7 @@ async def print_direct(request: DirectPrintRequest):
 async def print_batch(request: BatchPrintRequest):
     with Session(engine) as session:
         settings = session.get(Settings, 1)
-        default_font = settings.default_font if settings else "Roboto-Bold.ttf"
+        default_font = settings.default_font if settings else "Roboto.ttf"
 
     split_mode = request.canvas_state.get("splitMode", False)
     images = []

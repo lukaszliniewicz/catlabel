@@ -92,6 +92,8 @@ Use Jinja-like `{{ var }}` syntax for dynamic replacement.
   "x": 0, "y": 10,
   "width": 384,           // Constrain to canvas width
   "size": 36,             // Font size
+  "weight": 700,          // NEW: OpenType Variable Font Weight (100 = Thin, 400 = Regular, 700 = Bold, 900 = Black)
+  "font": "Roboto.ttf",
   "fit_to_width": true,   // *AGENT TIP: Auto-shrinks text to fit horizontally
   "no_wrap": false,       // Set true to force a single line
   "align": "center",      // "left", "center", "right"

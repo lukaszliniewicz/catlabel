@@ -7,7 +7,30 @@ from barcode.writer import ImageWriter
 import qrcode
 import os
 
-def render_template(template_data: dict, variables: dict, default_font: str = "Roboto-Bold.ttf") -> Image.Image:
+def apply_font_weight(font: ImageFont.FreeTypeFont, weight: int) -> ImageFont.FreeTypeFont:
+    """Safely applies OpenType Variable Font weights (e.g., 100-900) if supported."""
+    try:
+        axes = font.get_variation_axes()
+        if not axes:
+            return font
+            
+        axis_values = [axis['default'] for axis in axes]
+        for i, axis in enumerate(axes):
+            name = axis.get('name', b'').lower()
+            tag = axis.get('tag', b'').lower()
+            if b'weight' in name or b'wght' in name or tag == b'wght':
+                # Clamp the weight to the font's allowed min/max to prevent Pillow crashes
+                clamped = max(axis['minimum'], min(axis['maximum'], float(weight)))
+                axis_values[i] = clamped
+                
+        font.set_variation_by_axes(axis_values)
+    except OSError:
+        pass # Not a variable font (e.g., static Arial fallback)
+    except Exception as e:
+        print(f"Font variation warning: {e}")
+    return font
+
+def render_template(template_data: dict, variables: dict, default_font: str = "Roboto.ttf") -> Image.Image:
     """
     Takes a JSON-like dictionary representing the canvas state and a dictionary
     of variables, and renders a Pillow Image ready to be encoded for the printer.
@@ -113,14 +136,19 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             size = item.get("size", 24)
             font_name = item.get("font", default_font)
+            weight = int(item.get("weight", 700)) # Default to Bold (700) for thermal clarity
+
             def get_font(f_size):
                 local_font_path = os.path.join("data", "fonts", font_name)
+                f = None
                 if os.path.exists(local_font_path):
-                    return ImageFont.truetype(local_font_path, int(f_size))
-                try:
-                    return ImageFont.truetype(font_name, int(f_size))
-                except IOError:
-                    return ImageFont.load_default()
+                    f = ImageFont.truetype(local_font_path, int(f_size))
+                else:
+                    try:
+                        f = ImageFont.truetype(font_name, int(f_size))
+                    except IOError:
+                        f = ImageFont.load_default()
+                return apply_font_weight(f, weight)
             
             font = get_font(size)
             text_x = x + int(item.get("text_x", 0))
@@ -137,6 +165,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             size = int(item.get("size", 24))
             font_name = item.get("font", default_font)
+            weight = int(item.get("weight", 700)) # Default to Bold (700) for thermal clarity
             box_width = item.get("width")
             no_wrap = item.get("no_wrap", False)
             invert = item.get("invert", False)
@@ -146,12 +175,15 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             def get_font(f_size):
                 local_font_path = os.path.join("data", "fonts", font_name)
+                f = None
                 if os.path.exists(local_font_path):
-                    return ImageFont.truetype(local_font_path, int(f_size))
-                try:
-                    return ImageFont.truetype(font_name, int(f_size))
-                except IOError:
-                    return ImageFont.load_default()
+                    f = ImageFont.truetype(local_font_path, int(f_size))
+                else:
+                    try:
+                        f = ImageFont.truetype(font_name, int(f_size))
+                    except IOError:
+                        f = ImageFont.load_default()
+                return apply_font_weight(f, weight)
 
             if item.get("fit_to_width") and box_width:
                 low, high, best_size = 6, 800, size

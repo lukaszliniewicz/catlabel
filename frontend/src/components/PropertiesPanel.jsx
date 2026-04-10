@@ -362,7 +362,7 @@ export default function PropertiesPanel() {
               </div>
               <div className="pt-2">
                 <label className={labelClass}>Global Default Font</label>
-                <select name="default_font" value={localSettings.default_font || 'Roboto-Bold.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
+                <select name="default_font" value={localSettings.default_font || 'Roboto.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
                   <option value="arial.ttf">System Arial</option>
                   {fonts.map(f => (
                     <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
@@ -419,10 +419,13 @@ export default function PropertiesPanel() {
                     <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
                   </div>
                   <div className="flex gap-4">
-                    <ScrubberInput name="size" label="Font Size" value={selectedItem.size} onChange={handleChange} />
+                    <ScrubberInput name="size" label="Font Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
+                    <ScrubberInput name="weight" label="Weight (100-900)" value={selectedItem.weight || 700} onChange={handleChange} />
+                  </div>
+                  <div className="flex gap-4 mt-2">
                     <div className="flex-1">
                       <label className={labelClass}>Font</label>
-                      <select name="font" value={selectedItem.font || 'Roboto-Bold.ttf'} onChange={handleChange} className={inputClass}>
+                      <select name="font" value={selectedItem.font || 'Roboto.ttf'} onChange={handleChange} className={inputClass}>
                         <option value="arial.ttf">System Arial</option>
                         {fonts.map(f => (
                           <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
@@ -524,6 +527,9 @@ export default function PropertiesPanel() {
                   </div>
                   <div className="flex gap-4 mt-2">
                     <ScrubberInput name="size" label="Text Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
+                    <ScrubberInput name="weight" label="Weight (100-900)" value={selectedItem.weight || 700} onChange={handleChange} />
+                  </div>
+                  <div className="flex gap-4 mt-2">
                     <MmScrubberInput name="icon_size" label="Icon Size" value={Math.round(selectedItem.icon_size)} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
