@@ -4,7 +4,7 @@ import os
 import base64
 from io import BytesIO
 import shutil
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,6 +63,7 @@ class BatchPrintRequest(BaseModel):
     canvas_state: Dict[str, Any]
     copies: int = 1
     variables_list: List[Dict[str, str]] = []
+    variables_matrix: Optional[Dict[str, List[str]]] = None
 
 async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bool = False):
     """Handles scanning, continuous connection, and streaming multiple jobs efficiently."""
@@ -251,11 +252,14 @@ async def print_template(template_id: int, request: PrintRequest):
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
         
+        settings = session.get(Settings, 1)
+        default_font = settings.default_font if settings else "arial.ttf"
+        
         template_data = json.loads(template.canvas_state_json)
         split_mode = template_data.get("splitMode", False)
         
     # Render the image using our engine
-    img = render_template(template_data, request.variables)
+    img = render_template(template_data, request.variables, default_font=default_font)
     
     # Execute the print job with retries
     await execute_print_job(request.mac_address, img, split_mode)
@@ -269,8 +273,12 @@ async def print_template(template_id: int, request: PrintRequest):
 @app.post("/api/print/direct")
 async def print_direct(request: DirectPrintRequest):
     """Endpoint for the frontend to test print without saving a template."""
+    with Session(engine) as session:
+        settings = session.get(Settings, 1)
+        default_font = settings.default_font if settings else "arial.ttf"
+
     split_mode = request.canvas_state.get("splitMode", False)
-    img = render_template(request.canvas_state, request.variables)
+    img = render_template(request.canvas_state, request.variables, default_font=default_font)
     await execute_print_job(request.mac_address, img, split_mode)
     
     return {
@@ -281,16 +289,30 @@ async def print_direct(request: DirectPrintRequest):
 
 @app.post("/api/print/batch")
 async def print_batch(request: BatchPrintRequest):
+    with Session(engine) as session:
+        settings = session.get(Settings, 1)
+        default_font = settings.default_font if settings else "arial.ttf"
+
     split_mode = request.canvas_state.get("splitMode", False)
     images = []
+    
+    variables_collection = []
     if request.variables_list:
-        for variables in request.variables_list:
-            for _ in range(request.copies):
-                img = render_template(request.canvas_state, variables)
-                images.append(img)
-    else:
-        img = render_template(request.canvas_state, {})
+        variables_collection.extend(request.variables_list)
+        
+    if request.variables_matrix:
+        import itertools
+        keys = list(request.variables_matrix.keys())
+        values = list(request.variables_matrix.values())
+        for combination in itertools.product(*values):
+            variables_collection.append(dict(zip(keys, combination)))
+            
+    if not variables_collection:
+        variables_collection = [{}]
+
+    for variables in variables_collection:
         for _ in range(request.copies):
+            img = render_template(request.canvas_state, variables, default_font=default_font)
             images.append(img)
             
     await execute_print_jobs(request.mac_address, images, split_mode)

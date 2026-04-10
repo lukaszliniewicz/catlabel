@@ -7,7 +7,7 @@ from barcode.writer import ImageWriter
 import qrcode
 import os
 
-def render_template(template_data: dict, variables: dict) -> Image.Image:
+def render_template(template_data: dict, variables: dict, default_font: str = "arial.ttf") -> Image.Image:
     """
     Takes a JSON-like dictionary representing the canvas state and a dictionary
     of variables, and renders a Pillow Image ready to be encoded for the printer.
@@ -112,7 +112,7 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
                 text = text.replace(f"{{{{{k}}}}}", str(v))
             
             size = item.get("size", 24)
-            font_name = item.get("font", "arial.ttf")
+            font_name = item.get("font", default_font)
             def get_font(f_size):
                 local_font_path = os.path.join("fonts", font_name)
                 if os.path.exists(local_font_path):
@@ -136,7 +136,7 @@ def render_template(template_data: dict, variables: dict) -> Image.Image:
                 text = text.replace(f"{{{{{k}}}}}", str(v))
             
             size = int(item.get("size", 24))
-            font_name = item.get("font", "arial.ttf")
+            font_name = item.get("font", default_font)
             box_width = item.get("width")
             no_wrap = item.get("no_wrap", False)
             invert = item.get("invert", False)
