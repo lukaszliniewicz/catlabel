@@ -19,38 +19,78 @@ export default function IconPicker({ onClose, onSelect }) {
   });
 
   // When 'selectedIcon' state changes, React renders the hidden SVG.
-  // This effect intercepts it, draws it to an offscreen canvas, and generates the Base64 PNG.
+  // This effect intercepts it, auto-crops the invisible padding, and generates the Base64 PNG.
   useEffect(() => {
     if (!selectedIcon) return;
     
-    // Wait a brief tick (50ms) to ensure React has flushed the hidden SVG to the DOM
     const timer = setTimeout(() => {
       const svgElement = svgRef.current?.querySelector('svg');
       if (!svgElement) return;
 
-      // Ensure XML namespace exists for canvas serialization
       if (!svgElement.getAttribute('xmlns')) {
         svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
       }
 
       const svgData = new XMLSerializer().serializeToString(svgElement);
-      const canvas = document.createElement("canvas");
-      
-      // Render at a high resolution (200x200) for crisp thermal printing
-      canvas.width = 200;
-      canvas.height = 200;
-      const ctx = canvas.getContext("2d");
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = 200;
+      tempCanvas.height = 200;
+      const tempCtx = tempCanvas.getContext("2d");
+      if (!tempCtx) return;
       
       const img = new Image();
       img.onload = () => {
-        // Fill white background to guarantee cleanly printed boundaries
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, 200, 200);
+        tempCtx.clearRect(0, 0, 200, 200);
+        tempCtx.drawImage(img, 0, 0, 200, 200);
+
+        const imgData = tempCtx.getImageData(0, 0, 200, 200);
+        const data = imgData.data;
         
-        ctx.drawImage(img, 0, 0, 200, 200);
-        const base64Png = canvas.toDataURL("image/png");
+        let minX = 200;
+        let minY = 200;
+        let maxX = -1;
+        let maxY = -1;
+        let hasInk = false;
+
+        for (let y = 0; y < 200; y++) {
+          for (let x = 0; x < 200; x++) {
+            const alpha = data[(y * 200 + x) * 4 + 3];
+            if (alpha > 10) {
+              hasInk = true;
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+
+        if (hasInk) {
+          minX = Math.max(0, minX - 2);
+          minY = Math.max(0, minY - 2);
+          maxX = Math.min(199, maxX + 2);
+          maxY = Math.min(199, maxY + 2);
+        } else {
+          minX = 0;
+          minY = 0;
+          maxX = 199;
+          maxY = 199;
+        }
+
+        const cropW = Math.max(1, maxX - minX + 1);
+        const cropH = Math.max(1, maxY - minY + 1);
+
+        const finalCanvas = document.createElement("canvas");
+        finalCanvas.width = cropW;
+        finalCanvas.height = cropH;
+        const finalCtx = finalCanvas.getContext("2d");
+        if (!finalCtx) return;
         
-        onSelect(base64Png);
+        finalCtx.fillStyle = 'white';
+        finalCtx.fillRect(0, 0, cropW, cropH);
+        finalCtx.drawImage(tempCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+        
+        onSelect(finalCanvas.toDataURL("image/png"));
       };
       img.src = "data:image/svg+xml;base64," + btoa(svgData);
     }, 50);

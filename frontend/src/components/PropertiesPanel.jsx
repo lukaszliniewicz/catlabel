@@ -521,57 +521,88 @@ export default function PropertiesPanel() {
                 <>
                   <div className="flex gap-2 mb-2 bg-neutral-50 dark:bg-neutral-900 p-1 border border-neutral-200 dark:border-neutral-800">
                      <button onClick={() => {
+                        const GAP = Math.max(4, selectedItem.size * 0.1);
                         const newH = Math.max(selectedItem.icon_size, selectedItem.size);
+                        const iconY = (newH - selectedItem.icon_size) / 2;
+                        const capHeight = selectedItem.size * 0.71;
+                        const textY = (newH / 2) - (capHeight / 2);
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
+                        const fontWeight = selectedItem.weight || 700;
+                        ctx.font = `${fontWeight} ${selectedItem.size}px "${fontFamily}"`;
+                        const textW = ctx.measureText(selectedItem.text || '').width;
+
                         updateItem(selectedId, {
-                           icon_x: 0, icon_y: (newH - selectedItem.icon_size)/2,
-                           text_x: selectedItem.icon_size + 6, text_y: (newH - selectedItem.size)/2,
-                           width: selectedItem.icon_size + 6 + (selectedItem.text.length * selectedItem.size * 0.6),
+                           icon_x: 0, icon_y: iconY,
+                           text_x: selectedItem.icon_size + GAP, text_y: textY,
+                           width: selectedItem.icon_size + GAP + textW,
                            height: newH
                         });
                      }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Row</button>
+                     
                      <button onClick={() => {
-                        const newW = Math.max(selectedItem.icon_size, selectedItem.text.length * selectedItem.size * 0.6);
+                        const GAP = Math.max(4, selectedItem.size * 0.1);
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
+                        const fontWeight = selectedItem.weight || 700;
+                        ctx.font = `${fontWeight} ${selectedItem.size}px "${fontFamily}"`;
+                        const textW = ctx.measureText(selectedItem.text || '').width;
+
+                        const newW = Math.max(selectedItem.icon_size, textW);
                         updateItem(selectedId, {
-                           icon_x: (newW - selectedItem.icon_size)/2, icon_y: 0,
-                           text_x: (newW - (selectedItem.text.length * selectedItem.size * 0.6))/2, text_y: selectedItem.icon_size + 6,
+                           icon_x: (newW - selectedItem.icon_size) / 2, icon_y: 0,
+                           text_x: (newW - textW) / 2, text_y: selectedItem.icon_size + GAP,
                            width: newW,
-                           height: selectedItem.icon_size + 6 + selectedItem.size
+                           height: selectedItem.icon_size + GAP + selectedItem.size
                         });
                      }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Col</button>
+                     
                      <button onClick={() => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
                         const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
                         const fontWeight = selectedItem.weight || 700;
                         
-                        let low = 6; let high = 400;
-                        let bestScale = 1; let bestTextSize = selectedItem.size;
+                        let low = 6;
+                        let high = 800;
+                        let bestScale = 1;
+                        let bestTextSize = selectedItem.size;
                         
                         while (low <= high) {
                             let mid = Math.floor((low + high) / 2);
                             ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`;
                             let tWidth = ctx.measureText(selectedItem.text || '').width;
                             let testScale = mid / selectedItem.size;
-                            let totalW = (selectedItem.icon_size * testScale) + (6 * testScale) + tWidth;
+                            let GAP = Math.max(4, mid * 0.1);
+                            let totalW = (selectedItem.icon_size * testScale) + GAP + tWidth;
                             
-                            if (totalW <= canvasWidth) {
-                                bestTextSize = mid; bestScale = testScale;
+                            if (totalW <= canvasWidth - 4) {
+                                bestTextSize = mid;
+                                bestScale = testScale;
                                 low = mid + 1;
                             } else {
                                 high = mid - 1;
                             }
                         }
                         
+                        const GAP = Math.max(4, bestTextSize * 0.1);
                         const newIconSize = selectedItem.icon_size * bestScale;
                         const newH = Math.max(newIconSize, bestTextSize);
                         ctx.font = `${fontWeight} ${bestTextSize}px "${fontFamily}"`;
                         const actualTextW = ctx.measureText(selectedItem.text || '').width;
-                        const finalW = newIconSize + (6 * bestScale) + actualTextW;
-                        
+                        const finalW = newIconSize + GAP + actualTextW;
+
+                        const iconY = (newH - newIconSize) / 2;
+                        const capHeight = bestTextSize * 0.71;
+                        const textY = (newH / 2) - (capHeight / 2);
+
                         updateItem(selectedId, {
                             icon_size: newIconSize, size: bestTextSize,
-                            icon_x: 0, icon_y: (newH - newIconSize) / 2,
-                            text_x: newIconSize + (6 * bestScale), text_y: (newH - bestTextSize) / 2,
+                            icon_x: 0, icon_y: iconY,
+                            text_x: newIconSize + GAP, text_y: textY,
                             width: finalW, height: newH,
                             x: (canvasWidth - finalW) / 2
                         });

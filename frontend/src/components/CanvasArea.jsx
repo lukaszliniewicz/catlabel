@@ -179,10 +179,14 @@ export default function CanvasArea() {
                 );
               } else if (item.type === 'icon_text') {
                 const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+                const capHeight = item.size * 0.71;
+                const baselineY = item.text_y + capHeight;
+                const konvaY = baselineY - (item.size * 0.76);
+
                 element = (
                   <Group {...commonProps}>
                     <URLImage item={{icon_src: item.icon_src}} commonProps={{x: item.icon_x, y: item.icon_y, width: item.icon_size, height: item.icon_size}} isSelected={false} />
-                    <Text text={item.text} x={item.text_x} y={item.text_y} fontSize={item.size} fontFamily={fontFamily} fontStyle={(item.weight || 700).toString()} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
+                    <Text text={item.text} x={item.text_x} y={konvaY} fontSize={item.size} fontFamily={fontFamily} fontStyle={(item.weight || 700).toString()} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
                   </Group>
                 )
               } else if (item.type === 'barcode') {

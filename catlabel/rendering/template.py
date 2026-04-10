@@ -120,10 +120,11 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             b64_src = item.get("icon_src", "")
             if "," in b64_src:
                 b64_src = b64_src.split(",")[1]
+
+            icon_w = int(item.get("icon_size", 50))
             try:
                 img_data = base64.b64decode(b64_src)
                 insert_img = Image.open(BytesIO(img_data)).convert("RGBA")
-                icon_w = int(item.get("icon_size", 50))
                 insert_img = insert_img.resize((icon_w, icon_w), Image.Resampling.LANCZOS)
                 
                 bg = Image.new("RGBA", insert_img.size, "WHITE")
@@ -140,9 +141,9 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 text = text.replace(f"{{{{ {k} }}}}", str(v))
                 text = text.replace(f"{{{{{k}}}}}", str(v))
             
-            size = item.get("size", 24)
+            size = int(item.get("size", 24))
             font_name = item.get("font", default_font)
-            weight = int(item.get("weight", 700)) # Default to Bold (700) for thermal clarity
+            weight = int(item.get("weight", 700))
 
             def get_font(f_size):
                 local_font_path = os.path.join("data", "fonts", font_name)
@@ -159,8 +160,14 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             font = get_font(size)
             text_x = x + int(item.get("text_x", 0))
             text_y = y + int(item.get("text_y", 0))
-            bbox = font.getbbox(text)
-            draw.text((text_x - bbox[0], text_y - bbox[1]), text, fill="black", font=font)
+
+            cap_height = size * 0.71
+            baseline_y = text_y + cap_height
+
+            bbox = font.getbbox(text) if text else (0, 0, 0, 0)
+            left_bearing = bbox[0]
+
+            draw.text((text_x - left_bearing, baseline_y), text, fill="black", font=font, anchor="ls")
             actual_drawn_height = int(item.get("height", max(icon_w, size)))
 
         elif item_type == "text":
