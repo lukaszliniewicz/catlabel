@@ -19,7 +19,8 @@ from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
 from .. import reporting
 
-sqlite_file_name = "timiniprint.db"
+os.makedirs("data", exist_ok=True)
+sqlite_file_name = "data/timiniprint.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=False)
 
@@ -33,8 +34,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="TiMini Print Server", lifespan=lifespan)
 
-os.makedirs("fonts", exist_ok=True)
-app.mount("/fonts", StaticFiles(directory="fonts"), name="fonts")
+os.makedirs("data/fonts", exist_ok=True)
+app.mount("/fonts", StaticFiles(directory="data/fonts"), name="fonts")
 
 app.add_middleware(
     CORSMiddleware,
@@ -311,13 +312,13 @@ async def convert_pdf(file: UploadFile = File(...)):
 
 @app.post("/api/fonts")
 async def upload_font(file: UploadFile = File(...)):
-    os.makedirs("fonts", exist_ok=True)
-    file_path = f"fonts/{file.filename}"
+    os.makedirs("data/fonts", exist_ok=True)
+    file_path = f"data/fonts/{file.filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
     with Session(engine) as session:
-        db_font = Font(name=file.filename, file_path=file_path)
+        db_font = Font(name=file.filename, file_path=f"fonts/{file.filename}")
         session.add(db_font)
         session.commit()
         session.refresh(db_font)
@@ -325,13 +326,13 @@ async def upload_font(file: UploadFile = File(...)):
 
 @app.get("/api/fonts")
 def list_fonts():
-    os.makedirs("fonts", exist_ok=True)
+    os.makedirs("data/fonts", exist_ok=True)
     with Session(engine) as session:
         # 1. Get existing fonts from the database
         db_fonts = {f.name: f for f in session.exec(select(Font)).all()}
         
         # 2. Scan the 'fonts' folder on disk
-        disk_fonts = [f for f in os.listdir("fonts") if f.lower().endswith((".ttf", ".otf"))]
+        disk_fonts = [f for f in os.listdir("data/fonts") if f.lower().endswith((".ttf", ".otf"))]
         
         # 3. Add any missing fonts from disk to the database
         new_fonts = []
@@ -393,3 +394,6 @@ def delete_address(address_id: int):
             session.delete(db_address)
             session.commit()
         return {"status": "deleted"}
+
+if os.path.exists("frontend/dist"):
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")

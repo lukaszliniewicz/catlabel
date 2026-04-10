@@ -37,7 +37,7 @@ export default function BatchPrintModal({ onClose }) {
     setIsPrinting(true);
     const thickness = useStore.getState().canvasBorderThickness || 2;
     try {
-      const res = await fetch('http://localhost:8000/api/print/batch', {
+      const res = await fetch('/api/print/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

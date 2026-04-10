@@ -29,7 +29,7 @@ export default function Sidebar() {
 
   const fetchTemplates = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/templates');
+      const res = await fetch('/api/templates');
       const data = await res.json();
       setTemplates(data);
     } catch (e) {
@@ -97,7 +97,7 @@ export default function Sidebar() {
     formData.append("file", file);
     
     try {
-      const res = await fetch('http://localhost:8000/api/pdf/convert', {
+      const res = await fetch('/api/pdf/convert', {
         method: 'POST',
         body: formData
       });
@@ -133,7 +133,7 @@ export default function Sidebar() {
   const handleScan = async () => {
     setIsScanning(true);
     try {
-      const res = await fetch('http://localhost:8000/api/printers/scan');
+      const res = await fetch('/api/printers/scan');
       const data = await res.json();
       setPrinters(data.devices || []);
     } catch (e) {
@@ -149,7 +149,7 @@ export default function Sidebar() {
     const thickness = useStore.getState().canvasBorderThickness || 2;
     
     try {
-      await fetch('http://localhost:8000/api/templates', {
+      await fetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -176,7 +176,7 @@ export default function Sidebar() {
     if (!currentTemplateId) return;
     const thickness = useStore.getState().canvasBorderThickness || 2;
     try {
-      await fetch(`http://localhost:8000/api/templates/${currentTemplateId}`, {
+      await fetch(`/api/templates/${currentTemplateId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -192,7 +192,7 @@ export default function Sidebar() {
   const handleDeleteTemplate = async (id) => {
     if (!window.confirm("Are you sure you want to delete this template?")) return;
     try {
-      await fetch(`http://localhost:8000/api/templates/${id}`, { method: 'DELETE' });
+      await fetch(`/api/templates/${id}`, { method: 'DELETE' });
       fetchTemplates();
       if (currentTemplateId === id) setCurrentTemplateId(null);
     } catch (e) {
@@ -205,7 +205,7 @@ export default function Sidebar() {
     setIsPrinting(true);
     const thickness = useStore.getState().canvasBorderThickness || 2;
     try {
-      const printRes = await fetch(`http://localhost:8000/api/print/direct`, {
+      const printRes = await fetch(`/api/print/direct`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

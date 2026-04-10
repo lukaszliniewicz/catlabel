@@ -18,7 +18,7 @@ export const useStore = create((set) => ({
   
   fetchAddresses: async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/addresses');
+      const res = await fetch('/api/addresses');
       const data = await res.json();
       set({ addresses: data });
     } catch (e) {
@@ -28,7 +28,7 @@ export const useStore = create((set) => ({
 
   saveAddress: async (addr) => {
     try {
-      await fetch('http://localhost:8000/api/addresses', {
+      await fetch('/api/addresses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(addr)
@@ -41,7 +41,7 @@ export const useStore = create((set) => ({
 
   deleteAddress: async (id) => {
     try {
-      await fetch(`http://localhost:8000/api/addresses/${id}`, { method: 'DELETE' });
+      await fetch(`/api/addresses/${id}`, { method: 'DELETE' });
       useStore.getState().fetchAddresses();
     } catch (e) {
       console.error("Failed to delete address", e);
@@ -51,7 +51,7 @@ export const useStore = create((set) => ({
   // NEW: Fetch initial settings from SQLite 
   fetchSettings: async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/settings');
+      const res = await fetch('/api/settings');
       const data = await res.json();
       set({ settings: data });
     } catch (e) {
@@ -61,7 +61,7 @@ export const useStore = create((set) => ({
 
   fetchFonts: async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/fonts');
+      const res = await fetch('/api/fonts');
       const data = await res.json();
       set({ fonts: data });
       
@@ -70,7 +70,7 @@ export const useStore = create((set) => ({
       let css = '';
       data.forEach(font => {
         const fontName = font.name.split('.')[0];
-        css += `@font-face { font-family: '${fontName}'; src: url('http://localhost:8000/${font.file_path}'); }\n`;
+        css += `@font-face { font-family: '${fontName}'; src: url('/${font.file_path}'); }\n`;
       });
       style.appendChild(document.createTextNode(css));
       document.head.appendChild(style);
@@ -96,7 +96,7 @@ export const useStore = create((set) => ({
   updateSettingsAPI: async (newSettings) => {
     set({ settings: newSettings });
     try {
-      await fetch('http://localhost:8000/api/settings', {
+      await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings)
