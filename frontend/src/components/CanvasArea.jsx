@@ -29,7 +29,7 @@ export default function CanvasArea() {
   const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated } = useStore();
   
   const { splitMode } = useStore();
-  const cvThick = canvasBorderThickness || 2;
+  const cvThick = canvasBorderThickness || 4;
   const dotsPerMm = settings.default_dpi / 25.4;
   const printPx = Math.round(settings.print_width_mm * dotsPerMm);
 
@@ -202,7 +202,7 @@ export default function CanvasArea() {
                 element = <Line points={item.isVertical ? [item.x, item.y, item.x, canvasHeight] : [item.x, item.y, canvasWidth, item.y]} stroke="gray" strokeWidth={1} dash={[10, 10]} listening={false} />;
               }
 
-              const bThick = item.border_thickness || 2;
+              const bThick = item.border_thickness || 4;
               return (
                 <Group key={`${item.id}-wrap`}>
                   {element}

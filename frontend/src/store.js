@@ -6,7 +6,7 @@ export const useStore = create((set) => ({
   canvasWidth: 384,
   canvasHeight: 384,
   canvasBorder: 'none',
-  canvasBorderThickness: 2,
+  canvasBorderThickness: 4,
   splitMode: false,
   isRotated: false,
   selectedPrinter: null,

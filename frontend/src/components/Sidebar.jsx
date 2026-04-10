@@ -146,7 +146,7 @@ export default function Sidebar() {
   const handleSaveTemplate = async () => {
     const name = prompt("Enter a name for this template:");
     if (!name) return;
-    const thickness = useStore.getState().canvasBorderThickness || 2;
+    const thickness = useStore.getState().canvasBorderThickness || 4;
     
     try {
       await fetch('/api/templates', {
@@ -174,7 +174,7 @@ export default function Sidebar() {
 
   const handleUpdateTemplate = async () => {
     if (!currentTemplateId) return;
-    const thickness = useStore.getState().canvasBorderThickness || 2;
+    const thickness = useStore.getState().canvasBorderThickness || 4;
     try {
       await fetch(`/api/templates/${currentTemplateId}`, {
         method: 'PUT',
@@ -203,7 +203,7 @@ export default function Sidebar() {
   const handlePrint = async () => {
     if (!selectedPrinter) return alert("Please select a printer first!");
     setIsPrinting(true);
-    const thickness = useStore.getState().canvasBorderThickness || 2;
+    const thickness = useStore.getState().canvasBorderThickness || 4;
     try {
       const printRes = await fetch(`/api/print/direct`, {
         method: 'POST',

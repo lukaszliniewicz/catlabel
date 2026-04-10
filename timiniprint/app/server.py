@@ -144,8 +144,15 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
             await backend.connect_attempts(attempts)
             try:
                 # Stream all jobs continuously over the single open connection
-                for job in jobs:
+                for i, job in enumerate(jobs):
                     await backend.write(job, chunk_size=128, interval_ms=0)
+                    
+                    # Thermal cooling pauses for long print batches
+                    if i < len(jobs) - 1:
+                        if (i + 1) % 3 == 0:
+                            await asyncio.sleep(2.0)  # Let thermal head cool down
+                        else:
+                            await asyncio.sleep(0.3)  # Small gap between jobs
             finally:
                 await backend.disconnect()
             return

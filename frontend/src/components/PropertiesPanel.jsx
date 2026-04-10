@@ -46,7 +46,7 @@ const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
   return (
     <div className="flex-1">
       <label 
-        className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 transition-colors ${disabled ? 'text-neutral-300 dark:text-neutral-700' : 'text-neutral-400 dark:text-neutral-500 cursor-ew-resize hover:text-blue-500'}`} 
+        className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 truncate transition-colors ${disabled ? 'text-neutral-300 dark:text-neutral-700' : 'text-neutral-400 dark:text-neutral-500 cursor-ew-resize hover:text-blue-500'}`} 
         onMouseDown={handleMouseDown}
         title={disabled ? "Locked" : "Drag left/right to adjust"}
       >
@@ -90,7 +90,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
   return (
     <div className="flex-1">
       <label 
-        className="block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 cursor-ew-resize hover:text-blue-500 transition-colors" 
+        className="block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 truncate cursor-ew-resize hover:text-blue-500 transition-colors" 
         onMouseDown={handleMouseDown}
         title="Drag left/right to adjust"
       >
@@ -133,7 +133,7 @@ export default function PropertiesPanel() {
   }, [settings]);
 
   const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors";
-  const labelClass = "block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5";
+  const labelClass = "block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 truncate";
 
   // --- Actions ---
 
@@ -304,8 +304,8 @@ export default function PropertiesPanel() {
             <div className="space-y-4 mt-4">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Canvas Styling</h2>
               <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className={labelClass}>Canvas Border / Cut line</label>
+                <div className="flex flex-col justify-end flex-1">
+                  <label className={labelClass} title="Canvas Border / Cut line">Canvas Border</label>
                   <select value={canvasBorder} onChange={(e) => setCanvasBorder(e.target.value)} className={inputClass}>
                     <option value="none">None</option>
                     <option value="box">Full Box</option>
@@ -317,7 +317,7 @@ export default function PropertiesPanel() {
                 <ScrubberInput 
                   name="canvasBorderThickness" 
                   label="Thickness" 
-                  value={canvasBorderThickness || 2} 
+                  value={canvasBorderThickness || 4} 
                   onChange={(e) => setCanvasBorderThickness(Number(e.target.value))} 
                 />
               </div>
@@ -621,7 +621,7 @@ export default function PropertiesPanel() {
                       <option value="cut_line">Cut Line (Dashed)</option>
                     </select>
                   </div>
-                  <ScrubberInput name="border_thickness" label="Thickness" value={selectedItem.border_thickness || 2} onChange={handleChange} />
+                  <ScrubberInput name="border_thickness" label="Thickness" value={selectedItem.border_thickness || 4} onChange={handleChange} />
               </div>
             </div>
 

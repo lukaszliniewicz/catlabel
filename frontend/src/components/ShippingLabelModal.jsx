@@ -46,7 +46,7 @@ export default function ShippingLabelModal({ onClose }) {
     // 2. Bold Horizontal Divider
     newItems.push({
       id: `${timestamp}-line1`, type: 'text', text: '', 
-      x: 0, y: 110, width: targetW, size: 2, border_style: 'top', border_thickness: 3
+      x: 0, y: 110, width: targetW, size: 2, border_style: 'top', border_thickness: 4
     });
 
     const hasCustomText = customText.trim().length > 0;
@@ -79,7 +79,7 @@ export default function ShippingLabelModal({ onClose }) {
     if (hasCustomText) {
       newItems.push({
         id: `${timestamp}-line2`, type: 'text', text: '', 
-        x: 0, y: targetH - 40, width: targetW, size: 2, border_style: 'top', border_thickness: 2
+        x: 0, y: targetH - 40, width: targetW, size: 2, border_style: 'top', border_thickness: 4
       });
       newItems.push({
         id: `${timestamp}-custom`, type: 'text', 
