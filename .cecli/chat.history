@@ -1,0 +1,148 @@
+
+# cecli chat started at 2026-04-09 00:17:02
+
+> /home/llini/miniconda3/envs/aider-ce/bin/aider-ce  
+> You can skip this check with --no-gitignore  
+> Added .cecli* to .gitignore  
+> Cost estimates may be inaccurate when using streaming and caching.  
+> cecli v0.98.2  
+> Main model: vertex_ai/gemini-3-flash-preview with diff-fenced edit format, reasoning high  
+> Weak model: vertex_ai/gemini-3-flash-preview  
+> Git repo: .git with 104 files  
+> Repo-map: using 8000 tokens, files refresh  
+
+#### /model vertex_ai/gemini-3.1-pro-preview  
+> Processing...  
+> cecli v0.98.2  
+> Main model: vertex_ai/gemini-3.1-pro-preview with diff-fenced edit format  
+> Weak model: vertex_ai/gemini-3-flash-preview  
+> Agent model: vertex_ai/gemini-3-flash-preview  
+> Git repo: .git with 104 files  
+> Repo-map: using 8000 tokens, files refresh  
+
+#### /map-refresh  
+> Processing...  
+> Initial repo scan can be slow in larger repos, but only happens once.  
+> The repo map has been refreshed, use /map to view it.  
+> ✅ Refreshed repository map  
+> Finished.  
+
+#### Let's implement phase 1 and 2 of this plan: This is a fantastic idea. Forking the core protocol engine of TiMini Print and wrapping it in a modern, headless, API-first architecture with a React frontend is the perfect evolution for this tool, especially for integration with a broader system like your cataloging app.  
+####   
+#### By moving to **FastAPI**, we natively embrace the `async` nature of the underlying Bluetooth library (`bleak`). By moving to a web frontend, we completely decouple the UI from the OS, meaning you could run the printer server on a Raspberry Pi attached to your network, and design/print labels from your phone or desktop browser.  
+####   
+#### Here is a comprehensive architecture and implementation plan.  
+####   
+#### ---  
+####   
+#### ### 1. High-Level System Architecture  
+####   
+#### We will structure this as a **Monorepo** containing two decoupled applications:  
+####   
+#### *   **The Print Server (Backend):** A Python/FastAPI service managing the SQLite database, Bluetooth connections, image rasterization (Pillow), and the TiMini protocol engine.  
+#### *   **The Label Studio (Frontend):** A React SPA (Single Page Application) for designing templates, managing printer settings, and uploading fonts.  
+####   
+#### ### 2. Technology Stack  
+####   
+#### **Backend (Python)**  
+#### *   **Core:** FastAPI (for REST & WebSockets), Uvicorn (ASGI server).  
+#### *   **Database:** SQLite via SQLModel (combines SQLAlchemy and Pydantic for seamless data validation and ORM).  
+#### *   **Hardware/Print Engine:** The forked TiMini core (`protocol`, `transport`, `devices`), `bleak` for BLE.  
+#### *   **Rendering:** Pillow (PIL) for generating images from templates, `python-barcode` and `qrcode` for generating scannable codes natively.  
+####   
+#### **Frontend (TypeScript)**  
+#### *   **Framework:** React 18 (via Vite).  
+#### *   **Styling & UI:** Tailwind CSS, Shadcn UI (accessible, unstyled components like modals, sliders, and dropdowns).  
+#### *   **Canvas/Workspace:** **React-Konva** (a React wrapper around Konva.js). It is the industry standard for building 2D canvas editors (like Figma or Canva clones). It handles dragging, dropping, scaling, and text wrapping perfectly.  
+#### *   **State Management:** Zustand (lightweight, perfect for managing complex canvas state without Redux boilerplate).  
+####   
+#### ---  
+####   
+#### ### 3. Core Concepts & Database Entities (SQLite)  
+####   
+#### We need to store persistent data so the app survives reboots and acts as a proper microservice.  
+####   
+#### 1.  **Printer Profiles:** Stores discovered/paired printers, MAC addresses, connection type (BLE/Classic), and saved preferences (default darkness, default feed padding).  
+#### 2.  **Custom Fonts:** Stores uploaded `.ttf`/`.otf` files. The database holds the metadata, and the files are saved to a local `/fonts` directory.  
+#### 3.  **Templates:** Stored as JSON payloads representing the Konva canvas state.  
+####     *   *Example:* A label contains a text node `{{ item_name }}`, a barcode node `{{ item_sku }}`, and a static image (logo).  
+####     *   Has properties like `width` (e.g., 384px), `height` (fixed or "auto-expand").  
+####   
+#### ---  
+####   
+#### ### 4. API Design (FastAPI)  
+####   
+#### The backend will expose two types of interfaces:  
+####   
+#### **A. REST API (For the Frontend & Your Cataloging App)**  
+#### *   `GET /api/printers/scan`: Triggers a Bluetooth scan.  
+#### *   `POST /api/printers/{mac}/connect`: Establishes the BLE connection.  
+#### *   `POST /api/fonts`: Upload a font.  
+#### *   `POST /api/templates`: Save a label design.  
+#### *   `POST /api/print/image`: Direct image printing (receives a base64 PNG from the frontend canvas).  
+#### *   **`POST /api/print/template/{id}`:** The magic endpoint for your cataloging app. You send `{"data": {"item_name": "Resistor", "sku": "12345"}}`. The backend loads the template, injects the variables, renders it via Pillow, and prints it.  
+####   
+#### **B. WebSockets (For Real-Time UI Updates)**  
+#### *   `ws://.../status`: Broadcasts real-time events to the React app: "Scanning...", "Connected to GT01", "Printing...", "Print Complete", or "Printer Disconnected".  
+####   
+#### ---  
+####   
+#### ### 5. The Frontend "Label Studio" Architecture  
+####   
+#### The UI will be divided into three main views:  
+####   
+#### 1.  **Dashboard / Printer Management:**  
+####     *   A clean list of known printers.  
+####     *   A "Scan" button with a radar animation.  
+####     *   Settings panels for connected printers (sliders for darkness 1-5, toggles for dithering, feed settings).  
+#### 2.  **The Canvas Workspace (Template Editor):**  
+####     *   **Toolbar:** Add Text, Add Barcode, Add QR, Add Image.  
+####     *   **Properties Panel:** Select font (fetches from API), font size, alignment, bold/italic. Set variables (e.g., mark a text box as a "Variable" named `sku`).  
+####     *   **Canvas:** The Konva.js stage. Displays a boundary box (e.g., 384px wide).  
+####     *   **Preview Mode:** A button that sends the canvas to the backend, which runs it through TiMini's 1-bit Floyd-Steinberg dithering algorithm and returns the *exact* black-and-white preview of what will print.  
+#### 3.  **Assets Library:**  
+####     *   Manage uploaded fonts and images/logos.  
+####   
+#### ---  
+####   
+#### ### 6. Phased Implementation Plan  
+####   
+#### If we agree on this architecture, here is how we sequence the development:  
+####   
+#### #### Phase 1: The Great Pruning (Backend Fork)  
+#### *   Clone the TiMini repo.  
+#### *   Delete `timiniprint_gui.py`, `app/gui.py`, `app/cli.py`, and all Tkinter references.  
+#### *   Retain the pure python logic: `protocol`, `devices`, `transport`, `rendering`.  
+#### *   Ensure the core engine can still take a Pillow `Image` object and print it purely programmatically.  
+####   
+#### #### Phase 2: FastAPI Foundation  
+#### *   Set up the FastAPI project structure.  
+#### *   Implement SQLModel and SQLite. Create the schemas for Printers, Fonts, and Templates.  
+#### *   *Crucial step:* Integrate TiMini’s `SppBackend` (which uses `asyncio`) into FastAPI’s event loop. Ensure we can scan and connect to a printer via REST endpoints.  
+####   
+#### #### Phase 3: The Rendering Engine  
+#### *   Build a Python module that takes a JSON representation of a template and a dictionary of variables, and uses Pillow (`ImageDraw`, `ImageFont`) to draw the label.  
+#### *   Integrate `python-barcode` so if the JSON says type: "barcode", it generates the barcode and pastes it onto the Pillow canvas.  
+#### *   Create the `/api/print/template` endpoint to test this end-to-end.  
+####   
+#### #### Phase 4: Frontend Foundation & Workspace  
+#### *   Spin up Vite + React + Tailwind.  
+#### *   Build the Printer Management UI (connect, disconnect, settings).  
+#### *   Implement the React-Konva workspace. Allow the user to set a canvas width (e.g., 384px) and drag text around.  
+####   
+#### #### Phase 5: Tying it Together  
+#### *   Implement the "Save Template" feature (Canvas state -> JSON -> SQLite).  
+#### *   Implement the "Test Print" feature (Frontend renders Canvas to Base64 Image -> Backend receives image -> TiMini prints it).  
+#### *   Upload custom fonts via UI -> Backend saves to disk -> Frontend injects them via CSS so the canvas matches the backend render.  
+####   
+#### #### Phase 6: Polish for the Cataloging App  
+#### *   Generate API documentation (Swagger is built into FastAPI automatically!).  
+#### *   Ensure the connection manager auto-reconnects if the printer goes to sleep and wakes up, so your cataloging app never gets a "printer offline" error if the printer is actually available.  
+####   
+#### ### Why this approach?  
+#### 1.  **Separation of Concerns:** The React app handles the complicated math of WYSIWYG dragging and dropping. It just sends JSON or Base64 images to the backend.  
+#### 2.  **Headless Reliability:** Your cataloging app doesn't need to know *anything* about Bluetooth, ESC/POS, or TiMini protocols. It just makes a standard HTTP POST request.  
+#### 3.  **Modern Stack:** No Tkinter means no weird OS-specific UI bugs. It will look beautiful and work on a Mac, Windows, or Linux server.  
+####   
+#### How does this roadmap look to you? If you approve, we can begin with **Phase 1 and 2**: stripping down the fork and setting up the FastAPI + SQLite backbone.  
+> Processing...  
