@@ -13,7 +13,7 @@ from pydantic import BaseModel
 import pypdfium2 as pdfium
 from sqlmodel import SQLModel, create_engine, Session, select
 
-from .models import PrinterProfile, Font, Template, Settings, Address
+from .models import PrinterProfile, Font, Project, Settings, Address
 from ..rendering.template import render_template
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
@@ -45,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class TemplateCreate(BaseModel):
+class ProjectCreate(BaseModel):
     name: str
     canvas_state: Dict[str, Any]
 
@@ -101,11 +101,19 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
                     strip = padded
                 final_images.append(strip)
         else:
-            # Protect protocol buffer wrapping: scale non-split items to exact hardware width if they over/underflow
+            # CRITICAL FIX: Pad narrower canvases, only downscale if strictly oversize
             if img.width != print_width_px:
-                ratio = print_width_px / float(img.width)
-                new_height = max(1, int(img.height * ratio))
-                img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
+                if img.width < print_width_px:
+                    # User designed a narrow label (e.g. 12mm). Center it on the 48mm tape.
+                    padded = Image.new("RGB", (print_width_px, img.height), "white")
+                    offset_x = (print_width_px - img.width) // 2
+                    padded.paste(img, (offset_x, 0))
+                    img = padded
+                else:
+                    # Image is larger than tape but not in split mode; scale it down
+                    ratio = print_width_px / float(img.width)
+                    new_height = max(1, int(img.height * ratio))
+                    img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
             final_images.append(img)
 
     # Pre-render all raw protocol jobs
@@ -194,81 +202,56 @@ def update_settings(new_settings: Settings):
         session.commit()
         return settings
 
-@app.post("/api/templates")
-def create_template(template: TemplateCreate):
-    with Session(engine) as session:
-        db_template = Template(
-            name=template.name, 
-            canvas_state_json=json.dumps(template.canvas_state)
-        )
-        session.add(db_template)
-        session.commit()
-        session.refresh(db_template)
-        return db_template
+class ProjectUpdate(BaseModel):
+    canvas_state: Dict[str, Any]
 
-@app.get("/api/templates")
-def list_templates():
+@app.post("/api/projects")
+def create_project(project: ProjectCreate):
     with Session(engine) as session:
-        templates = session.exec(select(Template)).all()
+        db_project = Project(
+            name=project.name, 
+            canvas_state_json=json.dumps(project.canvas_state)
+        )
+        session.add(db_project)
+        session.commit()
+        session.refresh(db_project)
+        return db_project
+
+@app.get("/api/projects")
+def list_projects():
+    with Session(engine) as session:
+        projects = session.exec(select(Project)).all()
         # Parse JSON back to dict for the API response
         return [
             {
-                "id": t.id, 
-                "name": t.name, 
-                "canvas_state": json.loads(t.canvas_state_json)
+                "id": p.id, 
+                "name": p.name, 
+                "canvas_state": json.loads(p.canvas_state_json)
             } 
-            for t in templates
+            for p in projects
         ]
 
-class TemplateUpdate(BaseModel):
-    canvas_state: Dict[str, Any]
-
-@app.put("/api/templates/{template_id}")
-def update_template(template_id: int, template_update: TemplateUpdate):
+@app.put("/api/projects/{project_id}")
+def update_project(project_id: int, project_update: ProjectUpdate):
     with Session(engine) as session:
-        db_template = session.get(Template, template_id)
-        if not db_template:
-            raise HTTPException(status_code=404, detail="Template not found")
-        db_template.canvas_state_json = json.dumps(template_update.canvas_state)
-        session.add(db_template)
+        db_project = session.get(Project, project_id)
+        if not db_project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        db_project.canvas_state_json = json.dumps(project_update.canvas_state)
+        session.add(db_project)
         session.commit()
-        session.refresh(db_template)
-        return db_template
+        session.refresh(db_project)
+        return db_project
 
-@app.delete("/api/templates/{template_id}")
-def delete_template(template_id: int):
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: int):
     with Session(engine) as session:
-        db_template = session.get(Template, template_id)
-        if not db_template:
-            raise HTTPException(status_code=404, detail="Template not found")
-        session.delete(db_template)
+        db_project = session.get(Project, project_id)
+        if not db_project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        session.delete(db_project)
         session.commit()
         return {"status": "deleted"}
-
-@app.post("/api/print/template/{template_id}")
-async def print_template(template_id: int, request: PrintRequest):
-    with Session(engine) as session:
-        template = session.get(Template, template_id)
-        if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
-        
-        settings = session.get(Settings, 1)
-        default_font = settings.default_font if settings else "arial.ttf"
-        
-        template_data = json.loads(template.canvas_state_json)
-        split_mode = template_data.get("splitMode", False)
-        
-    # Render the image using our engine
-    img = render_template(template_data, request.variables, default_font=default_font)
-    
-    # Execute the print job with retries
-    await execute_print_job(request.mac_address, img, split_mode)
-    
-    return {
-        "status": "success", 
-        "message": f"Template printed successfully to {request.mac_address}",
-        "mac_address": request.mac_address
-    }
 
 @app.post("/api/print/direct")
 async def print_direct(request: DirectPrintRequest):

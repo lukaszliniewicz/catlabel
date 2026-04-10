@@ -16,6 +16,33 @@ export const useStore = create((set) => ({
   addresses: [],
   settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100, default_font: 'arial.ttf' },
   
+  pxToMm: (px) => px / 8,
+  mmToPx: (mm) => Math.round(mm * 8),
+
+  projects: [],
+
+  fetchProjects: async () => {
+    try {
+      const res = await fetch('/api/projects');
+      const data = await res.json();
+      set({ projects: data });
+    } catch (e) {
+      console.error("Failed to fetch projects", e);
+    }
+  },
+
+  applyPreset: (preset) => set((state) => {
+    const w = Math.round(preset.w * 8);
+    const h = Math.round(preset.h * 8);
+    return {
+      canvasWidth: w,
+      canvasHeight: h,
+      isRotated: preset.rotated,
+      splitMode: preset.splitMode || false,
+      canvasBorder: preset.border || 'none'
+    };
+  }),
+  
   fetchAddresses: async () => {
     try {
       const res = await fetch('/api/addresses');

@@ -50,7 +50,7 @@ const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
         onMouseDown={handleMouseDown}
         title={disabled ? "Locked" : "Drag left/right to adjust"}
       >
-        {label} {disabled ? '🔒' : '⇹'}
+        {label} (mm) {disabled ? '🔒' : '⇹'}
       </label>
       <input 
         type="number" step="0.1" name={name} value={currentMm.toFixed(1)} onChange={handleChange} disabled={disabled}

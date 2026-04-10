@@ -4,16 +4,23 @@ import IconPicker from './IconPicker';
 import HtmlPickerModal from './HtmlPickerModal';
 import BatchPrintModal from './BatchPrintModal';
 import ShippingLabelModal from './ShippingLabelModal';
-import { Trash, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash, ChevronDown, ChevronRight, LayoutTemplate } from 'lucide-react';
+
+const PRESETS = [
+  { name: 'Standard Tape (Full Width)', w: 48, h: 48, rotated: false },
+  { name: 'Gridfinity Bin Label (42x12mm)', w: 42, h: 12, rotated: false, border: 'box' },
+  { name: 'Cable Flag / Wire Wrap (30x48mm)', w: 30, h: 48, rotated: false, border: 'cut_line' },
+  { name: 'Folder Tab (50x15mm)', w: 50, h: 15, rotated: false, border: 'box' },
+  { name: 'A6 Shipping (105x148mm - Oversize)', w: 105, h: 148, rotated: false, splitMode: true, border: 'box' },
+];
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects } = useStore();
   const [printers, setPrinters] = useState([]);
-  const [templates, setTemplates] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [currentTemplateId, setCurrentTemplateId] = useState(null);
-  const [showTemplates, setShowTemplates] = useState(true);
+  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [showProjects, setShowProjects] = useState(false);
   
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [iconPickerMode, setIconPickerMode] = useState('icon');
@@ -22,20 +29,10 @@ export default function Sidebar() {
   const [showShippingModal, setShowShippingModal] = useState(false);
 
   useEffect(() => {
-    fetchTemplates();
+    useStore.getState().fetchProjects();
     useStore.getState().fetchSettings(); // <-- Load DB settings
     useStore.getState().fetchAddresses();
   }, []);
-
-  const fetchTemplates = async () => {
-    try {
-      const res = await fetch('/api/templates');
-      const data = await res.json();
-      setTemplates(data);
-    } catch (e) {
-      console.error("Failed to fetch templates", e);
-    }
-  };
 
   const handleAddText = () => {
     const defaultFont = useStore.getState().settings.default_font || 'arial.ttf';
@@ -143,13 +140,13 @@ export default function Sidebar() {
     setIsScanning(false);
   };
 
-  const handleSaveTemplate = async () => {
-    const name = prompt("Enter a name for this template:");
+  const handleSaveProject = async () => {
+    const name = prompt("Enter a name for this project:");
     if (!name) return;
     const thickness = useStore.getState().canvasBorderThickness || 4;
     
     try {
-      await fetch('/api/templates', {
+      await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -157,44 +154,44 @@ export default function Sidebar() {
           canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items }
         })
       });
-      fetchTemplates();
+      useStore.getState().fetchProjects();
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleLoadTemplate = (tpl) => {
-    setCurrentTemplateId(tpl.id);
-    setCanvasSize(tpl.canvas_state.width || 384, tpl.canvas_state.height || 384);
-    setCanvasBorder(tpl.canvas_state.canvasBorder || 'none');
-    useStore.getState().setSplitMode(tpl.canvas_state.splitMode || false);
-    useStore.getState().setIsRotated(tpl.canvas_state.isRotated || false);
-    setItems(tpl.canvas_state.items || []);
+  const handleLoadProject = (proj) => {
+    setCurrentProjectId(proj.id);
+    setCanvasSize(proj.canvas_state.width || 384, proj.canvas_state.height || 384);
+    setCanvasBorder(proj.canvas_state.canvasBorder || 'none');
+    useStore.getState().setSplitMode(proj.canvas_state.splitMode || false);
+    useStore.getState().setIsRotated(proj.canvas_state.isRotated || false);
+    setItems(proj.canvas_state.items || []);
   };
 
-  const handleUpdateTemplate = async () => {
-    if (!currentTemplateId) return;
+  const handleUpdateProject = async () => {
+    if (!currentProjectId) return;
     const thickness = useStore.getState().canvasBorderThickness || 4;
     try {
-      await fetch(`/api/templates/${currentTemplateId}`, {
+      await fetch(`/api/projects/${currentProjectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items }
         })
       });
-      fetchTemplates();
+      useStore.getState().fetchProjects();
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleDeleteTemplate = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this template?")) return;
+  const handleDeleteProject = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this project?")) return;
     try {
-      await fetch(`/api/templates/${id}`, { method: 'DELETE' });
-      fetchTemplates();
-      if (currentTemplateId === id) setCurrentTemplateId(null);
+      await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+      useStore.getState().fetchProjects();
+      if (currentProjectId === id) setCurrentProjectId(null);
     } catch (e) {
       console.error(e);
     }
@@ -262,42 +259,59 @@ export default function Sidebar() {
       </div>
 
       <div className="space-y-3">
+        <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas Presets</h2>
+        <select 
+            className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
+            onChange={(e) => {
+              if(e.target.value !== "") applyPreset(PRESETS[e.target.value]);
+              e.target.value = "";
+            }}
+            defaultValue=""
+          >
+            <option value="" disabled>Select physical layout...</option>
+            {PRESETS.map((p, idx) => (
+              <option key={idx} value={idx}>{p.name}</option>
+            ))}
+        </select>
+      </div>
+
+      <div className="space-y-3">
         <div 
           className="flex items-center justify-between cursor-pointer border-b border-neutral-100 dark:border-neutral-800 pb-2 group"
-          onClick={() => setShowTemplates(!showTemplates)}
+          onClick={() => setShowProjects(!showProjects)}
         >
-          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">Templates</h2>
-          {showTemplates ? (
+          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">Saved Projects</h2>
+          {showProjects ? (
             <ChevronDown size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
           ) : (
             <ChevronRight size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
           )}
         </div>
         
-        {showTemplates && (
+        {showProjects && (
           <div className="flex flex-col gap-2 pt-1">
             <div className="flex gap-2">
               <button 
-                onClick={handleSaveTemplate} 
+                onClick={handleSaveProject} 
                 className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
               >
                 Save As New
               </button>
-              {currentTemplateId && (
+              {currentProjectId && (
                 <button 
-                  onClick={handleUpdateTemplate} 
+                  onClick={handleUpdateProject} 
                   className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
                 >
-                  Update Current
+                  Update
                 </button>
               )}
             </div>
-            {templates.length > 0 && (
+            {projects.length > 0 && (
               <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-2">
-                {templates.map(t => (
-                  <div key={t.id} className={`flex justify-between items-center bg-neutral-50 dark:bg-neutral-900 p-2 border ${currentTemplateId === t.id ? 'border-blue-500' : 'border-neutral-200 dark:border-neutral-800'}`}>
-                     <span className="text-xs cursor-pointer hover:text-blue-500 dark:text-white truncate flex-1" onClick={() => handleLoadTemplate(t)}>{t.name}</span>
-                     <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-500 hover:text-red-700 ml-2"><Trash size={14}/></button>
+                {projects.map(p => (
+                  <div key={p.id} className={`flex justify-between items-center bg-neutral-50 dark:bg-neutral-900 p-2 border ${currentProjectId === p.id ? 'border-blue-500' : 'border-neutral-200 dark:border-neutral-800'}`}>
+                     <span className="text-xs cursor-pointer hover:text-blue-500 dark:text-white truncate flex-1" onClick={() => handleLoadProject(p)}>{p.name}</span>
+                     <button onClick={() => handleDeleteProject(p.id)} className="text-red-500 hover:text-red-700 ml-2"><Trash size={14}/></button>
                   </div>
                 ))}
               </div>
