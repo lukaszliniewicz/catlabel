@@ -18,15 +18,19 @@ if not exist "env\" (
     )
 
     echo [2/4] Creating isolated environment ^(Python ^& Node.js^)...
-    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 nodejs -y
+    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs python-lzo -y
+    if errorlevel 1 exit /b 1
 
     echo [3/4] Installing backend dependencies...
     bin\micromamba.exe run -p .\env pip install -r requirements.txt
+    if errorlevel 1 exit /b 1
 
     echo [4/4] Building optimized frontend UI...
     cd frontend
     ..\bin\micromamba.exe run -p ..\env npm install
+    if errorlevel 1 exit /b 1
     ..\bin\micromamba.exe run -p ..\env npm run build
+    if errorlevel 1 exit /b 1
     cd ..
 
     echo Installation complete!

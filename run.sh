@@ -20,7 +20,7 @@ if [ ! -d "env" ]; then
     fi
 
     echo "[2/4] Creating isolated environment (Python & Node.js)..."
-    ./bin/micromamba create -p ./env -c conda-forge python=3.11 nodejs -y
+    ./bin/micromamba create -p ./env -c conda-forge python=3.11 pip nodejs python-lzo -y
 
     echo "[3/4] Installing backend dependencies..."
     ./bin/micromamba run -p ./env pip install -r requirements.txt
