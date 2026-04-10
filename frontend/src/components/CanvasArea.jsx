@@ -158,7 +158,7 @@ export default function CanvasArea() {
                     <Text 
                       text={item.text} 
                       x={0}
-                      y={0}
+                      y={item.size * 0.1}
                       width={visualW} 
                       height={approxHeight} 
                       padding={pad}
