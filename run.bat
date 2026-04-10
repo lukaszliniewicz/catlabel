@@ -17,8 +17,8 @@ if not exist "env\" (
         del /Q bin\micromamba.tar.bz2 2>nul
     )
 
-    echo [2/4] Creating isolated environment ^(Python ^& Node.js ^& Git^)...
-    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs git -y
+    echo [2/4] Creating isolated environment ^(Python ^& Node.js^)...
+    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs -y
     if errorlevel 1 exit /b 1
 
     echo [3/4] Installing backend dependencies...
