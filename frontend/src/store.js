@@ -40,10 +40,15 @@ export const useStore = create((set) => ({
         ? Math.max(0, targetPage - 1)
         : state.currentPage;
 
+    const newSelectedPages = state.selectedPagesForPrint
+      .filter((p) => p !== targetPage)
+      .map((p) => (p > targetPage ? p - 1 : p));
+
     return {
       items: newItems,
       currentPage: adjustedCurrentPage,
-      selectedId: null
+      selectedId: null,
+      selectedPagesForPrint: newSelectedPages
     };
   }),
   duplicatePage: (pageIndex) => set((state) => {
@@ -68,6 +73,64 @@ export const useStore = create((set) => ({
       currentPage: newPageIdx,
       selectedId: null
     };
+  }),
+  selectedPagesForPrint: [],
+  isPrinting: false,
+  setIsPrinting: (val) => set({ isPrinting: val }),
+  togglePageForPrint: (pageIndex) => set((state) => {
+    const current = state.selectedPagesForPrint;
+    if (current.includes(pageIndex)) {
+      return { selectedPagesForPrint: current.filter((p) => p !== pageIndex) };
+    }
+    return { selectedPagesForPrint: [...current, pageIndex] };
+  }),
+  printPages: async (pageIndices) => {
+    const state = useStore.getState();
+    if (!state.selectedPrinter) {
+      alert("Please select a printer first!");
+      return;
+    }
+
+    const normalizedPageIndices = Array.from(
+      new Set((pageIndices || []).map((pageIndex) => Math.max(0, Number(pageIndex) || 0)))
+    );
+    if (normalizedPageIndices.length === 0) return;
+
+    set({ isPrinting: true });
+
+    try {
+      const itemsToPrint = state.items.filter((item) =>
+        normalizedPageIndices.includes(Number(item.pageIndex ?? 0))
+      );
+      const printRes = await fetch(`/api/print/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mac_address: state.selectedPrinter,
+          canvas_state: {
+            width: state.canvasWidth,
+            height: state.canvasHeight,
+            isRotated: state.isRotated,
+            canvasBorder: state.canvasBorder,
+            canvasBorderThickness: state.canvasBorderThickness || 4,
+            splitMode: state.splitMode,
+            items: itemsToPrint
+          },
+          copies: state.printCopies || 1,
+          variables_list: state.batchRecords || [{}]
+        })
+      });
+
+      if (!printRes.ok) {
+        const err = await printRes.json();
+        throw new Error(err.detail || "Print failed");
+      }
+    } catch (e) {
+      console.error(e);
+      alert(`Failed to print: ${e.message}`);
+    } finally {
+      set({ isPrinting: false });
+    }
   }),
   isSidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
@@ -256,8 +319,8 @@ export const useStore = create((set) => ({
     };
   }),
   
-  setItems: (items) => set({ items, selectedId: null }),
-  clearCanvas: () => set({ items: [], selectedId: null, currentPage: 0 }),
+  setItems: (items) => set({ items, selectedId: null, selectedPagesForPrint: [] }),
+  clearCanvas: () => set({ items: [], selectedId: null, currentPage: 0, selectedPagesForPrint: [] }),
   
   addItem: (item) => set((state) => ({
     items: [

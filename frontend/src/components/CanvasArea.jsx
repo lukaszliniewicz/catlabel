@@ -26,7 +26,7 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 };
 
 export default function CanvasArea() {
-  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated, currentPage, setCurrentPage, addPage, deletePage } = useStore();
+  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated, currentPage, setCurrentPage, addPage, deletePage, togglePageForPrint, selectedPagesForPrint, printPages } = useStore();
   
   const { splitMode } = useStore();
   const cvThick = canvasBorderThickness || 4;
@@ -126,12 +126,30 @@ export default function CanvasArea() {
 
               return (
                 <div key={`${rIdx}-${pageIndex}`} className="flex flex-col items-center gap-2 relative">
-                  <div className="flex items-center justify-between w-full px-2">
-                    <span className="text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold">
-                      Label {pageIdx + 1} {isActive && '(Active)'}
-                    </span>
+                  <div className="flex items-center justify-between w-full px-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      {pages.length > 1 && (
+                        <input
+                          type="checkbox"
+                          checked={selectedPagesForPrint.includes(pageIndex)}
+                          onChange={() => togglePageForPrint(pageIndex)}
+                          className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                          title="Select for batch printing"
+                        />
+                      )}
+                      <span className="text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold">
+                        Label {pageIdx + 1} {isActive && '(Active)'}
+                      </span>
+                    </div>
                     {rIdx === 0 && (
                       <div className="flex gap-3">
+                        <button
+                          onClick={() => printPages([pageIndex])}
+                          className="text-[10px] text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 uppercase font-bold tracking-widest transition-colors"
+                          title="Print only this label"
+                        >
+                          Print
+                        </button>
                         <button
                           onClick={() => useStore.getState().duplicatePage(pageIndex)}
                           className="text-[10px] text-blue-500 hover:text-blue-600 uppercase font-bold tracking-widest transition-colors"

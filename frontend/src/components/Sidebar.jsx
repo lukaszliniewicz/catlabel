@@ -12,11 +12,10 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, currentPage, setCurrentPage, isSidebarCollapsed, toggleSidebar, printCopies, setPrintCopies } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, currentPage, setCurrentPage, isSidebarCollapsed, toggleSidebar, printCopies, setPrintCopies, isPrinting, printPages, selectedPagesForPrint } = useStore();
   const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState(null);
   const [showProjects, setShowProjects] = useState(false);
   
@@ -233,41 +232,20 @@ export default function Sidebar() {
   const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
   const pageCount = maxPage + 1;
 
-  const handlePrint = async () => {
-    if (isSidebarCollapsed) {
-      toggleSidebar();
-      return;
-    }
-    if (!selectedPrinter) return alert("Please select a printer first!");
-    setIsPrinting(true);
-    const thickness = useStore.getState().canvasBorderThickness || 4;
-    const batchRecords = useStore.getState().batchRecords || [{}];
+  const handlePrintCollapsed = () => {
+    toggleSidebar();
+  };
 
-    // Ignore the copies counter if we're dealing with a multi-page layout
-    // to prevent exploding permutations, relying on standard looping.
-    const copiesToSend = pageCount > 1 ? 1 : printCopies;
+  const handlePrintSingle = () => {
+    printPages([0]);
+  };
 
-    try {
-      const printRes = await fetch(`/api/print/batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          mac_address: selectedPrinter, 
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items },
-          copies: copiesToSend,
-          variables_list: batchRecords
-        })
-      });
-      
-      if (!printRes.ok) {
-        const err = await printRes.json();
-        throw new Error(err.detail || "Print failed");
-      }
-    } catch (e) {
-      console.error(e);
-      alert(`Failed to print: ${e.message}`);
-    }
-    setIsPrinting(false);
+  const handlePrintAll = () => {
+    printPages(Array.from({ length: pageCount }, (_, i) => i));
+  };
+
+  const handlePrintSelected = () => {
+    printPages(selectedPagesForPrint);
   };
 
   const SidebarButton = ({ icon: Icon, label, onClick, primary = false }) => (
@@ -326,21 +304,38 @@ export default function Sidebar() {
             </select>
           )}
 
-          <div className={`flex items-center w-full border ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-500' : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} rounded-none transition-colors`}>
-            {pageCount === 1 && (
+          {pageCount === 1 ? (
+            <div className={`flex items-center w-full border ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-500' : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} rounded-none transition-colors`}>
               <div className={`flex items-center border-r ${isPrinting || !selectedPrinter ? 'border-neutral-300 dark:border-neutral-700' : 'border-blue-200 dark:border-blue-800'}`}>
                 <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">-</button>
                 <span className="text-xs font-bold w-6 text-center select-none">{printCopies}</span>
                 <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(printCopies + 1)} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">+</button>
               </div>
-            )}
-            <button disabled={isPrinting || !selectedPrinter} onClick={handlePrint} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-bold transition-colors disabled:pointer-events-none">
-              <Printer size={16} /> {isPrinting ? 'Printing...' : 'Print'}
-            </button>
-          </div>
+              <button disabled={isPrinting || !selectedPrinter} onClick={handlePrintSingle} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-bold transition-colors disabled:pointer-events-none">
+                <Printer size={16} /> {isPrinting ? 'Printing...' : 'Print'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between px-1 mb-1">
+                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Copies per Label</span>
+                <div className={`flex items-center border rounded-sm overflow-hidden ${isPrinting || !selectedPrinter ? 'border-neutral-300 dark:border-neutral-700 opacity-50' : 'border-neutral-300 dark:border-neutral-700'}`}>
+                  <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">-</button>
+                  <span className="text-[10px] font-bold w-6 text-center select-none dark:text-white">{printCopies}</span>
+                  <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(printCopies + 1)} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">+</button>
+                </div>
+              </div>
+              <button disabled={isPrinting || !selectedPrinter} onClick={handlePrintAll} className={`flex items-center justify-center gap-2 w-full border px-4 py-2.5 text-xs uppercase tracking-wider font-bold transition-colors ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40'}`}>
+                <Printer size={16} /> Print All ({pageCount})
+              </button>
+              <button disabled={isPrinting || !selectedPrinter || selectedPagesForPrint.length === 0} onClick={handlePrintSelected} className={`flex items-center justify-center gap-2 w-full border px-4 py-2.5 text-xs uppercase tracking-wider font-bold transition-colors ${isPrinting || !selectedPrinter || selectedPagesForPrint.length === 0 ? 'opacity-50 cursor-not-allowed border-neutral-300 bg-transparent text-neutral-400 dark:border-neutral-800 dark:text-neutral-600' : 'border-blue-200 bg-transparent text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20'}`}>
+                <Printer size={16} /> Print Selected ({selectedPagesForPrint.length})
+              </button>
+            </div>
+          )}
         </div>
       ) : (
-        <SidebarButton icon={Printer} label="Print Options" onClick={handlePrint} primary />
+        <SidebarButton icon={Printer} label="Print Options" onClick={handlePrintCollapsed} primary />
       )}
 
       {!isSidebarCollapsed ? (
