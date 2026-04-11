@@ -111,7 +111,15 @@ TOOLS_SCHEMA = [
         "function": {
             "name": "clear_canvas",
             "description": "Deletes all elements from the canvas.",
-            "parameters": {"type": "object", "properties": {}}
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "confirm": {
+                        "type": "boolean",
+                        "description": "Placeholder parameter to satisfy strict JSON schema validators."
+                    }
+                }
+            }
         }
     },
     {
