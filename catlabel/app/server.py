@@ -68,6 +68,16 @@ def create_db_and_tables():
             conn.execute(text("ALTER TABLE aiagentprofile ADD COLUMN reasoning_effort VARCHAR DEFAULT ''"))
     except Exception:
         pass
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE aiagentprofile ADD COLUMN vertex_region VARCHAR DEFAULT ''"))
+    except Exception:
+        pass
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE aiconfig ADD COLUMN vertex_region VARCHAR DEFAULT ''"))
+    except Exception:
+        pass
 
 def download_default_fonts():
     """Silently downloads Variable Fonts from Google Fonts raw CDN."""

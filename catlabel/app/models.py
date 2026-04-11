@@ -45,6 +45,7 @@ class AIConfig(SQLModel, table=True):
     api_key: str = ""
     base_url: str = ""
     use_env: bool = False
+    vertex_region: str = ""
 
 class AIConversation(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -63,3 +64,4 @@ class AIAgentProfile(SQLModel, table=True):
     vision_capable: bool = False
     is_active: bool = False
     reasoning_effort: str = ""
+    vertex_region: str = ""

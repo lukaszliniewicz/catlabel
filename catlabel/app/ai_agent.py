@@ -86,7 +86,8 @@ def get_profiles():
                 base_url=old.base_url if old else "",
                 use_env=old.use_env if old else False,
                 vision_capable=True,
-                is_active=True
+                is_active=True,
+                vertex_region=getattr(old, "vertex_region", "") if old else ""
             )
             session.add(p)
             session.commit()
@@ -213,6 +214,9 @@ def chat_with_agent(req: ChatRequest):
             
         if active_profile.base_url:
             kwargs["api_base"] = active_profile.base_url
+
+    if active_profile.provider == "vertex_ai" and getattr(active_profile, "vertex_region", ""):
+        kwargs["vertex_location"] = active_profile.vertex_region
 
     context = get_agent_context()
     

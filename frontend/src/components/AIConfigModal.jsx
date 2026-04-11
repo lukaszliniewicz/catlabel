@@ -25,7 +25,7 @@ export default function AIConfigModal({ onClose }) {
       id: `new-${Date.now()}`,
       name: 'New Profile', provider: 'openai', model_name: 'gpt-4o',
       api_key: '', base_url: '', use_env: false, vision_capable: false, is_active: false,
-      reasoning_effort: ''
+      reasoning_effort: '', vertex_region: ''
     };
     setProfiles([...profiles, newProfile]);
     setSelectedId(newProfile.id);
@@ -173,6 +173,13 @@ export default function AIConfigModal({ onClose }) {
                 <>
                   <label className={labelClass}>Custom Base URL</label>
                   <input type="text" value={current.base_url} onChange={e => handleUpdateCurrent('base_url', e.target.value)} className={inputClass} placeholder="https://api.your-provider.com/v1" />
+                </>
+              )}
+
+              {current.provider === 'vertex_ai' && (
+                <>
+                  <label className={labelClass}>Vertex Region (Location)</label>
+                  <input type="text" value={current.vertex_region || ''} onChange={e => handleUpdateCurrent('vertex_region', e.target.value)} className={inputClass} placeholder="e.g. us-central1" />
                 </>
               )}
             </div>
