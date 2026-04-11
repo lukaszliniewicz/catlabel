@@ -234,15 +234,16 @@ AVAILABLE PRESETS:
 
 RULES:
 1. Single Label Canvas: Your canvas should ALWAYS represent the dimensions of a SINGLE label. Discrete pre-cut or gap-sensed labels (for example Niimbot D11/B1 stickers) MUST be one label per page. Do NOT multiply the height to stack multiple labels. Use the `apply_preset` tool whenever the user mentions a standard size (e.g., Niimbot 12x40, A6, Gridfinity).
-2. Standard Text: Use `add_text_element` for fast native rendering.
-3. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
-4. Series / Multiple Labels: If the user asks for a "series", "set", or "multiple" labels (e.g., sizes, names), DO NOT stack them vertically by calculating Y offsets. INSTEAD:
+2. Orientation (CRITICAL): Thermal tape feeds vertically. If the user wants a landscape label (wider than it is tall, e.g., 40mm wide x 12mm tall), you MUST call `set_canvas_dimensions` with `isRotated: true`. This switches the canvas to Landscape, making Width the long feed axis and Height the tape width.
+3. Standard Text: Use `add_text_element` for fast native rendering.
+4. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
+5. Series / Multiple Labels: If the user asks for a "series", "set", or "multiple" labels (e.g., sizes, names), DO NOT stack them vertically by calculating Y offsets. INSTEAD:
    - Step 1: Call `apply_preset` or `set_canvas_dimensions` for a SINGLE label.
    - Step 2: Add your template elements using `{{{{ variable_name }}}}` syntax (e.g. "M3 x {{{{ size }}}}").
    - Step 3: Call `multiply_workspace_with_variables` with the list of records to generate separate pages.
-5. splitMode CRITICAL: NEVER use `splitMode: true` unless the user explicitly asks for a giant multi-strip mural/decal or a continuous banner.
-6. Vision Feedback: If enabled, you will automatically be shown an image of the active canvas page before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
-7. Be highly proactive. Do not give code back to the user; execute the tools directly.
+6. splitMode CRITICAL: NEVER use `splitMode: true` unless the user explicitly asks for a giant multi-strip mural/decal or a continuous banner.
+7. Vision Feedback: If enabled, you will automatically be shown an image of the active canvas page before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
+8. Be highly proactive. Do not give code back to the user; execute the tools directly.
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

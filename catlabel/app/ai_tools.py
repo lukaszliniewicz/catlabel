@@ -93,13 +93,13 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_canvas_dimensions",
-            "description": "Change the global canvas size or orientation. The dimensions MUST represent a SINGLE label. Do not stretch the canvas to fit multiple labels.",
+            "description": "Change the global canvas size or orientation. The dimensions MUST represent a SINGLE label. CRITICAL: If the requested label is WIDER than it is TALL (Landscape, e.g., 40x12mm), you MUST set isRotated=true so the printer feeds it correctly. Do not stretch the canvas to fit multiple labels.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "width": {"type": "integer", "description": "Canvas width in pixels (1mm = 8px)."},
-                    "height": {"type": "integer", "description": "Canvas height in pixels."},
-                    "isRotated": {"type": "boolean"},
+                    "width": {"type": "integer", "description": "Canvas width in pixels (1mm = 8px). For landscape/rotated labels, this is the long tape length."},
+                    "height": {"type": "integer", "description": "Canvas height in pixels. For landscape/rotated labels, this must match the physical tape width."},
+                    "isRotated": {"type": "boolean", "description": "Set to true for landscape labels (text reads horizontally along the feed axis)."},
                     "splitMode": {"type": "boolean", "description": "Only set true for giant multi-strip murals, decals, or continuous banners; otherwise leave false."}
                 },
                 "required": ["width", "height"]
@@ -314,6 +314,10 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         canvas_state["height"] = args["height"]
         if "isRotated" in args:
             canvas_state["isRotated"] = args["isRotated"]
+        else:
+            # Smart fallback: auto-rotate if the requested dimensions are obviously landscape.
+            if args["width"] > args["height"] and args["width"] > 200 and args["height"] <= 384:
+                canvas_state["isRotated"] = True
         if "splitMode" in args:
             canvas_state["splitMode"] = args["splitMode"]
         return f"Canvas updated to {args['width']}x{args['height']} px."
