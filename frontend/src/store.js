@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export const useStore = create((set) => ({
+export const useStore = create((set, get) => ({
   items: [],
   selectedId: null,
   canvasWidth: 384,
@@ -85,7 +85,7 @@ export const useStore = create((set) => ({
     return { selectedPagesForPrint: [...current, pageIndex] };
   }),
   printPages: async (pageIndices) => {
-    const state = useStore.getState();
+    const state = get();
     if (!state.selectedPrinter) {
       alert("Please select a printer first!");
       return;
@@ -131,7 +131,7 @@ export const useStore = create((set) => ({
     } finally {
       set({ isPrinting: false });
     }
-  }),
+  },
   isSidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   addresses: [],
