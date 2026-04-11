@@ -1,30 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import IconPicker from './IconPicker';
-import HtmlPickerModal from './HtmlPickerModal';
 import BatchPrintModal from './BatchPrintModal';
-import ShippingLabelModal from './ShippingLabelModal';
-import DateToolModal from './DateToolModal';
 import ProjectTree from './ProjectTree';
 import {
   ChevronDown, ChevronRight, LayoutTemplate,
-  Menu, Package, Type, Calendar, ImagePlus, Code, Smile,
-  Barcode, QrCode, Image as ImageIcon, FileText, Printer, Wifi, Archive
+  Menu, Printer, Wifi, Archive
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter, theme, setTheme, applyPreset, isSidebarCollapsed, toggleSidebar, printCopies, setPrintCopies, isPrinting, printPages, selectedPagesForPrint } = useStore();
+  const {
+    items,
+    selectedPrinter,
+    setSelectedPrinter,
+    theme,
+    setTheme,
+    applyPreset,
+    isSidebarCollapsed,
+    toggleSidebar,
+    printCopies,
+    setPrintCopies,
+    isPrinting,
+    printPages,
+    selectedPagesForPrint
+  } = useStore();
+
   const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
-  
-  const [showIconPicker, setShowIconPicker] = useState(false);
-  const [iconPickerMode, setIconPickerMode] = useState('icon');
-  const [showHtmlPicker, setShowHtmlPicker] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
-  const [showShippingModal, setShowShippingModal] = useState(false);
-  const [showDateModal, setShowDateModal] = useState(false);
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -32,139 +36,30 @@ export default function Sidebar() {
       const res = await fetch('/api/printers/scan');
       const data = await res.json();
       setPrinters(data.devices || []);
-      
-      // Auto-Select the first printer if none is already chosen
+
       if (data.devices && data.devices.length > 0 && !useStore.getState().selectedPrinter) {
         setSelectedPrinter(data.devices[0].address, data.devices[0]);
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to scan for printers. Is the backend running on port 8000?");
+      alert('Failed to scan for printers. Is the backend running on port 8000?');
     }
     setIsScanning(false);
   };
 
   useEffect(() => {
     useStore.getState().fetchProjects();
-    useStore.getState().fetchSettings(); // <-- Load DB settings
+    useStore.getState().fetchSettings();
     useStore.getState().fetchAddresses();
-    
+
     fetch('/api/presets')
       .then(res => res.json())
       .then(data => setPresets(data))
       .catch(e => console.error(e));
 
-    // Execute silent background scan on mount
     handleScan();
   }, []);
 
-  const handleAddText = () => {
-    const defaultFont = useStore.getState().settings.default_font || 'Roboto.ttf';
-    addItem({
-      id: Date.now().toString(),
-      type: 'text',
-      text: 'Text',
-      x: 0,
-      y: 50,
-      size: 24,
-      weight: 700,
-      font: defaultFont,
-      width: canvasWidth,
-      height: 24,
-      align: 'center'
-    });
-  };
-
-  const handleAddHtml = (htmlContent) => {
-    addItem({ id: Date.now().toString(), type: 'html', html: htmlContent, x: 0, y: 0, width: canvasWidth, height: canvasHeight });
-    setShowHtmlPicker(false);
-  };
-
-  const handleAddIconText = (base64Png) => {
-    const defaultFont = useStore.getState().settings.default_font || 'Roboto.ttf';
-    addItem({
-      id: Date.now().toString(), type: 'icon_text', x: 10, y: 10,
-      icon_src: base64Png, icon_x: 0, icon_y: 0, icon_size: 40,
-      text: 'Icon + Text', text_x: 46, text_y: 10, size: 24, weight: 700, font: defaultFont, text_width: 150, align: 'left',
-      width: 196, height: 40
-    });
-    setShowIconPicker(false);
-  };
-
-  const handleAddIcon = (base64Png) => {
-    if (iconPickerMode === 'icon_text') {
-      handleAddIconText(base64Png);
-    } else {
-      addItem({ id: Date.now().toString(), type: 'image', src: base64Png, x: 0, y: 0, width: 100, height: 100 });
-      setShowIconPicker(false);
-    }
-  };
-
-  const handleAddBarcode = () => {
-    addItem({ id: Date.now().toString(), type: 'barcode', data: '123456789', barcode_type: 'code128', x: 50, y: 100, width: 200, height: 50 });
-  };
-
-  const handleAddImage = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new window.Image();
-      img.src = ev.target.result;
-      img.onload = () => {
-        const ratio = img.width / img.height;
-        const targetWidth = Math.min(img.width, canvasWidth);
-        const targetHeight = targetWidth / ratio;
-        addItem({ id: Date.now().toString(), type: 'image', src: ev.target.result, x: 0, y: 0, width: targetWidth, height: targetHeight });
-      };
-    };
-    reader.readAsDataURL(file);
-    e.target.value = null;
-  };
-
-  const handleAddPdf = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const formData = new FormData();
-    formData.append("file", file);
-    
-    try {
-      const res = await fetch('/api/pdf/convert', {
-        method: 'POST',
-        body: formData
-      });
-      if (!res.ok) throw new Error("PDF processing failed");
-      const data = await res.json();
-      
-      let currentY = 0;
-      for (let i = 0; i < data.images.length; i++) {
-        const b64 = data.images[i];
-        await new Promise((resolve) => {
-          const img = new window.Image();
-          img.src = b64;
-          img.onload = () => {
-            const ratio = img.width / img.height;
-            const targetWidth = Math.min(img.width, useStore.getState().canvasWidth);
-            const targetHeight = targetWidth / ratio;
-            useStore.getState().addItem({
-              id: Date.now().toString() + "-" + i, type: 'image', src: b64,
-              x: 0, y: currentY, width: targetWidth, height: targetHeight
-            });
-            currentY += targetHeight + 10;
-            resolve();
-          };
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to process PDF file.");
-    }
-    e.target.value = null;
-  };
-
-
-  // Calculate total pages for smart counter visibility
   const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
   const pageCount = maxPage + 1;
 
@@ -185,12 +80,12 @@ export default function Sidebar() {
   };
 
   const SidebarButton = ({ icon: Icon, label, onClick, primary = false }) => (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       title={isSidebarCollapsed ? label : undefined}
       className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium 
-        ${primary 
-          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40' 
+        ${primary
+          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40'
           : 'bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900'}`}
     >
       <Icon size={16} className="shrink-0" />
@@ -206,7 +101,7 @@ export default function Sidebar() {
           <Menu size={24} />
         </button>
       </div>
-      
+
       {!isSidebarCollapsed && (
         <div className="flex gap-3 text-[10px] uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
           <button onClick={() => setTheme('light')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'light' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Light</button>
@@ -222,7 +117,7 @@ export default function Sidebar() {
           <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
 
           {printers.length > 0 && (
-            <select 
+            <select
               className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors"
               value={selectedPrinter || ''}
               onChange={(e) => {
@@ -277,21 +172,21 @@ export default function Sidebar() {
       {!isSidebarCollapsed ? (
         <div className="space-y-3">
           <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas Presets</h2>
-          <select 
-              className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
-              onChange={(e) => {
-                if(e.target.value !== "") {
-                  const p = presets[e.target.value];
-                  applyPreset({ w: p.width_mm, h: p.height_mm, rotated: p.is_rotated, splitMode: p.split_mode, border: p.border });
-                }
-                e.target.value = "";
-              }}
-              defaultValue=""
-            >
-              <option value="" disabled>Select physical layout...</option>
-              {presets.map((p, idx) => (
-                <option key={idx} value={idx}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
-              ))}
+          <select
+            className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
+            onChange={(e) => {
+              if (e.target.value !== '') {
+                const p = presets[e.target.value];
+                applyPreset({ w: p.width_mm, h: p.height_mm, rotated: p.is_rotated, splitMode: p.split_mode, border: p.border });
+              }
+              e.target.value = '';
+            }}
+            defaultValue=""
+          >
+            <option value="" disabled>Select physical layout...</option>
+            {presets.map((p, idx) => (
+              <option key={idx} value={idx}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
+            ))}
           </select>
         </div>
       ) : (
@@ -301,63 +196,24 @@ export default function Sidebar() {
       {isSidebarCollapsed ? (
         <SidebarButton icon={Archive} label="Saved Projects (Expand to view)" onClick={toggleSidebar} />
       ) : (
-       <div className="space-y-3">
-        <div 
-          className="flex items-center justify-between cursor-pointer border-b border-neutral-100 dark:border-neutral-800 pb-2 group"
-          onClick={() => setShowProjects(!showProjects)}
-        >
-          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">Saved Projects</h2>
-          {showProjects ? (
-            <ChevronDown size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
-          ) : (
-            <ChevronRight size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
+        <div className="space-y-3">
+          <div
+            className="flex items-center justify-between cursor-pointer border-b border-neutral-100 dark:border-neutral-800 pb-2 group"
+            onClick={() => setShowProjects(!showProjects)}
+          >
+            <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">Saved Projects</h2>
+            {showProjects ? (
+              <ChevronDown size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
+            ) : (
+              <ChevronRight size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
+            )}
+          </div>
+
+          {showProjects && (
+            <ProjectTree />
           )}
         </div>
-        
-        {showProjects && (
-          <ProjectTree />
-        )}
-       </div>
       )}
-
-      <div className="space-y-3">
-        {!isSidebarCollapsed && <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Tools</h2>}
-        
-        <div className="mb-2">
-          <SidebarButton icon={Package} label="Shipping Wizard" onClick={() => setShowShippingModal(true)} primary />
-        </div>
-
-        <div className="space-y-1">
-          <SidebarButton icon={Type} label="Add Text" onClick={handleAddText} />
-          <SidebarButton icon={Calendar} label="Add Date" onClick={() => setShowDateModal(true)} />
-          <SidebarButton icon={ImagePlus} label="Icon + Text" onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} />
-          <SidebarButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
-          <SidebarButton icon={Smile} label="Icon Only" onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} />
-          <SidebarButton icon={Barcode} label="Barcode" onClick={handleAddBarcode} />
-          <SidebarButton icon={QrCode} label="QR Code" onClick={() => addItem({ id: Date.now().toString(), type: 'qrcode', data: 'https://example.com', x: 50, y: 100, width: 120, height: 120 })} />
-        </div>
-
-        <label 
-          title={isSidebarCollapsed ? "Add Image" : undefined}
-          className={`mt-1 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium cursor-pointer bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900`}
-        >
-          <ImageIcon size={16} className="shrink-0" />
-          {!isSidebarCollapsed && <span>+ Image</span>}
-          <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
-        </label>
-
-        <label 
-          title={isSidebarCollapsed ? "Add PDF" : undefined}
-          className={`mt-1 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium cursor-pointer bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900`}
-        >
-          <FileText size={16} className="shrink-0" />
-          {!isSidebarCollapsed && <span>+ PDF Doc</span>}
-          <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
-        </label>
-      </div>
-
-      {showIconPicker && <IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} />}
-      {showHtmlPicker && <HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} />}
 
       <div className="mt-auto pt-6 flex flex-col gap-2">
         <div className="w-full">
@@ -366,8 +222,6 @@ export default function Sidebar() {
       </div>
 
       {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
-      {showShippingModal && <ShippingLabelModal onClose={() => setShowShippingModal(false)} />}
-      {showDateModal && <DateToolModal onClose={() => setShowDateModal(false)} />}
     </div>
   );
 }
