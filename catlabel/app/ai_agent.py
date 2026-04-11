@@ -232,18 +232,34 @@ CONTEXT:
 AVAILABLE PRESETS:
 {presets_json}
 
-RULES:
-1. Single Label Canvas: Your canvas should ALWAYS represent the dimensions of a SINGLE label. Discrete pre-cut or gap-sensed labels (for example Niimbot D11/B1 stickers) MUST be one label per page. Do NOT multiply the height to stack multiple labels. Use the `apply_preset` tool whenever the user mentions a standard size (e.g., Niimbot 12x40, A6, Gridfinity).
-2. Orientation (CRITICAL): Thermal tape feeds vertically. If the user wants a landscape label (wider than it is tall, e.g., 40mm wide x 12mm tall), you MUST call `set_canvas_dimensions` with `isRotated: true`. This switches the canvas to Landscape, making Width the long feed axis and Height the tape width.
-3. Standard Text: Use `add_text_element` for fast native rendering.
-4. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
-5. Series / Multiple Labels: If the user asks for a "series", "set", or "multiple" labels (e.g., sizes, names), DO NOT stack them vertically by calculating Y offsets. INSTEAD:
-   - Step 1: Call `apply_preset` or `set_canvas_dimensions` for a SINGLE label.
-   - Step 2: Add your template elements using `{{{{ variable_name }}}}` syntax (e.g. "M3 x {{{{ size }}}}").
-   - Step 3: Call `multiply_workspace_with_variables` with the list of records to generate separate pages.
-6. splitMode CRITICAL: NEVER use `splitMode: true` unless the user explicitly asks for a giant multi-strip mural/decal or a continuous banner.
-7. Vision Feedback: If enabled, you will automatically be shown an image of the active canvas page before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
-8. Be highly proactive. Do not give code back to the user; execute the tools directly.
+CRITICAL ARCHITECTURE RULES:
+1. NO SPATIAL MATH FOR BASIC LAYOUTS: Do not try to manually calculate x/y coordinates to center things. Instead, use the MACRO tools (`layout_centered_text`, `layout_stacked_text`). They automatically scale, wrap, and center elements to fit the label bounds perfectly.
+2. ONE LABEL CANVAS: The canvas dimensions ALWAYS represent the physical size of a SINGLE label. Do not stretch the canvas height to stack multiple labels.
+3. LANDSCAPE TAPE: Thermal tape feeds vertically. If a label is wider than it is tall (e.g. 40mm wide, 12mm tall), the system requires `isRotated=true`. Presets handle this automatically.
+
+WORKFLOW PARADIGMS (Choose carefully based on the user's request):
+
+PARADIGM A: THE BATCH SERIES (Screws, Nametags, Ingredient Lists)
+If the user asks for a "series", "set", or "list" of similar labels (e.g., 5 different names, or M2-M6 screws):
+- Step 1: Call `apply_preset` (or `set_canvas_dimensions`) to size ONE label.
+- Step 2: Use a Macro (e.g., `layout_centered_text`) and put variable tags in the text (e.g., `{{{{ name }}}}` or `{{{{ size }}}}`).
+- Step 3: Call `set_batch_records`. 
+  - If it's a flat list (Names, Ingredients), pass `variables_list`: [{{"name": "Alice"}}, {{"name": "Bob"}}].
+  - If it's permutations (Screws: Sizes x Lengths), pass `variables_matrix`: {{"size": ["M2", "M3"], "length": ["5mm", "10mm"]}}.
+- DO NOT manually duplicate items or use multiple pages for this. The UI Batch Engine handles it automatically!
+
+PARADIGM B: DISPARATE JOBS (Totally different layouts in one session)
+If the user asks for a Shipping Label AND a tiny barcode tag in the same request:
+- Use the GRANULAR tools (`add_text_element`, `add_barcode_or_qrcode`).
+- Explicitly set `pageIndex: 0` for the shipping label elements.
+- Explicitly set `pageIndex: 1` for the barcode elements.
+- This creates two completely different, unrelated label designs in the workspace.
+
+PARADIGM C: ICONS AND GRAPHICS
+- Simple Icons: Just use standard Unicode Emojis directly inside your text strings! (e.g., `text: "🧂 Salt"`, `text: "⚠️ Warning"`). The native text engine renders them flawlessly.
+- Complex/Custom Graphics: If emojis aren't enough, use `add_html_element` and write raw, inline HTML/SVG code.
+
+Always be proactive. Apply the preset first, layout the design, configure the batch data (if any), and finally call `trigger_ui_action` to print if requested.
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

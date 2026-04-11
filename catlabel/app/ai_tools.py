@@ -4,86 +4,12 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "add_text_element",
-            "description": "Add a new text element to the canvas. Use this for standard layout or dates.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string", "description": "The text content."},
-                    "x": {"type": "integer", "description": "X position in pixels (1mm = 8px)."},
-                    "y": {"type": "integer", "description": "Y position in pixels."},
-                    "size": {"type": "integer", "description": "Font size.", "default": 24},
-                    "width": {"type": "integer", "description": "Bounding box width in pixels."},
-                    "align": {"type": "string", "enum": ["left", "center", "right"], "default": "left"},
-                    "weight": {"type": "integer", "description": "Font weight (100-900).", "default": 700},
-                    "fit_to_width": {"type": "boolean", "default": False}
-                },
-                "required": ["text", "x", "y"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_barcode_or_qrcode",
-            "description": "Add a barcode or QR code.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "type": {"type": "string", "enum": ["barcode", "qrcode"]},
-                    "data": {"type": "string", "description": "The encoded data."},
-                    "x": {"type": "integer"},
-                    "y": {"type": "integer"},
-                    "width": {"type": "integer", "description": "Width in pixels."},
-                    "height": {"type": "integer", "description": "Height in pixels."}
-                },
-                "required": ["type", "data", "x", "y", "width"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_html_element",
-            "description": "Add an HTML/CSS/SVG element to the canvas. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "html": {"type": "string", "description": "The full HTML/SVG content including <style> tags."},
-                    "x": {"type": "integer"},
-                    "y": {"type": "integer"},
-                    "width": {"type": "integer"},
-                    "height": {"type": "integer"}
-                },
-                "required": ["html", "x", "y", "width", "height"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "align_group",
-            "description": "Aligns or centers a group of items relative to the canvas collectively.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "item_ids": {"type": "array", "items": {"type": "string"}, "description": "List of element IDs to move together."},
-                    "horizontal": {"type": "string", "enum": ["left", "center", "right", "none"], "default": "center"},
-                    "vertical": {"type": "string", "enum": ["top", "center", "bottom", "none"], "default": "center"}
-                },
-                "required": ["item_ids"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "apply_preset",
-            "description": "Instantly configures the canvas dimensions, rotation, and borders for a known standard label type. Reference the AVAILABLE PRESETS from your system prompt.",
+            "description": "Instantly configures the canvas dimensions, rotation, and borders for a known standard label type (e.g., 'Niimbot D11', 'Cable Flag'). Call this FIRST.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "preset_name": {"type": "string", "description": "The exact 'name' of the preset."}
+                    "preset_name": {"type": "string", "description": "The exact name of the preset."}
                 },
                 "required": ["preset_name"]
             }
@@ -93,14 +19,13 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_canvas_dimensions",
-            "description": "Change the global canvas size or orientation. The dimensions MUST represent a SINGLE label. CRITICAL: If the requested label is WIDER than it is TALL (Landscape, e.g., 40x12mm), you MUST set isRotated=true so the printer feeds it correctly. Do not stretch the canvas to fit multiple labels.",
+            "description": "Set custom canvas dimensions ONLY if a preset does not apply. Width is the long feed axis for landscape labels (isRotated=true).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "width": {"type": "integer", "description": "Canvas width in pixels (1mm = 8px). For landscape/rotated labels, this is the long tape length."},
-                    "height": {"type": "integer", "description": "Canvas height in pixels. For landscape/rotated labels, this must match the physical tape width."},
-                    "isRotated": {"type": "boolean", "description": "Set to true for landscape labels (text reads horizontally along the feed axis)."},
-                    "splitMode": {"type": "boolean", "description": "Only set true for giant multi-strip murals, decals, or continuous banners; otherwise leave false."}
+                    "width": {"type": "integer"},
+                    "height": {"type": "integer"},
+                    "isRotated": {"type": "boolean"}
                 },
                 "required": ["width", "height"]
             }
@@ -109,33 +34,94 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "clear_canvas",
-            "description": "Deletes all elements from the canvas.",
+            "name": "layout_centered_text",
+            "description": "MACRO: Replaces the specified page with a single, perfectly centered text block that automatically scales to fill the label. Supports {{ variables }}.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "confirm": {
-                        "type": "boolean",
-                        "description": "Placeholder parameter to satisfy strict JSON schema validators."
-                    }
-                }
+                    "text": {"type": "string"},
+                    "invert": {"type": "boolean", "description": "White text on black background.", "default": False},
+                    "pageIndex": {"type": "integer", "description": "The page to apply this to (default 0).", "default": 0}
+                },
+                "required": ["text"]
             }
         }
     },
     {
         "type": "function",
         "function": {
-            "name": "create_shipping_label",
-            "description": "Macro to instantly create a perfectly formatted shipping label.",
+            "name": "layout_stacked_text",
+            "description": "MACRO: Replaces the specified page with two text elements (Top and Bottom) that automatically share the space and scale to fit. Great for primary/secondary info. Supports {{ variables }}.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "sender_lines": {"type": "array", "items": {"type": "string"}},
-                    "recipient_name": {"type": "string"},
-                    "recipient_address": {"type": "array", "items": {"type": "string"}},
-                    "bottom_text": {"type": "string"}
+                    "top_text": {"type": "string"},
+                    "bottom_text": {"type": "string"},
+                    "primary_is_top": {"type": "boolean", "description": "True if the top text should be larger/bolder.", "default": True},
+                    "pageIndex": {"type": "integer", "default": 0}
                 },
-                "required": ["recipient_name", "recipient_address"]
+                "required": ["top_text", "bottom_text"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_text_element",
+            "description": "GRANULAR: Add a text element at specific X/Y coordinates. Use this for specific layouts like Cable Flags where macros don't work.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "x": {"type": "integer"},
+                    "y": {"type": "integer"},
+                    "size": {"type": "integer", "default": 24},
+                    "width": {"type": "integer"},
+                    "align": {"type": "string", "enum": ["left", "center", "right"], "default": "left"},
+                    "weight": {"type": "integer", "default": 700},
+                    "fit_to_width": {"type": "boolean", "default": False},
+                    "pageIndex": {"type": "integer", "default": 0}
+                },
+                "required": ["text", "x", "y"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_barcode_or_qrcode",
+            "description": "GRANULAR: Add a barcode or QR code at specific X/Y coordinates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["barcode", "qrcode"]},
+                    "data": {"type": "string"},
+                    "x": {"type": "integer"},
+                    "y": {"type": "integer"},
+                    "width": {"type": "integer"},
+                    "height": {"type": "integer"},
+                    "pageIndex": {"type": "integer", "default": 0}
+                },
+                "required": ["type", "data", "x", "y", "width"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_html_element",
+            "description": "GRANULAR: Add an HTML/CSS/SVG element for highly complex graphics or specific SVG icons. Must use inline styles. Do not load external assets.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "html": {"type": "string"},
+                    "x": {"type": "integer"},
+                    "y": {"type": "integer"},
+                    "width": {"type": "integer"},
+                    "height": {"type": "integer"},
+                    "pageIndex": {"type": "integer", "default": 0}
+                },
+                "required": ["html", "x", "y", "width", "height"]
             }
         }
     },
@@ -143,20 +129,18 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_batch_records",
-            "description": "Configures multiple labels for batch printing. The UI will generate separate label canvases for each record. Use this instead of duplicating elements manually when the user wants multiple variations of a label. You MUST provide EITHER variables_list OR variables_matrix.",
+            "description": "CRITICAL FOR BATCH/SERIES: Configures multiple labels for batch printing using a single template. Design the template FIRST using {{ var }} syntax, then call this. You MUST provide EITHER variables_list OR variables_matrix.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "variables_list": {
                         "type": "array",
                         "items": {"type": "object"},
-                        "minItems": 1,
-                        "description": "List of flat dictionaries mapping variable names to values. Provide this if variables_matrix is not used."
+                        "description": "Use this for a flat list of unrelated records. E.g. [{'name': 'Alice', 'role': 'Manager'}, {'name': 'Bob', 'role': 'IT'}]."
                     },
                     "variables_matrix": {
                         "type": "object",
-                        "minProperties": 1,
-                        "description": "Cartesian matrix mapping keys to lists of values. E.g. {'size': ['S','M'], 'color': ['Red','Blue']}. The engine will automatically generate all permutations."
+                        "description": "Use this for combinatorial permutations (Cartesian product). E.g. {'size': ['M2','M3'], 'length': ['5mm','10mm']}."
                     }
                 }
             }
@@ -165,32 +149,21 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "multiply_workspace_with_variables",
-            "description": "CRITICAL for creating a series or set of labels. Converts the current single-label design into a multi-page workspace. Each record generates a distinct new label page substituting {{ var }} syntax. ALWAYS build the base template on page 0 with variables BEFORE calling this. Do NOT stack multiple labels by increasing canvas height or Y offsets.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "variables_list": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                        "minItems": 1,
-                        "description": "List of dictionaries mapping variable names to values. You MUST invent a sensible list of data if the user does not specify it."
-                    }
-                },
-                "required": ["variables_list"]
-            }
+            "name": "clear_canvas",
+            "description": "Deletes all elements from all pages.",
+            "parameters": {"type": "object", "properties": {}}
         }
     },
     {
         "type": "function",
         "function": {
             "name": "trigger_ui_action",
-            "description": "Executes physical actions on behalf of the user, such as sending the design directly to the printer or saving it to the database.",
+            "description": "Executes physical actions on behalf of the user, such as printing the design or saving it.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "action": {"type": "string", "enum": ["print", "save_project"]},
-                    "project_name": {"type": "string", "description": "Required if action is save_project."}
+                    "project_name": {"type": "string"}
                 },
                 "required": ["action"]
             }
@@ -199,220 +172,154 @@ TOOLS_SCHEMA = [
 ]
 
 def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
-    """Executes the requested tool and mutates the canvas_state in-place."""
-    if name == "add_text_element":
-        item = {
-            "id": str(uuid.uuid4()),
-            "type": "text",
-            "text": args["text"],
-            "x": args.get("x", 0),
-            "y": args.get("y", 0),
-            "size": args.get("size", 24),
-            "width": args.get("width", canvas_state.get("width", 384)),
-            "align": args.get("align", "left"),
-            "weight": args.get("weight", 700),
-            "fit_to_width": args.get("fit_to_width", False),
-            "pageIndex": int(canvas_state.get("currentPage", 0) or 0),
-        }
-        canvas_state.setdefault("items", []).append(item)
-        return f"Text element added with ID {item['id']}."
+    cw = canvas_state.get("width", 384)
+    ch = canvas_state.get("height", 384)
 
-    elif name == "add_barcode_or_qrcode":
-        item = {
-            "id": str(uuid.uuid4()),
-            "type": args["type"],
-            "data": args["data"],
-            "x": args.get("x", 0),
-            "y": args.get("y", 0),
-            "width": args["width"],
-            "height": args.get("height", args["width"] if args["type"] == "qrcode" else 80),
-            "pageIndex": int(canvas_state.get("currentPage", 0) or 0)
-        }
-        canvas_state.setdefault("items", []).append(item)
-        return f"{args['type']} added with ID {item['id']}."
-
-    elif name == "add_html_element":
-        item = {
-            "id": str(uuid.uuid4()),
-            "type": "html",
-            "html": args["html"],
-            "x": args.get("x", 0),
-            "y": args.get("y", 0),
-            "width": args.get("width", canvas_state.get("width", 384)),
-            "height": args.get("height", 200),
-            "pageIndex": int(canvas_state.get("currentPage", 0) or 0)
-        }
-        canvas_state.setdefault("items", []).append(item)
-        return f"HTML/SVG element added with ID {item['id']}."
-
-    elif name == "align_group":
-        item_ids = args.get("item_ids", [])
-        h_align = args.get("horizontal", "center")
-        v_align = args.get("vertical", "center")
-
-        target_items = [i for i in canvas_state.get("items", []) if i.get("id") in item_ids]
-        if not target_items:
-            return "No items found matching the provided IDs."
-
-        min_x = min(i.get("x", 0) for i in target_items)
-        min_y = min(i.get("y", 0) for i in target_items)
-        max_x = max(i.get("x", 0) + i.get("width", 384) for i in target_items)
-        
-        def get_h(item):
-            if "height" in item: return item["height"]
-            if item["type"] == "text": return item.get("size", 24) * 1.2
-            return 50
-            
-        max_y = max(i.get("y", 0) + get_h(i) for i in target_items)
-
-        group_w = max_x - min_x
-        group_h = max_y - min_y
-        cw = canvas_state.get("width", 384)
-        ch = canvas_state.get("height", 384)
-
-        delta_x = 0
-        if h_align == "center": delta_x = (cw - group_w) / 2 - min_x
-        elif h_align == "left": delta_x = -min_x
-        elif h_align == "right": delta_x = cw - group_w - min_x
-
-        delta_y = 0
-        if v_align == "center": delta_y = (ch - group_h) / 2 - min_y
-        elif v_align == "top": delta_y = -min_y
-        elif v_align == "bottom": delta_y = ch - group_h - min_y
-
-        for i in target_items:
-            i["x"] = int(i.get("x", 0) + delta_x)
-            i["y"] = int(i.get("y", 0) + delta_y)
-
-        return f"Group of {len(target_items)} items successfully aligned {h_align}/{v_align}."
-
-    elif name == "apply_preset":
+    if name == "apply_preset":
         preset_name = (args.get("preset_name") or "").strip()
         from .server import STANDARD_PRESETS
-
-        preset = next((p for p in STANDARD_PRESETS if p["name"] == preset_name), None)
-        if preset is None and preset_name:
-            preset_name_folded = preset_name.casefold()
-            preset = next((p for p in STANDARD_PRESETS if p["name"].casefold() == preset_name_folded), None)
-
-        if preset is None:
-            available_names = ", ".join(p["name"] for p in STANDARD_PRESETS)
-            return f"Error: Preset '{preset_name}' not found. Available presets: {available_names}"
-
+        preset = next((p for p in STANDARD_PRESETS if p["name"].casefold() == preset_name.casefold()), None)
+        if not preset:
+            return "Error: Preset not found."
+        
         canvas_state["width"] = int(preset["width_mm"] * 8)
         canvas_state["height"] = int(preset["height_mm"] * 8)
         canvas_state["isRotated"] = preset["is_rotated"]
         canvas_state["splitMode"] = preset.get("split_mode", False)
         canvas_state["canvasBorder"] = preset.get("border", "none")
-        return (
-            f"Applied preset: {preset['name']} "
-            f"({canvas_state['width']}x{canvas_state['height']}px, rotated: {canvas_state['isRotated']})."
-        )
+        return f"Applied preset: {preset['name']}"
 
     elif name == "set_canvas_dimensions":
         canvas_state["width"] = args["width"]
         canvas_state["height"] = args["height"]
-        if "isRotated" in args:
-            canvas_state["isRotated"] = args["isRotated"]
-        else:
-            # Smart fallback: auto-rotate if the requested dimensions are obviously landscape.
-            if args["width"] > args["height"] and args["width"] > 200 and args["height"] <= 384:
-                canvas_state["isRotated"] = True
-        if "splitMode" in args:
-            canvas_state["splitMode"] = args["splitMode"]
-        return f"Canvas updated to {args['width']}x{args['height']} px."
+        canvas_state["isRotated"] = args.get("isRotated", False)
+        return "Dimensions updated."
 
     elif name == "clear_canvas":
         canvas_state["items"] = []
         canvas_state["currentPage"] = 0
         return "Canvas cleared."
 
-    elif name == "create_shipping_label":
-        sender = args.get("sender_lines", [])
-        recipient_name = args.get("recipient_name", "Recipient")
-        recipient_addr = args.get("recipient_address", [])
-        custom_text = args.get("bottom_text", "")
-
-        target_w, target_h = 576, 384
-        canvas_state.update({"width": target_w, "height": target_h, "isRotated": True, "splitMode": False, "items": []})
-
-        ts = uuid.uuid4().hex[:6]
-        current_page = int(canvas_state.get("currentPage", 0) or 0)
-        items = canvas_state["items"]
+    elif name == "layout_centered_text":
+        page_idx = args.get("pageIndex", 0)
+        canvas_state["items"] = [i for i in canvas_state.get("items", []) if i.get("pageIndex", 0) != page_idx]
         
-        items.append({"id": f"s-f-{ts}", "type": "text", "text": "FROM:\n" + "\n".join(sender), "x": 16, "y": 16, "size": 16, "weight": 700, "width": int(target_w * 0.45), "align": "left", "no_wrap": False, "pageIndex": current_page})
-        items.append({"id": f"s-l1-{ts}", "type": "text", "text": "", "x": 0, "y": 110, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4, "pageIndex": current_page})
-        items.append({"id": f"s-st-{ts}", "type": "text", "text": "SHIP TO:", "x": 16, "y": 130, "size": 20, "weight": 700, "width": 100, "align": "center", "no_wrap": True, "invert": True, "border_style": "box", "pageIndex": current_page})
-        items.append({"id": f"s-rn-{ts}", "type": "text", "text": recipient_name, "x": 16, "y": 170, "size": 60, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": True, "fit_to_width": True, "pageIndex": current_page})
-        items.append({"id": f"s-ra-{ts}", "type": "text", "text": "\n".join(recipient_addr), "x": 16, "y": 240, "size": 32, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": False, "pageIndex": current_page})
+        canvas_state["items"].append({
+            "id": str(uuid.uuid4()),
+            "type": "text",
+            "text": args["text"],
+            "x": 0,
+            "y": 0,
+            "width": cw,
+            "height": ch,
+            "align": "center",
+            "weight": 700,
+            "fit_to_width": True,
+            "invert": args.get("invert", False),
+            "pageIndex": page_idx
+        })
+        return f"Page {page_idx} replaced with perfectly centered auto-fit text."
 
-        if custom_text:
-            items.append({"id": f"s-l2-{ts}", "type": "text", "text": "", "x": 0, "y": target_h - 40, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4, "pageIndex": current_page})
-            items.append({"id": f"s-ct-{ts}", "type": "text", "text": custom_text, "x": 16, "y": target_h - 32, "size": 20, "weight": 700, "width": target_w - 32, "align": "center", "no_wrap": True, "fit_to_width": True, "pageIndex": current_page})
-            
-        return "Shipping label created."
+    elif name == "layout_stacked_text":
+        page_idx = args.get("pageIndex", 0)
+        canvas_state["items"] = [i for i in canvas_state.get("items", []) if i.get("pageIndex", 0) != page_idx]
+        
+        primary_top = args.get("primary_is_top", True)
+        top_h = int(ch * 0.6) if primary_top else int(ch * 0.4)
+        bot_h = ch - top_h
+        
+        canvas_state["items"].extend([
+            {
+                "id": str(uuid.uuid4()),
+                "type": "text",
+                "text": args["top_text"],
+                "x": 0,
+                "y": 0,
+                "width": cw,
+                "height": top_h,
+                "align": "center",
+                "fit_to_width": True,
+                "weight": 900 if primary_top else 400,
+                "pageIndex": page_idx
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "type": "text",
+                "text": args["bottom_text"],
+                "x": 0,
+                "y": top_h,
+                "width": cw,
+                "height": bot_h,
+                "align": "center",
+                "fit_to_width": True,
+                "weight": 400 if primary_top else 900,
+                "pageIndex": page_idx
+            }
+        ])
+        return f"Page {page_idx} replaced with stacked, auto-scaling text layout."
+
+    elif name == "add_text_element":
+        canvas_state.setdefault("items", []).append({
+            "id": str(uuid.uuid4()),
+            "type": "text",
+            "text": args["text"],
+            "x": args.get("x", 0),
+            "y": args.get("y", 0),
+            "size": args.get("size", 24),
+            "width": args.get("width", cw),
+            "align": args.get("align", "left"),
+            "weight": args.get("weight", 700),
+            "fit_to_width": args.get("fit_to_width", False),
+            "pageIndex": args.get("pageIndex", 0),
+        })
+        return "Text element added."
+
+    elif name == "add_barcode_or_qrcode":
+        canvas_state.setdefault("items", []).append({
+            "id": str(uuid.uuid4()),
+            "type": args["type"],
+            "data": args["data"],
+            "x": args.get("x", 0),
+            "y": args.get("y", 0),
+            "width": args["width"],
+            "height": args.get("height", args["width"]),
+            "pageIndex": args.get("pageIndex", 0)
+        })
+        return f"{args['type']} added."
+
+    elif name == "add_html_element":
+        canvas_state.setdefault("items", []).append({
+            "id": str(uuid.uuid4()),
+            "type": "html",
+            "html": args["html"],
+            "x": args.get("x", 0),
+            "y": args.get("y", 0),
+            "width": args.get("width", cw),
+            "height": args.get("height", ch),
+            "pageIndex": args.get("pageIndex", 0)
+        })
+        return "HTML element added."
 
     elif name == "set_batch_records":
         records = list(args.get("variables_list", []) or [])
         matrix = args.get("variables_matrix", {}) or {}
+        
         if matrix:
             import itertools
             keys = list(matrix.keys())
-            value_sets = []
-            for value in matrix.values():
-                if isinstance(value, (list, tuple)):
-                    value_sets.append(list(value))
-                else:
-                    value_sets.append([value])
-
-            records.extend(
-                dict(zip(keys, combo))
-                for combo in itertools.product(*value_sets)
-            )
+            value_sets = [[v] if not isinstance(v, (list, tuple)) else list(v) for v in matrix.values()]
+            records.extend(dict(zip(keys, combo)) for combo in itertools.product(*value_sets))
 
         if not records:
             records = [{}]
 
         canvas_state["batchRecords"] = records
-        return f"Configured {len(records)} batch records. The UI now previews these as separate label canvases."
-
-    elif name == "multiply_workspace_with_variables":
-        variables_list = list(args.get("variables_list", []) or [])
-        original_items = list(canvas_state.get("items", []) or [])
-        if not original_items or not variables_list:
-            return "Canvas is empty or no variables provided."
-
-        current_page = int(canvas_state.get("currentPage", 0) or 0)
-        source_items = [item for item in original_items if int(item.get("pageIndex", 0) or 0) == current_page]
-        if not source_items:
-            current_page = min(int(item.get("pageIndex", 0) or 0) for item in original_items)
-            source_items = [item for item in original_items if int(item.get("pageIndex", 0) or 0) == current_page]
-
-        new_items = []
-
-        for i, variables in enumerate(variables_list):
-            for item in source_items:
-                cloned = dict(item)
-                cloned["id"] = f"{item.get('id', 'id')}-{i}-{uuid.uuid4().hex[:5]}"
-                cloned["pageIndex"] = i
-
-                for field_name in ["text", "data", "html"]:
-                    if field_name in cloned and isinstance(cloned[field_name], str):
-                        for k, v in variables.items():
-                            cloned[field_name] = cloned[field_name].replace(f"{{{{ {k} }}}}", str(v)).replace(f"{{{{{k}}}}}", str(v))
-
-                new_items.append(cloned)
-
-        canvas_state["items"] = new_items
-        canvas_state["currentPage"] = 0
-        return f"Workspace visually multiplied into {len(variables_list)} separate label pages."
+        return f"Configured {len(records)} batch records. The UI will render permutations using {{ var }} tags in the design."
 
     elif name == "trigger_ui_action":
-        action = args.get("action")
-        # Add side-channel array to state for the frontend to intercept
         canvas_state.setdefault("__actions__", []).append({
-            "action": action, "project_name": args.get("project_name")
+            "action": args.get("action"), "project_name": args.get("project_name")
         })
-        return f"Instructed the frontend interface to execute {action}."
+        return f"Instructed UI to {args.get('action')}."
 
     return f"Error: Unknown tool {name}"
