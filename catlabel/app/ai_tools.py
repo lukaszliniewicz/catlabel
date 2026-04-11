@@ -78,15 +78,29 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "apply_preset",
+            "description": "Instantly configures the canvas dimensions, rotation, and borders for a known standard label type. Reference the AVAILABLE PRESETS from your system prompt.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "preset_name": {"type": "string", "description": "The exact 'name' of the preset."}
+                },
+                "required": ["preset_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "set_canvas_dimensions",
-            "description": "Change the global canvas size or orientation.",
+            "description": "Change the global canvas size or orientation. The dimensions MUST represent a SINGLE label. Do not stretch the canvas to fit multiple labels.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "width": {"type": "integer", "description": "Canvas width in pixels (1mm = 8px)."},
                     "height": {"type": "integer", "description": "Canvas height in pixels."},
                     "isRotated": {"type": "boolean"},
-                    "splitMode": {"type": "boolean"}
+                    "splitMode": {"type": "boolean", "description": "Only set true for giant multi-strip murals, decals, or continuous banners; otherwise leave false."}
                 },
                 "required": ["width", "height"]
             }
@@ -144,7 +158,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "multiply_workspace_with_variables",
-            "description": "Used for batching in the editor. Converts the current label into a multi-page template, generating a distinct new label page for each record provided, substituting {{ var }} syntax.",
+            "description": "CRITICAL for creating a series or set of labels. Converts the current single-label design into a multi-page workspace. Each record generates a distinct new label page substituting {{ var }} syntax. ALWAYS build the base template on page 0 with variables BEFORE calling this. Do NOT stack multiple labels by increasing canvas height or Y offsets.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -263,6 +277,29 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             i["y"] = int(i.get("y", 0) + delta_y)
 
         return f"Group of {len(target_items)} items successfully aligned {h_align}/{v_align}."
+
+    elif name == "apply_preset":
+        preset_name = (args.get("preset_name") or "").strip()
+        from .server import STANDARD_PRESETS
+
+        preset = next((p for p in STANDARD_PRESETS if p["name"] == preset_name), None)
+        if preset is None and preset_name:
+            preset_name_folded = preset_name.casefold()
+            preset = next((p for p in STANDARD_PRESETS if p["name"].casefold() == preset_name_folded), None)
+
+        if preset is None:
+            available_names = ", ".join(p["name"] for p in STANDARD_PRESETS)
+            return f"Error: Preset '{preset_name}' not found. Available presets: {available_names}"
+
+        canvas_state["width"] = int(preset["width_mm"] * 8)
+        canvas_state["height"] = int(preset["height_mm"] * 8)
+        canvas_state["isRotated"] = preset["is_rotated"]
+        canvas_state["splitMode"] = preset.get("split_mode", False)
+        canvas_state["canvasBorder"] = preset.get("border", "none")
+        return (
+            f"Applied preset: {preset['name']} "
+            f"({canvas_state['width']}x{canvas_state['height']}px, rotated: {canvas_state['isRotated']})."
+        )
 
     elif name == "set_canvas_dimensions":
         canvas_state["width"] = args["width"]

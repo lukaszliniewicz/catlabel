@@ -219,6 +219,7 @@ def chat_with_agent(req: ChatRequest):
         kwargs["vertex_location"] = active_profile.vertex_region
 
     context = get_agent_context()
+    presets_json = json.dumps(context["standard_presets"], indent=2)
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
 Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions.
@@ -228,14 +229,20 @@ CONTEXT:
 - 1 mm = 8 pixels. ALWAYS use pixels for canvas dimensions and positions.
 - Default Font: {context['global_default_font']}
 
+AVAILABLE PRESETS:
+{presets_json}
+
 RULES:
-1. Standard Text: Use `add_text_element` for fast native rendering.
-2. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
-3. Group Alignment: If you create multiple elements (text, html, etc) that should be centered together, call `align_group` passing their IDs.
-4. Multi-Page Layouts: If the user wants multiple distinct labels visible in the editor, use `multiply_workspace_with_variables` so each variation is placed on its own page. You MUST provide a populated `variables_list`. Do not pass empty arguments.
-5. Vision Feedback: If enabled, you will automatically be shown an image of the active canvas page before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
-6. Be highly proactive. Do not give code back to the user; execute the tools directly.
-7. Batch Variations: If the user wants multiple label variants driven by structured data (e.g., "a bunch of sizes", "different lengths"), use `set_batch_records` providing a robust list of standard variations in `variables_list`. You MUST invent the data if the user doesn't specify (e.g., for M3 lengths, use 4, 6, 8, 10, 12, 16, 20). DO NOT call the tool with empty arguments!
+1. Single Label Canvas: Your canvas should ALWAYS represent the dimensions of a SINGLE label. Discrete pre-cut or gap-sensed labels (for example Niimbot D11/B1 stickers) MUST be one label per page. Do NOT multiply the height to stack multiple labels. Use the `apply_preset` tool whenever the user mentions a standard size (e.g., Niimbot 12x40, A6, Gridfinity).
+2. Standard Text: Use `add_text_element` for fast native rendering.
+3. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
+4. Series / Multiple Labels: If the user asks for a "series", "set", or "multiple" labels (e.g., sizes, names), DO NOT stack them vertically by calculating Y offsets. INSTEAD:
+   - Step 1: Call `apply_preset` or `set_canvas_dimensions` for a SINGLE label.
+   - Step 2: Add your template elements using `{{{{ variable_name }}}}` syntax (e.g. "M3 x {{{{ size }}}}").
+   - Step 3: Call `multiply_workspace_with_variables` with the list of records to generate separate pages.
+5. splitMode CRITICAL: NEVER use `splitMode: true` unless the user explicitly asks for a giant multi-strip mural/decal or a continuous banner.
+6. Vision Feedback: If enabled, you will automatically be shown an image of the active canvas page before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
+7. Be highly proactive. Do not give code back to the user; execute the tools directly.
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
