@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import {
   Folder, FolderOpen, FileText, Layers, MoreVertical,
@@ -54,19 +55,8 @@ const TreeNode = ({ node, level, onImport }) => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const menuRef = useRef(null);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
-    };
-    if (menuOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuOpen]);
 
   const isFolder = node.type === 'category';
   const isLoaded = !isFolder && currentProjectId === node.id;
@@ -128,62 +118,76 @@ const TreeNode = ({ node, level, onImport }) => {
           </span>
         </div>
 
-        <div className="relative" ref={menuRef} onClick={(e) => e.stopPropagation()}>
+        <div onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const leftPos = rect.left + 192 > window.innerWidth ? window.innerWidth - 196 : rect.left;
+              setMenuCoords({ top: rect.bottom, left: leftPos });
+              setMenuOpen(!menuOpen);
+            }}
             className={`p-1 rounded transition-colors ${menuOpen ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white' : 'opacity-0 group-hover:opacity-100 text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
           >
             <MoreVertical size={14} />
           </button>
 
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl rounded-md z-50 py-1 flex flex-col">
-              {isFolder && (
-                <>
-                  <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); const n = prompt("New Folder Name:"); if (n) createCategory(n, node.id); }}>
-                    <Folder size={12} /> New Subfolder
-                  </button>
-                  <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); const n = prompt("Save current canvas as:"); if (n) saveProject(n, node.id); }}>
-                    <Save size={12} /> Save Current Here
-                  </button>
-                  <label className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer dark:text-white">
-                    <Upload size={12} /> Import Package Here
-                    <input type="file" accept=".json" className="hidden" onChange={(e) => { setMenuOpen(false); setIsOpen(true); onImport(e, node.id); }} />
-                  </label>
-                  <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
-                </>
-              )}
+          {menuOpen && createPortal(
+            <>
+              <div className="fixed inset-0 z-[9998]" onClick={() => setMenuOpen(false)}></div>
+              
+              <div
+                className="fixed w-48 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl rounded-md z-[9999] py-1 flex flex-col"
+                style={{ top: menuCoords.top + 4, left: menuCoords.left }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {isFolder && (
+                  <>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); const n = prompt("New Folder Name:"); if (n) createCategory(n, node.id); }}>
+                      <Folder size={12} /> New Subfolder
+                    </button>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); const n = prompt("Save current canvas as:"); if (n) saveProject(n, node.id); }}>
+                      <Save size={12} /> Save Current Here
+                    </button>
+                    <label className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer dark:text-white">
+                      <Upload size={12} /> Import Package Here
+                      <input type="file" accept=".json" className="hidden" onChange={(e) => { setMenuOpen(false); setIsOpen(true); onImport(e, node.id); }} />
+                    </label>
+                    <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
+                  </>
+                )}
 
-              {!isFolder && (
-                <>
-                  <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); loadProject(node); }}>
-                    <Play size={12} /> Load to Canvas
-                  </button>
-                  <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); if(window.confirm("WARNING: This will permanently overwrite this saved file with whatever is currently on your canvas. Proceed?")) updateProject(node.id); }}>
-                    <Save size={12} /> Overwrite with Current
-                  </button>
-                  <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
-                </>
-              )}
+                {!isFolder && (
+                  <>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); loadProject(node); }}>
+                      <Play size={12} /> Load to Canvas
+                    </button>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); if(window.confirm("WARNING: This will permanently overwrite this saved file with whatever is currently on your canvas. Proceed?")) updateProject(node.id); }}>
+                      <Save size={12} /> Overwrite with Current
+                    </button>
+                    <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
+                  </>
+                )}
 
-              <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); const n = prompt("Rename to:", node.name); if (n) isFolder ? updateCategory(node.id, n, node.parent_id) : updateProject(node.id, n); }}>
-                <Edit2 size={12} /> Rename
-              </button>
+                <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); const n = prompt("Rename to:", node.name); if (n) isFolder ? updateCategory(node.id, n, node.parent_id) : updateProject(node.id, n); }}>
+                  <Edit2 size={12} /> Rename
+                </button>
 
-              <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setShowMoveModal(true); }}>
-                <FolderOpen size={12} /> Move To...
-              </button>
+                <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setShowMoveModal(true); }}>
+                  <FolderOpen size={12} /> Move To...
+                </button>
 
-              <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={handleExport}>
-                <Download size={12} /> Export JSON
-              </button>
+                <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={handleExport}>
+                  <Download size={12} /> Export JSON
+                </button>
 
-              <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
+                <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
 
-              <button className="flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 text-left" onClick={() => { setMenuOpen(false); isFolder ? deleteCategory(node.id) : deleteProject(node.id); }}>
-                <Trash size={12} /> Delete
-              </button>
-            </div>
+                <button className="flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 text-left" onClick={() => { setMenuOpen(false); isFolder ? deleteCategory(node.id) : deleteProject(node.id); }}>
+                  <Trash size={12} /> Delete
+                </button>
+              </div>
+            </>,
+            document.body
           )}
         </div>
       </div>

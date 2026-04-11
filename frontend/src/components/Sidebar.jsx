@@ -27,7 +27,7 @@ export default function Sidebar() {
   const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [showProjects, setShowProjects] = useState(false);
+  const [showProjects, setShowProjects] = useState(true);
   const [showBatchModal, setShowBatchModal] = useState(false);
 
   const handleScan = async () => {

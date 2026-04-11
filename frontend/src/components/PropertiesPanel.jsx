@@ -172,7 +172,22 @@ export default function PropertiesPanel() {
 
   const handleMakeFullWidth = () => {
     if (!selectedItem) return;
-    updateItem(selectedId, { x: 0, width: canvasWidth, align: 'center' });
+    
+    let newHeight = selectedItem.height;
+    
+    if (selectedItem.type === 'qrcode') {
+      newHeight = canvasWidth;
+    } else if (selectedItem.type === 'image' && selectedItem.width && selectedItem.height) {
+      const ratio = selectedItem.width / selectedItem.height;
+      newHeight = Math.round(canvasWidth / ratio);
+    }
+    
+    updateItem(selectedId, {
+      x: 0,
+      width: canvasWidth,
+      height: newHeight,
+      align: 'center'
+    });
   };
 
   const handleFitToWidth = () => {
