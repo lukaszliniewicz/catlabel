@@ -4,13 +4,10 @@ import { useStore } from '../store';
 
 export default function BatchPrintModal({ onClose }) {
   const batchRecords = useStore(state => state.batchRecords);
-  const printCopies = useStore(state => state.printCopies);
   const hasExistingBatchRecords = Array.isArray(batchRecords) && (
     batchRecords.length > 1 ||
     (batchRecords.length === 1 && Object.keys(batchRecords[0] || {}).length > 0)
   );
-  const [tab, setTab] = useState(hasExistingBatchRecords ? 'csv' : 'copies');
-  const [copies, setCopies] = useState(printCopies || 1);
   const [csvData, setCsvData] = useState([]);
   const [headers, setHeaders] = useState([]);
 
@@ -37,19 +34,16 @@ export default function BatchPrintModal({ onClose }) {
   };
 
   const handleApply = () => {
-    const finalCopies = parseInt(copies, 10) || 1;
-    useStore.getState().setPrintCopies(finalCopies);
-
-    if (tab === 'csv') {
-      if (csvData.length > 0) {
-        useStore.getState().setBatchRecords(csvData);
-      } else if (!hasExistingBatchRecords) {
-        useStore.getState().setBatchRecords([{}]);
-      }
-    } else {
+    if (csvData.length > 0) {
+      useStore.getState().setBatchRecords(csvData);
+    } else if (!hasExistingBatchRecords) {
       useStore.getState().setBatchRecords([{}]);
     }
+    onClose();
+  };
 
+  const handleClear = () => {
+    useStore.getState().setBatchRecords([{}]);
     onClose();
   };
 
@@ -58,51 +52,48 @@ export default function BatchPrintModal({ onClose }) {
       <div className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800">
         
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
-          <h3 className="font-serif text-lg dark:text-white">Batch Data & Copies</h3>
+          <h3 className="font-serif text-lg dark:text-white">Import CSV Batch Data</h3>
           <button onClick={onClose} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex border-b border-neutral-100 dark:border-neutral-800">
-          <button onClick={() => setTab('copies')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest ${tab==='copies'?'text-blue-600 border-b-2 border-blue-600':'text-neutral-500'}`}>Multiple Copies</button>
-          <button onClick={() => setTab('csv')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest ${tab==='csv'?'text-blue-600 border-b-2 border-blue-600':'text-neutral-500'}`}>CSV Variables</button>
-        </div>
 
         <div className="p-6 space-y-4">
-          {tab === 'copies' ? (
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Total Exact Copies</label>
-              <input type="number" min="1" value={copies} onChange={e=>setCopies(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500" />
+          <label className="flex items-center justify-center w-full bg-neutral-50 dark:bg-neutral-950 border border-dashed border-neutral-300 dark:border-neutral-700 p-6 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors">
+            <div className="text-center">
+              <Upload className="mx-auto text-neutral-400 mb-2" size={24} />
+              <span className="text-sm dark:text-white">Upload Variable Data (.CSV)</span>
             </div>
-          ) : (
-            <div>
-              <label className="flex items-center justify-center w-full bg-neutral-50 dark:bg-neutral-950 border border-dashed border-neutral-300 dark:border-neutral-700 p-6 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors">
-                <div className="text-center">
-                  <Upload className="mx-auto text-neutral-400 mb-2" size={24} />
-                  <span className="text-sm dark:text-white">Upload Variable Data (.CSV)</span>
-                </div>
-                <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-              </label>
-              {headers.length > 0 && (
-                <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
-                  <p className="text-xs text-green-600 font-bold mb-1">✓ File Registered ({csvData.length} records)</p>
-                  <p className="text-[10px] text-neutral-500">Mappings mapped: {headers.join(', ')}</p>
-                </div>
-              )}
-              <div className="mt-4">
-                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Print Volume Per Record Line</label>
-                <input type="number" min="1" value={copies} onChange={e=>setCopies(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500" />
-              </div>
+            <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+          </label>
+          {headers.length > 0 && (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+              <p className="text-xs text-green-600 font-bold mb-1">✓ File Registered ({csvData.length} records)</p>
+              <p className="text-[10px] text-neutral-500">Mappings mapped: {headers.join(', ')}</p>
+            </div>
+          )}
+          {hasExistingBatchRecords && csvData.length === 0 && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+              <p className="text-xs text-blue-600 font-bold mb-1">ℹ Active Batch Data Detected</p>
+              <p className="text-[10px] text-neutral-500">You currently have {batchRecords.length} records loaded.</p>
             </div>
           )}
         </div>
 
-        <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 mt-auto">
+        <div className="flex gap-2 p-4 border-t border-neutral-100 dark:border-neutral-800 mt-auto">
+          {hasExistingBatchRecords && (
+            <button 
+              onClick={handleClear}
+              className="w-1/3 bg-transparent border border-red-200 dark:border-red-900/50 text-red-600 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs uppercase tracking-widest font-bold"
+            >
+              Clear
+            </button>
+          )}
           <button 
             onClick={handleApply}
-            disabled={tab === 'csv' && csvData.length === 0 && !hasExistingBatchRecords}
-            className="w-full bg-blue-600 text-white px-4 py-3 hover:bg-blue-700 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50"
+            disabled={csvData.length === 0}
+            className="flex-1 bg-blue-600 text-white px-4 py-3 hover:bg-blue-700 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50"
           >
             Apply To Workspace
           </button>

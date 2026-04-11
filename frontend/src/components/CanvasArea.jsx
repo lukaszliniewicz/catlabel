@@ -130,13 +130,23 @@ export default function CanvasArea() {
                     <span className="text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold">
                       Label {pageIdx + 1} {isActive && '(Active)'}
                     </span>
-                    {rIdx === 0 && pages.length > 1 && (
-                      <button
-                        onClick={() => deletePage(pageIndex)}
-                        className="text-[10px] text-red-500 hover:text-red-600 uppercase font-bold tracking-widest transition-colors"
-                      >
-                        Delete
-                      </button>
+                    {rIdx === 0 && (
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => useStore.getState().duplicatePage(pageIndex)}
+                          className="text-[10px] text-blue-500 hover:text-blue-600 uppercase font-bold tracking-widest transition-colors"
+                        >
+                          Duplicate
+                        </button>
+                        {pages.length > 1 && (
+                          <button
+                            onClick={() => deletePage(pageIndex)}
+                            className="text-[10px] text-red-500 hover:text-red-600 uppercase font-bold tracking-widest transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 

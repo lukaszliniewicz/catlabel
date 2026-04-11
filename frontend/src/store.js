@@ -46,6 +46,29 @@ export const useStore = create((set) => ({
       selectedId: null
     };
   }),
+  duplicatePage: (pageIndex) => set((state) => {
+    const targetPage = Math.max(0, Number(pageIndex) || 0);
+    const itemsToClone = state.items.filter((item) => Number(item.pageIndex ?? 0) === targetPage);
+    if (!itemsToClone.length) return state;
+
+    const maxPage = Math.max(
+      state.currentPage,
+      ...state.items.map((item) => Number(item.pageIndex ?? 0))
+    );
+    const newPageIdx = maxPage + 1;
+
+    const clones = itemsToClone.map((item) => ({
+      ...item,
+      id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 7),
+      pageIndex: newPageIdx
+    }));
+
+    return {
+      items: [...state.items, ...clones],
+      currentPage: newPageIdx,
+      selectedId: null
+    };
+  }),
   isSidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   addresses: [],

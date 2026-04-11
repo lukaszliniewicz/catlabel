@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, currentPage, setCurrentPage, isSidebarCollapsed, toggleSidebar } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, currentPage, setCurrentPage, isSidebarCollapsed, toggleSidebar, printCopies, setPrintCopies } = useStore();
   const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -229,12 +229,24 @@ export default function Sidebar() {
     }
   };
 
+  // Calculate total pages for smart counter visibility
+  const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
+  const pageCount = maxPage + 1;
+
   const handlePrint = async () => {
+    if (isSidebarCollapsed) {
+      toggleSidebar();
+      return;
+    }
     if (!selectedPrinter) return alert("Please select a printer first!");
     setIsPrinting(true);
     const thickness = useStore.getState().canvasBorderThickness || 4;
     const batchRecords = useStore.getState().batchRecords || [{}];
-    const printCopies = useStore.getState().printCopies || 1;
+
+    // Ignore the copies counter if we're dealing with a multi-page layout
+    // to prevent exploding permutations, relying on standard looping.
+    const copiesToSend = pageCount > 1 ? 1 : printCopies;
+
     try {
       const printRes = await fetch(`/api/print/batch`, {
         method: 'POST',
@@ -242,7 +254,7 @@ export default function Sidebar() {
         body: JSON.stringify({ 
           mac_address: selectedPrinter, 
           canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items },
-          copies: printCopies,
+          copies: copiesToSend,
           variables_list: batchRecords
         })
       });
@@ -292,9 +304,12 @@ export default function Sidebar() {
       {!isSidebarCollapsed ? (
         <div className="space-y-3">
           <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
+
+          <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
+
           {printers.length > 0 && (
             <select 
-              className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors mb-2"
+              className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors"
               value={selectedPrinter || ''}
               onChange={(e) => {
                 const selectedMac = e.target.value;
@@ -310,10 +325,22 @@ export default function Sidebar() {
               ))}
             </select>
           )}
-          <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
+
+          <div className={`flex items-center w-full border ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-500' : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} rounded-none transition-colors`}>
+            {pageCount === 1 && (
+              <div className={`flex items-center border-r ${isPrinting || !selectedPrinter ? 'border-neutral-300 dark:border-neutral-700' : 'border-blue-200 dark:border-blue-800'}`}>
+                <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">-</button>
+                <span className="text-xs font-bold w-6 text-center select-none">{printCopies}</span>
+                <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(printCopies + 1)} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">+</button>
+              </div>
+            )}
+            <button disabled={isPrinting || !selectedPrinter} onClick={handlePrint} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-bold transition-colors disabled:pointer-events-none">
+              <Printer size={16} /> {isPrinting ? 'Printing...' : 'Print'}
+            </button>
+          </div>
         </div>
       ) : (
-        <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
+        <SidebarButton icon={Printer} label="Print Options" onClick={handlePrint} primary />
       )}
 
       {!isSidebarCollapsed ? (
@@ -429,11 +456,8 @@ export default function Sidebar() {
       {showHtmlPicker && <HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} />}
 
       <div className="mt-auto pt-6 flex flex-col gap-2">
-        <div className={`w-full ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed' : ''}`}>
-          <SidebarButton icon={Printer} label={isPrinting ? 'Printing...' : 'Print Label'} onClick={handlePrint} primary />
-        </div>
         <div className="w-full">
-          <SidebarButton icon={LayoutTemplate} label="Batch Data & Copies" onClick={() => setShowBatchModal(true)} />
+          <SidebarButton icon={LayoutTemplate} label="CSV Batch Variables" onClick={() => setShowBatchModal(true)} />
         </div>
       </div>
 
