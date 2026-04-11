@@ -238,6 +238,9 @@ RULES:
         MAX_ITERATIONS = 15
         iteration = 0
         new_messages = []
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
+        total_cost = 0.0
         
         while iteration < MAX_ITERATIONS:
             iteration += 1
@@ -256,6 +259,21 @@ RULES:
                     })
             
             response = litellm.completion(messages=temp_messages, **kwargs)
+
+            usage = getattr(response, "usage", None)
+            if usage:
+                if isinstance(usage, dict):
+                    total_prompt_tokens += int(usage.get("prompt_tokens", 0) or 0)
+                    total_completion_tokens += int(usage.get("completion_tokens", 0) or 0)
+                else:
+                    total_prompt_tokens += int(getattr(usage, "prompt_tokens", 0) or 0)
+                    total_completion_tokens += int(getattr(usage, "completion_tokens", 0) or 0)
+
+            try:
+                total_cost += float(litellm.completion_cost(completion_response=response) or 0.0)
+            except Exception:
+                pass
+
             resp_msg = response.choices[0].message
             resp_dict = serialize_msg(resp_msg)
             
@@ -292,7 +310,13 @@ RULES:
                 
         return {
             "new_messages": new_messages,
-            "canvas_state": canvas_state_copy
+            "canvas_state": canvas_state_copy,
+            "usage": {
+                "prompt_tokens": total_prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+                "total_tokens": total_prompt_tokens + total_completion_tokens,
+                "cost": total_cost
+            }
         }
         
     except Exception as e:

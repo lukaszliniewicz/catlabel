@@ -42,6 +42,7 @@ export default function AIAssistant() {
   const [loading, setLoading] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sessionUsage, setSessionUsage] = useState({ tokens: 0, cost: 0 });
   
   const [currentConvId, setCurrentConvId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -109,6 +110,7 @@ export default function AIAssistant() {
     setMessages(data.messages);
     setCurrentConvId(id);
     setShowHistory(false);
+    setSessionUsage({ tokens: 0, cost: 0 });
   };
 
   const deleteHistory = async (id) => {
@@ -156,6 +158,13 @@ export default function AIAssistant() {
         const finalMessages = [...newMessages, ...data.new_messages];
         setMessages(finalMessages);
         saveConversation(finalMessages, currentConvId);
+
+        if (data.usage) {
+          setSessionUsage(prev => ({
+            tokens: prev.tokens + (data.usage.total_tokens || 0),
+            cost: prev.cost + (data.usage.cost || 0)
+          }));
+        }
         
         if (data.canvas_state) {
             setItems(data.canvas_state.items ||[]);
@@ -247,7 +256,7 @@ export default function AIAssistant() {
 
       {showHistory ? (
         <div className="flex-1 overflow-y-auto py-4 pr-2 flex flex-col">
-          <button onClick={() => { setMessages([{ role: 'assistant', content: 'Hi! Tell me what kind of label you want to design.' }]); setCurrentConvId(null); setShowHistory(false); }} className="mb-4 text-blue-500 font-bold text-xs uppercase tracking-widest flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors">
+          <button onClick={() => { setMessages([{ role: 'assistant', content: 'Hi! Tell me what kind of label you want to design.' }]); setCurrentConvId(null); setShowHistory(false); setSessionUsage({ tokens: 0, cost: 0 }); }} className="mb-4 text-blue-500 font-bold text-xs uppercase tracking-widest flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors">
             <Plus size={16} /> Start New Conversation
           </button>
           {histories.map(h => (
@@ -289,6 +298,12 @@ export default function AIAssistant() {
             <Send size={18} />
           </button>
         </form>
+        {sessionUsage.tokens > 0 && (
+          <div className="flex justify-between items-center mt-2 px-1 text-[10px] uppercase tracking-widest font-bold text-neutral-400 dark:text-neutral-500">
+            <span>Session Tokens: {sessionUsage.tokens.toLocaleString()}</span>
+            <span>Cost: ${sessionUsage.cost.toFixed(4)}</span>
+          </div>
+        )}
       </div>
 
       {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
