@@ -414,6 +414,24 @@ def delete_project(project_id: int):
         session.commit()
         return {"status": "deleted"}
 
+def _extract_pages_from_canvas(canvas_state: Dict[str, Any], variables: Dict[str, str], default_font: str) -> List[Any]:
+    items = list(canvas_state.get("items", []) or [])
+    pages: Dict[int, List[Dict[str, Any]]] = {}
+
+    if not items:
+        pages[0] = []
+    else:
+        for item in items:
+            page_index = int(item.get("pageIndex", 0) or 0)
+            pages.setdefault(page_index, []).append(item)
+
+    images = []
+    for page_index in sorted(pages.keys()):
+        page_state = dict(canvas_state)
+        page_state["items"] = pages[page_index]
+        images.append(render_template(page_state, variables, default_font=default_font))
+    return images
+
 @app.post("/api/print/direct")
 async def print_direct(request: DirectPrintRequest):
     """Endpoint for the frontend to test print without saving a template."""
@@ -422,8 +440,8 @@ async def print_direct(request: DirectPrintRequest):
         default_font = settings.default_font if settings else "Roboto.ttf"
 
     split_mode = request.canvas_state.get("splitMode", False)
-    img = render_template(request.canvas_state, request.variables, default_font=default_font)
-    await execute_print_job(request.mac_address, img, split_mode)
+    images = _extract_pages_from_canvas(request.canvas_state, request.variables, default_font)
+    await execute_print_jobs(request.mac_address, images, split_mode)
     
     return {
         "status": "success", 
@@ -456,8 +474,7 @@ async def print_batch(request: BatchPrintRequest):
 
     for variables in variables_collection:
         for _ in range(request.copies):
-            img = render_template(request.canvas_state, variables, default_font=default_font)
-            images.append(img)
+            images.extend(_extract_pages_from_canvas(request.canvas_state, variables, default_font))
             
     await execute_print_jobs(request.mac_address, images, split_mode)
     return {"status": "success", "printed": len(images)}

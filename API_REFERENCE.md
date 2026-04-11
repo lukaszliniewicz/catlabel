@@ -7,6 +7,7 @@ This document is optimized for LLM Agents and programmatic generation. It explai
 *   **Coordinate System**: Canvas coordinates are in pixels. **1 mm ≈ 8 pixels**. Standard 2-inch tape printable width is **384 pixels** (48mm).
 *   **Spatial Math Bypass**: Avoid calculating exact `x` offsets to center text. Instead, set `x: 0`, `width: 384`, and `align: "center"`.
 *   **Dynamic Height**: Omit the `height` property for text elements unless you want to force a strict bounding box. The engine will dynamically calculate vertical height based on text size and line breaks.
+*   **Multi-Page Labels**: A workspace can contain multiple discrete label pages. Pages are represented by item-level `pageIndex` values, and the backend prints each page as a separate label job in order.
 *   **Banners vs. Oversize (CRITICAL)**: 
     *   **Long Banners**: Thermal printers can print infinitely along the feed axis. To print a long banner on a *single* strip of tape, set `"isRotated": true`, make the `width` as long as you need (e.g., 1000), and keep `height: 384`. **Do NOT use splitMode**.
     *   **Giant Multi-Strip Decals**: Only set `"splitMode": true` if the user explicitly wants a giant graphic (like a huge QR code) stitched together from *multiple parallel strips of tape*. If the user's intent is ambiguous, ask them to clarify.
@@ -80,6 +81,8 @@ Prints a queue of labels. This endpoint is highly optimized for LLMs. You can pr
 }
 ```
 
+Each element may optionally include `"pageIndex": 0` (or another zero-based page number). Elements on different pages render as separate label canvases and print as separate jobs.
+
 ### Element Object Schemas
 
 **1. Text (Auto-scaling & Wrapping)**
@@ -144,24 +147,20 @@ Use Jinja-like `{{ var }}` syntax for dynamic replacement.
 ```
 *After this, continue editing the single master template as normal; the UI will preview each record with live variable substitution.*
 
-### Scenario B: The Horizontal Banner (Single Tape Width)
-**Request:** *"Print a continuous banner saying 'FRAGILE - DO NOT DROP'."*
-**Agent Thought Process:** A standard label is 384px wide. The user just wants a long text banner. Thermal printers feed infinitely, so I don't need `splitMode`. I will set `isRotated: true`, make the canvas width long enough to fit the text (e.g., 1000px), and keep the height at exactly 384px so it fits perfectly on one strip of tape.
-**Payload:**
+### Scenario B: Multi-Page UI Preview
+**Request:** *"Create 3 different name tags on screen so I can edit them before printing."*
+**Agent Thought Process:** The user wants multiple distinct labels visible in the editor, not one stretched canvas. I will use `multiply_workspace_with_variables` so each variation becomes its own page while preserving the same layout coordinates.
+**Tool Call Execution (`multiply_workspace_with_variables`):**
 ```json
 {
-  "mac_address": "XX:XX:XX:XX:XX:XX",
-  "canvas_state": {
-    "width": 1000, "height": 384, "isRotated": true, "splitMode": false,
-    "items": [
-      {
-        "id": "banner_text", "type": "text", "text": "FRAGILE - DO NOT DROP",
-        "x": 0, "y": 80, "width": 1000, "size": 150, "align": "center", "fit_to_width": true, "no_wrap": true
-      }
-    ]
-  }
+  "variables_list": [
+    {"name": "Alice"},
+    {"name": "Bob"},
+    {"name": "Charlie"}
+  ]
 }
 ```
+*After this, the workspace will show 3 discrete label pages. The backend will print them as 3 separate label jobs in order.*
 
 ### Scenario C: The Oversize Multi-Strip Decal
 **Request:** *"Print a giant 100x100mm QR code for my warehouse wall."*

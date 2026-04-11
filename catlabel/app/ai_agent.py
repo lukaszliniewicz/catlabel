@@ -35,10 +35,34 @@ def serialize_msg(msg) -> Dict[str, Any]:
         clean_d["content"] = None
     return clean_d
 
-def get_canvas_b64(canvas_state, default_font):
-    """Renders the canvas state to base64 JPEG for Vision models."""
+def _preview_canvas_state(canvas_state):
+    preview_state = dict(canvas_state or {})
+    items = list(preview_state.get("items", []) or [])
+    if not items:
+        preview_state["items"] = []
+        return preview_state
+
+    page_indexes = sorted({int(item.get("pageIndex", 0) or 0) for item in items})
+    current_page = preview_state.get("currentPage", 0)
     try:
-        img = render_template(canvas_state, {}, default_font=default_font)
+        current_page = int(current_page or 0)
+    except Exception:
+        current_page = 0
+
+    if current_page not in page_indexes:
+        current_page = page_indexes[0]
+
+    preview_state["items"] = [
+        item for item in items
+        if int(item.get("pageIndex", 0) or 0) == current_page
+    ]
+    return preview_state
+
+def get_canvas_b64(canvas_state, default_font):
+    """Renders the active canvas page to base64 JPEG for Vision models."""
+    try:
+        preview_state = _preview_canvas_state(canvas_state)
+        img = render_template(preview_state, {}, default_font=default_font)
         buf = BytesIO()
         # Max resolution bound to save tokens, RGB conversion for JPEG
         img.convert("RGB").save(buf, format="JPEG", quality=70)
@@ -201,9 +225,10 @@ RULES:
 1. Standard Text: Use `add_text_element` for fast native rendering.
 2. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
 3. Group Alignment: If you create multiple elements (text, html, etc) that should be centered together, call `align_group` passing their IDs.
-4. Vision Feedback: If enabled, you will automatically be shown an image of the canvas before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
-5. Be highly proactive. Do not give code back to the user; execute the tools directly.
-6. Batch Variations: If the user wants multiple label variants driven by structured data, use `set_batch_records` instead of duplicating elements or stretching the canvas.
+4. Multi-Page Layouts: If the user wants multiple distinct labels visible in the editor, use `multiply_workspace_with_variables` so each variation is placed on its own page.
+5. Vision Feedback: If enabled, you will automatically be shown an image of the active canvas page before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
+6. Be highly proactive. Do not give code back to the user; execute the tools directly.
+7. Batch Variations: If the user wants multiple label variants driven by structured data for printing without manually editing each page, use `set_batch_records` instead of duplicating elements or stretching the canvas.
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

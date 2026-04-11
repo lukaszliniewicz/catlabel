@@ -134,6 +134,20 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "multiply_workspace_with_variables",
+            "description": "Used for batching in the editor. Converts the current label into a multi-page template, generating a distinct new label page for each record provided, substituting {{ var }} syntax.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "variables_list": {"type": "array", "items": {"type": "object"}, "description": "List of dictionaries mapping variable names to values."}
+                },
+                "required": ["variables_list"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "trigger_ui_action",
             "description": "Executes physical actions on behalf of the user, such as sending the design directly to the printer or saving it to the database.",
             "parameters": {
@@ -162,6 +176,7 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             "align": args.get("align", "left"),
             "weight": args.get("weight", 700),
             "fit_to_width": args.get("fit_to_width", False),
+            "pageIndex": int(canvas_state.get("currentPage", 0) or 0),
         }
         canvas_state.setdefault("items", []).append(item)
         return f"Text element added with ID {item['id']}."
@@ -174,7 +189,8 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             "x": args.get("x", 0),
             "y": args.get("y", 0),
             "width": args["width"],
-            "height": args.get("height", args["width"] if args["type"] == "qrcode" else 80)
+            "height": args.get("height", args["width"] if args["type"] == "qrcode" else 80),
+            "pageIndex": int(canvas_state.get("currentPage", 0) or 0)
         }
         canvas_state.setdefault("items", []).append(item)
         return f"{args['type']} added with ID {item['id']}."
@@ -187,7 +203,8 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             "x": args.get("x", 0),
             "y": args.get("y", 0),
             "width": args.get("width", canvas_state.get("width", 384)),
-            "height": args.get("height", 200)
+            "height": args.get("height", 200),
+            "pageIndex": int(canvas_state.get("currentPage", 0) or 0)
         }
         canvas_state.setdefault("items", []).append(item)
         return f"HTML/SVG element added with ID {item['id']}."
@@ -244,6 +261,7 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
 
     elif name == "clear_canvas":
         canvas_state["items"] = []
+        canvas_state["currentPage"] = 0
         return "Canvas cleared."
 
     elif name == "create_shipping_label":
@@ -256,17 +274,18 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         canvas_state.update({"width": target_w, "height": target_h, "isRotated": True, "splitMode": False, "items": []})
 
         ts = uuid.uuid4().hex[:6]
+        current_page = int(canvas_state.get("currentPage", 0) or 0)
         items = canvas_state["items"]
         
-        items.append({"id": f"s-f-{ts}", "type": "text", "text": "FROM:\n" + "\n".join(sender), "x": 16, "y": 16, "size": 16, "weight": 700, "width": int(target_w * 0.45), "align": "left", "no_wrap": False})
-        items.append({"id": f"s-l1-{ts}", "type": "text", "text": "", "x": 0, "y": 110, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4})
-        items.append({"id": f"s-st-{ts}", "type": "text", "text": "SHIP TO:", "x": 16, "y": 130, "size": 20, "weight": 700, "width": 100, "align": "center", "no_wrap": True, "invert": True, "border_style": "box"})
-        items.append({"id": f"s-rn-{ts}", "type": "text", "text": recipient_name, "x": 16, "y": 170, "size": 60, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": True, "fit_to_width": True})
-        items.append({"id": f"s-ra-{ts}", "type": "text", "text": "\n".join(recipient_addr), "x": 16, "y": 240, "size": 32, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": False})
+        items.append({"id": f"s-f-{ts}", "type": "text", "text": "FROM:\n" + "\n".join(sender), "x": 16, "y": 16, "size": 16, "weight": 700, "width": int(target_w * 0.45), "align": "left", "no_wrap": False, "pageIndex": current_page})
+        items.append({"id": f"s-l1-{ts}", "type": "text", "text": "", "x": 0, "y": 110, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4, "pageIndex": current_page})
+        items.append({"id": f"s-st-{ts}", "type": "text", "text": "SHIP TO:", "x": 16, "y": 130, "size": 20, "weight": 700, "width": 100, "align": "center", "no_wrap": True, "invert": True, "border_style": "box", "pageIndex": current_page})
+        items.append({"id": f"s-rn-{ts}", "type": "text", "text": recipient_name, "x": 16, "y": 170, "size": 60, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": True, "fit_to_width": True, "pageIndex": current_page})
+        items.append({"id": f"s-ra-{ts}", "type": "text", "text": "\n".join(recipient_addr), "x": 16, "y": 240, "size": 32, "weight": 700, "width": target_w - 32, "align": "left", "no_wrap": False, "pageIndex": current_page})
 
         if custom_text:
-            items.append({"id": f"s-l2-{ts}", "type": "text", "text": "", "x": 0, "y": target_h - 40, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4})
-            items.append({"id": f"s-ct-{ts}", "type": "text", "text": custom_text, "x": 16, "y": target_h - 32, "size": 20, "weight": 700, "width": target_w - 32, "align": "center", "no_wrap": True, "fit_to_width": True})
+            items.append({"id": f"s-l2-{ts}", "type": "text", "text": "", "x": 0, "y": target_h - 40, "width": target_w, "size": 2, "border_style": "top", "border_thickness": 4, "pageIndex": current_page})
+            items.append({"id": f"s-ct-{ts}", "type": "text", "text": custom_text, "x": 16, "y": target_h - 32, "size": 20, "weight": 700, "width": target_w - 32, "align": "center", "no_wrap": True, "fit_to_width": True, "pageIndex": current_page})
             
         return "Shipping label created."
 
@@ -293,6 +312,37 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
 
         canvas_state["batchRecords"] = records
         return f"Configured {len(records)} batch records. The UI now previews these as separate label canvases."
+
+    elif name == "multiply_workspace_with_variables":
+        variables_list = list(args.get("variables_list", []) or [])
+        original_items = list(canvas_state.get("items", []) or [])
+        if not original_items or not variables_list:
+            return "Canvas is empty or no variables provided."
+
+        current_page = int(canvas_state.get("currentPage", 0) or 0)
+        source_items = [item for item in original_items if int(item.get("pageIndex", 0) or 0) == current_page]
+        if not source_items:
+            current_page = min(int(item.get("pageIndex", 0) or 0) for item in original_items)
+            source_items = [item for item in original_items if int(item.get("pageIndex", 0) or 0) == current_page]
+
+        new_items = []
+
+        for i, variables in enumerate(variables_list):
+            for item in source_items:
+                cloned = dict(item)
+                cloned["id"] = f"{item.get('id', 'id')}-{i}-{uuid.uuid4().hex[:5]}"
+                cloned["pageIndex"] = i
+
+                for field_name in ["text", "data", "html"]:
+                    if field_name in cloned and isinstance(cloned[field_name], str):
+                        for k, v in variables.items():
+                            cloned[field_name] = cloned[field_name].replace(f"{{{{ {k} }}}}", str(v)).replace(f"{{{{{k}}}}}", str(v))
+
+                new_items.append(cloned)
+
+        canvas_state["items"] = new_items
+        canvas_state["currentPage"] = 0
+        return f"Workspace visually multiplied into {len(variables_list)} separate label pages."
 
     elif name == "trigger_ui_action":
         action = args.get("action")

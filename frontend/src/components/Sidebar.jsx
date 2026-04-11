@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, isSidebarCollapsed, toggleSidebar } = useStore();
+  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, currentPage, setCurrentPage, isSidebarCollapsed, toggleSidebar } = useStore();
   const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -177,7 +177,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, batchRecords, printCopies }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, currentPage, batchRecords, printCopies }
         })
       });
       useStore.getState().fetchProjects();
@@ -195,6 +195,7 @@ export default function Sidebar() {
     useStore.getState().setIsRotated(proj.canvas_state.isRotated || false);
     useStore.getState().setBatchRecords(proj.canvas_state.batchRecords || [{}]);
     useStore.getState().setPrintCopies(proj.canvas_state.printCopies || 1);
+    setCurrentPage(proj.canvas_state.currentPage || 0);
     setItems(proj.canvas_state.items || []);
   };
 
@@ -208,7 +209,7 @@ export default function Sidebar() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, batchRecords, printCopies }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, currentPage, batchRecords, printCopies }
         })
       });
       useStore.getState().fetchProjects();

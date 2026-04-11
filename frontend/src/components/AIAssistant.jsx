@@ -67,7 +67,7 @@ export default function AIAssistant() {
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState([]);
 
-  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, batchRecords, printCopies, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder } = useStore();
+  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, batchRecords, printCopies, currentPage, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCurrentPage } = useStore();
 
   useEffect(() => {
     fetchHistories();
@@ -152,6 +152,7 @@ export default function AIAssistant() {
       canvasBorder,
       canvasBorderThickness,
       items,
+      currentPage,
       batchRecords,
       printCopies
     };
@@ -185,6 +186,7 @@ export default function AIAssistant() {
             if (data.canvas_state.splitMode !== undefined) setSplitMode(data.canvas_state.splitMode);
             if (data.canvas_state.canvasBorder !== undefined) setCanvasBorder(data.canvas_state.canvasBorder);
             if (data.canvas_state.batchRecords) useStore.getState().setBatchRecords(data.canvas_state.batchRecords);
+            if (data.canvas_state.currentPage !== undefined) setCurrentPage(data.canvas_state.currentPage);
             
             // Execute intercepted UI actions from the agent
             if (data.canvas_state.__actions__) {

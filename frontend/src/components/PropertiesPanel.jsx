@@ -125,6 +125,7 @@ export default function PropertiesPanel() {
 
   const [dupCopies, setDupCopies] = useState(1);
   const [dupGap, setDupGap] = useState(10);
+  const [multCopies, setMultCopies] = useState(1);
   
 
   useEffect(() => {
@@ -369,6 +370,20 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
+
+            <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Duplicate Label</h2>
+              <p className="text-[10px] text-neutral-500">Easily create identical copies of this label as new pages.</p>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Copies to Add</label>
+                  <input type="number" min="1" value={multCopies} onChange={e => setMultCopies(parseInt(e.target.value) || 1)} className={inputClass} />
+                </div>
+              </div>
+              <button onClick={() => useStore.getState().multiplyWorkspace(multCopies)} className="w-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-200 dark:border-blue-800 text-[10px] uppercase tracking-widest font-bold">
+                Duplicate Page
+              </button>
+            </div>
 
             <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Printer Config</h2>

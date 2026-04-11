@@ -16,6 +16,36 @@ export const useStore = create((set) => ({
   theme: 'auto',
   snapLines: [],
   fonts: [],
+  currentPage: 0,
+  setCurrentPage: (idx) => set({ currentPage: Math.max(0, Number(idx) || 0), selectedId: null }),
+  addPage: () => set((state) => {
+    const maxPage = Math.max(
+      state.currentPage,
+      ...state.items.map((item) => Number(item.pageIndex ?? 0))
+    );
+    return { currentPage: maxPage + 1, selectedId: null };
+  }),
+  deletePage: (pageIndex) => set((state) => {
+    const targetPage = Math.max(0, Number(pageIndex) || 0);
+    const newItems = state.items
+      .filter((item) => Number(item.pageIndex ?? 0) !== targetPage)
+      .map((item) => {
+        const itemPage = Number(item.pageIndex ?? 0);
+        return itemPage > targetPage ? { ...item, pageIndex: itemPage - 1 } : item;
+      });
+
+    const adjustedCurrentPage = state.currentPage > targetPage
+      ? state.currentPage - 1
+      : state.currentPage === targetPage
+        ? Math.max(0, targetPage - 1)
+        : state.currentPage;
+
+    return {
+      items: newItems,
+      currentPage: adjustedCurrentPage,
+      selectedId: null
+    };
+  }),
   isSidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   addresses: [],
@@ -203,10 +233,15 @@ export const useStore = create((set) => ({
     };
   }),
   
-  setItems: (items) => set({ items }),
-  clearCanvas: () => set({ items: [], selectedId: null }),
+  setItems: (items) => set({ items, selectedId: null }),
+  clearCanvas: () => set({ items: [], selectedId: null, currentPage: 0 }),
   
-  addItem: (item) => set((state) => ({ items: [...state.items, item] })),
+  addItem: (item) => set((state) => ({
+    items: [
+      ...state.items,
+      item.pageIndex === undefined ? { ...item, pageIndex: state.currentPage } : item
+    ]
+  })),
   
   duplicateItem: (id, copies, gapMm) => set((state) => {
     const itemToClone = state.items.find(i => i.id === id);
@@ -231,6 +266,32 @@ export const useStore = create((set) => ({
     return { items: [...state.items, ...newItems] };
   }),
 
+  multiplyWorkspace: (copies) => set((state) => {
+    const totalCopies = Math.max(1, Number(copies) || 1);
+    const currentItems = state.items.filter((item) => Number(item.pageIndex ?? 0) === state.currentPage);
+    if (!currentItems.length) return state;
+
+    const maxPage = Math.max(
+      state.currentPage,
+      ...state.items.map((item) => Number(item.pageIndex ?? 0))
+    );
+    const newItems = [...state.items];
+
+    for (let i = 1; i <= totalCopies; i++) {
+      const targetPage = maxPage + i;
+      const clones = currentItems.map((item) => ({
+        ...item,
+        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substr(2, 5),
+        pageIndex: targetPage
+      }));
+      newItems.push(...clones);
+    }
+
+    return {
+      items: newItems,
+      selectedId: null
+    };
+  }),
 
   updateItem: (id, newAttrs) => set((state) => ({
     items: state.items.map((item) => item.id === id ? { ...item, ...newAttrs } : item)
