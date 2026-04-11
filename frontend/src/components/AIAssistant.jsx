@@ -202,17 +202,12 @@ export default function AIAssistant() {
                         }).then(r => r.json()).then(resp => {
                             if (resp.error || resp.detail) alert(`AI Print Failed: ${resp.error || resp.detail}`);
                         });
-                    } else if (action.action === 'save_project') {
-                        fetch('/api/projects', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                name: action.project_name || "AI Generated Project",
-                                canvas_state: data.canvas_state
-                            })
-                        }).then(() => {
-                            useStore.getState().fetchProjects();
-                        });
+                    } 
+                    else if (action.action === 'refresh_projects') {
+                        useStore.getState().fetchProjects();
+                    } 
+                    else if (action.action === 'loaded_project_id') {
+                        useStore.getState().setCurrentProjectId(action.project_id);
                     }
                 });
             }

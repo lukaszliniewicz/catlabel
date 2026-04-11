@@ -5,18 +5,18 @@ import HtmlPickerModal from './HtmlPickerModal';
 import BatchPrintModal from './BatchPrintModal';
 import ShippingLabelModal from './ShippingLabelModal';
 import DateToolModal from './DateToolModal';
-import { 
-  Trash, ChevronDown, ChevronRight, LayoutTemplate, 
-  Menu, Package, Type, Calendar, ImagePlus, Code, Smile, 
-  Barcode, QrCode, Image as ImageIcon, FileText, Printer, Wifi, Search, Archive
+import ProjectTree from './ProjectTree';
+import {
+  ChevronDown, ChevronRight, LayoutTemplate,
+  Menu, Package, Type, Calendar, ImagePlus, Code, Smile,
+  Barcode, QrCode, Image as ImageIcon, FileText, Printer, Wifi, Archive
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { addItem, items, setItems, setCanvasSize, clearCanvas, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, selectedPrinter, setSelectedPrinter, theme, setTheme, isRotated, splitMode, applyPreset, projects, currentPage, setCurrentPage, isSidebarCollapsed, toggleSidebar, printCopies, setPrintCopies, isPrinting, printPages, selectedPagesForPrint } = useStore();
+  const { addItem, items, canvasWidth, canvasHeight, selectedPrinter, setSelectedPrinter, theme, setTheme, applyPreset, isSidebarCollapsed, toggleSidebar, printCopies, setPrintCopies, isPrinting, printPages, selectedPagesForPrint } = useStore();
   const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [currentProjectId, setCurrentProjectId] = useState(null);
   const [showProjects, setShowProjects] = useState(false);
   
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -163,70 +163,6 @@ export default function Sidebar() {
     e.target.value = null;
   };
 
-  const handleSaveProject = async () => {
-    const name = prompt("Enter a name for this project:");
-    if (!name) return;
-    const thickness = useStore.getState().canvasBorderThickness || 4;
-    const batchRecords = useStore.getState().batchRecords || [{}];
-    const printCopies = useStore.getState().printCopies || 1;
-    
-    try {
-      await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, currentPage, batchRecords, printCopies }
-        })
-      });
-      useStore.getState().fetchProjects();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleLoadProject = (proj) => {
-    setCurrentProjectId(proj.id);
-    setCanvasSize(proj.canvas_state.width || 384, proj.canvas_state.height || 384);
-    setCanvasBorder(proj.canvas_state.canvasBorder || 'none');
-    useStore.getState().setCanvasBorderThickness(proj.canvas_state.canvasBorderThickness || 4);
-    useStore.getState().setSplitMode(proj.canvas_state.splitMode || false);
-    useStore.getState().setIsRotated(proj.canvas_state.isRotated || false);
-    useStore.getState().setBatchRecords(proj.canvas_state.batchRecords || [{}]);
-    useStore.getState().setPrintCopies(proj.canvas_state.printCopies || 1);
-    setCurrentPage(proj.canvas_state.currentPage || 0);
-    setItems(proj.canvas_state.items || []);
-  };
-
-  const handleUpdateProject = async () => {
-    if (!currentProjectId) return;
-    const thickness = useStore.getState().canvasBorderThickness || 4;
-    const batchRecords = useStore.getState().batchRecords || [{}];
-    const printCopies = useStore.getState().printCopies || 1;
-    try {
-      await fetch(`/api/projects/${currentProjectId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, currentPage, batchRecords, printCopies }
-        })
-      });
-      useStore.getState().fetchProjects();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteProject = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this project?")) return;
-    try {
-      await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-      useStore.getState().fetchProjects();
-      if (currentProjectId === id) setCurrentProjectId(null);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   // Calculate total pages for smart counter visibility
   const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
@@ -379,34 +315,7 @@ export default function Sidebar() {
         </div>
         
         {showProjects && (
-          <div className="flex flex-col gap-2 pt-1">
-            <div className="flex gap-2">
-              <button 
-                onClick={handleSaveProject} 
-                className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
-              >
-                Save As New
-              </button>
-              {currentProjectId && (
-                <button 
-                  onClick={handleUpdateProject} 
-                  className="flex-1 bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 px-2 py-2 rounded-none hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-[10px] uppercase tracking-wider font-medium"
-                >
-                  Update
-                </button>
-              )}
-            </div>
-            {projects.length > 0 && (
-              <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-2">
-                {projects.map(p => (
-                  <div key={p.id} className={`flex justify-between items-center bg-neutral-50 dark:bg-neutral-900 p-2 border ${currentProjectId === p.id ? 'border-blue-500' : 'border-neutral-200 dark:border-neutral-800'}`}>
-                     <span className="text-xs cursor-pointer hover:text-blue-500 dark:text-white truncate flex-1" onClick={() => handleLoadProject(p)}>{p.name}</span>
-                     <button onClick={() => handleDeleteProject(p.id)} className="text-red-500 hover:text-red-700 ml-2"><Trash size={14}/></button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ProjectTree />
         )}
        </div>
       )}

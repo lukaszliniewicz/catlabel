@@ -140,7 +140,12 @@ export const useStore = create((set, get) => ({
   pxToMm: (px) => px / 8,
   mmToPx: (mm) => Math.round(mm * 8),
 
+  // --- HIERARCHICAL PROJECT MANAGEMENT ---
   projects: [],
+  categories: [],
+  currentProjectId: null,
+  
+  setCurrentProjectId: (id) => set({ currentProjectId: id }),
 
   setBatchRecords: (records) => set({
     batchRecords: Array.isArray(records) && records.length ? records : [{}]
@@ -151,13 +156,146 @@ export const useStore = create((set, get) => ({
 
   fetchProjects: async () => {
     try {
-      const res = await fetch('/api/projects');
-      const data = await res.json();
-      set({ projects: data });
+      const [projRes, catRes] = await Promise.all([
+        fetch('/api/projects'),
+        fetch('/api/categories')
+      ]);
+      const projects = await projRes.json();
+      const categories = await catRes.json();
+      set({ projects, categories });
     } catch (e) {
-      console.error("Failed to fetch projects", e);
+      console.error("Failed to fetch projects/categories", e);
     }
   },
+
+  createCategory: async (name, parentId = null) => {
+    try {
+      await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, parent_id: parentId })
+      });
+      useStore.getState().fetchProjects();
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  updateCategory: async (id, name) => {
+    try {
+      await fetch(`/api/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      useStore.getState().fetchProjects();
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  deleteCategory: async (id) => {
+    if (!window.confirm("Delete this folder AND all its contents recursively?")) return;
+    try {
+      await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+      useStore.getState().fetchProjects();
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  saveProject: async (name, categoryId = null) => {
+    const state = useStore.getState();
+    const thickness = state.canvasBorderThickness || 4;
+    const batchRecords = state.batchRecords || [{}];
+    const printCopies = state.printCopies || 1;
+    
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          category_id: categoryId,
+          canvas_state: {
+            width: state.canvasWidth, height: state.canvasHeight,
+            isRotated: state.isRotated, canvasBorder: state.canvasBorder,
+            canvasBorderThickness: thickness, splitMode: state.splitMode,
+            items: state.items, currentPage: state.currentPage,
+            batchRecords, printCopies
+          }
+        })
+      });
+      const data = await res.json();
+      set({ currentProjectId: data.id });
+      useStore.getState().fetchProjects();
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  updateProject: async (id, newName = null, newCategoryId = undefined) => {
+    const state = useStore.getState();
+    const thickness = state.canvasBorderThickness || 4;
+    const batchRecords = state.batchRecords || [{}];
+    const printCopies = state.printCopies || 1;
+    
+    const payload = {
+      canvas_state: {
+        width: state.canvasWidth, height: state.canvasHeight,
+        isRotated: state.isRotated, canvasBorder: state.canvasBorder,
+        canvasBorderThickness: thickness, splitMode: state.splitMode,
+        items: state.items, currentPage: state.currentPage,
+        batchRecords, printCopies
+      }
+    };
+    if (newName) payload.name = newName;
+    if (newCategoryId !== undefined) payload.category_id = newCategoryId;
+
+    try {
+      await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      useStore.getState().fetchProjects();
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  deleteProject: async (id) => {
+    if (!window.confirm("Are you sure you want to delete this project?")) return;
+    try {
+      await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+      useStore.getState().fetchProjects();
+      if (useStore.getState().currentProjectId === id) {
+        set({ currentProjectId: null });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  loadProject: (proj) => {
+    set({ currentProjectId: proj.id });
+    const s = proj.canvas_state;
+    useStore.setState({
+      canvasWidth: s.width || 384,
+      canvasHeight: s.height || 384,
+      canvasBorder: s.canvasBorder || 'none',
+      canvasBorderThickness: s.canvasBorderThickness || 4,
+      splitMode: s.splitMode || false,
+      isRotated: s.isRotated || false,
+      batchRecords: s.batchRecords || [{}],
+      printCopies: s.printCopies || 1,
+      currentPage: s.currentPage || 0,
+      items: s.items || [],
+      selectedId: null,
+      selectedPagesForPrint: []
+    });
+  },
+  // --- END HIERARCHICAL PROJECT MANAGEMENT ---
 
   applyPreset: (preset) => set((state) => {
     const w = Math.round(preset.w * 8);
