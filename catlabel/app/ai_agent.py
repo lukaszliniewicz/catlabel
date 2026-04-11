@@ -285,7 +285,9 @@ RULES:
                     total_completion_tokens += int(getattr(usage, "completion_tokens", 0) or 0)
 
             try:
-                total_cost += float(litellm.completion_cost(completion_response=response) or 0.0)
+                call_cost = litellm.completion_cost(completion_response=response)
+                if call_cost:
+                    total_cost += float(call_cost)
             except Exception:
                 pass
 
