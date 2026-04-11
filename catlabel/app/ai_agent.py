@@ -225,10 +225,10 @@ RULES:
 1. Standard Text: Use `add_text_element` for fast native rendering.
 2. Custom HTML/CSS/SVG: You can generate rich graphics using `add_html_element`. You MUST use inline styles or embedded <style>. Use width:100% and height:100% with box-sizing:border-box on the root. Do not load external assets.
 3. Group Alignment: If you create multiple elements (text, html, etc) that should be centered together, call `align_group` passing their IDs.
-4. Multi-Page Layouts: If the user wants multiple distinct labels visible in the editor, use `multiply_workspace_with_variables` so each variation is placed on its own page.
+4. Multi-Page Layouts: If the user wants multiple distinct labels visible in the editor, use `multiply_workspace_with_variables` so each variation is placed on its own page. You MUST provide a populated `variables_list`. Do not pass empty arguments.
 5. Vision Feedback: If enabled, you will automatically be shown an image of the active canvas page before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
 6. Be highly proactive. Do not give code back to the user; execute the tools directly.
-7. Batch Variations: If the user wants multiple label variants driven by structured data for printing without manually editing each page, use `set_batch_records` instead of duplicating elements or stretching the canvas.
+7. Batch Variations: If the user wants multiple label variants driven by structured data (e.g., "a bunch of sizes", "different lengths"), use `set_batch_records` providing a robust list of standard variations in `variables_list`. You MUST invent the data if the user doesn't specify (e.g., for M3 lengths, use 4, 6, 8, 10, 12, 16, 20). DO NOT call the tool with empty arguments!
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

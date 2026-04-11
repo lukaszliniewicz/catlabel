@@ -125,9 +125,22 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "variables_list": {"type": "array", "items": {"type": "object"}, "description": "List of flat dictionaries mapping variable names to values."},
-                    "variables_matrix": {"type": "object", "description": "Cartesian matrix mapping keys to lists of values. E.g. {'size': ['S','M'], 'color': ['Red','Blue']}. The engine will automatically generate all permutations."}
-                }
+                    "variables_list": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "minItems": 1,
+                        "description": "List of flat dictionaries mapping variable names to values. You MUST provide this if variables_matrix is not used."
+                    },
+                    "variables_matrix": {
+                        "type": "object",
+                        "minProperties": 1,
+                        "description": "Cartesian matrix mapping keys to lists of values. E.g. {'size': ['S','M'], 'color': ['Red','Blue']}. The engine will automatically generate all permutations."
+                    }
+                },
+                "anyOf": [
+                    {"required": ["variables_list"]},
+                    {"required": ["variables_matrix"]}
+                ]
             }
         }
     },
@@ -139,7 +152,12 @@ TOOLS_SCHEMA = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "variables_list": {"type": "array", "items": {"type": "object"}, "description": "List of dictionaries mapping variable names to values."}
+                    "variables_list": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "minItems": 1,
+                        "description": "List of dictionaries mapping variable names to values. You MUST invent a sensible list of data if the user does not specify it."
+                    }
                 },
                 "required": ["variables_list"]
             }

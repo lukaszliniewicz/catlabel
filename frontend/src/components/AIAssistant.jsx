@@ -6,23 +6,20 @@ import AIConfigModal from './AIConfigModal';
 import { useStore } from '../store';
 
 const MessageRow = ({ m }) => {
-  // Hide raw tool execution results from the UI to avoid clutter, 
-  // but keep them in state so the LLM has context.
-  if (m.role === 'tool') {
-    return (
-      <div className="flex justify-center my-1">
-        <div className="text-[9px] uppercase tracking-widest font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-400 py-1 px-3 rounded-full flex items-center gap-1">
-          ✅ Tool Executed: {m.name}
-        </div>
-      </div>
-    );
-  }
+  // Completely hide raw tool execution results from the UI to avoid clutter
+  if (m.role === 'tool') return null;
+
+  // Hide intermediate assistant messages that only contain tool calls and no textual content
+  if (m.role === 'assistant' && !m.content && m.tool_calls) return null;
+  
+  // Hide Vision system auto-inject messages (where content is an array)
+  if (m.role === 'user' && Array.isArray(m.content)) return null;
 
   const isUser = m.role === 'user';
 
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} my-2`}>
-      {m.content && (
+      {m.content && typeof m.content === 'string' && (
         <div className={`p-3 rounded-lg max-w-[90%] text-sm shadow-sm ${isUser ? 'bg-blue-600 text-white' : 'bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100'}`}>
           {isUser ? (
              <div className="whitespace-pre-wrap">{m.content}</div>
@@ -31,23 +28,6 @@ const MessageRow = ({ m }) => {
                {m.content}
              </ReactMarkdown>
           )}
-        </div>
-      )}
-      
-      {/* Render AI Tool Call Indicators natively */}
-      {m.tool_calls && m.tool_calls.length > 0 && (
-        <div className="mt-2 flex flex-col gap-1.5 items-start max-w-[90%]">
-          {m.tool_calls.map(tc => (
-            <div key={tc.id} className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 py-1.5 px-3 rounded-lg border border-blue-100 dark:border-blue-800/50 font-mono flex flex-col gap-1 shadow-sm">
-              <div className="flex items-center gap-2 font-bold">
-                <Sparkles size={12} />
-                <span>{tc.function.name}</span>
-              </div>
-              <div className="text-[10px] opacity-75 truncate max-w-xs" title={tc.function.arguments}>
-                {tc.function.arguments}
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>
