@@ -121,7 +121,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_batch_records",
-            "description": "Configures multiple labels for batch printing. The UI will generate separate label canvases for each record. Use this instead of duplicating elements manually when the user wants multiple variations of a label.",
+            "description": "Configures multiple labels for batch printing. The UI will generate separate label canvases for each record. Use this instead of duplicating elements manually when the user wants multiple variations of a label. You MUST provide EITHER variables_list OR variables_matrix.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -129,18 +129,14 @@ TOOLS_SCHEMA = [
                         "type": "array",
                         "items": {"type": "object"},
                         "minItems": 1,
-                        "description": "List of flat dictionaries mapping variable names to values. You MUST provide this if variables_matrix is not used."
+                        "description": "List of flat dictionaries mapping variable names to values. Provide this if variables_matrix is not used."
                     },
                     "variables_matrix": {
                         "type": "object",
                         "minProperties": 1,
                         "description": "Cartesian matrix mapping keys to lists of values. E.g. {'size': ['S','M'], 'color': ['Red','Blue']}. The engine will automatically generate all permutations."
                     }
-                },
-                "anyOf": [
-                    {"required": ["variables_list"]},
-                    {"required": ["variables_matrix"]}
-                ]
+                }
             }
         }
     },
