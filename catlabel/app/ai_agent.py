@@ -200,6 +200,9 @@ def chat_with_agent(req: ChatRequest):
         "tool_choice": "auto"
     }
 
+    if getattr(active_profile, "reasoning_effort", ""):
+        kwargs["reasoning_effort"] = active_profile.reasoning_effort
+
     if not active_profile.use_env:
         if active_profile.provider == "vertex_ai":
             with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:

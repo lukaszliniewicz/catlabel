@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pypdfium2 as pdfium
 from sqlmodel import SQLModel, create_engine, Session, select
+from sqlalchemy import text
 
 from .models import PrinterProfile, Font, Project, Settings, Address
 from ..rendering.template import render_template
@@ -61,6 +62,12 @@ _scanned_devices_cache: List[Any] = []
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
+    # Silent migration for reasoning_effort column if upgrading from an older version
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE aiagentprofile ADD COLUMN reasoning_effort VARCHAR DEFAULT ''"))
+    except Exception:
+        pass
 
 def download_default_fonts():
     """Silently downloads Variable Fonts from Google Fonts raw CDN."""

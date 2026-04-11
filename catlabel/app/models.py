@@ -62,3 +62,4 @@ class AIAgentProfile(SQLModel, table=True):
     use_env: bool = False
     vision_capable: bool = False
     is_active: bool = False
+    reasoning_effort: str = ""

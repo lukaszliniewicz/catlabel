@@ -24,7 +24,8 @@ export default function AIConfigModal({ onClose }) {
     const newProfile = {
       id: `new-${Date.now()}`,
       name: 'New Profile', provider: 'openai', model_name: 'gpt-4o',
-      api_key: '', base_url: '', use_env: false, vision_capable: false, is_active: false
+      api_key: '', base_url: '', use_env: false, vision_capable: false, is_active: false,
+      reasoning_effort: ''
     };
     setProfiles([...profiles, newProfile]);
     setSelectedId(newProfile.id);
@@ -132,6 +133,14 @@ export default function AIConfigModal({ onClose }) {
 
               <label className={labelClass}>Model Name</label>
               <input type="text" value={current.model_name} onChange={e => handleUpdateCurrent('model_name', e.target.value)} className={inputClass} placeholder="e.g. gpt-4o, gemini-1.5-pro" />
+
+              <label className={labelClass}>Reasoning Effort (For o1, o3-mini, Gemini 2.0 Thinking, etc.)</label>
+              <select value={current.reasoning_effort || ''} onChange={e => handleUpdateCurrent('reasoning_effort', e.target.value)} className={inputClass}>
+                <option value="">Don't Set (Default/None)</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
 
               <div className="mt-4 p-4 border border-blue-100 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/10 rounded">
                 <label className="flex items-center gap-2 text-sm font-bold text-neutral-800 dark:text-neutral-200 cursor-pointer">
