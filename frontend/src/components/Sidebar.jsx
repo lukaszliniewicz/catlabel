@@ -168,6 +168,8 @@ export default function Sidebar() {
     const name = prompt("Enter a name for this project:");
     if (!name) return;
     const thickness = useStore.getState().canvasBorderThickness || 4;
+    const batchRecords = useStore.getState().batchRecords || [{}];
+    const printCopies = useStore.getState().printCopies || 1;
     
     try {
       await fetch('/api/projects', {
@@ -175,7 +177,7 @@ export default function Sidebar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, batchRecords, printCopies }
         })
       });
       useStore.getState().fetchProjects();
@@ -188,20 +190,25 @@ export default function Sidebar() {
     setCurrentProjectId(proj.id);
     setCanvasSize(proj.canvas_state.width || 384, proj.canvas_state.height || 384);
     setCanvasBorder(proj.canvas_state.canvasBorder || 'none');
+    useStore.getState().setCanvasBorderThickness(proj.canvas_state.canvasBorderThickness || 4);
     useStore.getState().setSplitMode(proj.canvas_state.splitMode || false);
     useStore.getState().setIsRotated(proj.canvas_state.isRotated || false);
+    useStore.getState().setBatchRecords(proj.canvas_state.batchRecords || [{}]);
+    useStore.getState().setPrintCopies(proj.canvas_state.printCopies || 1);
     setItems(proj.canvas_state.items || []);
   };
 
   const handleUpdateProject = async () => {
     if (!currentProjectId) return;
     const thickness = useStore.getState().canvasBorderThickness || 4;
+    const batchRecords = useStore.getState().batchRecords || [{}];
+    const printCopies = useStore.getState().printCopies || 1;
     try {
       await fetch(`/api/projects/${currentProjectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items }
+          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items, batchRecords, printCopies }
         })
       });
       useStore.getState().fetchProjects();
@@ -225,14 +232,17 @@ export default function Sidebar() {
     if (!selectedPrinter) return alert("Please select a printer first!");
     setIsPrinting(true);
     const thickness = useStore.getState().canvasBorderThickness || 4;
+    const batchRecords = useStore.getState().batchRecords || [{}];
+    const printCopies = useStore.getState().printCopies || 1;
     try {
-      const printRes = await fetch(`/api/print/direct`, {
+      const printRes = await fetch(`/api/print/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           mac_address: selectedPrinter, 
           canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items },
-          variables: {} 
+          copies: printCopies,
+          variables_list: batchRecords
         })
       });
       
@@ -422,7 +432,7 @@ export default function Sidebar() {
           <SidebarButton icon={Printer} label={isPrinting ? 'Printing...' : 'Print Label'} onClick={handlePrint} primary />
         </div>
         <div className="w-full">
-          <SidebarButton icon={LayoutTemplate} label="Batch Print Stream" onClick={() => setShowBatchModal(true)} />
+          <SidebarButton icon={LayoutTemplate} label="Batch Data & Copies" onClick={() => setShowBatchModal(true)} />
         </div>
       </div>
 

@@ -67,7 +67,7 @@ export default function AIAssistant() {
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState([]);
 
-  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder } = useStore();
+  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, batchRecords, printCopies, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder } = useStore();
 
   useEffect(() => {
     fetchHistories();
@@ -145,7 +145,15 @@ export default function AIAssistant() {
     setLoading(true);
 
     const currentState = {
-      width: canvasWidth, height: canvasHeight, isRotated, splitMode, canvasBorder, items
+      width: canvasWidth,
+      height: canvasHeight,
+      isRotated,
+      splitMode,
+      canvasBorder,
+      canvasBorderThickness,
+      items,
+      batchRecords,
+      printCopies
     };
 
     try {
@@ -176,6 +184,7 @@ export default function AIAssistant() {
             if (data.canvas_state.isRotated !== undefined) setIsRotated(data.canvas_state.isRotated);
             if (data.canvas_state.splitMode !== undefined) setSplitMode(data.canvas_state.splitMode);
             if (data.canvas_state.canvasBorder !== undefined) setCanvasBorder(data.canvas_state.canvasBorder);
+            if (data.canvas_state.batchRecords) useStore.getState().setBatchRecords(data.canvas_state.batchRecords);
             
             // Execute intercepted UI actions from the agent
             if (data.canvas_state.__actions__) {
@@ -186,13 +195,16 @@ export default function AIAssistant() {
                             return;
                         }
                         const thickness = canvasBorderThickness || 4;
-                        fetch('/api/print/direct', {
+                        const batchVariables = data.canvas_state.batchRecords || useStore.getState().batchRecords || [{}];
+                        const copies = data.canvas_state.printCopies || useStore.getState().printCopies || 1;
+                        fetch('/api/print/batch', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 mac_address: selectedPrinter,
-                                canvas_state: { ...data.canvas_state, canvasBorderThickness: thickness },
-                                variables: {}
+                                canvas_state: { ...data.canvas_state, canvasBorderThickness: data.canvas_state.canvasBorderThickness || thickness },
+                                copies,
+                                variables_list: batchVariables
                             })
                         }).then(r => r.json()).then(resp => {
                             if (resp.error || resp.detail) alert(`AI Print Failed: ${resp.error || resp.detail}`);

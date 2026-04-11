@@ -3,13 +3,16 @@ import { X, Upload } from 'lucide-react';
 import { useStore } from '../store';
 
 export default function BatchPrintModal({ onClose }) {
-  const { canvasWidth, canvasHeight, canvasBorder, items, selectedPrinter, splitMode } = useStore();
-  const isRotated = useStore(state => state.isRotated);
-  const [tab, setTab] = useState('copies');
-  const [copies, setCopies] = useState(1);
+  const batchRecords = useStore(state => state.batchRecords);
+  const printCopies = useStore(state => state.printCopies);
+  const hasExistingBatchRecords = Array.isArray(batchRecords) && (
+    batchRecords.length > 1 ||
+    (batchRecords.length === 1 && Object.keys(batchRecords[0] || {}).length > 0)
+  );
+  const [tab, setTab] = useState(hasExistingBatchRecords ? 'csv' : 'copies');
+  const [copies, setCopies] = useState(printCopies || 1);
   const [csvData, setCsvData] = useState([]);
   const [headers, setHeaders] = useState([]);
-  const [isPrinting, setIsPrinting] = useState(false);
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -33,30 +36,21 @@ export default function BatchPrintModal({ onClose }) {
     reader.readAsText(file);
   };
 
-  const handlePrint = async () => {
-    setIsPrinting(true);
-    const thickness = useStore.getState().canvasBorderThickness || 4;
-    try {
-      const res = await fetch('/api/print/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mac_address: selectedPrinter,
-          canvas_state: { width: canvasWidth, height: canvasHeight, isRotated, canvasBorder, canvasBorderThickness: thickness, splitMode, items },
-          copies: parseInt(copies, 10) || 1,
-          variables_list: tab === 'csv' ? csvData : []
-        })
-      });
-      if (!res.ok) {
-         const err = await res.json();
-         throw new Error(err.detail || "Batch Print Engine failed");
+  const handleApply = () => {
+    const finalCopies = parseInt(copies, 10) || 1;
+    useStore.getState().setPrintCopies(finalCopies);
+
+    if (tab === 'csv') {
+      if (csvData.length > 0) {
+        useStore.getState().setBatchRecords(csvData);
+      } else if (!hasExistingBatchRecords) {
+        useStore.getState().setBatchRecords([{}]);
       }
-      alert("Batch Print stream finished continuously!");
-      onClose();
-    } catch (e) {
-      alert("Failed to print: " + e.message);
+    } else {
+      useStore.getState().setBatchRecords([{}]);
     }
-    setIsPrinting(false);
+
+    onClose();
   };
 
   return (
@@ -64,7 +58,7 @@ export default function BatchPrintModal({ onClose }) {
       <div className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800">
         
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
-          <h3 className="font-serif text-lg dark:text-white">Print Multiple Copies</h3>
+          <h3 className="font-serif text-lg dark:text-white">Batch Data & Copies</h3>
           <button onClick={onClose} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">
             <X size={20} />
           </button>
@@ -106,11 +100,11 @@ export default function BatchPrintModal({ onClose }) {
 
         <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 mt-auto">
           <button 
-            onClick={handlePrint}
-            disabled={isPrinting || !selectedPrinter || (tab === 'csv' && csvData.length === 0)}
+            onClick={handleApply}
+            disabled={tab === 'csv' && csvData.length === 0 && !hasExistingBatchRecords}
             className="w-full bg-blue-600 text-white px-4 py-3 hover:bg-blue-700 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50"
           >
-            {isPrinting ? 'Streaming to Printer...' : 'Fire Batch Queue'}
+            Apply To Workspace
           </button>
         </div>
 

@@ -131,20 +131,10 @@ Use Jinja-like `{{ var }}` syntax for dynamic replacement.
 
 ### Scenario A: The Combinatorial Matrix (Inventory Tagging)
 **Request:** *"Print a set of screw labels from M2 to M6, each with lengths of 2,4,10,20mm, and each with two types: flat head and concave."*
-**Agent Thought Process:** Instead of generating 40 records manually and wasting tokens, I will use the `variables_matrix` payload on the `/batch` endpoint. I'll use `fit_to_width` for the title to ensure safe boundaries.
-**Payload:**
+**Agent Thought Process:** Instead of generating 40 records manually or stretching the canvas, I will keep a single label template and call `set_batch_records` with a `variables_matrix`. The frontend will generate separate label previews for each permutation and the normal print flow will print them as discrete labels.
+**Tool Call Execution (`set_batch_records`):**
 ```json
 {
-  "mac_address": "XX:XX:XX:XX:XX:XX",
-  "canvas_state": {
-    "width": 384, "height": 180, "isRotated": false,
-    "items": [
-      {
-        "id": "t1", "type": "text", "text": "Size: {{ size }}\nLen: {{ length }}\nType: {{ type }}",
-        "x": 0, "y": 20, "width": 384, "size": 32, "align": "center", "fit_to_width": true
-      }
-    ]
-  },
   "variables_matrix": {
     "size": ["M2", "M3", "M4", "M5", "M6"],
     "length": ["2mm", "4mm", "10mm", "20mm"],
@@ -152,6 +142,7 @@ Use Jinja-like `{{ var }}` syntax for dynamic replacement.
   }
 }
 ```
+*After this, continue editing the single master template as normal; the UI will preview each record with live variable substitution.*
 
 ### Scenario B: The Horizontal Banner (Single Tape Width)
 **Request:** *"Print a continuous banner saying 'FRAGILE - DO NOT DROP'."*

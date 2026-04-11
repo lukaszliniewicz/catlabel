@@ -11,6 +11,8 @@ export const useStore = create((set) => ({
   isRotated: false,
   selectedPrinter: null,
   selectedPrinterInfo: null,
+  batchRecords: [{}],
+  printCopies: 1,
   theme: 'auto',
   snapLines: [],
   fonts: [],
@@ -23,6 +25,13 @@ export const useStore = create((set) => ({
   mmToPx: (mm) => Math.round(mm * 8),
 
   projects: [],
+
+  setBatchRecords: (records) => set({
+    batchRecords: Array.isArray(records) && records.length ? records : [{}]
+  }),
+  setPrintCopies: (n) => set({
+    printCopies: Math.max(1, Number(n) || 1)
+  }),
 
   fetchProjects: async () => {
     try {
@@ -222,46 +231,6 @@ export const useStore = create((set) => ({
     return { items: [...state.items, ...newItems] };
   }),
 
-  // Superb utility to clone the entire workspace multiple times downwards!
-  multiplyWorkspace: (copies, gapMm, addCutLines) => set((state) => {
-    const gapPx = Math.round(gapMm * 8);
-    const feedAxis = state.isRotated ? 'x' : 'y';
-    const singleLength = state.isRotated ? state.canvasWidth : state.canvasHeight;
-    const step = singleLength + gapPx;
-    
-    const originalItems = [...state.items];
-    let newItems = [...originalItems];
-    
-    for (let i = 1; i <= copies; i++) {
-      const offset = i * step;
-      
-      const clones = originalItems.map(item => ({
-        ...item,
-        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substr(2, 5),
-        [feedAxis]: item[feedAxis] + offset
-      }));
-      
-      newItems = [...newItems, ...clones];
-      
-      if (addCutLines && gapPx > 0) {
-         newItems.push({
-           id: Date.now().toString() + '-cut-' + i,
-           type: 'cut_line_indicator',
-           x: state.isRotated ? offset - gapPx : 0,
-           y: state.isRotated ? 0 : offset - gapPx,
-           width: state.isRotated ? 1 : state.canvasWidth,
-           height: state.isRotated ? state.canvasHeight : 1,
-           isVertical: state.isRotated
-         });
-      }
-    }
-    
-    return {
-      items: newItems,
-      canvasWidth: state.isRotated ? state.canvasWidth + (step * copies) : state.canvasWidth,
-      canvasHeight: state.isRotated ? state.canvasHeight : state.canvasHeight + (step * copies)
-    };
-  }),
 
   updateItem: (id, newAttrs) => set((state) => ({
     items: state.items.map((item) => item.id === id ? { ...item, ...newAttrs } : item)

@@ -120,16 +120,14 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "multiply_workspace_with_variables",
-            "description": "Used for Batching. Expands the canvas and duplicates existing elements down the feed axis for each record provided, substituting {{ var }} syntax.",
+            "name": "set_batch_records",
+            "description": "Configures multiple labels for batch printing. The UI will generate separate label canvases for each record. Use this instead of duplicating elements manually when the user wants multiple variations of a label.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "variables_list": {"type": "array", "items": {"type": "object"}, "description": "List of dictionaries mapping variable names to values."},
-                    "gap_mm": {"type": "integer", "default": 5, "description": "Gap between labels in mm."},
-                    "add_cut_lines": {"type": "boolean", "default": True}
-                },
-                "required": ["variables_list"]
+                    "variables_list": {"type": "array", "items": {"type": "object"}, "description": "List of flat dictionaries mapping variable names to values."},
+                    "variables_matrix": {"type": "object", "description": "Cartesian matrix mapping keys to lists of values. E.g. {'size': ['S','M'], 'color': ['Red','Blue']}. The engine will automatically generate all permutations."}
+                }
             }
         }
     },
@@ -272,54 +270,29 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             
         return "Shipping label created."
 
-    elif name == "multiply_workspace_with_variables":
-        variables_list = args.get("variables_list", [])
-        gap_px = int(args.get("gap_mm", 5) * 8)
-        add_cut_lines = args.get("add_cut_lines", True)
+    elif name == "set_batch_records":
+        records = list(args.get("variables_list", []) or [])
+        matrix = args.get("variables_matrix", {}) or {}
+        if matrix:
+            import itertools
+            keys = list(matrix.keys())
+            value_sets = []
+            for value in matrix.values():
+                if isinstance(value, (list, tuple)):
+                    value_sets.append(list(value))
+                else:
+                    value_sets.append([value])
 
-        original_items = canvas_state.get("items", [])
-        if not original_items or not variables_list: return "Canvas is empty or no variables provided."
+            records.extend(
+                dict(zip(keys, combo))
+                for combo in itertools.product(*value_sets)
+            )
 
-        is_rotated = canvas_state.get("isRotated", False)
-        feed_axis = "x" if is_rotated else "y"
+        if not records:
+            records = [{}]
 
-        max_feed = 0
-        for item in original_items:
-            item_pos = item.get(feed_axis, 0)
-            item_dim = item.get("width" if is_rotated else "height", 50)
-            if item_pos + item_dim > max_feed: max_feed = item_pos + item_dim
-
-        step = max_feed + gap_px
-        new_items = []
-
-        for i, variables in enumerate(variables_list):
-            offset = i * step
-            for item in original_items:
-                cloned = dict(item)
-                cloned["id"] = f"{item.get('id', 'id')}-{i}-{uuid.uuid4().hex[:5]}"
-                cloned[feed_axis] = cloned.get(feed_axis, 0) + offset
-
-                for field_name in ["text", "data"]:
-                    if field_name in cloned and isinstance(cloned[field_name], str):
-                        for k, v in variables.items():
-                            cloned[field_name] = cloned[field_name].replace(f"{{{{ {k} }}}}", str(v)).replace(f"{{{{{k}}}}}", str(v))
-                new_items.append(cloned)
-
-            if add_cut_lines and i < len(variables_list) - 1:
-                new_items.append({
-                    "id": f"cut-{i}-{uuid.uuid4().hex[:5]}", "type": "cut_line_indicator",
-                    "x": (offset + max_feed + (gap_px // 2)) if is_rotated else 0,
-                    "y": 0 if is_rotated else (offset + max_feed + (gap_px // 2)),
-                    "width": 1 if is_rotated else canvas_state.get("width", 384),
-                    "height": canvas_state.get("height", 384) if is_rotated else 1,
-                    "isVertical": is_rotated
-                })
-
-        canvas_state["items"] = new_items
-        if is_rotated: canvas_state["width"] = step * len(variables_list) - gap_px
-        else: canvas_state["height"] = step * len(variables_list) - gap_px
-
-        return f"Workspace visually multiplied for {len(variables_list)} records."
+        canvas_state["batchRecords"] = records
+        return f"Configured {len(records)} batch records. The UI now previews these as separate label canvases."
 
     elif name == "trigger_ui_action":
         action = args.get("action")

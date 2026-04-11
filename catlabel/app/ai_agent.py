@@ -203,6 +203,7 @@ RULES:
 3. Group Alignment: If you create multiple elements (text, html, etc) that should be centered together, call `align_group` passing their IDs.
 4. Vision Feedback: If enabled, you will automatically be shown an image of the canvas before your final response. Use it to verify if your HTML or text overlaps/aligns correctly.
 5. Be highly proactive. Do not give code back to the user; execute the tools directly.
+6. Batch Variations: If the user wants multiple label variants driven by structured data, use `set_batch_records` instead of duplicating elements or stretching the canvas.
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
