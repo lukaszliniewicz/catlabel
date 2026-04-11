@@ -181,12 +181,12 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  updateCategory: async (id, name) => {
+  updateCategory: async (id, name = undefined, parentId = undefined) => {
     try {
       await fetch(`/api/categories/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, parent_id: parentId })
       });
       useStore.getState().fetchProjects();
     } catch (e) {
@@ -458,7 +458,7 @@ export const useStore = create((set, get) => ({
   }),
   
   setItems: (items) => set({ items, selectedId: null, selectedPagesForPrint: [] }),
-  clearCanvas: () => set({ items: [], selectedId: null, currentPage: 0, selectedPagesForPrint: [] }),
+  clearCanvas: () => set({ items: [], selectedId: null, currentPage: 0, selectedPagesForPrint: [], currentProjectId: null }),
   
   addItem: (item) => set((state) => ({
     items: [

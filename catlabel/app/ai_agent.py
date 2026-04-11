@@ -268,12 +268,14 @@ PARADIGM C: ICONS AND GRAPHICS
 - Complex/Custom Graphics: If emojis aren't enough, use `add_html_element` and write raw, inline HTML/SVG code.
 
 PARADIGM D: FILE SYSTEM MANAGEMENT (Saving & Loading)
-If the user asks you to organize, load, or save files:
+If the user asks you to organize, load, save, or delete files:
 - Use `list_directory` to browse folders. (Context gives you root IDs).
 - Use `create_category` to make new folders.
-- Use `load_project` to pull a design from the database into your active workspace.
-- Use `save_project` to save your currently active canvas layout into a specific folder.
-Always confirm the names and IDs before overwriting or saving.
+- Use `load_project` to pull a design into the workspace.
+- Use `save_project` ONLY for brand new designs.
+- Use `update_project` to save modifications to an existing project ID.
+- Use `delete_project` or `delete_category` to clean up the workspace.
+Always confirm the names and IDs before overwriting or deleting.
 
 Always be proactive. Apply the preset first, layout the design, configure the batch data (if any), and finally call `trigger_ui_action` to print if requested.
 """

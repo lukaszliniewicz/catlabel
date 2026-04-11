@@ -5,6 +5,46 @@ import {
   Download, Upload, Plus, Trash, Edit2, Save, Play
 } from 'lucide-react';
 
+// --- Modal for Moving Projects/Folders ---
+const MoveModal = ({ node, onClose }) => {
+  const { categories, updateProject, updateCategory } = useStore();
+  const [selectedDest, setSelectedDest] = useState("root");
+
+  const handleMove = () => {
+    const destId = selectedDest === "root" ? null : parseInt(selectedDest);
+    if (node.type === 'category') {
+      updateCategory(node.id, node.name, destId);
+    } else {
+      updateProject(node.id, null, destId);
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-neutral-900 w-full max-w-sm rounded shadow-xl flex flex-col border border-neutral-200 dark:border-neutral-800" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
+          <h3 className="font-serif text-lg dark:text-white">Move "{node.name}"</h3>
+        </div>
+        <div className="p-4">
+          <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Destination Folder</label>
+          <select value={selectedDest} onChange={e => setSelectedDest(e.target.value)} className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500">
+            <option value="root">/ (Root)</option>
+            {categories.map(c => {
+               if (node.type === 'category' && c.id === node.id) return null;
+               return <option key={c.id} value={c.id}>/ {c.name}</option>;
+            })}
+          </select>
+        </div>
+        <div className="p-4 flex gap-2 border-t border-neutral-100 dark:border-neutral-800">
+          <button onClick={onClose} className="flex-1 py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-xs font-bold uppercase hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">Cancel</button>
+          <button onClick={handleMove} className="flex-1 py-2 bg-blue-600 text-white text-xs font-bold uppercase hover:bg-blue-700 transition-colors">Move Here</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Recursive Tree Node Component ---
 const TreeNode = ({ node, level, onImport }) => {
   const {
@@ -14,6 +54,7 @@ const TreeNode = ({ node, level, onImport }) => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
   const menuRef = useRef(null);
 
   // Close menu when clicking outside
@@ -118,15 +159,19 @@ const TreeNode = ({ node, level, onImport }) => {
                   <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); loadProject(node); }}>
                     <Play size={12} /> Load to Canvas
                   </button>
-                  <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); updateProject(node.id); }}>
+                  <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); if(window.confirm("WARNING: This will permanently overwrite this saved file with whatever is currently on your canvas. Proceed?")) updateProject(node.id); }}>
                     <Save size={12} /> Overwrite with Current
                   </button>
                   <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
                 </>
               )}
 
-              <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); const n = prompt("Rename to:", node.name); if (n) isFolder ? updateCategory(node.id, n) : updateProject(node.id, n); }}>
+              <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); const n = prompt("Rename to:", node.name); if (n) isFolder ? updateCategory(node.id, n, node.parent_id) : updateProject(node.id, n); }}>
                 <Edit2 size={12} /> Rename
+              </button>
+
+              <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setShowMoveModal(true); }}>
+                <FolderOpen size={12} /> Move To...
               </button>
 
               <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={handleExport}>
@@ -150,6 +195,7 @@ const TreeNode = ({ node, level, onImport }) => {
           ))}
         </div>
       )}
+      {showMoveModal && <MoveModal node={node} onClose={() => setShowMoveModal(false)} />}
     </div>
   );
 };

@@ -207,6 +207,49 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "update_project",
+            "description": "Updates/overwrites an existing project ID in the database with your CURRENT canvas state.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "integer"},
+                    "name": {"type": ["string", "null"], "description": "Optional new name. Leave null to keep existing name."}
+                },
+                "required": ["project_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_project",
+            "description": "Deletes a project from the database.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "integer"}
+                },
+                "required": ["project_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_category",
+            "description": "Deletes a folder AND all its contents recursively. Use with extreme caution.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category_id": {"type": "integer"}
+                },
+                "required": ["category_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "clear_canvas",
             "description": "Deletes all elements from all pages.",
             "parameters": {"type": "object", "properties": {}}
@@ -272,10 +315,16 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         from .models import Category
 
         with Session(engine) as session:
-            cat = Category(name=args["name"], parent_id=args.get("parent_id"))
+            parent_id = args.get("parent_id")
+            if parent_id is not None:
+                if not session.get(Category, parent_id):
+                    return f"Error: The parent folder ID {parent_id} does not exist."
+
+            cat = Category(name=args["name"], parent_id=parent_id)
             session.add(cat)
             session.commit()
             session.refresh(cat)
+            canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
             return f"Folder '{cat.name}' created with ID: {cat.id}"
 
     elif name == "load_project":
@@ -301,20 +350,76 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
     elif name == "save_project":
         from .server import engine
         from sqlmodel import Session
-        from .models import Project
+        from .models import Project, Category
 
         with Session(engine) as session:
+            cat_id = args.get("category_id")
+            if cat_id is not None:
+                if not session.get(Category, cat_id):
+                    return f"Error: The destination folder ID {cat_id} does not exist."
+
             state_to_save = {k: v for k, v in canvas_state.items() if k != "__actions__"}
             proj = Project(
                 name=args["name"],
-                category_id=args.get("category_id"),
+                category_id=cat_id,
                 canvas_state_json=json.dumps(state_to_save)
             )
             session.add(proj)
             session.commit()
             session.refresh(proj)
+
+            canvas_state.setdefault("__actions__", []).append({"action": "loaded_project_id", "project_id": proj.id})
             canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
             return f"Project '{proj.name}' successfully saved with ID: {proj.id}."
+
+    elif name == "update_project":
+        from .server import engine
+        from sqlmodel import Session
+        from .models import Project
+
+        with Session(engine) as session:
+            proj = session.get(Project, args["project_id"])
+            if not proj:
+                return "Error: Project ID not found."
+
+            if args.get("name"):
+                proj.name = args["name"]
+
+            state_to_save = {k: v for k, v in canvas_state.items() if k != "__actions__"}
+            proj.canvas_state_json = json.dumps(state_to_save)
+
+            session.add(proj)
+            session.commit()
+            canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
+            return f"Successfully updated project ID {proj.id} ('{proj.name}')."
+
+    elif name == "delete_project":
+        from .server import engine
+        from sqlmodel import Session
+        from .models import Project
+
+        with Session(engine) as session:
+            proj = session.get(Project, args["project_id"])
+            if not proj:
+                return "Error: Project ID not found."
+            session.delete(proj)
+            session.commit()
+            canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
+            return f"Project ID {args['project_id']} deleted."
+
+    elif name == "delete_category":
+        from .server import engine, _delete_category_recursive
+        from sqlmodel import Session
+        from .models import Category
+
+        with Session(engine) as session:
+            cat = session.get(Category, args["category_id"])
+            if not cat:
+                return "Error: Folder ID not found."
+            _delete_category_recursive(args["category_id"], session)
+            session.commit()
+            canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
+            return f"Folder ID {args['category_id']} and all contents recursively deleted."
 
     elif name == "clear_canvas":
         canvas_state["items"] = []

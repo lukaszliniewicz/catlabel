@@ -490,9 +490,18 @@ def update_category(cat_id: int, cat_update: CategoryUpdate):
         if "name" in provided_fields and cat_update.name is not None:
             db_cat.name = cat_update.name
         if "parent_id" in provided_fields:
-            if cat_update.parent_id == cat_id:
+            new_parent_id = cat_update.parent_id
+            if new_parent_id == cat_id:
                 raise HTTPException(status_code=400, detail="Category cannot be its own parent")
-            db_cat.parent_id = cat_update.parent_id
+
+            current_check_id = new_parent_id
+            while current_check_id is not None:
+                if current_check_id == cat_id:
+                    raise HTTPException(status_code=400, detail="Circular reference detected. Cannot move a folder into its own subfolder.")
+                check_cat = session.get(Category, current_check_id)
+                current_check_id = check_cat.parent_id if check_cat else None
+
+            db_cat.parent_id = new_parent_id
 
         session.add(db_cat)
         session.commit()
@@ -519,7 +528,15 @@ def delete_category(cat_id: int):
         session.commit()
         return {"status": "deleted"}
 
-def _export_tree(category_id: Optional[int], session: Session) -> dict:
+def _export_tree(category_id: Optional[int], session: Session, visited: set = None) -> dict:
+    if visited is None:
+        visited = set()
+
+    if category_id is not None:
+        if category_id in visited:
+            return {}
+        visited.add(category_id)
+
     cat_node = {"type": "category", "name": "Root", "children": []}
     if category_id:
         cat = session.get(Category, category_id)
@@ -529,7 +546,9 @@ def _export_tree(category_id: Optional[int], session: Session) -> dict:
 
     children_cats = session.exec(select(Category).where(Category.parent_id == category_id)).all()
     for c in children_cats:
-        cat_node["children"].append(_export_tree(c.id, session))
+        child_export = _export_tree(c.id, session, visited)
+        if child_export:
+            cat_node["children"].append(child_export)
 
     projects = session.exec(select(Project).where(Project.category_id == category_id)).all()
     for p in projects:
