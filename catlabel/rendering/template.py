@@ -120,8 +120,11 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             b64_src = item.get("icon_src", "")
             if "," in b64_src:
                 b64_src = b64_src.split(",")[1]
-
+            
             icon_w = int(item.get("icon_size", 50))
+            icon_x = x + int(item.get("icon_x", 0))
+            icon_y = y + int(item.get("icon_y", 0))
+
             try:
                 img_data = base64.b64decode(b64_src)
                 insert_img = Image.open(BytesIO(img_data)).convert("RGBA")
@@ -129,9 +132,6 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 
                 bg = Image.new("RGBA", insert_img.size, "WHITE")
                 bg.paste(insert_img, (0, 0), insert_img)
-                
-                icon_x = x + int(item.get("icon_x", 0))
-                icon_y = y + int(item.get("icon_y", 0))
                 img.paste(bg.convert("RGB"), (icon_x, icon_y))
             except Exception:
                 pass
@@ -159,16 +159,28 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             
             font = get_font(size)
             text_x = x + int(item.get("text_x", 0))
-            text_y = y + int(item.get("text_y", 0))
-
+            
+            # --- PREVENT BLEEDING ---
+            # If Pillow's measurement says the text will hit the right edge, we scale it down.
+            max_text_w = width - text_x - 4 # 4px safety cushion
+            if max_text_w > 0 and text:
+                current_w = safe_getlength(font, text)
+                if current_w > max_text_w:
+                    size = max(6, int(size * (max_text_w / current_w)))
+                    font = get_font(size)
+            
+            # --- PERFECT CENTERING ---
+            group_h = int(item.get("height", max(icon_w, size)))
+            box_center_y = y + (group_h / 2)
+            
             cap_height = size * 0.71
-            baseline_y = text_y + cap_height
-
-            bbox = font.getbbox(text) if text else (0, 0, 0, 0)
-            left_bearing = bbox[0]
-
-            draw.text((text_x - left_bearing, baseline_y), text, fill="black", font=font, anchor="ls")
-            actual_drawn_height = int(item.get("height", max(icon_w, size)))
+            baseline_y = box_center_y + (cap_height / 2)
+            
+            if text:
+                # Use 'ls' (Left-Baseline) to align perfectly to text_x without any left_bearing hacks
+                draw.text((text_x, baseline_y), text, fill="black", font=font, anchor="ls")
+                
+            actual_drawn_height = group_h
 
         elif item_type == "text":
             text = str(item.get("text", ""))

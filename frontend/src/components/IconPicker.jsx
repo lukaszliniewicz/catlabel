@@ -40,46 +40,42 @@ export default function IconPicker({ onClose, onSelect }) {
       
       const img = new Image();
       img.onload = () => {
+        // Draw WITHOUT a background to accurately read the alpha transparency
         tempCtx.clearRect(0, 0, 200, 200);
         tempCtx.drawImage(img, 0, 0, 200, 200);
-
         const imgData = tempCtx.getImageData(0, 0, 200, 200);
         const data = imgData.data;
         
-        let minX = 200;
-        let minY = 200;
-        let maxX = -1;
-        let maxY = -1;
+        let minX = 200, minY = 200, maxX = 0, maxY = 0;
         let hasInk = false;
 
+        // Scan pixels to find exact tight icon boundaries
         for (let y = 0; y < 200; y++) {
-          for (let x = 0; x < 200; x++) {
-            const alpha = data[(y * 200 + x) * 4 + 3];
-            if (alpha > 10) {
-              hasInk = true;
-              if (x < minX) minX = x;
-              if (x > maxX) maxX = x;
-              if (y < minY) minY = y;
-              if (y > maxY) maxY = y;
+            for (let x = 0; x < 200; x++) {
+                const alpha = data[(y * 200 + x) * 4 + 3];
+                if (alpha > 5) { // True ink found
+                    hasInk = true;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
             }
-          }
         }
 
         if (hasInk) {
-          minX = Math.max(0, minX - 2);
-          minY = Math.max(0, minY - 2);
-          maxX = Math.min(199, maxX + 2);
-          maxY = Math.min(199, maxY + 2);
+           minX = Math.max(0, minX - 1);
+           minY = Math.max(0, minY - 1);
+           maxX = Math.min(200, maxX + 1);
+           maxY = Math.min(200, maxY + 1);
         } else {
-          minX = 0;
-          minY = 0;
-          maxX = 199;
-          maxY = 199;
+           minX = 0; minY = 0; maxX = 200; maxY = 200;
         }
 
-        const cropW = Math.max(1, maxX - minX + 1);
-        const cropH = Math.max(1, maxY - minY + 1);
+        const cropW = maxX - minX;
+        const cropH = maxY - minY;
 
+        // Now draw the cropped icon onto a solid white canvas for the printer
         const finalCanvas = document.createElement("canvas");
         finalCanvas.width = cropW;
         finalCanvas.height = cropH;
