@@ -19,7 +19,7 @@ import pypdfium2 as pdfium
 from sqlmodel import SQLModel, create_engine, Session, select
 from sqlalchemy import text
 
-from .models import PrinterProfile, Font, Project, Settings, Address
+from .models import PrinterProfile, Font, Category, Project, Settings, Address
 from ..rendering.template import render_template
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
@@ -76,6 +76,11 @@ def create_db_and_tables():
     try:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE aiconfig ADD COLUMN vertex_region VARCHAR DEFAULT ''"))
+    except Exception:
+        pass
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE project ADD COLUMN category_id INTEGER REFERENCES category(id)"))
     except Exception:
         pass
 
@@ -142,16 +147,16 @@ def get_agent_context():
     Gives the agent total situational awareness of the physical layout rules and database state.
     """
     with Session(engine) as session:
-        # Get active settings & hardware limits
         settings = session.get(Settings, 1) or Settings()
-        
-        # Get available fonts to prevent LLM hallucination
+
         fonts = session.exec(select(Font)).all()
         font_names = [f.name for f in fonts]
-        
-        # Get user's saved projects so the LLM can reference or print them by ID
-        projects = session.exec(select(Project)).all()
-        project_summaries = [{"id": p.id, "name": p.name} for p in projects]
+
+        root_projects = session.exec(select(Project).where(Project.category_id == None)).all()
+        root_categories = session.exec(select(Category).where(Category.parent_id == None)).all()
+
+        project_summaries = [{"id": p.id, "name": p.name} for p in root_projects]
+        category_summaries = [{"id": c.id, "name": c.name} for c in root_categories]
 
     return {
         "engine_rules": {
@@ -165,13 +170,15 @@ def get_agent_context():
         },
         "standard_presets": STANDARD_PRESETS,
         "available_fonts": font_names,
-        "saved_projects": project_summaries,
+        "root_projects": project_summaries,
+        "root_categories": category_summaries,
         "global_default_font": settings.default_font
     }
 
 class ProjectCreate(BaseModel):
     name: str
     canvas_state: Dict[str, Any]
+    category_id: Optional[int] = None
 
 class PrintRequest(BaseModel):
     mac_address: str
@@ -382,13 +389,29 @@ def update_settings(new_settings: Settings):
         return settings
 
 class ProjectUpdate(BaseModel):
-    canvas_state: Dict[str, Any]
+    name: Optional[str] = None
+    canvas_state: Optional[Dict[str, Any]] = None
+    category_id: Optional[int] = None
+
+class CategoryCreate(BaseModel):
+    name: str
+    parent_id: Optional[int] = None
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    parent_id: Optional[int] = None
+
+def _provided_model_fields(model):
+    if hasattr(model, "model_fields_set"):
+        return set(model.model_fields_set)
+    return set(getattr(model, "__fields_set__", set()))
 
 @app.post("/api/projects")
 def create_project(project: ProjectCreate):
     with Session(engine) as session:
         db_project = Project(
-            name=project.name, 
+            name=project.name,
+            category_id=project.category_id,
             canvas_state_json=json.dumps(project.canvas_state)
         )
         session.add(db_project)
@@ -400,13 +423,13 @@ def create_project(project: ProjectCreate):
 def list_projects():
     with Session(engine) as session:
         projects = session.exec(select(Project)).all()
-        # Parse JSON back to dict for the API response
         return [
             {
-                "id": p.id, 
-                "name": p.name, 
+                "id": p.id,
+                "name": p.name,
+                "category_id": p.category_id,
                 "canvas_state": json.loads(p.canvas_state_json)
-            } 
+            }
             for p in projects
         ]
 
@@ -416,7 +439,16 @@ def update_project(project_id: int, project_update: ProjectUpdate):
         db_project = session.get(Project, project_id)
         if not db_project:
             raise HTTPException(status_code=404, detail="Project not found")
-        db_project.canvas_state_json = json.dumps(project_update.canvas_state)
+
+        provided_fields = _provided_model_fields(project_update)
+
+        if "name" in provided_fields and project_update.name is not None:
+            db_project.name = project_update.name
+        if "category_id" in provided_fields:
+            db_project.category_id = project_update.category_id
+        if "canvas_state" in provided_fields and project_update.canvas_state is not None:
+            db_project.canvas_state_json = json.dumps(project_update.canvas_state)
+
         session.add(db_project)
         session.commit()
         session.refresh(db_project)
@@ -431,6 +463,126 @@ def delete_project(project_id: int):
         session.delete(db_project)
         session.commit()
         return {"status": "deleted"}
+
+@app.get("/api/categories")
+def list_categories():
+    with Session(engine) as session:
+        return session.exec(select(Category)).all()
+
+@app.post("/api/categories")
+def create_category(cat: CategoryCreate):
+    with Session(engine) as session:
+        db_cat = Category(name=cat.name, parent_id=cat.parent_id)
+        session.add(db_cat)
+        session.commit()
+        session.refresh(db_cat)
+        return db_cat
+
+@app.put("/api/categories/{cat_id}")
+def update_category(cat_id: int, cat_update: CategoryUpdate):
+    with Session(engine) as session:
+        db_cat = session.get(Category, cat_id)
+        if not db_cat:
+            raise HTTPException(status_code=404, detail="Category not found")
+
+        provided_fields = _provided_model_fields(cat_update)
+
+        if "name" in provided_fields and cat_update.name is not None:
+            db_cat.name = cat_update.name
+        if "parent_id" in provided_fields:
+            if cat_update.parent_id == cat_id:
+                raise HTTPException(status_code=400, detail="Category cannot be its own parent")
+            db_cat.parent_id = cat_update.parent_id
+
+        session.add(db_cat)
+        session.commit()
+        session.refresh(db_cat)
+        return db_cat
+
+def _delete_category_recursive(cat_id: int, session: Session):
+    children = session.exec(select(Category).where(Category.parent_id == cat_id)).all()
+    for child in children:
+        _delete_category_recursive(child.id, session)
+
+    projects = session.exec(select(Project).where(Project.category_id == cat_id)).all()
+    for proj in projects:
+        session.delete(proj)
+
+    cat = session.get(Category, cat_id)
+    if cat:
+        session.delete(cat)
+
+@app.delete("/api/categories/{cat_id}")
+def delete_category(cat_id: int):
+    with Session(engine) as session:
+        _delete_category_recursive(cat_id, session)
+        session.commit()
+        return {"status": "deleted"}
+
+def _export_tree(category_id: Optional[int], session: Session) -> dict:
+    cat_node = {"type": "category", "name": "Root", "children": []}
+    if category_id:
+        cat = session.get(Category, category_id)
+        if not cat:
+            return {}
+        cat_node["name"] = cat.name
+
+    children_cats = session.exec(select(Category).where(Category.parent_id == category_id)).all()
+    for c in children_cats:
+        cat_node["children"].append(_export_tree(c.id, session))
+
+    projects = session.exec(select(Project).where(Project.category_id == category_id)).all()
+    for p in projects:
+        cat_node["children"].append({
+            "type": "project",
+            "name": p.name,
+            "canvas_state": json.loads(p.canvas_state_json)
+        })
+
+    return cat_node
+
+@app.get("/api/export")
+def export_filesystem(category_id: Optional[int] = None):
+    with Session(engine) as session:
+        data = _export_tree(category_id, session)
+        return {"catlabel_export_version": "1.0", "data": data}
+
+def _import_tree(node: dict, parent_id: Optional[int], session: Session):
+    if node.get("type") == "category":
+        new_parent_id = parent_id
+        if node.get("name") != "Root" or parent_id is not None:
+            new_cat = Category(name=node["name"], parent_id=parent_id)
+            session.add(new_cat)
+            session.commit()
+            session.refresh(new_cat)
+            new_parent_id = new_cat.id
+
+        for child in node.get("children", []):
+            _import_tree(child, new_parent_id, session)
+
+    elif node.get("type") == "project":
+        new_proj = Project(
+            name=node["name"],
+            category_id=parent_id,
+            canvas_state_json=json.dumps(node["canvas_state"])
+        )
+        session.add(new_proj)
+        session.commit()
+
+@app.post("/api/import")
+async def import_filesystem(file: UploadFile = File(...), target_category_id: Optional[int] = None):
+    try:
+        content = await file.read()
+        payload = json.loads(content)
+        if payload.get("catlabel_export_version") != "1.0":
+            raise ValueError("Invalid export file format.")
+
+        with Session(engine) as session:
+            _import_tree(payload["data"], target_category_id, session)
+
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 def _extract_pages_from_canvas(canvas_state: Dict[str, Any], variables: Dict[str, str], default_font: str) -> List[Any]:
     items = list(canvas_state.get("items", []) or [])

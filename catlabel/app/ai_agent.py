@@ -220,6 +220,8 @@ def chat_with_agent(req: ChatRequest):
 
     context = get_agent_context()
     presets_json = json.dumps(context["standard_presets"], indent=2)
+    root_categories_json = json.dumps(context["root_categories"], indent=2)
+    root_projects_json = json.dumps(context["root_projects"], indent=2)
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
 Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions.
@@ -231,6 +233,12 @@ CONTEXT:
 
 AVAILABLE PRESETS:
 {presets_json}
+
+AVAILABLE ROOT FOLDERS:
+{root_categories_json}
+
+AVAILABLE ROOT PROJECTS:
+{root_projects_json}
 
 CRITICAL ARCHITECTURE RULES:
 1. NO SPATIAL MATH FOR BASIC LAYOUTS: Do not try to manually calculate x/y coordinates to center things. Instead, use the MACRO tools (`layout_centered_text`, `layout_stacked_text`). They automatically scale, wrap, and center elements to fit the label bounds perfectly.
@@ -258,6 +266,14 @@ If the user asks for a Shipping Label AND a tiny barcode tag in the same request
 PARADIGM C: ICONS AND GRAPHICS
 - Simple Icons: Just use standard Unicode Emojis directly inside your text strings! (e.g., `text: "🧂 Salt"`, `text: "⚠️ Warning"`). The native text engine renders them flawlessly.
 - Complex/Custom Graphics: If emojis aren't enough, use `add_html_element` and write raw, inline HTML/SVG code.
+
+PARADIGM D: FILE SYSTEM MANAGEMENT (Saving & Loading)
+If the user asks you to organize, load, or save files:
+- Use `list_directory` to browse folders. (Context gives you root IDs).
+- Use `create_category` to make new folders.
+- Use `load_project` to pull a design from the database into your active workspace.
+- Use `save_project` to save your currently active canvas layout into a specific folder.
+Always confirm the names and IDs before overwriting or saving.
 
 Always be proactive. Apply the preset first, layout the design, configure the batch data (if any), and finally call `trigger_ui_action` to print if requested.
 """

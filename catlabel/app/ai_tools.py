@@ -1,3 +1,4 @@
+import json
 import uuid
 
 TOOLS_SCHEMA = [
@@ -149,6 +150,63 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "list_directory",
+            "description": "Lists the sub-folders and projects inside a specific folder ID. Pass null to list the root directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category_id": {"type": ["integer", "null"]}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_category",
+            "description": "Creates a new folder. Returns the new category ID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "parent_id": {"type": ["integer", "null"]}
+                },
+                "required": ["name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "load_project",
+            "description": "Loads a specific project ID from the database, completely overwriting your current canvas state with its design.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "integer"}
+                },
+                "required": ["project_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "save_project",
+            "description": "Saves your CURRENT canvas state into the database as a project.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "category_id": {"type": ["integer", "null"], "description": "The folder ID to save into. Null for Root."}
+                },
+                "required": ["name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "clear_canvas",
             "description": "Deletes all elements from all pages.",
             "parameters": {"type": "object", "properties": {}}
@@ -158,12 +216,11 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "trigger_ui_action",
-            "description": "Executes physical actions on behalf of the user, such as printing the design or saving it.",
+            "description": "Executes physical actions on behalf of the user, such as printing the design.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "action": {"type": "string", "enum": ["print", "save_project"]},
-                    "project_name": {"type": "string"}
+                    "action": {"type": "string", "enum": ["print"]}
                 },
                 "required": ["action"]
             }
@@ -194,6 +251,70 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         canvas_state["height"] = args["height"]
         canvas_state["isRotated"] = args.get("isRotated", False)
         return "Dimensions updated."
+
+    elif name == "list_directory":
+        from .server import engine
+        from sqlmodel import Session, select
+        from .models import Category, Project
+
+        cat_id = args.get("category_id")
+        with Session(engine) as session:
+            cats = session.exec(select(Category).where(Category.parent_id == cat_id)).all()
+            projs = session.exec(select(Project).where(Project.category_id == cat_id)).all()
+            return json.dumps({
+                "sub_folders": [{"id": c.id, "name": c.name} for c in cats],
+                "projects": [{"id": p.id, "name": p.name} for p in projs]
+            })
+
+    elif name == "create_category":
+        from .server import engine
+        from sqlmodel import Session
+        from .models import Category
+
+        with Session(engine) as session:
+            cat = Category(name=args["name"], parent_id=args.get("parent_id"))
+            session.add(cat)
+            session.commit()
+            session.refresh(cat)
+            return f"Folder '{cat.name}' created with ID: {cat.id}"
+
+    elif name == "load_project":
+        from .server import engine
+        from sqlmodel import Session
+        from .models import Project
+
+        with Session(engine) as session:
+            proj = session.get(Project, args["project_id"])
+            if not proj:
+                return "Error: Project ID not found."
+
+            loaded_state = json.loads(proj.canvas_state_json)
+            canvas_state.clear()
+            canvas_state.update(loaded_state)
+
+            canvas_state.setdefault("__actions__", []).append({
+                "action": "loaded_project_id",
+                "project_id": proj.id
+            })
+            return f"Successfully loaded '{proj.name}'. The canvas state is now populated with this design."
+
+    elif name == "save_project":
+        from .server import engine
+        from sqlmodel import Session
+        from .models import Project
+
+        with Session(engine) as session:
+            state_to_save = {k: v for k, v in canvas_state.items() if k != "__actions__"}
+            proj = Project(
+                name=args["name"],
+                category_id=args.get("category_id"),
+                canvas_state_json=json.dumps(state_to_save)
+            )
+            session.add(proj)
+            session.commit()
+            session.refresh(proj)
+            canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
+            return f"Project '{proj.name}' successfully saved with ID: {proj.id}."
 
     elif name == "clear_canvas":
         canvas_state["items"] = []
