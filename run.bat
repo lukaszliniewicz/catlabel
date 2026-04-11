@@ -35,7 +35,7 @@ if not exist "env\" (
     )
 
     echo [2/4] Creating isolated environment ^(Python ^& Node.js^)...
-    bin\micromamba.exe create -p .\env -c conda-forge python=3.12 pip nodejs -y
+    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs -y
     if errorlevel 1 goto error
 
     echo [3/4] Installing backend dependencies...
