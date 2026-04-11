@@ -78,8 +78,25 @@ def save_profile(profile: AIAgentProfile):
             # Deactivate all others
             all_p = session.exec(select(AIAgentProfile)).all()
             for p in all_p:
-                p.is_active = False
-                session.add(p)
+                if p.id != profile.id:
+                    p.is_active = False
+                    session.add(p)
+
+        if profile.id is not None:
+            existing = session.get(AIAgentProfile, profile.id)
+            if existing:
+                if hasattr(profile, "model_dump"):
+                    profile_data = profile.model_dump(exclude_unset=True)
+                else:
+                    profile_data = profile.dict(exclude_unset=True)
+
+                for key, value in profile_data.items():
+                    setattr(existing, key, value)
+                session.add(existing)
+                session.commit()
+                session.refresh(existing)
+                return existing
+
         session.add(profile)
         session.commit()
         session.refresh(profile)

@@ -36,30 +36,41 @@ export default function AIConfigModal({ onClose }) {
 
   const handleDelete = async (id) => {
     if (String(id).startsWith('new-')) {
-      setProfiles(profiles.filter(p => p.id !== id));
-      setSelectedId(profiles[0]?.id || null);
+      const newProfiles = profiles.filter(p => p.id !== id);
+      setProfiles(newProfiles);
+      if (selectedId === id) setSelectedId(newProfiles[0]?.id || null);
       return;
     }
     if (confirm("Delete this profile?")) {
       await fetch(`/api/ai/config/${id}`, { method: 'DELETE' });
-      fetchProfiles();
+      const newProfiles = profiles.filter(p => p.id !== id);
+      setProfiles(newProfiles);
+      if (selectedId === id) setSelectedId(newProfiles[0]?.id || null);
     }
   };
 
   const handleSave = async () => {
-    const activeProfile = profiles.find(p => p.id === selectedId);
-    if (!activeProfile) return;
-    
     setSaving(true);
-    // Mark as the active one in DB
-    const payload = { ...activeProfile, is_active: true };
-    delete payload.id; // Let backend generate if it's new
-    if (!String(selectedId).startsWith('new-')) payload.id = selectedId;
+    
+    for (const p of profiles) {
+      const payload = { ...p };
+      payload.is_active = (p.id === selectedId);
+      
+      if (String(p.id).startsWith('new-')) {
+        delete payload.id;
+      }
 
-    await fetch('/api/ai/config', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+      try {
+        await fetch('/api/ai/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.error("Failed to save profile", p.name, e);
+      }
+    }
+
     setSaving(false);
     onClose();
   };
@@ -162,7 +173,7 @@ export default function AIConfigModal({ onClose }) {
 
           <div className="p-4 border-t border-neutral-100 dark:border-neutral-800">
             <button onClick={handleSave} disabled={saving || !current} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 hover:bg-blue-700 transition-colors text-xs uppercase tracking-widest font-bold disabled:opacity-50">
-              <Save size={16} /> {saving ? 'Saving...' : 'Set Active & Save'}
+              <Save size={16} /> {saving ? 'Saving...' : 'Set Active & Save All'}
             </button>
           </div>
         </div>
