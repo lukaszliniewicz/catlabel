@@ -171,6 +171,40 @@ export const useStore = create((set, get) => ({
   setBatchRecords: (records) => set({
     batchRecords: Array.isArray(records) && records.length ? records : [{}]
   }),
+  generateBatchMatrix: (matrixDef) => set(() => {
+    const keys = Object.keys(matrixDef || {});
+    if (keys.length === 0) {
+      return {};
+    }
+
+    const parsedArrays = keys.map((key) => {
+      const values = String(matrixDef[key] || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+      return values.length > 0 ? values : [''];
+    });
+
+    const combinations = parsedArrays.reduce(
+      (accumulator, values) =>
+        accumulator.flatMap((recordPrefix) =>
+          values.map((value) => [...recordPrefix, value])
+        ),
+      [[]]
+    );
+
+    const records = combinations.map((combo) => {
+      const record = {};
+      keys.forEach((key, index) => {
+        record[key] = combo[index];
+      });
+      return record;
+    });
+
+    return {
+      batchRecords: records.length ? records : [{}]
+    };
+  }),
   updateBatchRecord: (index, newRecord) => set((state) => {
     const newRecords = [...state.batchRecords];
     newRecords[index] = newRecord;

@@ -254,10 +254,11 @@ CRITICAL AGENT BEHAVIORS:
 2. SIMULTANEOUS TOOL EXECUTION (CHAINING): To complete a user's request, you MUST call the necessary tools in a single response. For a batch job, call:
    a) `set_canvas_dimensions` OR `apply_preset` (to size the label)
    b) `layout_stacked_text` OR `layout_centered_text` (using {{{{ variable }}}} tags)
-   c) `set_batch_records` (passing the actual list of variables)
+   c) `set_batch_records` (passing either the actual list of rows or a variables matrix for permutations)
    Do NOT stop halfway to ask for permission. Just do it.
 3. FULL WIDTH OF ROLL: If the user wants to use the "full width" of the continuous roll, ensure the relevant dimension is set to {context['engine_rules']['hardware_width_px']} pixels (e.g., width=384 for ACROSS tape, or height=384 for ALONG tape).
 4. MACROS FIRST: Always prefer the macro tools (`layout_centered_text`, `layout_stacked_text`) because they handle auto-scaling, wrapping, and centering flawlessly. Avoid manual `add_text_element` coordinate math unless strictly necessary.
+5. COMMA-SEPARATED BATCHES (MATRIX): If a user provides multiple comma-separated lists for variables (e.g., "lengths: 3, 4" and "head: flat, countersunk"), you MUST call `set_batch_records` with the `variables_matrix` parameter. The backend will automatically generate the Cartesian product table for the UI.
 
 WORKFLOW EXAMPLES:
 User: "Make M3 screw labels, 6, 8, and 10mm, full width of roll."

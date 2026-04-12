@@ -108,7 +108,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   const [panelWidth, setPanelWidth] = useState(320);
@@ -116,6 +116,8 @@ export default function PropertiesPanel() {
   // Tab State
   const [activeTab, setActiveTab] = useState('canvas');
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [dataMode, setDataMode] = useState('table');
+  const [matrixInputs, setMatrixInputs] = useState({});
   
   // Automatically switch tabs based on selection
   useEffect(() => {
@@ -312,6 +314,18 @@ export default function PropertiesPanel() {
   const templateKeys = templateMatches.map((match) => match.replace(/[{}]/g, '').trim());
   const existingKeys = batchRecords.flatMap((record) => Object.keys(record || {}));
   const allBatchKeys = Array.from(new Set([...templateKeys, ...existingKeys]));
+  const createEmptyBatchRecord = () => allBatchKeys.reduce((acc, key) => ({ ...acc, [key]: '' }), {});
+  const batchKeySignature = allBatchKeys.join('||');
+
+  useEffect(() => {
+    setMatrixInputs((prev) => {
+      const next = {};
+      allBatchKeys.forEach((key) => {
+        next[key] = prev[key] ?? '';
+      });
+      return next;
+    });
+  }, [batchKeySignature]);
 
   return (
     <div 
@@ -818,53 +832,108 @@ export default function PropertiesPanel() {
           <div className="space-y-4">
             <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Variable Data</h2>
             <p className="text-[10px] text-neutral-500 mb-2 leading-relaxed">
-              Add data below. They will automatically replace matching <code>{`{{ variable }}`}</code> tags on the canvas.
+              Variables replace matching <code>{`{{ variable }}`}</code> tags on the canvas. Each row represents one printed label.
             </p>
 
             <div className="flex gap-2 mb-4">
-              <button onClick={() => setShowBatchModal(true)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[10px] uppercase font-bold tracking-widest transition-colors">
+              <button
+                onClick={() => setDataMode('table')}
+                className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest transition-colors border ${dataMode === 'table' ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400' : 'bg-neutral-50 border-transparent text-neutral-500 dark:bg-neutral-900'}`}
+              >
+                Table
+              </button>
+              <button
+                onClick={() => setDataMode('matrix')}
+                className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest transition-colors border ${dataMode === 'matrix' ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400' : 'bg-neutral-50 border-transparent text-neutral-500 dark:bg-neutral-900'}`}
+              >
+                Permutations
+              </button>
+            </div>
+
+            <div className="flex gap-2 mb-2">
+              <button onClick={() => setShowBatchModal(true)} className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[10px] uppercase font-bold tracking-widest transition-colors">
                 <FileSpreadsheet size={14} /> Import CSV
               </button>
-              <button onClick={() => setBatchRecords([{ ...allBatchKeys.reduce((acc, key) => ({ ...acc, [key]: '' }), {}) }])} className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors" title="Clear All Data">
-                <Trash2 size={16} />
+              <button onClick={() => setBatchRecords([createEmptyBatchRecord()])} className="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors" title="Clear All Data">
+                <Trash2 size={14} />
               </button>
             </div>
 
             {allBatchKeys.length === 0 && (
               <div className="text-center p-4 border border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-400 text-xs">
-                No variables detected.<br/><br/> Add a text element containing a tag like <code>{`{{ name }}`}</code> to get started.
+                No variables detected on canvas.<br/><br/> Add a text element containing a tag like <code>{`{{ name }}`}</code> to get started.
               </div>
             )}
 
-            {allBatchKeys.length > 0 && (
-              <div className="space-y-4">
-                {batchRecords.map((record, index) => (
-                  <div key={index} className="border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-3 relative group">
-                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-neutral-200 dark:border-neutral-800">
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Record {index + 1}</span>
-                      <button onClick={() => removeBatchRecord(index)} className="text-neutral-400 hover:text-red-500 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="space-y-2">
+            {allBatchKeys.length > 0 && dataMode === 'table' && (
+              <div className="w-full overflow-x-auto border border-neutral-200 dark:border-neutral-800">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead className="bg-neutral-100 dark:bg-neutral-900 text-[10px] uppercase tracking-wider text-neutral-500">
+                    <tr>
+                      <th className="p-2 font-bold w-8 text-center">#</th>
                       {allBatchKeys.map((key) => (
-                        <div key={key} className="flex flex-col">
-                          <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">{key}</label>
-                          <input
-                            type="text"
-                            value={record[key] || ''}
-                            onChange={(e) => updateBatchRecord(index, { ...record, [key]: e.target.value })}
-                            className="w-full bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-1.5 text-xs focus:outline-none focus:border-blue-500 transition-colors dark:text-white"
-                            placeholder={`Value for ${key}`}
-                          />
-                        </div>
+                        <th key={key} className="p-2 font-bold border-l border-neutral-200 dark:border-neutral-800">
+                          {key}
+                        </th>
                       ))}
-                    </div>
+                      <th className="p-2 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800 bg-white dark:bg-neutral-950">
+                    {batchRecords.map((record, index) => (
+                      <tr key={index} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50">
+                        <td className="p-2 text-center text-neutral-400">{index + 1}</td>
+                        {allBatchKeys.map((key) => (
+                          <td key={key} className="border-l border-neutral-200 dark:border-neutral-800 p-0">
+                            <input
+                              type="text"
+                              value={record[key] || ''}
+                              onChange={(e) => updateBatchRecord(index, { ...record, [key]: e.target.value })}
+                              className="w-full h-full p-2 bg-transparent focus:outline-none focus:bg-blue-50 dark:focus:bg-blue-900/20 dark:text-white transition-colors"
+                              placeholder="..."
+                            />
+                          </td>
+                        ))}
+                        <td className="p-1 border-l border-neutral-200 dark:border-neutral-800">
+                          <button onClick={() => removeBatchRecord(index)} className="w-full h-full p-1 text-neutral-400 hover:text-red-500 flex justify-center items-center">
+                            <Trash2 size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button onClick={() => addBatchRecord(createEmptyBatchRecord())} className="w-full flex justify-center items-center gap-2 py-2 bg-neutral-50 dark:bg-neutral-900 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-[10px] uppercase tracking-widest font-bold">
+                  <Plus size={14} /> Add Row
+                </button>
+              </div>
+            )}
+
+            {allBatchKeys.length > 0 && dataMode === 'matrix' && (
+              <div className="space-y-3 p-4 border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50">
+                <p className="text-[10px] text-neutral-500 mb-2 leading-relaxed">
+                  Type comma-separated lists for each variable. We will automatically generate all combinations (Cartesian product).
+                </p>
+                {allBatchKeys.map((key) => (
+                  <div key={key}>
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1 block">{key} (comma separated)</label>
+                    <input
+                      type="text"
+                      value={matrixInputs[key] || ''}
+                      onChange={(e) => setMatrixInputs((prev) => ({ ...prev, [key]: e.target.value }))}
+                      className="w-full bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-2 text-xs focus:outline-none focus:border-blue-500 transition-colors dark:text-white"
+                      placeholder="e.g. item 1, item 2, item 3"
+                    />
                   </div>
                 ))}
-
-                <button onClick={() => addBatchRecord(allBatchKeys.reduce((acc, key) => ({ ...acc, [key]: '' }), {}))} className="w-full flex justify-center items-center gap-2 py-3 border border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-[10px] uppercase tracking-widest font-bold">
-                  <Plus size={14} /> Add Record
+                <button
+                  onClick={() => {
+                    generateBatchMatrix(matrixInputs);
+                    setDataMode('table');
+                  }}
+                  className="w-full mt-2 flex justify-center items-center gap-2 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors text-[10px] uppercase tracking-widest font-bold"
+                >
+                  Generate Combinations
                 </button>
               </div>
             )}

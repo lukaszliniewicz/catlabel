@@ -130,7 +130,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_batch_records",
-            "description": "CRITICAL FOR BATCH/SERIES: Configures multiple labels for batch printing. Use this immediately in the same response after laying out your {{ var }} template.",
+            "description": "CRITICAL FOR BATCH/SERIES: Configures multiple labels for batch printing. Use this immediately in the same response after laying out your {{ var }} template. Use variables_list for explicit rows or variables_matrix for Cartesian-product combinations from multiple variable lists.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -141,7 +141,7 @@ TOOLS_SCHEMA = [
                     },
                     "variables_matrix": {
                         "type": "object",
-                        "description": "Use this for combinatorial permutations (Cartesian product). E.g. {'size': ['M2','M3'], 'length': ['5mm','10mm']}."
+                        "description": "Use this for combinatorial permutations (Cartesian product), such as comma-separated user lists for size, length, head type, or material. E.g. {'size': ['M2','M3'], 'length': ['5mm','10mm']}."
                     }
                 }
             }
