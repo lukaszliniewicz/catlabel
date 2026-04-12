@@ -23,6 +23,7 @@ from ..rendering.template import render_template
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
 from .ai_agent import router as ai_router
+from .layout_engine import TEMPLATE_METADATA, generate_template_items
 from .. import reporting
 
 NIIMBOT_MODELS = {
@@ -953,6 +954,30 @@ def delete_address(address_id: int):
             session.delete(db_address)
             session.commit()
         return {"status": "deleted"}
+
+class TemplateGenerateRequest(BaseModel):
+    template_id: str
+    width: int
+    height: int
+    params: Dict[str, str] = {}
+
+@app.get("/api/templates")
+def get_templates():
+    """Returns metadata for all available discrete item templates."""
+    return {"templates": TEMPLATE_METADATA}
+
+@app.post("/api/templates/generate")
+def generate_template(req: TemplateGenerateRequest):
+    """
+    Executes the layout engine to generate discrete canvas items
+    (WYSIWYG compatible) based on the requested template and parameters.
+    """
+    items = generate_template_items(req.template_id, req.width, req.height, req.params)
+
+    if items is None:
+        raise HTTPException(status_code=400, detail=f"Unknown template_id: '{req.template_id}'")
+
+    return {"items": items}
 
 if os.path.exists("frontend/dist"):
     app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
