@@ -5,6 +5,21 @@ def _id():
     return str(uuid.uuid4())
 
 
+def _shape_item(x, y, w, h, fill="black", shape_type="rect"):
+    return {
+        "id": _id(),
+        "type": "shape",
+        "shapeType": shape_type,
+        "x": int(x),
+        "y": int(y),
+        "width": int(w),
+        "height": int(h),
+        "fill": fill,
+        "stroke": "transparent",
+        "strokeWidth": 0,
+    }
+
+
 def _text_item(
     x,
     y,
@@ -68,48 +83,107 @@ def build_title_subtitle(width, height, params):
 def build_price_tag(width, height, params):
     items = []
     has_barcode = bool(params.get("barcode", "").strip())
+    currency = params.get("currency_symbol", "$")
+    main = params.get("price_main", "19")
+    cents = params.get("price_cents", "99")
+    unit = params.get("unit", "")
+    name = params.get("product_name", "Product Name")
 
-    price_h = height * 0.5 if has_barcode else height * 0.6
-    name_h = height * 0.2 if has_barcode else height * 0.3
+    full_price = f"{currency}{main}.{cents} {unit}".strip()
 
-    items.append(
-        _text_item(
-            10,
-            10,
-            width - 20,
-            price_h,
-            params.get("price", "$0.00"),
-            size=120,
-            weight=900,
-        )
-    )
-    items.append(
-        _text_item(
-            10,
-            price_h + 10,
-            width - 20,
-            name_h,
-            params.get("product_name", "Product Name"),
-            size=40,
-            weight=700,
-        )
-    )
+    is_landscape = width > (height * 1.3)
 
-    if has_barcode:
-        bc_y = price_h + name_h + 10
-        bc_h = height - bc_y - 10
+    if is_landscape:
+        left_w = width * 0.65 if has_barcode else width
+
         items.append(
-            {
-                "id": _id(),
-                "type": "barcode",
-                "barcode_type": "code128",
-                "data": params.get("barcode", "123456"),
-                "x": int(width * 0.1),
-                "y": int(bc_y),
-                "width": int(width * 0.8),
-                "height": int(bc_h),
-            }
+            _text_item(
+                10,
+                10,
+                left_w - 20,
+                height * 0.45,
+                full_price,
+                size=int(height * 0.35),
+                weight=900,
+                align="left",
+                fit=True,
+            )
         )
+        items.append(_shape_item(10, height * 0.5, left_w - 20, 4, "black"))
+        items.append(
+            _text_item(
+                10,
+                height * 0.55,
+                left_w - 20,
+                height * 0.35,
+                name,
+                size=int(height * 0.25),
+                weight=700,
+                align="left",
+                fit=True,
+            )
+        )
+
+        if has_barcode:
+            items.append(
+                {
+                    "id": _id(),
+                    "type": "barcode",
+                    "barcode_type": "code128",
+                    "data": params.get("barcode", "123456"),
+                    "x": int(left_w),
+                    "y": int(height * 0.1),
+                    "width": int(width * 0.35 - 10),
+                    "height": int(height * 0.8),
+                }
+            )
+    else:
+        price_h = height * 0.35 if has_barcode else height * 0.45
+        name_h = height * 0.2 if has_barcode else height * 0.3
+
+        items.append(
+            _text_item(
+                10,
+                10,
+                width - 20,
+                price_h,
+                full_price,
+                size=int(price_h * 0.8),
+                weight=900,
+                align="center",
+                fit=True,
+            )
+        )
+        items.append(_shape_item(width * 0.1, price_h + 5, width * 0.8, 4, "black"))
+        items.append(
+            _text_item(
+                10,
+                price_h + 15,
+                width - 20,
+                name_h,
+                name,
+                size=int(name_h * 0.6),
+                weight=700,
+                align="center",
+                fit=True,
+            )
+        )
+
+        if has_barcode:
+            bc_y = price_h + name_h + 20
+            bc_h = height - bc_y - 10
+            items.append(
+                {
+                    "id": _id(),
+                    "type": "barcode",
+                    "barcode_type": "code128",
+                    "data": params.get("barcode", "123456"),
+                    "x": int(width * 0.1),
+                    "y": int(bc_y),
+                    "width": int(width * 0.8),
+                    "height": int(bc_h),
+                }
+            )
     return items
 
 
@@ -117,23 +191,133 @@ def build_inventory_tag(width, height, params):
     code_type = params.get("code_type", "qrcode").lower()
     data = params.get("code_data", "INV-001")
     title = params.get("title", "Item Name")
+    dept = params.get("department", "WAREHOUSE")
+    sku = params.get("sku", "SKU-123")
 
-    code_size = min(width * 0.8, height * 0.5)
-    code_x = (width - code_size) / 2
+    items = []
+    is_landscape = width > (height * 1.3)
 
-    return [
-        {
-            "id": _id(),
-            "type": code_type if code_type in ["qrcode", "barcode"] else "qrcode",
-            "data": data,
-            "x": int(code_x),
-            "y": int(height * 0.05),
-            "width": int(code_size),
-            "height": int(code_size),
-        },
-        _text_item(10, height * 0.6, width - 20, height * 0.15, data, size=30, weight=900),
-        _text_item(10, height * 0.75, width - 20, height * 0.2, title, size=24, weight=400),
-    ]
+    if is_landscape:
+        qr_size = min(width * 0.35, height - 20)
+        items.append(
+            {
+                "id": _id(),
+                "type": code_type if code_type in ["qrcode", "barcode"] else "qrcode",
+                "data": data,
+                "x": 10,
+                "y": int((height - qr_size) / 2),
+                "width": int(qr_size),
+                "height": int(qr_size),
+            }
+        )
+
+        right_x = qr_size + 20
+        right_w = width - right_x - 10
+
+        dept_h = height * 0.25
+        items.append(
+            _text_item(
+                right_x,
+                10,
+                right_w,
+                dept_h,
+                dept,
+                size=int(dept_h * 0.7),
+                weight=900,
+                invert=True,
+                align="center",
+                fit=True,
+            )
+        )
+        items.append(
+            _text_item(
+                right_x,
+                10 + dept_h + 5,
+                right_w,
+                height * 0.35,
+                title,
+                size=int(height * 0.25),
+                weight=900,
+                align="left",
+                fit=True,
+            )
+        )
+        items.append(
+            _text_item(
+                right_x,
+                height - (height * 0.25) - 10,
+                right_w,
+                height * 0.25,
+                sku,
+                size=int(height * 0.15),
+                weight=700,
+                align="left",
+                fit=True,
+            )
+        )
+
+    else:
+        dept_h = height * 0.18
+        items.append(
+            _text_item(
+                0,
+                0,
+                width,
+                dept_h,
+                dept,
+                size=int(dept_h * 0.7),
+                weight=900,
+                invert=True,
+                align="center",
+                fit=True,
+            )
+        )
+
+        code_size = min(width * 0.7, height * 0.45)
+        code_x = (width - code_size) / 2
+        code_y = dept_h + 10
+
+        items.append(
+            {
+                "id": _id(),
+                "type": code_type if code_type in ["qrcode", "barcode"] else "qrcode",
+                "data": data,
+                "x": int(code_x),
+                "y": int(code_y),
+                "width": int(code_size),
+                "height": int(code_size),
+            }
+        )
+
+        text_y = code_y + code_size + 10
+        items.append(
+            _text_item(
+                10,
+                text_y,
+                width - 20,
+                height * 0.15,
+                title,
+                size=int(height * 0.12),
+                weight=900,
+                align="center",
+                fit=True,
+            )
+        )
+        items.append(
+            _text_item(
+                10,
+                text_y + (height * 0.15),
+                width - 20,
+                height * 0.1,
+                sku,
+                size=int(height * 0.08),
+                weight=700,
+                align="center",
+                fit=True,
+            )
+        )
+
+    return items
 
 
 def build_cable_flag(width, height, params):
@@ -237,27 +421,27 @@ TEMPLATE_METADATA = [
     },
     {
         "id": "price_tag",
-        "name": "Price Tag",
-        "description": "Large price, product name, and optional barcode.",
+        "name": "Pro Price Tag",
+        "description": "Retail price tag. Automatically adapts to square or wide labels.",
         "fields": [
-            {"name": "price", "label": "Price", "type": "text"},
-            {"name": "product_name", "label": "Product Name", "type": "text"},
-            {"name": "barcode", "label": "Barcode (Leave blank to omit)", "type": "text"},
+            {"name": "currency_symbol", "label": "Currency Symbol", "type": "text", "default": "$"},
+            {"name": "price_main", "label": "Main Price", "type": "text", "default": "19"},
+            {"name": "price_cents", "label": "Cents", "type": "text", "default": "99"},
+            {"name": "unit", "label": "Unit (e.g. /ea)", "type": "text", "default": ""},
+            {"name": "product_name", "label": "Product Name", "type": "text", "default": "Product Name"},
+            {"name": "barcode", "label": "Barcode (Leave blank to omit)", "type": "text", "default": "123456789"},
         ],
     },
     {
         "id": "inventory_tag",
-        "name": "Inventory / Asset Tag",
-        "description": "QR/Barcode with identifying text below.",
+        "name": "Modern Inventory Tag",
+        "description": "Professional asset tag with inverted department header and QR/Barcode.",
         "fields": [
-            {
-                "name": "code_type",
-                "label": "Code Type (qrcode or barcode)",
-                "type": "text",
-                "default": "qrcode",
-            },
-            {"name": "code_data", "label": "Code Data", "type": "text"},
-            {"name": "title", "label": "Item Name", "type": "text"},
+            {"name": "department", "label": "Department / Category", "type": "text", "default": "WAREHOUSE"},
+            {"name": "title", "label": "Item Name", "type": "text", "default": "Item Name"},
+            {"name": "sku", "label": "SKU / Subtext", "type": "text", "default": "SKU-123"},
+            {"name": "code_type", "label": "Code Type (qrcode or barcode)", "type": "text", "default": "qrcode"},
+            {"name": "code_data", "label": "Code Data", "type": "text", "default": "INV-001"},
         ],
     },
     {

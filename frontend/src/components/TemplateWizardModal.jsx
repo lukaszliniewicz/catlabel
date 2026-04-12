@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Wand2, Database } from 'lucide-react';
+import { X, Wand2, Database, AlertTriangle, LayoutTemplate } from 'lucide-react';
 import { useStore } from '../store';
 
 export default function TemplateWizardModal({ template, onClose }) {
-  const { canvasWidth, canvasHeight, setItems, clearCanvas } = useStore();
+  const {
+    canvasWidth, canvasHeight, setItems, clearCanvas,
+    labelPresets, applyPreset, isRotated, getMmToPx, selectedPrinterInfo
+  } = useStore();
   const [formData, setFormData] = useState({});
   const [batchMode, setBatchMode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -16,6 +19,21 @@ export default function TemplateWizardModal({ template, onClose }) {
     });
     setFormData(initialData);
   }, [template, batchMode]);
+
+  // Auto-detect the currently active preset to pre-fill the dropdown
+  const activePreset = labelPresets.find((p) => {
+    const presetWidthPx = getMmToPx(p.width_mm);
+    const presetHeightPx = getMmToPx(p.height_mm);
+    const directMatch = presetWidthPx === canvasWidth && presetHeightPx === canvasHeight;
+    const swappedMatch = presetWidthPx === canvasHeight && presetHeightPx === canvasWidth;
+
+    return p.is_rotated === isRotated && (directMatch || swappedMatch);
+  });
+
+  // Intelligent warning if the canvas is too small for data-heavy templates
+  const isSmallLabel = canvasWidth < 250 || canvasHeight < 250;
+  const needsSpace = ['shipping_address', 'price_tag'].includes(template.id);
+  const showSizeWarning = isSmallLabel && needsSpace;
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -61,6 +79,52 @@ export default function TemplateWizardModal({ template, onClose }) {
           <button onClick={onClose} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">
             <X size={20} />
           </button>
+        </div>
+
+        <div className="bg-neutral-50 dark:bg-neutral-900/50 p-5 border-b border-neutral-100 dark:border-neutral-800">
+          <label className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">
+            <LayoutTemplate size={14} /> Target Label Size
+          </label>
+          <select
+            value={activePreset ? activePreset.id : ''}
+            onChange={(e) => {
+              if (e.target.value) {
+                const preset = labelPresets.find((p) => p.id === parseInt(e.target.value, 10));
+                if (preset) applyPreset(preset);
+              }
+            }}
+            className="w-full bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-2.5 text-sm font-medium dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+          >
+            <option value="" disabled>Custom Size (Unsaved)</option>
+            <optgroup label="Continuous Roll Labels">
+              {labelPresets.filter((p) => p.media_type === 'continuous').map((p) => (
+                <option key={p.id} value={p.id} disabled={selectedPrinterInfo?.media_type === 'pre-cut'}>
+                  {selectedPrinterInfo?.media_type === 'pre-cut' ? '🚫 ' : ''}{p.name} ({p.width_mm}x{p.height_mm}mm)
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Pre-cut Labels (Niimbot)">
+              {labelPresets.filter((p) => p.media_type === 'pre-cut').map((p) => (
+                <option key={p.id} value={p.id} disabled={selectedPrinterInfo?.media_type === 'continuous'}>
+                  {selectedPrinterInfo?.media_type === 'continuous' ? '🚫 ' : ''}{p.name} ({p.width_mm}x{p.height_mm}mm)
+                </option>
+              ))}
+            </optgroup>
+            {labelPresets.filter((p) => p.media_type === 'any').length > 0 && (
+              <optgroup label="Universal">
+                {labelPresets.filter((p) => p.media_type === 'any').map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+
+          {showSizeWarning && (
+            <div className="mt-3 flex gap-2 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 rounded border border-amber-200 dark:border-amber-900/50 text-xs leading-relaxed">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <p>This template is designed for larger labels. It may look cramped on your currently selected canvas size.</p>
+            </div>
+          )}
         </div>
 
         <div className="p-6 overflow-y-auto flex-1 flex flex-col">
