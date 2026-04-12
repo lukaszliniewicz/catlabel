@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import ProjectTree from './ProjectTree';
+import SavePresetModal from './SavePresetModal';
 import {
   ChevronDown, ChevronRight, LayoutTemplate,
   Menu, Printer, Wifi, Archive
@@ -22,13 +23,14 @@ export default function Sidebar() {
     printPages,
     selectedPagesForPrint,
     labelPresets,
-    savePreset,
-    manualPrinters
+    manualPrinters,
+    selectedPrinterInfo
   } = useStore();
 
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [showProjects, setShowProjects] = useState(true);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -207,15 +209,45 @@ export default function Sidebar() {
             defaultValue=""
           >
             <option value="" disabled>Select physical layout...</option>
-            {labelPresets.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
-            ))}
+
+            {/* Continuous Media Presets */}
+            <optgroup label="Continuous Roll Labels">
+              {labelPresets.filter(p => p.media_type === 'continuous').map((p) => {
+                const isConflict = selectedPrinterInfo?.media_type === 'pre-cut';
+                return (
+                  <option key={p.id} value={p.id} disabled={isConflict} title={p.description || ''}>
+                    {isConflict ? '🚫 ' : ''}{p.name} ({p.width_mm}x{p.height_mm}mm)
+                  </option>
+                );
+              })}
+            </optgroup>
+
+            {/* Pre-cut Media Presets */}
+            <optgroup label="Pre-cut Labels (Niimbot)">
+              {labelPresets.filter(p => p.media_type === 'pre-cut').map((p) => {
+                const isConflict = selectedPrinterInfo?.media_type === 'continuous';
+                return (
+                  <option key={p.id} value={p.id} disabled={isConflict} title={p.description || ''}>
+                    {isConflict ? '🚫 ' : ''}{p.name} ({p.width_mm}x{p.height_mm}mm)
+                  </option>
+                );
+              })}
+            </optgroup>
+
+            {/* Any/Other Presets */}
+            {labelPresets.filter(p => p.media_type !== 'continuous' && p.media_type !== 'pre-cut').length > 0 && (
+              <optgroup label="Other / Universal">
+                {labelPresets.filter(p => p.media_type !== 'continuous' && p.media_type !== 'pre-cut').map((p) => (
+                  <option key={p.id} value={p.id} title={p.description || ''}>
+                    {p.name} ({p.width_mm}x{p.height_mm}mm)
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
+
           <button
-            onClick={() => {
-              const name = prompt("Preset Name:");
-              if (name) savePreset(name);
-            }}
+            onClick={() => setShowSavePresetModal(true)}
             className="w-full text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 py-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
           >
             Save Current as Preset
@@ -247,6 +279,9 @@ export default function Sidebar() {
         </div>
       )}
 
+      {showSavePresetModal && (
+        <SavePresetModal onClose={() => setShowSavePresetModal(false)} />
+      )}
     </div>
   );
 }

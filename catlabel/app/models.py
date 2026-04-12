@@ -31,6 +31,8 @@ class Project(SQLModel, table=True):
 class LabelPreset(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
+    description: Optional[str] = None
+    media_type: str = "any" # "continuous", "pre-cut", or "any"
     width_mm: float
     height_mm: float
     is_rotated: bool = False

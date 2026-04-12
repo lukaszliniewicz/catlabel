@@ -422,7 +422,8 @@ export const useStore = create((set, get) => ({
     });
   },
 
-  savePreset: async (name) => {
+  savePreset: async (presetData) => {
+    const { name, description, media_type } = presetData;
     const state = get();
     const widthMm = parseFloat(state.getPxToMm(state.canvasWidth));
     const heightMm = parseFloat(state.getPxToMm(state.canvasHeight));
@@ -433,6 +434,8 @@ export const useStore = create((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
+          description: description || null,
+          media_type: media_type || 'any',
           width_mm: widthMm,
           height_mm: heightMm,
           is_rotated: state.isRotated,

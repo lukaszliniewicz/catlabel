@@ -17,7 +17,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pypdfium2 as pdfium
 from sqlmodel import SQLModel, create_engine, Session, select
-from sqlalchemy import inspect, text
 
 from .models import PrinterProfile, Font, Category, Project, Settings, Address, LabelPreset
 from ..rendering.template import render_template
@@ -111,100 +110,24 @@ _scanned_devices_cache: List[Any] = []
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-    try:
-        inspector = inspect(engine)
-        table_names = set(inspector.get_table_names())
-
-        if {"aiagentprofile", "aiprovider", "aimodelconfig"}.issubset(table_names):
-            with engine.begin() as conn:
-                has_old = conn.execute(text("SELECT COUNT(*) FROM aiagentprofile")).scalar()
-                has_new = conn.execute(text("SELECT COUNT(*) FROM aiprovider")).scalar()
-
-                if has_old > 0 and has_new == 0:
-                    old_profiles = conn.execute(text("SELECT * FROM aiagentprofile")).fetchall()
-                    for p in old_profiles:
-                        p_map = getattr(p, "_mapping", p)
-                        provider_name = p_map.get("name", "Migrated Provider") or "Migrated Provider"
-                        provider_type = p_map.get("provider", "openai") or "openai"
-                        api_key = p_map.get("api_key", "") or ""
-                        base_url = p_map.get("base_url", "") or ""
-                        use_env = p_map.get("use_env", False) or False
-                        vertex_region = p_map.get("vertex_region", "") or ""
-
-                        res = conn.execute(text("""
-                            INSERT INTO aiprovider (name, provider, api_key, base_url, use_env, vertex_region)
-                            VALUES (:name, :provider, :api_key, :base_url, :use_env, :vertex_region)
-                        """), {
-                            "name": provider_name,
-                            "provider": provider_type,
-                            "api_key": api_key,
-                            "base_url": base_url,
-                            "use_env": use_env,
-                            "vertex_region": vertex_region,
-                        })
-                        provider_id = res.lastrowid
-
-                        model_name = p_map.get("model_name", "gpt-4o") or "gpt-4o"
-                        conn.execute(text("""
-                            INSERT INTO aimodelconfig (provider_id, name, model_name, vision_capable, reasoning_effort, is_active)
-                            VALUES (:provider_id, :name, :model_name, :vision_capable, :reasoning_effort, :is_active)
-                        """), {
-                            "provider_id": provider_id,
-                            "name": model_name.split("/")[-1],
-                            "model_name": model_name,
-                            "vision_capable": p_map.get("vision_capable", False) or False,
-                            "reasoning_effort": p_map.get("reasoning_effort", "") or "",
-                            "is_active": p_map.get("is_active", False) or False,
-                        })
-    except Exception as e:
-        print(f"Migration notice: {e}")
-
-    for col in ["speed", "energy", "feed_lines"]:
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE printerprofile ADD COLUMN {col} INTEGER"))
-        except Exception:
-            pass
-
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE aiagentprofile ADD COLUMN reasoning_effort VARCHAR DEFAULT ''"))
-    except Exception:
-        pass
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE aiagentprofile ADD COLUMN vertex_region VARCHAR DEFAULT ''"))
-    except Exception:
-        pass
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE aiconfig ADD COLUMN vertex_region VARCHAR DEFAULT ''"))
-    except Exception:
-        pass
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE project ADD COLUMN category_id INTEGER REFERENCES category(id)"))
-    except Exception:
-        pass
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE settings ADD COLUMN intended_media_type VARCHAR DEFAULT 'unknown'"))
-    except Exception:
-        pass
-
 DEFAULT_LABEL_PRESETS = [
-    {"name": "Standard Tape (Full Width 48mm)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "none"},
-    {"name": "A6 Shipping (105x148mm)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "none"},
-    {"name": "Niimbot 30x15mm", "width_mm": 30, "height_mm": 15, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot 40x12mm", "width_mm": 40, "height_mm": 12, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot 50x14mm", "width_mm": 50, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot 75x12mm", "width_mm": 75, "height_mm": 12, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot Cable 109x12.5mm", "width_mm": 109, "height_mm": 12.5, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot B-Series 40x14mm", "width_mm": 40, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot B-Series 120x14mm", "width_mm": 120, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot B1/B21 50x30mm", "width_mm": 50, "height_mm": 30, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Gridfinity Bin (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "split_mode": False, "border": "none"},
-    {"name": "Cable Flag (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "cut_line"},
+    # Continuous Media
+    {"name": "Roll: Standard Square (48x48mm)", "media_type": "continuous", "description": "Default full-width square for continuous rolls.", "width_mm": 48, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "none"},
+    {"name": "Roll: Narrow Tag (48x15mm)", "media_type": "continuous", "description": "Short horizontal tag for lists/names. Prints fast, saves tape. Includes a cut-line for scissors.", "width_mm": 48, "height_mm": 15, "is_rotated": False, "split_mode": False, "border": "cut_line"},
+    {"name": "Roll: Small Item / Gridfinity (30x12mm)", "media_type": "continuous", "description": "Small centered label. The printer pads the sides. Includes a bounding box to cut out.", "width_mm": 30, "height_mm": 12, "is_rotated": False, "split_mode": False, "border": "box"},
+    {"name": "Roll: Long Banner (48x100mm)", "media_type": "continuous", "description": "Landscape banner for continuous rolls. Use for shipping or long text.", "width_mm": 100, "height_mm": 48, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Roll: Cable Flag (30x48mm)", "media_type": "continuous", "description": "Fold-over cable flag. Prints vertically.", "width_mm": 30, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "cut_line"},
+
+    # Pre-cut Media (Niimbot)
+    {"name": "Pre-cut: Niimbot 30x15mm", "media_type": "pre-cut", "description": "Standard small Niimbot D-series label.", "width_mm": 30, "height_mm": 15, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Pre-cut: Niimbot 40x12mm", "media_type": "pre-cut", "description": "Standard medium Niimbot D-series label.", "width_mm": 40, "height_mm": 12, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Pre-cut: Niimbot 50x14mm", "media_type": "pre-cut", "description": "Standard large Niimbot D-series label.", "width_mm": 50, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Pre-cut: Niimbot Cable 109x12.5mm", "media_type": "pre-cut", "description": "Niimbot D-series cable wrap label.", "width_mm": 109, "height_mm": 12.5, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Pre-cut: Niimbot B-Series 40x14mm", "media_type": "pre-cut", "description": "Small B-series label.", "width_mm": 40, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Pre-cut: Niimbot B1/B21 50x30mm", "media_type": "pre-cut", "description": "Large B-series label.", "width_mm": 50, "height_mm": 30, "is_rotated": True, "split_mode": False, "border": "none"},
+
+    # Any/Split
+    {"name": "A6 Shipping (105x148mm)", "media_type": "continuous", "description": "Giant multi-strip decal for A6 shipping labels.", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "none"},
 ]
 
 def seed_default_presets():
@@ -268,6 +191,8 @@ app.include_router(ai_router)
 
 class PresetCreate(BaseModel):
     name: str
+    description: Optional[str] = None
+    media_type: str = "any"
     width_mm: float
     height_mm: float
     is_rotated: bool = False
@@ -321,7 +246,15 @@ def get_agent_context():
 
         project_summaries = [{"id": p.id, "name": p.name} for p in root_projects]
         category_summaries = [{"id": c.id, "name": c.name} for c in root_categories]
-        presets_data = [{"name": p.name, "width_mm": p.width_mm, "height_mm": p.height_mm} for p in presets]
+        presets_data = [
+            {
+                "name": p.name,
+                "media_type": p.media_type,
+                "description": p.description,
+                "width_mm": p.width_mm,
+                "height_mm": p.height_mm
+            } for p in presets
+        ]
 
     return {
         "intended_media_type": settings.intended_media_type,

@@ -307,7 +307,12 @@ def chat_with_agent(req: ChatRequest):
     root_categories_json = json.dumps(context["root_categories"], indent=2)
     root_projects_json = json.dumps(context["root_projects"], indent=2)
 
+    media_pref = context.get('intended_media_type', 'unknown')
+
+    # Determine the strict media constraint for the AI
+    p_media = "unknown"
     printer_transport = (req.printer_info or {}).get("transport")
+
     if req.printer_info and printer_transport != "offline":
         p_name = req.printer_info.get("name", "Unknown")
         p_media = req.printer_info.get("media_type", "continuous")
@@ -319,69 +324,47 @@ def chat_with_agent(req: ChatRequest):
         p_media = req.printer_info.get("media_type", "continuous")
         p_width = req.printer_info.get("width_mm", context['engine_rules']['hardware_width_mm'])
         p_dpi = req.printer_info.get("dpi", 203)
-        printer_status = (
-            f"SELECTED PRINTER PROFILE (NOT CURRENTLY CONNECTED): '{p_name}' | "
-            f"Media Type: {p_media.upper()} | DPI: {p_dpi} | Max Print Width: {p_width}mm. "
-            "Use these exact layout constraints, but do not assume physical printing is currently available."
-        )
+        printer_status = f"SELECTED OFFLINE PRINTER: '{p_name}' | Media Type: {p_media.upper()} | DPI: {p_dpi} | Max Print Width: {p_width}mm."
     else:
-        media_pref = context.get('intended_media_type', 'unknown')
-        if media_pref == "continuous":
-            printer_status = "NO PRINTER CONNECTED. User indicated they use CONTINUOUS rolls. Assume 203 DPI and 48mm/384px print head width. Use set_canvas_dimensions."
-        elif media_pref == "pre-cut":
-            printer_status = "NO PRINTER CONNECTED. User indicated they use PRE-CUT labels (e.g., Niimbot). Assume fixed media limits. ALWAYS use apply_preset."
-        elif media_pref == "both":
-            printer_status = "NO PRINTER CONNECTED. User uses BOTH rolls and pre-cut. Ask them which one they want for this design, or assume based on context."
+        if media_pref in ["continuous", "pre-cut"]:
+            p_media = media_pref
+            printer_status = f"NO PRINTER CONNECTED. User default media type preference is: {p_media.upper()}."
         else:
-            printer_status = "NO PRINTER CONNECTED. Media type UNKNOWN. You MUST ASK the user if they use 'pre-cut' labels or 'continuous' rolls before proceeding with sizing, UNLESS they explicitly mention it."
+            printer_status = "NO PRINTER CONNECTED. Media type UNKNOWN. Ask the user if they use 'pre-cut' labels or 'continuous' rolls."
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
 Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions via tool calls.
 
 CONTEXT:
 - {context['engine_rules']['coordinate_system']}
-- {context['engine_rules']['orientation_and_rotation']}
 - Default Font: {context['global_default_font']}
 
-HARDWARE & MEDIA CONSTRAINTS:
+HARDWARE STATUS:
 {printer_status}
-- PRE-CUT MEDIA (e.g. Niimbot): Constrained to exact physical dimensions. MUST use `apply_preset`. Do not invent custom lengths.
-- CONTINUOUS MEDIA (e.g. Generic Rolls): Tape is infinitely long. Use `set_canvas_dimensions` to create custom lengths.
+
+CRITICAL MEDIA TYPE RULES (MUST OBEY):
+1. CONTINUOUS MEDIA (Generic Rolls): Tape feeds infinitely. You MUST use presets marked media_type="continuous". If printing small labels (like spice jars), DO NOT rotate them sideways (landscape). Use the "Roll: Narrow Tag" or "Roll: Small Item" presets so they stack vertically and save tape.
+2. PRE-CUT MEDIA (Niimbot): Fixed boundaries. You MUST use presets marked media_type="pre-cut". Pre-cut labels are fed sideways, so they are almost always rotated.
 
 AVAILABLE PRESETS:
 {presets_json}
 
 CRITICAL AGENT BEHAVIORS:
-1. IMPLICIT CONFIRMATION: If you previously suggested a list of sizes, names, or a layout, and the user replies affirmatively (e.g., "ok", "yes", "sounds good", "the sizes are ok"), DO NOT ask them to provide the list again. Use the context from your own previous message and immediately execute the tools.
-2. SIMULTANEOUS TOOL EXECUTION (CHAINING): To complete a user's request, you MUST call the necessary tools in a single response. For a batch job, call:
-   a) `set_canvas_dimensions` OR `apply_preset` (to size the label)
-   b) `layout_stacked_text` OR `layout_centered_text` (using {{{{ variable }}}} tags)
-   c) `set_batch_records` (passing either the actual list of rows, a variables matrix for permutations, or a variables sequence for serialized labels)
-   Do NOT stop halfway to ask for permission. Just do it.
-3. FULL WIDTH OF ROLL: If the user wants to use the "full width" of the continuous roll, ensure the constrained dimension is set to {context['engine_rules']['hardware_width_px']} pixels (e.g., width=384 with `print_direction="across_tape"`, or height=384 with `print_direction="along_tape_banner"`).
-4. MACROS FIRST: Always prefer the macro tools (`layout_centered_text`, `layout_stacked_text`) because they handle auto-scaling, wrapping, and centering flawlessly. Avoid manual `add_text_element` coordinate math unless strictly necessary.
-5. COMMA-SEPARATED BATCHES (MATRIX): If a user provides multiple comma-separated lists for variables (e.g., "lengths: 3, 4" and "head: flat, countersunk"), you MUST call `set_batch_records` with the `variables_matrix` parameter. The backend will automatically generate the Cartesian product table for the UI.
-6. SMART DATE VARIABLES: Do NOT manually calculate dates or create static batch records for dates. If the user asks for dates (like expiration dates), directly inject `{{{{ $date }}}}` (for today) or `{{{{ $date+7 }}}}` (for today + 7 days) directly into the `layout_centered_text` or `add_text_element` parameters. The rendering engine evaluates these dynamically.
-7. NO EMOJIS: Do NOT use Unicode Emojis (e.g. 🚫📦🚀) in text items. Thermal printers are 1-bit monochrome and the font renderer will crash or draw empty boxes `[ ]`. Stick to standard text or ascii.
+1. MATCH MEDIA TYPE: Read the descriptions in the presets json. Do not apply a pre-cut preset to a continuous printer, or vice versa.
+2. IMPLICIT CONFIRMATION: If the user says "ok" or "looks good" to a previous plan, DO NOT ask them to repeat the list. Immediately execute the tools.
+3. SIMULTANEOUS CHAINING: To complete a batch request, call these in ONE response:
+   a) `apply_preset` (to size the label properly based on the media type and intent)
+   b) `layout_centered_text` (using {{{{ variable }}}} tags)
+   c) `set_batch_records` (passing the list of rows or variables matrix)
+4. NO EMOJIS: Do NOT use Unicode Emojis (e.g. 🚫📦🚀). The monochrome font renderer will draw empty boxes [].
 
 WORKFLOW EXAMPLES:
-User: "Make M3 screw labels, 6, 8, and 10mm, standard list format."
-Your Thought: Standard list format is Portrait. I will set the canvas height based on items.
-Action: `set_canvas_dimensions(width=384, height=240, print_direction="across_tape")`
-
-User: "Make a huge label for a 20cm shipping box. It needs to say FRAGILE."
-Your Thought: 20cm is 200mm = 1600px. This requires a continuous roll. To fit 1600px length on a 384px print head, I must use banner mode.
-Action:
-1. `set_canvas_dimensions(width=1600, height=384, print_direction="along_tape_banner")`
-2. `layout_centered_text(text="FRAGILE")`
-
-User: "I need 50 asset tags with barcodes from AST-001 to AST-050."
-Your Thought: I will create a layout with a barcode and text mapped to the `{{{{ asset }}}}` variable. Then I will use `set_batch_records` with `variables_sequence` to generate all 50 items instantly.
-Action (Tool Calls in same response):
-1. `apply_preset(preset_name="Standard Tape (Full Width 48mm)")`
-2. `add_barcode_or_qrcode(type="barcode", data="{{{{ asset }}}}", x=20, y=50, width=344, height=80)`
-3. `add_text_element(text="ID: {{{{ asset }}}}", x=0, y=150, align="center")`
-4. `set_batch_records(variables_sequence={{"variable_name": "asset", "prefix": "AST-", "start": 1, "end": 50, "padding": 3}})`
+User: "I have a continuous roll. Make 5 small spice labels: Salt, Pepper, Cumin, Garlic, Paprika."
+Your Thought: The printer is Continuous. The user wants small labels to cut out. I will use the "Roll: Narrow Tag" preset which includes a cut-line, and I will set the batch records.
+Action (All in one turn):
+1. `apply_preset(preset_name="Roll: Narrow Tag (48x15mm)")`
+2. `layout_centered_text(text="{{{{ spice }}}}")`
+3. `set_batch_records(variables_list=[{{"spice": "Salt"}}, {{"spice": "Pepper"}}, {{"spice": "Cumin"}}, {{"spice": "Garlic"}}, {{"spice": "Paprika"}}])`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
