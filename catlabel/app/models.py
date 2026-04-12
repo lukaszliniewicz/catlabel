@@ -72,15 +72,20 @@ class AIConversation(SQLModel, table=True):
     messages_json: str = "[]"
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class AIAgentProfile(SQLModel, table=True):
+class AIProvider(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = "Default Profile"
+    name: str = "New Provider"
     provider: str = "openai" # 'openai', 'gemini', 'vertex_ai', 'custom'
-    model_name: str = "gpt-4o"
     api_key: str = ""
     base_url: str = ""
     use_env: bool = False
-    vision_capable: bool = False
-    is_active: bool = False
-    reasoning_effort: str = ""
     vertex_region: str = ""
+
+class AIModelConfig(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    provider_id: int = Field(foreign_key="aiprovider.id")
+    name: str = "Default Model"
+    model_name: str = "gpt-4o"
+    vision_capable: bool = False
+    reasoning_effort: str = ""
+    is_active: bool = False

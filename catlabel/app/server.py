@@ -111,6 +111,50 @@ _scanned_devices_cache: List[Any] = []
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
+    try:
+        with engine.begin() as conn:
+            has_old = conn.execute(text("SELECT COUNT(*) FROM aiagentprofile")).scalar()
+            has_new = conn.execute(text("SELECT COUNT(*) FROM aiprovider")).scalar()
+
+            if has_old > 0 and has_new == 0:
+                old_profiles = conn.execute(text("SELECT * FROM aiagentprofile")).fetchall()
+                for p in old_profiles:
+                    p_map = getattr(p, "_mapping", p)
+                    provider_name = p_map.get("name", "Migrated Provider") or "Migrated Provider"
+                    provider_type = p_map.get("provider", "openai") or "openai"
+                    api_key = p_map.get("api_key", "") or ""
+                    base_url = p_map.get("base_url", "") or ""
+                    use_env = p_map.get("use_env", False) or False
+                    vertex_region = p_map.get("vertex_region", "") or ""
+
+                    res = conn.execute(text("""
+                        INSERT INTO aiprovider (name, provider, api_key, base_url, use_env, vertex_region)
+                        VALUES (:name, :provider, :api_key, :base_url, :use_env, :vertex_region)
+                    """), {
+                        "name": provider_name,
+                        "provider": provider_type,
+                        "api_key": api_key,
+                        "base_url": base_url,
+                        "use_env": use_env,
+                        "vertex_region": vertex_region,
+                    })
+                    provider_id = res.lastrowid
+
+                    model_name = p_map.get("model_name", "gpt-4o") or "gpt-4o"
+                    conn.execute(text("""
+                        INSERT INTO aimodelconfig (provider_id, name, model_name, vision_capable, reasoning_effort, is_active)
+                        VALUES (:provider_id, :name, :model_name, :vision_capable, :reasoning_effort, :is_active)
+                    """), {
+                        "provider_id": provider_id,
+                        "name": model_name.split("/")[-1],
+                        "model_name": model_name,
+                        "vision_capable": p_map.get("vision_capable", False) or False,
+                        "reasoning_effort": p_map.get("reasoning_effort", "") or "",
+                        "is_active": p_map.get("is_active", False) or False,
+                    })
+    except Exception as e:
+        print(f"Migration notice: {e}")
+
     for col in ["speed", "energy", "feed_lines"]:
         try:
             with engine.begin() as conn:

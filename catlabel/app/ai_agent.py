@@ -7,14 +7,14 @@ from io import BytesIO
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from sqlmodel import Session, select
 import litellm
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] AI_AGENT: %(message)s")
 
-from .models import AIConfig, AIAgentProfile, AIConversation
+from .models import AIConfig, AIConversation, AIProvider, AIModelConfig
 from .ai_tools import TOOLS_SCHEMA, execute_tool
 from ..rendering.template import render_template
 
@@ -25,6 +25,24 @@ class ChatRequest(BaseModel):
     canvas_state: Dict[str, Any]
     mac_address: Optional[str] = None
     printer_info: Optional[Dict[str, Any]] = None
+
+class ModelDTO(BaseModel):
+    id: Optional[Union[int, str]] = None
+    name: str
+    model_name: str
+    vision_capable: bool
+    reasoning_effort: str
+    is_active: bool
+
+class ProviderDTO(BaseModel):
+    id: Optional[Union[int, str]] = None
+    name: str
+    provider: str
+    api_key: str
+    base_url: str
+    use_env: bool
+    vertex_region: str
+    models: List[ModelDTO] = []
 
 def serialize_msg(msg) -> Dict[str, Any]:
     if hasattr(msg, "model_dump"): d = msg.model_dump(exclude_none=True)
@@ -73,68 +91,126 @@ def get_canvas_b64(canvas_state, default_font):
         return None
 
 @router.get("/config")
-def get_profiles():
+def get_providers():
     from .server import engine
     with Session(engine) as session:
-        profiles = session.exec(select(AIAgentProfile)).all()
-        if not profiles:
+        providers = session.exec(select(AIProvider)).all()
+        if not providers:
             old = session.get(AIConfig, 1)
-            p = AIAgentProfile(
-                name="Default Profile",
+            provider = AIProvider(
+                name="Default Provider",
                 provider=old.provider if old else "openai",
-                model_name=old.model_name if old else "gpt-4o",
                 api_key=old.api_key if old else "",
                 base_url=old.base_url if old else "",
                 use_env=old.use_env if old else False,
+                vertex_region=getattr(old, "vertex_region", "") if old else "",
+            )
+            session.add(provider)
+            session.commit()
+            session.refresh(provider)
+
+            model_name = old.model_name if old and old.model_name else "gpt-4o"
+            model = AIModelConfig(
+                provider_id=provider.id,
+                name=model_name.split("/")[-1],
+                model_name=model_name,
                 vision_capable=True,
                 is_active=True,
-                vertex_region=getattr(old, "vertex_region", "") if old else ""
             )
-            session.add(p)
+            session.add(model)
             session.commit()
-            session.refresh(p)
-            profiles = [p]
-        return profiles
+            providers = [provider]
+
+        result = []
+        for provider in providers:
+            models = session.exec(select(AIModelConfig).where(AIModelConfig.provider_id == provider.id)).all()
+            provider_dict = provider.model_dump() if hasattr(provider, "model_dump") else provider.dict()
+            provider_dict["models"] = [
+                model.model_dump() if hasattr(model, "model_dump") else model.dict()
+                for model in models
+            ]
+            result.append(provider_dict)
+        return result
 
 @router.post("/config")
-def save_profile(profile: AIAgentProfile):
+def save_provider(payload: ProviderDTO):
     from .server import engine
     with Session(engine) as session:
-        if profile.is_active:
-            # Deactivate all others
-            all_p = session.exec(select(AIAgentProfile)).all()
-            for p in all_p:
-                if p.id != profile.id:
-                    p.is_active = False
-                    session.add(p)
+        if any(model.is_active for model in payload.models):
+            all_models = session.exec(select(AIModelConfig)).all()
+            for model in all_models:
+                if model.is_active:
+                    model.is_active = False
+                    session.add(model)
 
-        if profile.id is not None:
-            existing = session.get(AIAgentProfile, profile.id)
-            if existing:
-                if hasattr(profile, "model_dump"):
-                    profile_data = profile.model_dump(exclude_unset=True)
-                else:
-                    profile_data = profile.dict(exclude_unset=True)
+        provider_data = (
+            payload.model_dump(exclude={"id", "models"})
+            if hasattr(payload, "model_dump")
+            else payload.dict(exclude={"id", "models"})
+        )
 
-                for key, value in profile_data.items():
-                    setattr(existing, key, value)
-                session.add(existing)
-                session.commit()
-                session.refresh(existing)
-                return existing
+        if isinstance(payload.id, int):
+            provider = session.get(AIProvider, payload.id)
+            if provider:
+                for key, value in provider_data.items():
+                    setattr(provider, key, value)
+            else:
+                provider = AIProvider(**provider_data)
+        else:
+            provider = AIProvider(**provider_data)
 
-        session.add(profile)
+        session.add(provider)
         session.commit()
-        session.refresh(profile)
-        return profile
+        session.refresh(provider)
 
-@router.delete("/config/{profile_id}")
-def delete_profile(profile_id: int):
+        keep_model_ids = []
+        for model_data in payload.models:
+            model_dict = (
+                model_data.model_dump(exclude={"id"})
+                if hasattr(model_data, "model_dump")
+                else model_data.dict(exclude={"id"})
+            )
+
+            if isinstance(model_data.id, int):
+                model_db = session.get(AIModelConfig, model_data.id)
+                if model_db:
+                    for key, value in model_dict.items():
+                        setattr(model_db, key, value)
+                    model_db.provider_id = provider.id
+                    session.add(model_db)
+                    session.commit()
+                    keep_model_ids.append(model_db.id)
+                else:
+                    new_model = AIModelConfig(**model_dict, provider_id=provider.id)
+                    session.add(new_model)
+                    session.commit()
+                    session.refresh(new_model)
+                    keep_model_ids.append(new_model.id)
+            else:
+                new_model = AIModelConfig(**model_dict, provider_id=provider.id)
+                session.add(new_model)
+                session.commit()
+                session.refresh(new_model)
+                keep_model_ids.append(new_model.id)
+
+        existing_models = session.exec(select(AIModelConfig).where(AIModelConfig.provider_id == provider.id)).all()
+        for existing_model in existing_models:
+            if existing_model.id not in keep_model_ids:
+                session.delete(existing_model)
+        session.commit()
+
+        return {"status": "ok", "id": provider.id}
+
+@router.delete("/config/{provider_id}")
+def delete_provider(provider_id: int):
     from .server import engine
     with Session(engine) as session:
-        p = session.get(AIAgentProfile, profile_id)
-        if p:
-            session.delete(p)
+        provider = session.get(AIProvider, provider_id)
+        if provider:
+            models = session.exec(select(AIModelConfig).where(AIModelConfig.provider_id == provider.id)).all()
+            for model in models:
+                session.delete(model)
+            session.delete(provider)
             session.commit()
         return {"status": "ok"}
 
@@ -192,32 +268,39 @@ def delete_history(conv_id: int):
 def chat_with_agent(req: ChatRequest):
     from .server import engine, get_agent_context
     with Session(engine) as session:
-        active_profile = session.exec(select(AIAgentProfile).where(AIAgentProfile.is_active == True)).first()
-        if not active_profile:
-            active_profile = session.exec(select(AIAgentProfile)).first() or AIAgentProfile()
+        active_model = session.exec(select(AIModelConfig).where(AIModelConfig.is_active == True)).first()
+        if not active_model:
+            active_model = session.exec(select(AIModelConfig)).first()
+
+        if not active_model:
+            raise HTTPException(status_code=400, detail="No AI models configured. Please configure an AI Provider and Model in settings.")
+
+        active_provider = session.get(AIProvider, active_model.provider_id)
+        if not active_provider:
+            raise HTTPException(status_code=400, detail="The active AI model is linked to a missing provider. Please update your AI configuration.")
 
     kwargs = {
-        "model": f"{active_profile.provider}/{active_profile.model_name}" if active_profile.provider != "custom" else active_profile.model_name,
+        "model": f"{active_provider.provider}/{active_model.model_name}" if active_provider.provider != "custom" else active_model.model_name,
         "tools": TOOLS_SCHEMA,
         "tool_choice": "auto"
     }
 
-    if getattr(active_profile, "reasoning_effort", ""):
-        kwargs["reasoning_effort"] = active_profile.reasoning_effort
+    if getattr(active_model, "reasoning_effort", ""):
+        kwargs["reasoning_effort"] = active_model.reasoning_effort
 
-    if not active_profile.use_env:
-        if active_profile.provider == "vertex_ai":
+    if not active_provider.use_env:
+        if active_provider.provider == "vertex_ai":
             with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
-                f.write(active_profile.api_key)
+                f.write(active_provider.api_key)
                 kwargs["vertex_credentials"] = f.name
         else:
-            kwargs["api_key"] = active_profile.api_key
-            
-        if active_profile.base_url:
-            kwargs["api_base"] = active_profile.base_url
+            kwargs["api_key"] = active_provider.api_key
 
-    if active_profile.provider == "vertex_ai" and getattr(active_profile, "vertex_region", ""):
-        kwargs["vertex_location"] = active_profile.vertex_region
+        if active_provider.base_url:
+            kwargs["api_base"] = active_provider.base_url
+
+    if active_provider.provider == "vertex_ai" and getattr(active_provider, "vertex_region", ""):
+        kwargs["vertex_location"] = active_provider.vertex_region
 
     context = get_agent_context()
     presets_json = json.dumps(context["standard_presets"], indent=2)
@@ -317,7 +400,7 @@ Action (Tool Calls in same response):
             
             # --- VISION TRANSIENT INJECTION ---
             temp_messages = messages.copy()
-            if active_profile.vision_capable:
+            if active_model.vision_capable:
                 b64 = get_canvas_b64(canvas_state_copy, context['global_default_font'])
                 if b64:
                     temp_messages.append({
