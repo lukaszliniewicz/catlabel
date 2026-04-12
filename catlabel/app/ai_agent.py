@@ -304,6 +304,7 @@ def chat_with_agent(req: ChatRequest):
 
     context = get_agent_context()
     presets_json = json.dumps(context["standard_presets"], indent=2)
+    templates_json = json.dumps(context["available_templates"], indent=2)
     root_categories_json = json.dumps(context["root_categories"], indent=2)
     root_projects_json = json.dumps(context["root_projects"], indent=2)
 
@@ -343,55 +344,37 @@ HARDWARE STATUS:
 {printer_status}
 
 CRITICAL MEDIA TYPE RULES (MUST OBEY):
-1. CONTINUOUS MEDIA (Generic Rolls): Tape feeds infinitely. You MUST use presets marked media_type="continuous". If printing small labels (like spice jars), DO NOT rotate them sideways (landscape). Use the "Roll: Narrow Tag" or "Roll: Small Item" presets so they stack vertically and save tape.
+1. CONTINUOUS MEDIA (Generic Rolls): Tape feeds infinitely. You MUST use presets marked media_type="continuous".
 2. PRE-CUT MEDIA (Niimbot): Fixed boundaries. You MUST use presets marked media_type="pre-cut". Pre-cut labels are fed sideways, so they are almost always rotated.
 
-AVAILABLE PRESETS:
+AVAILABLE PRESETS (Use apply_preset):
 {presets_json}
 
-CRITICAL LAYOUT STRATEGY (HYBRID TEMPLATE ARCHITECTURE):
-For NEW one-off labels, prefer the single `generate_label` tool. It is the safest and most consistent path.
-Available `template_id` values:
-- `default` -> Standard block of text.
-- `center` -> Centered text.
-- `maximize` -> Single word/phrase as large as possible.
-- `title_subtitle` -> Big title with smaller subtitle.
-- `warning_banner` -> Bold inverted warning style.
-- `price_tag` -> Huge price with smaller product name.
-- `address` -> Multiline mailing/address block.
-- `custom` -> ESCAPE HATCH. Use ONLY when the user explicitly requests unusual colors, fonts, borders, or a layout not covered above.
+AVAILABLE TEMPLATES (Use apply_template):
+{templates_json}
 
-When using `template_id="custom"`, you MUST provide `custom_html`.
-For standard templates, provide `text` for single-field templates, and `title` + `subtitle` for `title_subtitle` or `price_tag`.
-
-Use the older macro/layout tools only when:
-- The user explicitly wants to modify an existing design,
-- You need mixed structured elements like barcodes plus text,
-- Or the user requests precise coordinates/pixel-level placement.
+CRITICAL LAYOUT STRATEGY (WYSIWYG SYNERGY):
+For NEW labels, you MUST use `apply_template` passing the exact `template_id` and filling the `params` object based on the fields listed above.
+The system will automatically convert this into perfectly measured, editable items on the user's canvas.
 
 WARNING: DO NOT use `add_text_element`, `add_barcode_or_qrcode`, or `add_html_element` unless the user explicitly asks for coordinate-specific editing or a detailed custom composition.
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
-1. Lay out a SINGLE template page using `{{{{ variables }}}}` inside the macro.
+1. Call `apply_template` placing `{{{{ variables }}}}` inside the params (e.g., `params: {{"price": "{{{{ price }}}}"}}`).
 2. Call `set_batch_records` passing the array of data. The frontend handles generating the copies automatically!
 
 WORKFLOW EXAMPLES:
-User: "Print a label saying 'FRAGILE' as big as possible."
-Action:
-1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
-2. `generate_label(template_id="maximize", text="FRAGILE")`
-
 User: "Make a price tag for a Hammer, $15.99."
 Action:
 1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
-2. `generate_label(template_id="price_tag", title="$15.99", subtitle="Hammer")`
+2. `apply_template(template_id="price_tag", params={{"product_name": "Hammer", "price": "$15.99", "barcode": "123456"}})`
 
-User: "I have a continuous roll. Make 5 small spice labels: Salt, Pepper, Cumin, Garlic, Paprika."
+User: "I have a continuous roll. Make 5 small inventory tags: Desk, Chair, Lamp, Monitor, Keyboard."
 Action (All in one turn):
 1. `apply_preset(preset_name="Roll: Narrow Tag (48x15mm)")`
-2. `generate_label(template_id="center", text="{{{{ spice }}}}")`
-3. `set_batch_records(variables_list=[{{"spice": "Salt"}}, {{"spice": "Pepper"}}, {{"spice": "Cumin"}}, {{"spice": "Garlic"}}, {{"spice": "Paprika"}}])`
+2. `apply_template(template_id="inventory_tag", params={{"title": "{{{{ item }}}}", "code_data": "ID-{{{{ item }}}}", "code_type": "qrcode"}})`
+3. `set_batch_records(variables_list=[{{"item": "Desk"}}, {{"item": "Chair"}}, {{"item": "Lamp"}}, {{"item": "Monitor"}}, {{"item": "Keyboard"}}])`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

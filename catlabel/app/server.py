@@ -272,7 +272,8 @@ def get_agent_context():
         "available_fonts": font_names,
         "root_projects": project_summaries,
         "root_categories": category_summaries,
-        "global_default_font": settings.default_font
+        "global_default_font": settings.default_font,
+        "available_templates": TEMPLATE_METADATA
     }
 
 class ProjectCreate(BaseModel):

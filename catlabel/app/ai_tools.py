@@ -1,8 +1,6 @@
 import json
 import uuid
 
-from .label_templates import TEMPLATE_MAP
-
 
 def _as_int(value, default):
     try:
@@ -74,33 +72,21 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "generate_label",
-            "description": "Generates a label layout. Use predefined templates for standard requests. Use 'custom' ONLY if the user asks for specific colors, fonts, or layouts not covered by templates.",
+            "name": "apply_template",
+            "description": "MACRO: Replaces the canvas with a standard, fully editable layout. Always prefer this over manual coordinate placement. Call apply_preset FIRST to set the canvas size before using this.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "template_id": {
                         "type": "string",
-                        "enum": list(TEMPLATE_MAP.keys())
+                        "description": "ID of the template (e.g., price_tag, inventory_tag, shipping_address)"
                     },
-                    "text": {
-                        "type": "string",
-                        "description": "Main text for single-field templates."
-                    },
-                    "title": {
-                        "type": "string",
-                        "description": "Primary text for multi-field templates."
-                    },
-                    "subtitle": {
-                        "type": "string",
-                        "description": "Secondary text for multi-field templates."
-                    },
-                    "custom_html": {
-                        "type": "string",
-                        "description": "HTML and inline CSS. REQUIRED ONLY if template_id is 'custom'. Wrap in a <div> that scales to 100% width/height. Use inline styles."
+                    "params": {
+                        "type": "object",
+                        "description": "Key-value pairs for the template fields. Use {{ var }} for batch data."
                     }
                 },
-                "required": ["template_id"]
+                "required": ["template_id", "params"]
             }
         }
     },
@@ -135,110 +121,6 @@ TOOLS_SCHEMA = [
                     }
                 },
                 "required": ["width", "height", "print_direction"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "layout_centered_text",
-            "description": "MACRO: Replaces the specified page with a single, perfectly centered text block that automatically scales to fill the label. Supports {{ variables }}.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string"},
-                    "invert": {"type": "boolean", "description": "White text on black background.", "default": False},
-                    "pageIndex": {"type": "integer", "default": 0}
-                },
-                "required": ["text"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "layout_stacked_text",
-            "description": "MACRO: Replaces the page with two text elements (Top and Bottom) that automatically share the space and scale to fit. Great for Title/Subtitle.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "top_text": {"type": "string"},
-                    "bottom_text": {"type": "string"},
-                    "primary_is_top": {"type": "boolean", "default": True},
-                    "pageIndex": {"type": "integer", "default": 0}
-                },
-                "required": ["top_text", "bottom_text"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "layout_list_text",
-            "description": "MACRO: Replaces the page with perfectly spaced, auto-scaling text rows. Perfect for lists, specs, ingredients, or multi-line details.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "lines": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Array of strings. Use {{ var }} for dynamic data. E.g. ['Item: {{name}}', 'SKU: {{sku}}']"
-                    },
-                    "align": {"type": "string", "enum": ["left", "center", "right"], "default": "left"},
-                    "pageIndex": {"type": "integer", "default": 0}
-                },
-                "required": ["lines"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "layout_columns",
-            "description": "MACRO: Replaces the page with two side-by-side columns of text sharing the same horizontal line. Perfect for Price Tags (e.g., Name on left, Price on right).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "left_text": {"type": "string"},
-                    "right_text": {"type": "string"},
-                    "pageIndex": {"type": "integer", "default": 0}
-                },
-                "required": ["left_text", "right_text"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "layout_barcode_with_text",
-            "description": "MACRO: Replaces the page with a perfectly centered barcode/qrcode and auto-scaling text. Ideal for Asset Tags and Inventory.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "code_type": {"type": "string", "enum": ["barcode", "qrcode"], "default": "barcode"},
-                    "code_data": {"type": "string", "description": "Data for the barcode. Can be a {{ variable }}."},
-                    "top_text": {"type": "string", "description": "Optional title above the barcode."},
-                    "bottom_text": {"type": "string", "description": "Text displayed below the barcode."},
-                    "pageIndex": {"type": "integer", "default": 0}
-                },
-                "required": ["code_type", "code_data", "bottom_text"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "layout_shipping_address",
-            "description": "MACRO: Replaces the page with a standardized Shipping/Mailing label layout. Auto-rotates to landscape.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "sender_text": {"type": "string", "description": "Return address (multiline supported)."},
-                    "recipient_text": {"type": "string", "description": "Main destination address (multiline supported)."},
-                    "footer_text": {"type": "string", "description": "Optional bottom note (e.g. 'Fragile', 'Order #123')."},
-                    "pageIndex": {"type": "integer", "default": 0}
-                },
-                "required": ["sender_text", "recipient_text"]
             }
         }
     },
@@ -465,48 +347,32 @@ TOOLS_SCHEMA = [
 def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
     cw, ch = _canvas_size(canvas_state)
 
-    if name == "generate_label":
-        template_id = (args.get("template_id") or "default").strip() or "default"
-        if template_id not in TEMPLATE_MAP:
-            return f"Error: Unknown template_id '{template_id}'."
+    if name == "apply_template":
+        from .layout_engine import generate_template_items
 
         page_idx = max(
             0,
             _as_int(args.get("pageIndex", canvas_state.get("currentPage", 0)), _as_int(canvas_state.get("currentPage", 0), 0)),
         )
+        template_id = str(args.get("template_id") or "").strip()
+        params = args.get("params") or {}
+
+        if not template_id:
+            return "Error: template_id is required."
+        if not isinstance(params, dict):
+            return "Error: params must be an object."
+
+        items = generate_template_items(template_id, cw, ch, params)
+        if items is None:
+            return f"Error: Unknown template_id '{template_id}'."
+
         _clear_page(canvas_state, page_idx)
-        items = canvas_state.setdefault("items", [])
+        canvas_items = canvas_state.setdefault("items", [])
+        for item in items:
+            item["pageIndex"] = page_idx
+            canvas_items.append(item)
 
-        text_value = str(args.get("text") or args.get("title") or "")
-        if template_id == "address" and not text_value:
-            text_value = "\n".join(
-                part for part in [args.get("title"), args.get("subtitle")] if part
-            )
-
-        template_item = {
-            "id": str(uuid.uuid4()),
-            "type": "label_template",
-            "template_id": template_id,
-            "x": 0,
-            "y": 0,
-            "width": cw,
-            "height": ch,
-            "pageIndex": page_idx,
-        }
-
-        if template_id in {"title_subtitle", "price_tag"}:
-            template_item["title"] = str(args.get("title") or "")
-            template_item["subtitle"] = str(args.get("subtitle") or "")
-        elif template_id == "custom":
-            custom_html = str(args.get("custom_html") or "").strip()
-            if not custom_html:
-                return "Error: custom_html is required when template_id is 'custom'."
-            template_item["custom_html"] = custom_html
-        else:
-            template_item["text"] = text_value
-
-        items.append(template_item)
-        return f"Page {page_idx} replaced with template '{template_id}'."
+        return f"Page {page_idx} replaced with fully editable template '{template_id}'."
 
     if name == "apply_preset":
         preset_name = (args.get("preset_name") or "").strip()
@@ -548,299 +414,6 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         canvas_state["width"] = w
         canvas_state["height"] = h
         return f"Dimensions updated to {w}x{h}, direction: {direction}."
-
-    elif name == "layout_centered_text":
-        page_idx = _page_index(args)
-        _clear_page(canvas_state, page_idx)
-        items = canvas_state.setdefault("items", [])
-
-        _append_text(
-            items,
-            text=args["text"],
-            x=0,
-            y=0,
-            width=cw,
-            height=ch,
-            align="center",
-            weight=700,
-            fit_to_width=True,
-            invert=bool(args.get("invert", False)),
-            pageIndex=page_idx,
-        )
-        return f"Page {page_idx} replaced with centered text."
-
-    elif name == "layout_stacked_text":
-        page_idx = _page_index(args)
-        _clear_page(canvas_state, page_idx)
-        items = canvas_state.setdefault("items", [])
-
-        primary_top = args.get("primary_is_top", True)
-        top_h = int(ch * 0.6) if primary_top else int(ch * 0.4)
-        top_h = max(1, top_h)
-        bot_h = max(1, ch - top_h)
-
-        _append_text(
-            items,
-            text=args["top_text"],
-            x=0,
-            y=0,
-            width=cw,
-            height=top_h,
-            align="center",
-            weight=900 if primary_top else 400,
-            fit_to_width=True,
-            pageIndex=page_idx,
-        )
-        _append_text(
-            items,
-            text=args["bottom_text"],
-            x=0,
-            y=top_h,
-            width=cw,
-            height=bot_h,
-            align="center",
-            weight=400 if primary_top else 900,
-            fit_to_width=True,
-            pageIndex=page_idx,
-        )
-        return f"Page {page_idx} replaced with stacked text."
-
-    elif name == "layout_list_text":
-        page_idx = _page_index(args)
-        lines = [str(line) for line in (args.get("lines") or []) if line is not None]
-        if not lines:
-            return "Error: No lines provided."
-
-        _clear_page(canvas_state, page_idx)
-        items = canvas_state.setdefault("items", [])
-        align = args.get("align", "left")
-        row_h = max(1, ch // len(lines))
-
-        for idx, line_text in enumerate(lines):
-            row_y = idx * row_h
-            current_h = row_h if idx < len(lines) - 1 else max(1, ch - row_y)
-            _append_text(
-                items,
-                text=line_text,
-                x=0,
-                y=row_y,
-                width=cw,
-                height=current_h,
-                align=align,
-                weight=900 if idx == 0 else 700,
-                fit_to_width=True,
-                pageIndex=page_idx,
-            )
-        return f"Page {page_idx} replaced with {len(lines)} list rows."
-
-    elif name == "layout_columns":
-        page_idx = _page_index(args)
-        _clear_page(canvas_state, page_idx)
-        items = canvas_state.setdefault("items", [])
-
-        outer_pad = max(8, cw // 48)
-        gutter = max(12, cw // 32)
-        col_w = max(1, (cw - (outer_pad * 2) - gutter) // 2)
-
-        _append_text(
-            items,
-            text=args["left_text"],
-            x=outer_pad,
-            y=0,
-            width=col_w,
-            height=ch,
-            align="left",
-            weight=700,
-            fit_to_width=True,
-            pageIndex=page_idx,
-        )
-        _append_text(
-            items,
-            text=args["right_text"],
-            x=outer_pad + col_w + gutter,
-            y=0,
-            width=col_w,
-            height=ch,
-            align="right",
-            weight=900,
-            fit_to_width=True,
-            pageIndex=page_idx,
-        )
-        return f"Page {page_idx} replaced with 2-column layout."
-
-    elif name == "layout_barcode_with_text":
-        page_idx = _page_index(args)
-        _clear_page(canvas_state, page_idx)
-        items = canvas_state.setdefault("items", [])
-
-        code_type = args.get("code_type", "barcode")
-        top_txt = args.get("top_text", "") or ""
-        bottom_txt = args.get("bottom_text", "") or ""
-
-        top_h = int(ch * 0.22) if top_txt else 0
-        bottom_h = int(ch * 0.18) if bottom_txt else 0
-        code_h = max(1, ch - top_h - bottom_h)
-        code_margin = max(4, min(cw, ch) // 40)
-
-        current_y = 0
-        if top_txt:
-            _append_text(
-                items,
-                text=top_txt,
-                x=0,
-                y=0,
-                width=cw,
-                height=top_h,
-                align="center",
-                weight=900,
-                fit_to_width=True,
-                pageIndex=page_idx,
-            )
-            current_y += top_h
-
-        if code_type == "qrcode":
-            code_size = max(1, min(cw - (code_margin * 2), code_h - (code_margin * 2)))
-            code_w = code_size
-            code_h_render = code_size
-            code_x = (cw - code_w) // 2
-            code_y = current_y + max(0, (code_h - code_h_render) // 2)
-        else:
-            code_w = max(1, int(cw * 0.9))
-            code_h_render = max(1, code_h - (code_margin * 2))
-            code_x = (cw - code_w) // 2
-            code_y = current_y + code_margin
-
-        items.append({
-            "id": str(uuid.uuid4()),
-            "type": code_type,
-            "data": args["code_data"],
-            "x": code_x,
-            "y": code_y,
-            "width": code_w,
-            "height": code_h_render,
-            "pageIndex": page_idx,
-        })
-
-        current_y += code_h
-        if bottom_txt:
-            _append_text(
-                items,
-                text=bottom_txt,
-                x=0,
-                y=current_y,
-                width=cw,
-                height=max(1, ch - current_y),
-                align="center",
-                weight=700,
-                fit_to_width=True,
-                pageIndex=page_idx,
-            )
-
-        return f"Page {page_idx} replaced with barcode layout."
-
-    elif name == "layout_shipping_address":
-        page_idx = _page_index(args)
-        _clear_page(canvas_state, page_idx)
-
-        if cw < ch:
-            cw, ch = ch, cw
-            canvas_state["width"] = cw
-            canvas_state["height"] = ch
-            canvas_state["isRotated"] = True
-
-        items = canvas_state.setdefault("items", [])
-        sender = args.get("sender_text", "Sender")
-        recipient = args.get("recipient_text", "Recipient")
-        footer = args.get("footer_text", "") or ""
-
-        outer_pad = max(16, min(cw, ch) // 18)
-        sender_w = max(120, int(cw * 0.45))
-        sender_h = max(48, int(ch * 0.22))
-        divider_y = outer_pad + sender_h + (outer_pad // 2)
-        badge_h = max(28, int(ch * 0.09))
-        badge_w = max(110, int(cw * 0.24))
-        badge_y = divider_y + max(8, outer_pad // 2)
-        footer_h = max(36, int(ch * 0.12)) if footer else 0
-        recipient_y = badge_y + badge_h + max(10, outer_pad // 2)
-        recipient_h = max(40, ch - recipient_y - outer_pad - footer_h)
-
-        _append_text(
-            items,
-            text=f"FROM:\n{sender}",
-            x=outer_pad,
-            y=outer_pad,
-            width=sender_w,
-            height=sender_h,
-            align="left",
-            weight=700,
-            fit_to_width=True,
-            pageIndex=page_idx,
-        )
-        _append_text(
-            items,
-            text="",
-            x=0,
-            y=divider_y,
-            width=cw,
-            size=2,
-            border_style="top",
-            border_thickness=4,
-            pageIndex=page_idx,
-        )
-        _append_text(
-            items,
-            text="SHIP TO:",
-            x=outer_pad,
-            y=badge_y,
-            width=badge_w,
-            height=badge_h,
-            align="center",
-            weight=900,
-            fit_to_width=True,
-            invert=True,
-            border_style="box",
-            pageIndex=page_idx,
-        )
-        _append_text(
-            items,
-            text=recipient,
-            x=outer_pad,
-            y=recipient_y,
-            width=cw - (outer_pad * 2),
-            height=recipient_h,
-            align="left",
-            weight=900,
-            fit_to_width=True,
-            pageIndex=page_idx,
-        )
-
-        if footer:
-            footer_y = ch - outer_pad - footer_h
-            _append_text(
-                items,
-                text="",
-                x=0,
-                y=max(0, footer_y - max(6, outer_pad // 2)),
-                width=cw,
-                size=2,
-                border_style="top",
-                border_thickness=4,
-                pageIndex=page_idx,
-            )
-            _append_text(
-                items,
-                text=footer,
-                x=outer_pad,
-                y=footer_y,
-                width=cw - (outer_pad * 2),
-                height=footer_h,
-                align="center",
-                weight=700,
-                fit_to_width=True,
-                pageIndex=page_idx,
-            )
-
-        return f"Page {page_idx} replaced with shipping address layout."
 
     elif name == "add_text_element":
         canvas_state.setdefault("items", []).append({

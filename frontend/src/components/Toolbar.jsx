@@ -8,8 +8,8 @@ import {
 
 import IconPicker from './IconPicker';
 import HtmlPickerModal from './HtmlPickerModal';
-import ShippingLabelModal from './ShippingLabelModal';
 import DateToolModal from './DateToolModal';
+import TemplateWizardModal from './TemplateWizardModal';
 
 const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button', active = false, children }) => (
   <Component
@@ -47,15 +47,23 @@ export default function Toolbar() {
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [iconPickerMode, setIconPickerMode] = useState('icon');
   const [showHtmlPicker, setShowHtmlPicker] = useState(false);
-  const [showShippingModal, setShowShippingModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showGenDropdown, setShowGenDropdown] = useState(false);
   const [showShapeDropdown, setShowShapeDropdown] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [selectedWizard, setSelectedWizard] = useState(null);
 
   const dropdownRef = useRef(null);
   const shapeDropdownRef = useRef(null);
 
   const selectedItem = items.find((item) => item.id === selectedId);
+
+  useEffect(() => {
+    fetch('/api/templates')
+      .then((res) => res.json())
+      .then((data) => setTemplates(data.templates || []))
+      .catch((err) => console.error('Failed to fetch templates:', err));
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -349,13 +357,16 @@ export default function Toolbar() {
               <div className="px-4 pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800 text-[10px] uppercase tracking-widest font-bold text-neutral-400">
                 Smart Wizards
               </div>
-              <button
-                onClick={() => { setShowShippingModal(true); setShowGenDropdown(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
-              >
-                <Package size={16} className="text-blue-500" />
-                Shipping Label
-              </button>
+              {templates.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  onClick={() => { setSelectedWizard(tpl); setShowGenDropdown(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
+                >
+                  <Package size={16} className="text-blue-500" />
+                  {tpl.name}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -371,8 +382,8 @@ export default function Toolbar() {
       {/* Modals */}
       {showIconPicker && <IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} />}
       {showHtmlPicker && <HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} />}
-      {showShippingModal && <ShippingLabelModal onClose={() => setShowShippingModal(false)} />}
       {showDateModal && <DateToolModal onClose={() => setShowDateModal(false)} />}
+      {selectedWizard && <TemplateWizardModal template={selectedWizard} onClose={() => setSelectedWizard(null)} />}
     </div>
   );
 }
