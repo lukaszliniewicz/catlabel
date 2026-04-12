@@ -108,7 +108,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   const [panelWidth, setPanelWidth] = useState(320);
@@ -118,6 +118,7 @@ export default function PropertiesPanel() {
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [dataMode, setDataMode] = useState('table');
   const [matrixInputs, setMatrixInputs] = useState({});
+  const [seqInputs, setSeqInputs] = useState({ varName: '', start: 1, end: 10, prefix: '', suffix: '', padding: 3 });
   
   // Automatically switch tabs based on selection
   useEffect(() => {
@@ -858,6 +859,12 @@ export default function PropertiesPanel() {
               >
                 Permutations
               </button>
+              <button
+                onClick={() => setDataMode('sequence')}
+                className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest transition-colors border ${dataMode === 'sequence' ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400' : 'bg-neutral-50 border-transparent text-neutral-500 dark:bg-neutral-900'}`}
+              >
+                Sequence
+              </button>
             </div>
 
             <div className="flex gap-2 mb-2">
@@ -944,6 +951,89 @@ export default function PropertiesPanel() {
                   className="w-full mt-2 flex justify-center items-center gap-2 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors text-[10px] uppercase tracking-widest font-bold"
                 >
                   Generate Combinations
+                </button>
+              </div>
+            )}
+
+            {allBatchKeys.length > 0 && dataMode === 'sequence' && (
+              <div className="space-y-3 p-4 border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50">
+                <p className="text-[10px] text-neutral-500 mb-2 leading-relaxed">
+                  Generate serialized numbers (e.g. Asset Tags, Barcodes).
+                </p>
+                <div>
+                  <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1 block">Target Variable</label>
+                  <select
+                    value={seqInputs.varName}
+                    onChange={e => setSeqInputs({ ...seqInputs, varName: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="" disabled>Select variable...</option>
+                    {allBatchKeys.map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">Prefix</label>
+                    <input
+                      type="text"
+                      value={seqInputs.prefix}
+                      onChange={e => setSeqInputs({ ...seqInputs, prefix: e.target.value })}
+                      className={inputClass}
+                      placeholder="BOX-"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">Suffix</label>
+                    <input
+                      type="text"
+                      value={seqInputs.suffix}
+                      onChange={e => setSeqInputs({ ...seqInputs, suffix: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">Start #</label>
+                    <input
+                      type="number"
+                      value={seqInputs.start}
+                      onChange={e => setSeqInputs({ ...seqInputs, start: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">End #</label>
+                    <input
+                      type="number"
+                      value={seqInputs.end}
+                      onChange={e => setSeqInputs({ ...seqInputs, end: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase mb-1 block">0-Pad</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      value={seqInputs.padding}
+                      onChange={e => setSeqInputs({ ...seqInputs, padding: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    generateBatchSequence(seqInputs);
+                    setDataMode('table');
+                  }}
+                  disabled={!seqInputs.varName}
+                  className="w-full mt-2 flex justify-center items-center gap-2 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors text-[10px] uppercase tracking-widest font-bold disabled:opacity-50"
+                >
+                  Generate Sequence
                 </button>
               </div>
             )}

@@ -1,11 +1,38 @@
 import json
 import base64
+import re
 from io import BytesIO
+from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
 import qrcode
 import os
+
+def apply_smart_vars(text: str, variables: dict) -> str:
+    """Replaces standard {{ var }} and evaluates dynamic {{ $date+X }} variables."""
+    if not text or not isinstance(text, str):
+        return text
+
+    result = text
+
+    for key, value in (variables or {}).items():
+        pattern = re.compile(r"\{\{\s*" + re.escape(str(key)) + r"\s*\}\}")
+        result = pattern.sub(str(value), result)
+
+    now = datetime.now()
+    result = re.sub(r"\{\{\s*\$date\s*\}\}", now.strftime("%Y-%m-%d"), result)
+    result = re.sub(r"\{\{\s*\$time\s*\}\}", now.strftime("%H:%M"), result)
+
+    def date_offset_repl(match):
+        op = match.group(1)
+        days = int(match.group(2))
+        delta = timedelta(days=days)
+        new_date = now + delta if op == "+" else now - delta
+        return new_date.strftime("%Y-%m-%d")
+
+    result = re.sub(r"\{\{\s*\$date([+-])(\d+)\s*\}\}", date_offset_repl, result)
+    return result
 
 def safe_getlength(font, text):
     """Safely measure text width across different Pillow versions."""
@@ -83,7 +110,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
         elif item_type == "html":
             item_w = int(item.get("width", 384))
             item_h = int(item.get("height", 200))
-            html_str = item.get("html", "")
+            html_str = apply_smart_vars(item.get("html", ""), variables)
             
             try:
                 from html2image import Html2Image
@@ -136,10 +163,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             except Exception:
                 pass
 
-            text = item.get("text", "")
-            for k, v in variables.items():
-                text = text.replace(f"{{{{ {k} }}}}", str(v))
-                text = text.replace(f"{{{{{k}}}}}", str(v))
+            text = apply_smart_vars(item.get("text", ""), variables)
             
             size = int(item.get("size", 24))
             font_name = item.get("font", default_font)
@@ -183,10 +207,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             actual_drawn_height = group_h
 
         elif item_type == "text":
-            text = str(item.get("text", ""))
-            for k, v in variables.items():
-                text = text.replace(f"{{{{ {k} }}}}", str(v))
-                text = text.replace(f"{{{{{k}}}}}", str(v))
+            text = apply_smart_vars(str(item.get("text", "")), variables)
             
             size = int(item.get("size", 24))
             font_name = item.get("font", default_font)
@@ -295,10 +316,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 draw.text((line_cx, line_baseline_y), line, fill=text_color, font=font, anchor=anchor)
             
         elif item_type == "barcode":
-            data = item.get("data", "")
-            for k, v in variables.items():
-                data = data.replace(f"{{{{ {k} }}}}", str(v))
-                data = data.replace(f"{{{{{k}}}}}", str(v))
+            data = apply_smart_vars(item.get("data", ""), variables)
                 
             bclass = barcode.get_barcode_class(item.get("barcode_type", "code128"))
             writer = ImageWriter()
@@ -319,10 +337,7 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             actual_drawn_height = bh
             
         elif item_type == "qrcode":
-            data = item.get("data", "")
-            for k, v in variables.items():
-                data = data.replace(f"{{{{ {k} }}}}", str(v))
-                data = data.replace(f"{{{{{k}}}}}", str(v))
+            data = apply_smart_vars(item.get("data", ""), variables)
                 
             qr = qrcode.QRCode(box_size=item.get("box_size", 10), border=item.get("border", 1))
             qr.add_data(data)

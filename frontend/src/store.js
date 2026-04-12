@@ -206,6 +206,25 @@ export const useStore = create((set, get) => ({
       batchRecords: records.length ? records : [{}]
     };
   }),
+  generateBatchSequence: (seqDef) => set(() => {
+    const { varName, start, end, prefix = '', suffix = '', padding = 0 } = seqDef || {};
+    if (!varName) return {};
+
+    const s = parseInt(start, 10) || 0;
+    const e = parseInt(end, 10) || 0;
+    const pad = Math.max(0, parseInt(padding, 10) || 0);
+    const step = s <= e ? 1 : -1;
+
+    const records = [];
+    for (let i = s; step > 0 ? i <= e : i >= e; i += step) {
+      const numStr = String(i).padStart(pad, '0');
+      records.push({ [varName]: `${prefix}${numStr}${suffix}` });
+    }
+
+    return {
+      batchRecords: records.length ? records : [{}]
+    };
+  }),
   updateBatchRecord: (index, newRecord) => set((state) => {
     const newRecords = [...state.batchRecords];
     newRecords[index] = newRecord;

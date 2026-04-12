@@ -262,11 +262,13 @@ CRITICAL AGENT BEHAVIORS:
 2. SIMULTANEOUS TOOL EXECUTION (CHAINING): To complete a user's request, you MUST call the necessary tools in a single response. For a batch job, call:
    a) `set_canvas_dimensions` OR `apply_preset` (to size the label)
    b) `layout_stacked_text` OR `layout_centered_text` (using {{{{ variable }}}} tags)
-   c) `set_batch_records` (passing either the actual list of rows or a variables matrix for permutations)
+   c) `set_batch_records` (passing either the actual list of rows, a variables matrix for permutations, or a variables sequence for serialized labels)
    Do NOT stop halfway to ask for permission. Just do it.
 3. FULL WIDTH OF ROLL: If the user wants to use the "full width" of the continuous roll, ensure the constrained dimension is set to {context['engine_rules']['hardware_width_px']} pixels (e.g., width=384 with `print_direction="across_tape"`, or height=384 with `print_direction="along_tape_banner"`).
 4. MACROS FIRST: Always prefer the macro tools (`layout_centered_text`, `layout_stacked_text`) because they handle auto-scaling, wrapping, and centering flawlessly. Avoid manual `add_text_element` coordinate math unless strictly necessary.
 5. COMMA-SEPARATED BATCHES (MATRIX): If a user provides multiple comma-separated lists for variables (e.g., "lengths: 3, 4" and "head: flat, countersunk"), you MUST call `set_batch_records` with the `variables_matrix` parameter. The backend will automatically generate the Cartesian product table for the UI.
+6. SMART DATE VARIABLES: Do NOT manually calculate dates or create static batch records for dates. If the user asks for dates (like expiration dates), directly inject `{{{{ $date }}}}` (for today) or `{{{{ $date+7 }}}}` (for today + 7 days) directly into the `layout_centered_text` or `add_text_element` parameters. The rendering engine evaluates these dynamically.
+7. NO EMOJIS: Do NOT use Unicode Emojis (e.g. 🚫📦🚀) in text items. Thermal printers are 1-bit monochrome and the font renderer will crash or draw empty boxes `[ ]`. Stick to standard text or ascii.
 
 WORKFLOW EXAMPLES:
 User: "Make M3 screw labels, 6, 8, and 10mm, standard list format."
@@ -278,6 +280,14 @@ Your Thought: 20cm is 200mm = 1600px. This requires a continuous roll. To fit 16
 Action:
 1. `set_canvas_dimensions(width=1600, height=384, print_direction="along_tape_banner")`
 2. `layout_centered_text(text="FRAGILE")`
+
+User: "I need 50 asset tags with barcodes from AST-001 to AST-050."
+Your Thought: I will create a layout with a barcode and text mapped to the `{{{{ asset }}}}` variable. Then I will use `set_batch_records` with `variables_sequence` to generate all 50 items instantly.
+Action (Tool Calls in same response):
+1. `apply_preset(preset_name="Standard Tape (Full Width 48mm)")`
+2. `add_barcode_or_qrcode(type="barcode", data="{{{{ asset }}}}", x=20, y=50, width=344, height=80)`
+3. `add_text_element(text="ID: {{{{ asset }}}}", x=0, y=150, align="center")`
+4. `set_batch_records(variables_sequence={"variable_name": "asset", "prefix": "AST-", "start": 1, "end": 50, "padding": 3})`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

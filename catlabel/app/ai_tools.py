@@ -134,7 +134,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_batch_records",
-            "description": "CRITICAL FOR BATCH/SERIES: Configures multiple labels for batch printing. Use this immediately in the same response after laying out your {{ var }} template. Use variables_list for explicit rows or variables_matrix for Cartesian-product combinations from multiple variable lists.",
+            "description": "CRITICAL FOR BATCH/SERIES: Configures multiple labels for batch printing. Use this immediately in the same response after laying out your {{ var }} template. Use variables_list for explicit rows, variables_matrix for Cartesian-product combinations from multiple variable lists, or variables_sequence for fast serialized asset tags and barcodes.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -146,6 +146,19 @@ TOOLS_SCHEMA = [
                     "variables_matrix": {
                         "type": "object",
                         "description": "Use this for combinatorial permutations (Cartesian product), such as comma-separated user lists for size, length, head type, or material. E.g. {'size': ['M2','M3'], 'length': ['5mm','10mm']}."
+                    },
+                    "variables_sequence": {
+                        "type": "object",
+                        "description": "Generate sequential data (e.g. barcodes, asset tags) instantly.",
+                        "properties": {
+                            "variable_name": {"type": "string"},
+                            "start": {"type": "integer"},
+                            "end": {"type": "integer"},
+                            "prefix": {"type": "string", "default": ""},
+                            "suffix": {"type": "string", "default": ""},
+                            "padding": {"type": "integer", "default": 0, "description": "Zero-padding length (e.g. 3 makes '1' -> '001')"}
+                        },
+                        "required": ["variable_name", "start", "end"]
                     }
                 }
             }
@@ -554,7 +567,23 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
     elif name == "set_batch_records":
         records = list(args.get("variables_list", []) or [])
         matrix = args.get("variables_matrix", {}) or {}
-        
+        seq = args.get("variables_sequence", {}) or {}
+
+        if seq:
+            v_name = seq["variable_name"]
+            start = int(seq["start"])
+            end = int(seq["end"])
+            prefix = seq.get("prefix", "")
+            suffix = seq.get("suffix", "")
+            pad = max(0, int(seq.get("padding", 0) or 0))
+            step = 1 if start <= end else -1
+
+            seq_records = []
+            for i in range(start, end + step, step):
+                val = f"{prefix}{str(i).zfill(pad)}{suffix}"
+                seq_records.append({v_name: val})
+            records.extend(seq_records)
+
         if matrix:
             import itertools
             keys = list(matrix.keys())
@@ -565,7 +594,7 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             records = [{}]
 
         canvas_state["batchRecords"] = records
-        return f"Configured {len(records)} batch records. The UI will render permutations using {{ var }} tags in the design."
+        return f"Configured {len(records)} batch records. The UI will render permutations/sequences using {{ var }} tags in the design."
 
     elif name == "trigger_ui_action":
         canvas_state.setdefault("__actions__", []).append({

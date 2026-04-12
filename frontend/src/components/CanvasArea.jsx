@@ -39,13 +39,39 @@ export default function CanvasArea() {
   const pages = Array.from({ length: maxDisplayedPage + 1 }, (_, i) => i);
 
   const applyVars = (str, record) => {
-    if (!str || !record) return str;
+    if (!str) return str;
     let res = String(str);
-    Object.keys(record).forEach((key) => {
-      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`{{\\s*${escapedKey}\\s*}}`, 'g');
-      res = res.replace(regex, String(record[key] ?? ''));
+
+    // 1. Standard variables
+    if (record) {
+      Object.keys(record).forEach((key) => {
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`{{\\s*${escapedKey}\\s*}}`, 'g');
+        res = res.replace(regex, String(record[key] ?? ''));
+      });
+    }
+
+    // 2. Smart Date/Time
+    const now = new Date();
+
+    const formatYMD = (dateObj) => {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    res = res.replace(/{{\s*\$date\s*}}/g, formatYMD(now));
+    res = res.replace(/{{\s*\$time\s*}}/g, now.toTimeString().substring(0, 5));
+
+    // 3. Smart Date Math {{ $date+7 }}
+    res = res.replace(/{{\s*\$date([+-])(\d+)\s*}}/g, (match, op, daysStr) => {
+      const days = parseInt(daysStr, 10);
+      const d = new Date(now);
+      d.setDate(d.getDate() + (op === '+' ? days : -days));
+      return formatYMD(d);
     });
+
     return res;
   };
 
