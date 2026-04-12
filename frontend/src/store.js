@@ -118,6 +118,8 @@ export const useStore = create((set, get) => ({
   }),
 
   selectedPagesForPrint: [],
+  isPreparingForPrint: false,
+  pendingPrintJob: null,
   isPrinting: false,
   setIsPrinting: (val) => set({ isPrinting: val }),
   
@@ -131,6 +133,11 @@ export const useStore = create((set, get) => ({
 
   printPages: async (pageIndices) => {
     const state = get();
+
+    if (state.isPreparingForPrint || state.isPrinting) {
+      return;
+    }
+
     if (!state.selectedPrinter) {
       alert("Please select a printer first!");
       return;
@@ -143,31 +150,60 @@ export const useStore = create((set, get) => ({
 
     const normalizedPageIndices = Array.from(
       new Set((pageIndices || []).map((pageIndex) => Math.max(0, Number(pageIndex) || 0)))
-    );
+    ).sort((a, b) => a - b);
     if (normalizedPageIndices.length === 0) return;
+
+    const itemsToPrint = state.items.filter((item) =>
+      normalizedPageIndices.includes(Number(item.pageIndex ?? 0))
+    );
+
+    set({
+      isPreparingForPrint: true,
+      pendingPrintJob: {
+        macAddress: state.selectedPrinter,
+        splitMode: state.splitMode,
+        pageIndices: normalizedPageIndices,
+        copies: state.printCopies || 1,
+        batchRecords: state.batchRecords || [{}],
+        canvasState: {
+          width: state.canvasWidth,
+          height: state.canvasHeight,
+          isRotated: state.isRotated,
+          canvasBorder: state.canvasBorder,
+          canvasBorderThickness: state.canvasBorderThickness || 4,
+          splitMode: state.splitMode,
+          items: itemsToPrint
+        }
+      }
+    });
+  },
+
+  onLocalRenderComplete: async (images) => {
+    const state = get();
+    const pendingPrintJob = state.pendingPrintJob;
+
+    set({ isPreparingForPrint: false });
+
+    if (!pendingPrintJob) {
+      return;
+    }
+
+    if (!images || images.length === 0) {
+      set({ pendingPrintJob: null });
+      return;
+    }
 
     set({ isPrinting: true });
 
     try {
-      const itemsToPrint = state.items.filter((item) =>
-        normalizedPageIndices.includes(Number(item.pageIndex ?? 0))
-      );
-      const printRes = await fetch(`/api/print/batch`, {
+      const printRes = await fetch(`/api/print/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mac_address: state.selectedPrinter,
-          canvas_state: {
-            width: state.canvasWidth,
-            height: state.canvasHeight,
-            isRotated: state.isRotated,
-            canvasBorder: state.canvasBorder,
-            canvasBorderThickness: state.canvasBorderThickness || 4,
-            splitMode: state.splitMode,
-            items: itemsToPrint
-          },
-          copies: state.printCopies || 1,
-          variables_list: state.batchRecords || [{}]
+          mac_address: pendingPrintJob.macAddress,
+          images,
+          split_mode: pendingPrintJob.splitMode,
+          is_rotated: pendingPrintJob.canvasState.isRotated || false
         })
       });
 
@@ -179,7 +215,7 @@ export const useStore = create((set, get) => ({
       console.error(e);
       alert(`Failed to print: ${e.message}`);
     } finally {
-      set({ isPrinting: false });
+      set({ isPrinting: false, pendingPrintJob: null });
     }
   },
 

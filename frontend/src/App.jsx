@@ -5,6 +5,7 @@ import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
 import OnboardingWizard from './components/OnboardingWizard';
 import AIConfigModal from './components/AIConfigModal';
+import LocalBatchRenderer from './components/LocalBatchRenderer';
 import HeadlessRenderer from './HeadlessRenderer';
 import { useStore } from './store';
 
@@ -15,6 +16,8 @@ function App() {
   const settings = useStore((state) => state.settings);
   const showAiConfig = useStore((state) => state.showAiConfig);
   const setShowAiConfig = useStore((state) => state.setShowAiConfig);
+  const isPreparingForPrint = useStore((state) => state.isPreparingForPrint);
+  const onLocalRenderComplete = useStore((state) => state.onLocalRenderComplete);
   const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
 
   useEffect(() => {
@@ -43,6 +46,7 @@ function App() {
         <CanvasArea />
       </div>
       <PropertiesPanel />
+      {isPreparingForPrint && <LocalBatchRenderer onComplete={onLocalRenderComplete} />}
       {settingsLoaded && (!settings.intended_media_type || settings.intended_media_type === 'unknown') && <OnboardingWizard />}
       {showAiConfig && <AIConfigModal onClose={() => setShowAiConfig(false)} />}
     </div>

@@ -297,6 +297,12 @@ class BatchPrintRequest(BaseModel):
     variables_list: List[Dict[str, str]] = []
     variables_matrix: Optional[Dict[str, List[str]]] = None
 
+class ImagePrintRequest(BaseModel):
+    mac_address: str
+    images: List[str]
+    split_mode: bool = False
+    is_rotated: bool = False
+
 class PrinterProfileUpdate(BaseModel):
     speed: Optional[int] = None
     energy: Optional[int] = None
@@ -834,6 +840,30 @@ async def print_batch(request: BatchPrintRequest):
 
     await execute_print_jobs(request.mac_address, images, split_mode)
     return {"status": "success", "printed": len(images)}
+
+@app.post("/api/print/images")
+async def print_images_direct(request: ImagePrintRequest):
+    """Fast path for UI clients that already rendered the final label images."""
+    from PIL import Image
+
+    if not request.images:
+        return {"status": "success", "printed": 0}
+
+    pil_images = []
+    try:
+        for b64_image in request.images:
+            image_data = b64_image.split(",", 1)[1] if "," in b64_image else b64_image
+            decoded = base64.b64decode(image_data)
+            with Image.open(BytesIO(decoded)) as image:
+                rendered = image.convert("RGB")
+                if request.is_rotated:
+                    rendered = rendered.rotate(90, expand=True)
+                pil_images.append(rendered)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid image payload supplied.") from exc
+
+    await execute_print_jobs(request.mac_address, pil_images, request.split_mode)
+    return {"status": "success", "printed": len(pil_images)}
 
 @app.post("/api/pdf/convert")
 async def convert_pdf(file: UploadFile = File(...)):

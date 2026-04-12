@@ -46,7 +46,7 @@ export default function AIAssistant() {
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState([]);
 
-  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, selectedPrinterInfo, batchRecords, printCopies, currentPage, currentDpi, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCurrentPage } = useStore();
+  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, selectedPrinterInfo, batchRecords, printCopies, currentPage, currentDpi, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCanvasBorderThickness, setCurrentPage } = useStore();
   const setShowAiConfig = useStore((state) => state.setShowAiConfig);
 
   useEffect(() => {
@@ -180,36 +180,22 @@ export default function AIAssistant() {
             if (data.canvas_state.isRotated !== undefined) setIsRotated(data.canvas_state.isRotated);
             if (data.canvas_state.splitMode !== undefined) setSplitMode(data.canvas_state.splitMode);
             if (data.canvas_state.canvasBorder !== undefined) setCanvasBorder(data.canvas_state.canvasBorder);
+            if (data.canvas_state.canvasBorderThickness !== undefined) setCanvasBorderThickness(data.canvas_state.canvasBorderThickness);
             if (data.canvas_state.batchRecords) useStore.getState().setBatchRecords(data.canvas_state.batchRecords);
+            if (data.canvas_state.printCopies !== undefined) useStore.getState().setPrintCopies(data.canvas_state.printCopies);
             if (data.canvas_state.currentPage !== undefined) setCurrentPage(data.canvas_state.currentPage);
             
             // Execute intercepted UI actions from the agent
             if (data.canvas_state.__actions__) {
                 data.canvas_state.__actions__.forEach(action => {
                     if (action.action === 'print') {
-                        if (!selectedPrinter) {
-                            alert("The AI attempted to print, but no printer is currently selected!");
-                            return;
-                        }
-                        if (selectedPrinterInfo?.transport === 'offline') {
-                            alert("The AI attempted to print using an offline/manual printer profile. Scan and select a connected printer first.");
-                            return;
-                        }
-                        const thickness = canvasBorderThickness || 4;
-                        const batchVariables = data.canvas_state.batchRecords || useStore.getState().batchRecords || [{}];
-                        const copies = data.canvas_state.printCopies || useStore.getState().printCopies || 1;
-                        fetch('/api/print/batch', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                mac_address: selectedPrinter,
-                                canvas_state: { ...data.canvas_state, canvasBorderThickness: data.canvas_state.canvasBorderThickness || thickness },
-                                copies,
-                                variables_list: batchVariables
-                            })
-                        }).then(r => r.json()).then(resp => {
-                            if (resp.error || resp.detail) alert(`AI Print Failed: ${resp.error || resp.detail}`);
-                        });
+                        const actionItems = data.canvas_state.items || [];
+                        const maxPage = actionItems.reduce(
+                            (max, item) => Math.max(max, Number(item.pageIndex ?? 0)),
+                            0
+                        );
+                        const allPageIndices = Array.from({ length: maxPage + 1 }, (_, i) => i);
+                        useStore.getState().printPages(allPageIndices);
                     } 
                     else if (action.action === 'refresh_projects') {
                         useStore.getState().fetchProjects();

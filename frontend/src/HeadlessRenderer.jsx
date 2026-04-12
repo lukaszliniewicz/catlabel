@@ -1,96 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Layer, Line, Rect, Stage } from 'react-konva';
-import CanvasItemNode from './components/CanvasItemNode';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import HeadlessPage from './components/HeadlessPage';
 
-const waitForPaint = () => new Promise((resolve) => {
-  requestAnimationFrame(() => requestAnimationFrame(resolve));
-});
-
-const renderCanvasBorder = (canvasState) => {
-  const width = Math.max(1, Number(canvasState.width) || 384);
-  const height = Math.max(1, Number(canvasState.height) || 384);
-  const thickness = canvasState.canvasBorderThickness || 4;
-
-  if (canvasState.canvasBorder === 'box') {
-    return <Rect width={width} height={height} stroke="black" strokeWidth={thickness} listening={false} />;
-  }
-
-  if (canvasState.canvasBorder === 'top') {
-    return <Line points={[0, 0, width, 0]} stroke="black" strokeWidth={thickness} listening={false} />;
-  }
-
-  if (canvasState.canvasBorder === 'bottom') {
-    return <Line points={[0, height, width, height]} stroke="black" strokeWidth={thickness} listening={false} />;
-  }
-
-  if (canvasState.canvasBorder === 'cut_line') {
-    return <Line points={[0, height, width, height]} stroke="black" strokeWidth={thickness} dash={[10, 10]} listening={false} />;
-  }
-
-  return null;
-};
-
-const HeadlessCaptureStage = ({ canvasState, record, pageIndex, captureIndex, onReady }) => {
-  const stageRef = useRef(null);
-  const items = canvasState.items || [];
-  const width = Math.max(1, Number(canvasState.width) || 384);
-  const height = Math.max(1, Number(canvasState.height) || 384);
-
-  const pageItems = useMemo(
-    () => items.filter((item) => Number(item.pageIndex ?? 0) === pageIndex),
-    [items, pageIndex]
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    let timeoutId = null;
-
-    const capture = async () => {
-      try {
-        if (document.fonts?.ready) {
-          await document.fonts.ready;
-        }
-      } catch (error) {
-        console.warn('Font readiness check failed', error);
-      }
-
-      await waitForPaint();
-
-      timeoutId = window.setTimeout(() => {
-        if (!cancelled && stageRef.current) {
-          onReady(captureIndex, stageRef.current.toDataURL({ pixelRatio: 1 }));
-        }
-      }, 500);
-    };
-
-    capture();
-
-    return () => {
-      cancelled = true;
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [captureIndex, onReady, pageItems, record]);
-
-  return (
-    <Stage ref={stageRef} width={width} height={height}>
-      <Layer>
-        <Rect x={0} y={0} width={width} height={height} fill="white" listening={false} />
-        {renderCanvasBorder(canvasState)}
-        {pageItems.map((item) => (
-          <CanvasItemNode
-            key={item.id}
-            item={item}
-            record={record}
-            canvasWidth={width}
-            canvasHeight={height}
-          />
-        ))}
-      </Layer>
-    </Stage>
-  );
-};
 
 export default function HeadlessRenderer() {
   const [payload, setPayload] = useState(() => window.__INJECTED_PAYLOAD__ || null);
@@ -179,13 +89,12 @@ export default function HeadlessRenderer() {
   return (
     <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
       {renderJobs.map((job, index) => (
-        <HeadlessCaptureStage
+        <HeadlessPage
           key={job.id}
-          canvasState={canvasState}
+          state={canvasState}
           record={job.record}
           pageIndex={job.pageIndex}
-          captureIndex={index}
-          onReady={handlePageReady}
+          onReady={(b64) => handlePageReady(index, b64)}
         />
       ))}
     </div>
