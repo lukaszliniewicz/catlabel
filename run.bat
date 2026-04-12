@@ -2,8 +2,7 @@
 setlocal
 title CatLabel Bootstrapper
 
-:: 1. Micromamba REQUIRES a root prefix to be set, even when using local prefixes (-p).
-:: Without this, the 'create' command will fail silently.
+:: 1. Micromamba REQUIRES a root prefix to be set
 set "MAMBA_ROOT_PREFIX=%cd%\data\mamba_root"
 
 echo === CatLabel Bootstrapper ===
@@ -28,7 +27,6 @@ if not exist "env\" (
         del /Q bin\micromamba.tar.bz2 2>nul
     )
 
-    :: Verify that the download and extraction actually worked
     if not exist "bin\micromamba.exe" (
         echo ERROR: micromamba.exe was not found after extraction.
         goto error
@@ -42,16 +40,16 @@ if not exist "env\" (
     bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt
     if errorlevel 1 goto error
 
-    echo       Installing Headless Chromium (Portable)...
-    set "PLAYWRIGHT_BROWSERS_PATH=0"
+    echo       Installing Headless Chromium ^(Portable^)...
+    REM Setting this to 0 forces Playwright to install inside the local env folder
+    set PLAYWRIGHT_BROWSERS_PATH=0
     bin\micromamba.exe run -p .\env python -m playwright install chromium
     if errorlevel 1 goto error
 
     echo [4/4] Building optimized frontend UI...
-    :: Use pushd/popd instead of cd. It remembers where you were and guarantees you get back.
     pushd frontend
     
-    :: Use npm.cmd explicitly. Windows doesn't handle calling extensionless batch files well through wrappers.
+    REM npm.cmd is required for Windows batch execution
     ..\bin\micromamba.exe run -p ..\env npm.cmd install
     if errorlevel 1 (
         popd
@@ -70,57 +68,33 @@ if not exist "env\" (
     echo -----------------------------------
 )
 
-echo Verifying runtime dependencies...
-set "PLAYWRIGHT_BROWSERS_PATH=0"
-bin\micromamba.exe run -p .\env python -c "import playwright" >nul 2>&1
-if errorlevel 1 (
-    echo       Existing environment is missing updated Python packages. Repairing...
-    bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt
-    if errorlevel 1 goto error
-)
-
-echo       Ensuring Headless Chromium is installed...
-bin\micromamba.exe run -p .\env python -m playwright install chromium
-if errorlevel 1 goto error
-
 echo Starting CatLabel Server (http://localhost:8000)...
+set PLAYWRIGHT_BROWSERS_PATH=0
 bin\micromamba.exe run -p .\env python -m catlabel
 
-:: If the server crashes, this prevents the window from instantly vanishing
 if errorlevel 1 goto error_server
 
-:: End of successful script
 pause
 exit /b 0
 
-
-:: ==========================================
-:: ERROR HANDLING LABELS
-:: ==========================================
-
 :error_download
-echo.
-echo ERROR: Failed to download Micromamba. Please check your internet connection.
+echo ERROR: Failed to download Micromamba.
 pause
 exit /b 1
 
 :error_extract
-echo.
-echo ERROR: Failed to extract Micromamba. The downloaded file might be corrupted.
+echo ERROR: Failed to extract Micromamba.
 pause
 exit /b 1
 
 :error_server
-echo.
 echo ERROR: The CatLabel server crashed or failed to start.
 pause
 exit /b 1
 
 :error
-echo.
 echo =======================================================
 echo ERROR: A critical error occurred during the setup.
-echo Please review the text above to see what went wrong.
 echo =======================================================
 pause
 exit /b 1
