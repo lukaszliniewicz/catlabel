@@ -52,32 +52,88 @@ def _text_item(
 
 
 def build_centered_text(width, height, params):
+    text = params.get("text", "Text")
     return [
-        _text_item(10, 10, width - 20, height - 20, params.get("text", "Text"), size=120)
+        _text_item(
+            10,
+            10,
+            width - 20,
+            height - 20,
+            text,
+            size=int(min(width, height) * 0.4),
+            align="center",
+            fit=True,
+        )
     ]
 
 
 def build_title_subtitle(width, height, params):
-    return [
-        _text_item(
-            10,
-            height * 0.1,
-            width - 20,
-            height * 0.4,
-            params.get("title", "Title"),
-            size=80,
-            weight=900,
-        ),
-        _text_item(
-            10,
-            height * 0.5,
-            width - 20,
-            height * 0.4,
-            params.get("subtitle", "Subtitle"),
-            size=40,
-            weight=400,
-        ),
-    ]
+    title = params.get("title", "Title")
+    subtitle = params.get("subtitle", "Subtitle")
+
+    items = []
+    is_landscape = width > (height * 1.5)
+
+    if is_landscape:
+        title_w = width * 0.55
+        items.append(
+            _text_item(
+                10,
+                10,
+                title_w - 20,
+                height - 20,
+                title,
+                size=int(height * 0.5),
+                weight=900,
+                align="left",
+                fit=True,
+            )
+        )
+        items.append(_shape_item(title_w, height * 0.1, 4, height * 0.8, "black"))
+        items.append(
+            _text_item(
+                title_w + 15,
+                10,
+                width - title_w - 25,
+                height - 20,
+                subtitle,
+                size=int(height * 0.25),
+                weight=400,
+                align="left",
+                fit=True,
+            )
+        )
+    else:
+        title_h = height * 0.5
+        items.append(
+            _text_item(
+                10,
+                10,
+                width - 20,
+                title_h,
+                title,
+                size=int(title_h * 0.5),
+                weight=900,
+                align="center",
+                fit=True,
+            )
+        )
+        items.append(_shape_item(width * 0.15, title_h + 5, width * 0.7, 4, "black"))
+        items.append(
+            _text_item(
+                10,
+                title_h + 15,
+                width - 20,
+                height - title_h - 25,
+                subtitle,
+                size=int(height * 0.15),
+                weight=400,
+                align="center",
+                fit=True,
+            )
+        )
+
+    return items
 
 
 def build_price_tag(width, height, params):
@@ -321,75 +377,246 @@ def build_inventory_tag(width, height, params):
 
 
 def build_cable_flag(width, height, params):
-    mid_x = width / 2
     text = params.get("text", "CABLE-01")
+    is_landscape = width > height
+    items = []
 
-    return [
-        {
-            "id": _id(),
-            "type": "cut_line_indicator",
-            "isVertical": True,
-            "x": int(mid_x),
-            "y": 0,
-            "width": int(width),
-            "height": int(height),
-        },
-        _text_item(10, 10, mid_x - 20, height - 20, text, size=60),
-        _text_item(mid_x + 10, 10, mid_x - 20, height - 20, text, size=60),
-    ]
+    if is_landscape:
+        mid_x = width / 2
+        items.append(
+            {
+                "id": _id(),
+                "type": "cut_line_indicator",
+                "isVertical": True,
+                "x": int(mid_x),
+                "y": 0,
+                "width": int(width),
+                "height": int(height),
+            }
+        )
+        items.append(
+            _text_item(
+                10,
+                10,
+                mid_x - 20,
+                height - 20,
+                text,
+                size=int(height * 0.4),
+                align="center",
+                fit=True,
+            )
+        )
+        items.append(
+            _text_item(
+                mid_x + 10,
+                10,
+                mid_x - 20,
+                height - 20,
+                text,
+                size=int(height * 0.4),
+                align="center",
+                fit=True,
+            )
+        )
+    else:
+        mid_y = height / 2
+        items.append(
+            {
+                "id": _id(),
+                "type": "cut_line_indicator",
+                "isVertical": False,
+                "x": 0,
+                "y": int(mid_y),
+                "width": int(width),
+                "height": int(height),
+            }
+        )
+        items.append(
+            _text_item(
+                10,
+                10,
+                width - 20,
+                mid_y - 20,
+                text,
+                size=int(width * 0.25),
+                align="center",
+                fit=True,
+            )
+        )
+        items.append(
+            _text_item(
+                10,
+                mid_y + 10,
+                width - 20,
+                mid_y - 20,
+                text,
+                size=int(width * 0.25),
+                align="center",
+                fit=True,
+            )
+        )
+
+    return items
 
 
 def build_shipping_address(width, height, params):
-    w = max(width, height)
-    h = min(width, height)
+    sender = params.get("sender", "Sender Address")
+    recipient = params.get("recipient", "Recipient Address")
+    service = params.get("service", "STANDARD")
 
-    return [
-        _text_item(
-            16,
-            16,
-            w * 0.45,
-            h * 0.22,
-            f"FROM:\n{params.get('sender', 'Sender Address')}",
-            size=24,
-            align="left",
-        ),
-        {
-            "id": _id(),
-            "type": "shape",
-            "shapeType": "line",
-            "x": 0,
-            "y": int(h * 0.3),
-            "width": int(w),
-            "height": 4,
-            "fill": "black",
-        },
-        _text_item(16, h * 0.35, 120, h * 0.1, "SHIP TO:", size=24, invert=True, no_wrap=True),
-        _text_item(
-            16,
-            h * 0.48,
-            w - 32,
-            h * 0.45,
-            params.get("recipient", "Recipient Address"),
-            size=48,
-            align="left",
-            weight=900,
-        ),
-    ]
+    items = []
+    is_landscape = width > height
+
+    if is_landscape:
+        banner_w = width * 0.15
+        items.append(
+            _text_item(
+                0,
+                0,
+                banner_w,
+                height,
+                service,
+                size=int(banner_w * 0.5),
+                weight=900,
+                align="center",
+                invert=True,
+                fit=True,
+            )
+        )
+
+        content_x = banner_w + 10
+        content_w = width - banner_w - 20
+
+        sender_h = height * 0.25
+        items.append(
+            _text_item(
+                content_x,
+                10,
+                content_w * 0.6,
+                sender_h,
+                f"FROM:\n{sender}",
+                size=int(sender_h * 0.25),
+                weight=700,
+                align="left",
+                fit=True,
+            )
+        )
+
+        items.append(_shape_item(content_x, sender_h + 10, content_w, 4, "black"))
+
+        recip_y = sender_h + 20
+        items.append(
+            _text_item(
+                content_x,
+                recip_y,
+                100,
+                height * 0.1,
+                "SHIP TO:",
+                size=int(height * 0.08),
+                invert=True,
+                align="center",
+                no_wrap=True,
+            )
+        )
+        items.append(
+            _text_item(
+                content_x,
+                recip_y + (height * 0.1) + 10,
+                content_w,
+                height - recip_y - (height * 0.1) - 20,
+                recipient,
+                size=int(height * 0.15),
+                weight=900,
+                align="left",
+                fit=True,
+            )
+        )
+    else:
+        banner_h = height * 0.12
+        items.append(
+            _text_item(
+                0,
+                0,
+                width,
+                banner_h,
+                service,
+                size=int(banner_h * 0.6),
+                weight=900,
+                align="center",
+                invert=True,
+                fit=True,
+            )
+        )
+
+        sender_h = height * 0.2
+        items.append(
+            _text_item(
+                10,
+                banner_h + 10,
+                width - 20,
+                sender_h,
+                f"FROM:\n{sender}",
+                size=int(sender_h * 0.2),
+                weight=700,
+                align="left",
+                fit=True,
+            )
+        )
+
+        line_y = banner_h + sender_h + 10
+        items.append(_shape_item(0, line_y, width, 4, "black"))
+
+        items.append(
+            _text_item(
+                10,
+                line_y + 10,
+                120,
+                height * 0.08,
+                "SHIP TO:",
+                size=int(height * 0.06),
+                invert=True,
+                align="center",
+                no_wrap=True,
+            )
+        )
+
+        recip_y = line_y + (height * 0.08) + 20
+        recip_h = height - recip_y - 10
+        items.append(
+            _text_item(
+                15,
+                recip_y,
+                width - 30,
+                recip_h,
+                recipient,
+                size=int(recip_h * 0.15),
+                weight=900,
+                align="left",
+                fit=True,
+            )
+        )
+
+    return items
 
 
 def build_warning_banner(width, height, params):
-    return [
+    text = params.get("text", "WARNING")
+    items = []
+    items.append(
         _text_item(
-            10,
-            10,
-            width - 20,
-            height - 20,
-            params.get("text", "WARNING"),
-            size=100,
+            0,
+            0,
+            width,
+            height,
+            text,
+            size=int(min(width, height) * 0.6),
             weight=900,
+            align="center",
             invert=True,
+            fit=True,
         )
-    ]
+    )
+    return items
 
 
 TEMPLATE_REGISTRY = {
@@ -453,8 +680,9 @@ TEMPLATE_METADATA = [
     {
         "id": "shipping_address",
         "name": "Shipping Address",
-        "description": "Standard landscape shipping layout.",
+        "description": "Professional shipping label with service banner and sender/recipient blocks.",
         "fields": [
+            {"name": "service", "label": "Service Type (e.g. PRIORITY, STANDARD)", "type": "text", "default": "PRIORITY"},
             {"name": "sender", "label": "Sender Address", "type": "textarea"},
             {"name": "recipient", "label": "Recipient Address", "type": "textarea"},
         ],

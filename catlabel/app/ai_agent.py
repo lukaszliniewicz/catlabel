@@ -318,25 +318,29 @@ AVAILABLE TEMPLATES (Use apply_template):
 
 CRITICAL LAYOUT STRATEGY (WYSIWYG SYNERGY):
 For NEW labels, you MUST use `apply_template` passing the exact `template_id` and filling the `params` object based on the fields listed above.
-The system will automatically convert this into perfectly measured, editable items on the user's canvas.
+The system will automatically convert this into perfectly measured, editable items on the user's canvas based on the current preset's Aspect Ratio!
+
+GRANULAR PARSING (VERY IMPORTANT):
+When a user provides unstructured data, you MUST parse it into the specific granular fields of the template.
+Example: For a Price Tag, if the user says "Hammer £24.99", you must split it: currency_symbol="£", price_main="24", price_cents="99", product_name="Hammer".
 
 WARNING: DO NOT use `add_text_element`, `add_barcode_or_qrcode`, or `add_html_element` unless the user explicitly asks for coordinate-specific editing or a detailed custom composition.
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
-1. Call `apply_template` placing `{{{{ variables }}}}` inside the params (e.g., `params: {{"price": "{{{{ price }}}}"}}`).
+1. Call `apply_template` placing `{{{{ variables }}}}` inside the params (e.g., `params: {{"product_name": "{{{{ name }}}}"}}`).
 2. Call `set_batch_records` passing the array of data. The frontend handles generating the copies automatically!
 
 WORKFLOW EXAMPLES:
 User: "Make a price tag for a Hammer, $15.99."
 Action:
 1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
-2. `apply_template(template_id="price_tag", params={{"product_name": "Hammer", "price": "$15.99", "barcode": "123456"}})`
+2. `apply_template(template_id="price_tag", params={{"currency_symbol": "$", "price_main": "15", "price_cents": "99", "product_name": "Hammer", "barcode": "123456"}})`
 
 User: "I have a continuous roll. Make 5 small inventory tags: Desk, Chair, Lamp, Monitor, Keyboard."
 Action (All in one turn):
 1. `apply_preset(preset_name="Roll: Narrow Tag (48x15mm)")`
-2. `apply_template(template_id="inventory_tag", params={{"title": "{{{{ item }}}}", "code_data": "ID-{{{{ item }}}}", "code_type": "qrcode"}})`
+2. `apply_template(template_id="inventory_tag", params={{"department": "OFFICE", "title": "{{{{ item }}}}", "sku": "SKU-{{{{ item }}}}", "code_data": "ID-{{{{ item }}}}", "code_type": "qrcode"}})`
 3. `set_batch_records(variables_list=[{{"item": "Desk"}}, {{"item": "Chair"}}, {{"item": "Lamp"}}, {{"item": "Monitor"}}, {{"item": "Keyboard"}}])`
 """
 
