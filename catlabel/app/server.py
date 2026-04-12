@@ -39,10 +39,12 @@ NIIMBOT_MODELS = {
 
 def identify_printer_hardware(name: str, device=None):
     name_upper = (name or "").upper()
-    for prefix, info in NIIMBOT_MODELS.items():
+
+    # Sort keys by length descending to ensure D110 is checked before D11
+    for prefix in sorted(NIIMBOT_MODELS.keys(), key=len, reverse=True):
         if name_upper.startswith(prefix):
             return {
-                **info,
+                **NIIMBOT_MODELS[prefix],
                 "media_type": "pre-cut",
                 "default_speed": 1,
                 "default_energy": 3,
