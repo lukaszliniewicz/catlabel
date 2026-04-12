@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import BatchPrintModal from './BatchPrintModal';
 import ProjectTree from './ProjectTree';
 import {
   ChevronDown, ChevronRight, LayoutTemplate,
@@ -29,7 +28,6 @@ export default function Sidebar() {
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [showProjects, setShowProjects] = useState(true);
-  const [showBatchModal, setShowBatchModal] = useState(false);
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -232,13 +230,6 @@ export default function Sidebar() {
         </div>
       )}
 
-      <div className="mt-auto pt-6 flex flex-col gap-2">
-        <div className="w-full">
-          <SidebarButton icon={LayoutTemplate} label="CSV Batch Variables" onClick={() => setShowBatchModal(true)} />
-        </div>
-      </div>
-
-      {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
     </div>
   );
 }

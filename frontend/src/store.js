@@ -171,6 +171,18 @@ export const useStore = create((set, get) => ({
   setBatchRecords: (records) => set({
     batchRecords: Array.isArray(records) && records.length ? records : [{}]
   }),
+  updateBatchRecord: (index, newRecord) => set((state) => {
+    const newRecords = [...state.batchRecords];
+    newRecords[index] = newRecord;
+    return { batchRecords: newRecords };
+  }),
+  addBatchRecord: (record = {}) => set((state) => ({
+    batchRecords: [...state.batchRecords, record]
+  })),
+  removeBatchRecord: (index) => set((state) => {
+    const newRecords = state.batchRecords.filter((_, i) => i !== index);
+    return { batchRecords: newRecords.length ? newRecords : [{}] };
+  }),
   setPrintCopies: (n) => set({
     printCopies: Math.max(1, Number(n) || 1)
   }),

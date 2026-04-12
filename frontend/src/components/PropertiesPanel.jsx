@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { AlignCenter, MoveHorizontal, Maximize2 } from 'lucide-react';
+import { AlignCenter, MoveHorizontal, Maximize2, Sliders, Printer, Database, Sparkles, Plus, Trash2, FileSpreadsheet } from 'lucide-react';
 import AIAssistant from './AIAssistant';
+import BatchPrintModal from './BatchPrintModal';
 
 const pxToMm = (px) => (px / 8).toFixed(1);
 const mmToPx = (mm) => Math.round(mm * 8);
@@ -107,13 +108,14 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   const [panelWidth, setPanelWidth] = useState(320);
 
   // Tab State
   const [activeTab, setActiveTab] = useState('canvas');
+  const [showBatchModal, setShowBatchModal] = useState(false);
   
   // Automatically switch tabs based on selection
   useEffect(() => {
@@ -305,6 +307,12 @@ export default function PropertiesPanel() {
   const dotsPerMm = localSettings.default_dpi / 25.4;
   const printPx = Math.round(localSettings.print_width_mm * dotsPerMm);
 
+  const templateStr = items.map((i) => `${i.text || ''} ${i.data || ''} ${i.html || ''}`).join(' ');
+  const templateMatches = templateStr.match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g) || [];
+  const templateKeys = templateMatches.map((match) => match.replace(/[{}]/g, '').trim());
+  const existingKeys = batchRecords.flatMap((record) => Object.keys(record || {}));
+  const allBatchKeys = Array.from(new Set([...templateKeys, ...existingKeys]));
+
   return (
     <div 
       className="bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300 relative shrink-0"
@@ -320,28 +328,43 @@ export default function PropertiesPanel() {
         <button 
           onClick={() => setActiveTab('element')}
           disabled={!selectedItem}
-          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors
+          className={`flex-1 flex justify-center py-4 transition-colors relative group
             ${!selectedItem ? 'text-neutral-300 dark:text-neutral-700 cursor-not-allowed' : 
-            activeTab === 'element' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+            activeTab === 'element' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
           `}
         >
-          Element
+          <Sliders size={20} />
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Element</span>
         </button>
+        
         <button 
           onClick={() => setActiveTab('canvas')}
-          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors
-            ${activeTab === 'canvas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+          className={`flex-1 flex justify-center py-4 transition-colors relative group
+            ${activeTab === 'canvas' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
           `}
         >
-          Canvas &amp; Printer
+          <Printer size={20} />
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Canvas & Printer</span>
         </button>
+
+        <button 
+          onClick={() => setActiveTab('data')}
+          className={`flex-1 flex justify-center py-4 transition-colors relative group
+            ${activeTab === 'data' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+          `}
+        >
+          <Database size={20} />
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Batch Data</span>
+        </button>
+
         <button 
           onClick={() => setActiveTab('assistant')}
-          className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors
-            ${activeTab === 'assistant' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+          className={`flex-1 flex justify-center py-4 transition-colors relative group
+            ${activeTab === 'assistant' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
           `}
         >
-          Assistant
+          <Sparkles size={20} />
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">AI Assistant</span>
         </button>
       </div>
 
@@ -790,11 +813,71 @@ export default function PropertiesPanel() {
           </>
         )}
 
+        {/* === DATA TAB === */}
+        {activeTab === 'data' && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Variable Data</h2>
+            <p className="text-[10px] text-neutral-500 mb-2 leading-relaxed">
+              Add data below. They will automatically replace matching <code>{`{{ variable }}`}</code> tags on the canvas.
+            </p>
+
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setShowBatchModal(true)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[10px] uppercase font-bold tracking-widest transition-colors">
+                <FileSpreadsheet size={14} /> Import CSV
+              </button>
+              <button onClick={() => setBatchRecords([{ ...allBatchKeys.reduce((acc, key) => ({ ...acc, [key]: '' }), {}) }])} className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors" title="Clear All Data">
+                <Trash2 size={16} />
+              </button>
+            </div>
+
+            {allBatchKeys.length === 0 && (
+              <div className="text-center p-4 border border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-400 text-xs">
+                No variables detected.<br/><br/> Add a text element containing a tag like <code>{`{{ name }}`}</code> to get started.
+              </div>
+            )}
+
+            {allBatchKeys.length > 0 && (
+              <div className="space-y-4">
+                {batchRecords.map((record, index) => (
+                  <div key={index} className="border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-3 relative group">
+                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-neutral-200 dark:border-neutral-800">
+                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Record {index + 1}</span>
+                      <button onClick={() => removeBatchRecord(index)} className="text-neutral-400 hover:text-red-500 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {allBatchKeys.map((key) => (
+                        <div key={key} className="flex flex-col">
+                          <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">{key}</label>
+                          <input
+                            type="text"
+                            value={record[key] || ''}
+                            onChange={(e) => updateBatchRecord(index, { ...record, [key]: e.target.value })}
+                            className="w-full bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-1.5 text-xs focus:outline-none focus:border-blue-500 transition-colors dark:text-white"
+                            placeholder={`Value for ${key}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                <button onClick={() => addBatchRecord(allBatchKeys.reduce((acc, key) => ({ ...acc, [key]: '' }), {}))} className="w-full flex justify-center items-center gap-2 py-3 border border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-[10px] uppercase tracking-widest font-bold">
+                  <Plus size={14} /> Add Record
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* === ASSISTANT TAB === */}
         {activeTab === 'assistant' && (
            <AIAssistant />
         )}
       </div>
+
+      {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
     </div>
   );
 }
