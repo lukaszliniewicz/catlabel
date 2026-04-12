@@ -37,6 +37,10 @@ if [ ! -d "env" ]; then
     echo "[3/4] Installing backend dependencies..."
     ./bin/micromamba run -p ./env python -m pip install -r requirements.txt
 
+    echo "      Installing Headless Chromium (Portable)..."
+    export PLAYWRIGHT_BROWSERS_PATH=0
+    ./bin/micromamba run -p ./env python -m playwright install chromium
+
     # 3. Use pushd/popd for safe directory navigation
     echo "[4/4] Building optimized frontend UI..."
     pushd frontend > /dev/null

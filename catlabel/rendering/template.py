@@ -1,474 +1,83 @@
-import json
 import base64
-import re
 from io import BytesIO
-from datetime import datetime, timedelta
-from PIL import Image, ImageDraw, ImageFont
-import barcode
-from barcode.writer import ImageWriter
-import qrcode
-import os
+from typing import List
 
-from ..app.label_templates import build_label_template_document
+from PIL import Image
+from playwright.sync_api import sync_playwright
 
-def apply_smart_vars(text: str, variables: dict) -> str:
-    """Replaces standard {{ var }} and evaluates dynamic {{ $date+X }} variables."""
-    if not text or not isinstance(text, str):
-        return text
 
-    result = text
+def _headless_url_candidates() -> List[str]:
+    return [
+        "http://127.0.0.1:8000/index.html?mode=headless",
+        "http://127.0.0.1:5173/index.html?mode=headless",
+    ]
 
-    for key, value in (variables or {}).items():
-        pattern = re.compile(r"\{\{\s*" + re.escape(str(key)) + r"\s*\}\}")
-        result = pattern.sub(str(value), result)
 
-    now = datetime.now()
-    result = re.sub(r"\{\{\s*\$date\s*\}\}", now.strftime("%Y-%m-%d"), result)
-    result = re.sub(r"\{\{\s*\$time\s*\}\}", now.strftime("%H:%M"), result)
+def _decode_browser_image(data_url_or_b64: str) -> Image.Image:
+    image_data = data_url_or_b64 or ""
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
+    decoded = base64.b64decode(image_data)
+    return Image.open(BytesIO(decoded)).convert("RGB")
 
-    def date_offset_repl(match):
-        op = match.group(1)
-        days = int(match.group(2))
-        delta = timedelta(days=days)
-        new_date = now + delta if op == "+" else now - delta
-        return new_date.strftime("%Y-%m-%d")
 
-    result = re.sub(r"\{\{\s*\$date([+-])(\d+)\s*\}\}", date_offset_repl, result)
-    return result
+def render_via_browser(canvas_state: dict, variables_collection: list, copies: int = 1) -> List[Image.Image]:
+    """
+    Uses the browser renderer as the source of truth for final print images.
+    The React/Konva frontend renders the exact WYSIWYG output, which is then
+    returned to Python as Base64 screenshots for the printer pipeline.
+    """
+    payload = {
+        "canvas_state": canvas_state or {},
+        "variables_collection": variables_collection or [{}],
+        "copies": copies,
+    }
 
-def safe_getlength(font, text):
-    """Safely measure text width across different Pillow versions."""
-    if hasattr(font, "getlength"):
-        return font.getlength(text)
-    return font.getsize(text)[0]
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
 
-def apply_font_weight(font: ImageFont.FreeTypeFont, weight: int) -> ImageFont.FreeTypeFont:
-    """Safely applies OpenType Variable Font weights (e.g., 100-900) if supported."""
-    try:
-        axes = font.get_variation_axes()
-        if not axes:
-            return font
-            
-        axis_values = [axis['default'] for axis in axes]
-        for i, axis in enumerate(axes):
-            name = axis.get('name', b'').lower()
-            tag = axis.get('tag', b'').lower()
-            if b'weight' in name or b'wght' in name or tag == b'wght':
-                # Clamp the weight to the font's allowed min/max to prevent Pillow crashes
-                clamped = max(axis['minimum'], min(axis['maximum'], float(weight)))
-                axis_values[i] = clamped
-                
-        font.set_variation_by_axes(axis_values)
-    except OSError:
-        pass # Not a variable font (e.g., static Arial fallback)
-    except Exception as e:
-        print(f"Font variation warning: {e}")
-    return font
+            last_error = None
+            for url in _headless_url_candidates():
+                try:
+                    page.goto(url, wait_until="networkidle")
+                    last_error = None
+                    break
+                except Exception as exc:
+                    last_error = exc
 
-def _render_html_document(html_wrapper: str, item_w: int, item_h: int):
-    tmp_path = f"html_{os.getpid()}_{id(html_wrapper)}.png"
-    try:
-        from html2image import Html2Image
+            if last_error is not None:
+                raise RuntimeError("Unable to load the headless frontend renderer.") from last_error
 
-        hti = Html2Image(custom_flags=[
-            '--no-sandbox',
-            '--disable-gpu',
-            '--force-device-scale-factor=1',
-            '--hide-scrollbars',
-            '--disable-dev-shm-usage'
-        ])
-        hti.screenshot(html_str=html_wrapper, save_as=tmp_path, size=(item_w, item_h))
+            page.evaluate(
+                "(payload) => { window.__INJECTED_PAYLOAD__ = payload; }",
+                payload,
+            )
+            page.wait_for_selector("#render-done", timeout=30000)
+            rendered_images = page.evaluate("window.__RENDERED_IMAGES__ || []")
+        finally:
+            browser.close()
 
-        if not os.path.exists(tmp_path):
-            return None
+    images = []
+    for data in rendered_images:
+        image = _decode_browser_image(data)
+        if canvas_state.get("isRotated"):
+            image = image.rotate(90, expand=True)
+        images.append(image)
 
-        insert_img = Image.open(tmp_path).convert("RGBA")
-        bg = Image.new("RGBA", insert_img.size, "WHITE")
-        bg.paste(insert_img, (0, 0), insert_img)
-        return bg.convert("RGB")
-    except Exception as e:
-        print(f"HTML Rendering Error: {e}")
-        return None
-    finally:
-        if os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
+    return images
 
 
 def render_template(template_data: dict, variables: dict, default_font: str = "Roboto.ttf") -> Image.Image:
     """
-    Takes a JSON-like dictionary representing the canvas state and a dictionary
-    of variables, and renders a Pillow Image ready to be encoded for the printer.
+    Backwards-compatible wrapper for any remaining code paths that still expect
+    a single rendered PIL image from the old API.
     """
-    width = template_data.get("width", 384)
-    height = template_data.get("height", 384)
-    
-    img = Image.new("RGB", (width, height), "white")
-    draw = ImageDraw.Draw(img)
-    
-    items = list(template_data.get("items", []) or [])
-    index = 0
-    while index < len(items):
-        item = items[index]
-        x = int(item.get("x", 0))
-        y = int(item.get("y", 0))
-        item_type = item.get("type")
+    images = render_via_browser(template_data or {}, [variables or {}], 1)
+    if images:
+        return images[0]
 
-        if item_type == "group":
-            expanded_children = []
-            for child in item.get("children", []) or []:
-                child_item = dict(child)
-                child_item["x"] = x + int(child.get("x", 0))
-                child_item["y"] = y + int(child.get("y", 0))
-                expanded_children.append(child_item)
-            items[index + 1:index + 1] = expanded_children
-            index += 1
-            continue
-        
-        item_h = item.get("height")
-        if not item_h:
-            if item_type == "text":
-                item_h = int(item.get("size", 24))
-            else:
-                item_h = 50
-
-        actual_drawn_height = item_h 
-
-        if item_type == "image":
-            b64_src = item.get("src", "")
-            if "," in b64_src:
-                b64_src = b64_src.split(",")[1]
-            try:
-                img_data = base64.b64decode(b64_src)
-                insert_img = Image.open(BytesIO(img_data)).convert("RGBA")
-                iw = int(item.get("width", insert_img.width))
-                ih = int(item.get("height", insert_img.height))
-                insert_img = insert_img.resize((iw, ih), Image.Resampling.LANCZOS)
-                
-                bg = Image.new("RGBA", insert_img.size, "WHITE")
-                bg.paste(insert_img, (0, 0), insert_img)
-                img.paste(bg.convert("RGB"), (x, y))
-                actual_drawn_height = ih
-            except Exception:
-                pass
-
-        elif item_type == "label_template":
-            item_w = int(item.get("width", width))
-            item_h = int(item.get("height", height))
-            template_html = build_label_template_document(
-                template_id=item.get("template_id", "default"),
-                text=apply_smart_vars(item.get("text", ""), variables),
-                title=apply_smart_vars(item.get("title", ""), variables),
-                subtitle=apply_smart_vars(item.get("subtitle", ""), variables),
-                custom_html=apply_smart_vars(item.get("custom_html", ""), variables),
-            )
-
-            rendered_template = _render_html_document(template_html, item_w, item_h)
-            if rendered_template:
-                img.paste(rendered_template, (x, y))
-            else:
-                fallback_text = apply_smart_vars(
-                    item.get("text") or item.get("title") or item.get("template_id", "template"),
-                    variables,
-                )
-                draw.rectangle([x, y, x + item_w, y + item_h], outline="red", width=2)
-                draw.text((x + 5, y + 5), str(fallback_text), fill="red")
-            actual_drawn_height = item_h
-
-        elif item_type == "html":
-            item_w = int(item.get("width", 384))
-            item_h = int(item.get("height", 200))
-            html_str = apply_smart_vars(item.get("html", ""), variables)
-            html_wrapper = f"""<!DOCTYPE html>
-<html style="margin:0;padding:0;width:{item_w}px;height:{item_h}px;overflow:hidden;">
-<body style="margin:0;padding:0;width:{item_w}px;height:{item_h}px;overflow:hidden;background:transparent;">
-{html_str}
-</body>
-</html>"""
-            
-            rendered_html = _render_html_document(html_wrapper, item_w, item_h)
-            if rendered_html:
-                img.paste(rendered_html, (x, y))
-            else:
-                draw.rectangle([x, y, x + item_w, y + item_h], outline="red", width=2)
-                draw.text((x + 5, y + 5), "HTML Render Failed (Check html2image)", fill="red")
-            actual_drawn_height = item_h
-                
-        elif item_type == "shape":
-            item_w = int(item.get("width", 100))
-            item_h = int(item.get("height", 100))
-            fill = None if item.get("fill") in (None, "", "transparent") else item.get("fill")
-            outline = None if item.get("stroke") in (None, "", "transparent") else item.get("stroke")
-            stroke_width = max(1, int(item.get("strokeWidth", 1) or 1))
-
-            if item.get("shapeType") == "rect":
-                draw.rectangle([x, y, x + item_w, y + item_h], fill=fill, outline=outline, width=stroke_width)
-                actual_drawn_height = item_h
-            elif item.get("shapeType") in {"circle", "ellipse"}:
-                draw.ellipse([x, y, x + item_w, y + item_h], fill=fill, outline=outline, width=stroke_width)
-                actual_drawn_height = item_h
-            elif item.get("shapeType") == "line":
-                line_width = max(1, int(item.get("height", stroke_width) or stroke_width))
-                line_color = item.get("fill", "black")
-                draw.line([(x, y), (x + item_w, y)], fill=line_color, width=line_width)
-                actual_drawn_height = line_width
-
-        elif item_type == "cut_line_indicator":
-            is_vert = item.get("isVertical", False)
-            w = int(item.get("width", width))
-            h = int(item.get("height", height))
-            
-            if is_vert:
-                for dash_y in range(y, y + h, 15):
-                    draw.line([(x, dash_y), (x, dash_y + 8)], fill="black", width=2)
-            else:
-                for dash_x in range(x, x + w, 15):
-                    draw.line([(dash_x, y), (dash_x + 8, y)], fill="black", width=2)
-
-        elif item_type == "icon_text":
-            b64_src = item.get("icon_src", "")
-            if "," in b64_src:
-                b64_src = b64_src.split(",")[1]
-            
-            icon_w = int(item.get("icon_size", 50))
-            icon_x = x + int(item.get("icon_x", 0))
-            icon_y = y + int(item.get("icon_y", 0))
-
-            try:
-                img_data = base64.b64decode(b64_src)
-                insert_img = Image.open(BytesIO(img_data)).convert("RGBA")
-                insert_img = insert_img.resize((icon_w, icon_w), Image.Resampling.LANCZOS)
-                
-                bg = Image.new("RGBA", insert_img.size, "WHITE")
-                bg.paste(insert_img, (0, 0), insert_img)
-                img.paste(bg.convert("RGB"), (icon_x, icon_y))
-            except Exception:
-                pass
-
-            text = apply_smart_vars(item.get("text", ""), variables)
-            
-            size = int(item.get("size", 24))
-            font_name = item.get("font", default_font)
-            weight = int(item.get("weight", 700))
-
-            def get_font(f_size):
-                local_font_path = os.path.join("data", "fonts", font_name)
-                f = None
-                if os.path.exists(local_font_path):
-                    f = ImageFont.truetype(local_font_path, int(f_size))
-                else:
-                    try:
-                        f = ImageFont.truetype(font_name, int(f_size))
-                    except IOError:
-                        f = ImageFont.load_default()
-                return apply_font_weight(f, weight)
-            
-            font = get_font(size)
-            text_x = x + int(item.get("text_x", 0))
-            
-            # --- PREVENT BLEEDING ---
-            # If Pillow's measurement says the text will hit the right edge, we scale it down.
-            max_text_w = width - text_x - 4 # 4px safety cushion
-            if max_text_w > 0 and text:
-                current_w = safe_getlength(font, text)
-                if current_w > max_text_w:
-                    size = max(6, int(size * (max_text_w / current_w)))
-                    font = get_font(size)
-            
-            # --- PERFECT CENTERING ---
-            group_h = int(item.get("height", max(icon_w, size)))
-            box_center_y = y + (group_h / 2)
-            
-            cap_height = size * 0.71
-            baseline_y = box_center_y + (cap_height / 2)
-            
-            if text:
-                # Use 'ls' (Left-Baseline) to align perfectly to text_x without any left_bearing hacks
-                draw.text((text_x, baseline_y), text, fill="black", font=font, anchor="ls")
-                
-            actual_drawn_height = group_h
-
-        elif item_type == "text":
-            text = apply_smart_vars(str(item.get("text", "")), variables)
-            
-            size = int(item.get("size", 24))
-            font_name = item.get("font", default_font)
-            weight = int(item.get("weight", 700))
-            box_width = item.get("width")
-            no_wrap = item.get("no_wrap", False)
-            invert = item.get("invert", False)
-            bg_white = item.get("bg_white", False)
-            text_color = "white" if invert else "black"
-            bg_color = "black" if invert else ("white" if bg_white else None)
-            pad = int(item.get("padding", 4 if (invert or bg_white) else 0))
-            
-            def get_font(f_size):
-                local_font_path = os.path.join("data", "fonts", font_name)
-                f = None
-                if os.path.exists(local_font_path):
-                    f = ImageFont.truetype(local_font_path, int(f_size))
-                else:
-                    try:
-                        f = ImageFont.truetype(font_name, int(f_size))
-                    except IOError:
-                        f = ImageFont.load_default()
-                return apply_font_weight(f, weight)
-
-            if item.get("fit_to_width") and box_width:
-                target_height = item.get("height", height)
-                low, high, best_size = 6, 800, size
-                lines_to_test = text.split('\n')
-                
-                while low <= high:
-                    mid = (low + high) // 2
-                    t_font = get_font(mid)
-                    tw = max([safe_getlength(t_font, l) for l in lines_to_test] + [0])
-                    th = mid * 1.15 * len(lines_to_test)
-                    
-                    if tw <= (box_width - (pad * 2)) and th <= (target_height - (pad * 2)):
-                        best_size = mid
-                        low = mid + 1
-                    else:
-                        high = mid - 1
-                size = best_size
-
-            font = get_font(size)
-            align = item.get("align", "left")
-            lines = text.split('\n')
-            
-            if box_width and not no_wrap:
-                wrapped_lines = []
-                for paragraph in lines:
-                    words = paragraph.split(' ')
-                    current_line = []
-                    for word in words:
-                        test_line = ' '.join(current_line + [word]) if current_line else word
-                        if safe_getlength(font, test_line) <= (box_width - (pad * 2)):
-                            current_line.append(word)
-                        else:
-                            if current_line:
-                                wrapped_lines.append(' '.join(current_line))
-                                current_line = [word]
-                            else:
-                                wrapped_lines.append(word)
-                                current_line = []
-                    if current_line:
-                        wrapped_lines.append(' '.join(current_line))
-                lines = wrapped_lines
-                
-            num_lines = max(1, len(lines))
-            line_height_px = size * 1.15
-            cap_height = size * 0.71
-            
-            approx_height = item.get("height")
-            if not approx_height:
-                approx_height = int((line_height_px * num_lines) + (pad * 2))
-            else:
-                approx_height = int(approx_height)
-                
-            actual_drawn_height = approx_height
-            
-            if not box_width:
-                box_width = max([int(safe_getlength(font, l)) for l in lines] + [0]) + (pad * 2)
-
-            if bg_color:
-                draw.rectangle([x, y, x + box_width, y + approx_height], fill=bg_color)
-            
-            avail_h = approx_height - (pad * 2)
-            avail_w = box_width - (pad * 2)
-            box_center_y = y + pad + (avail_h / 2)
-            first_baseline_y = box_center_y + (cap_height / 2) - ((num_lines - 1) * line_height_px / 2)
-            
-            for i, line in enumerate(lines):
-                if not line.strip():
-                    continue
-                
-                line_baseline_y = first_baseline_y + (i * line_height_px)
-                
-                if align == "center":
-                    line_cx = x + pad + (avail_w / 2)
-                    anchor = "ms"
-                elif align == "right":
-                    line_cx = x + box_width - pad
-                    anchor = "rs"
-                else:
-                    line_cx = x + pad
-                    anchor = "ls"
-                    
-                draw.text((line_cx, line_baseline_y), line, fill=text_color, font=font, anchor=anchor)
-            
-        elif item_type == "barcode":
-            data = apply_smart_vars(item.get("data", ""), variables)
-                
-            bclass = barcode.get_barcode_class(item.get("barcode_type", "code128"))
-            writer = ImageWriter()
-            writer.set_options({'write_text': False, 'module_height': 10.0, 'quiet_zone': 1.0})
-            bcode = bclass(data, writer=writer)
-            
-            fp = BytesIO()
-            bcode.write(fp)
-            fp.seek(0)
-            bc_img = Image.open(fp).convert("RGBA")
-            
-            bw = int(item.get("width", bc_img.width))
-            bh = int(item.get("height", bc_img.height))
-            # CRITICAL: Use NEAREST to prevent anti-aliasing which breaks thermal dithering
-            bc_img = bc_img.resize((bw, bh), Image.Resampling.NEAREST)
-            
-            img.paste(bc_img, (x, y), bc_img)
-            actual_drawn_height = bh
-            
-        elif item_type == "qrcode":
-            data = apply_smart_vars(item.get("data", ""), variables)
-                
-            qr = qrcode.QRCode(box_size=item.get("box_size", 10), border=item.get("border", 1))
-            qr.add_data(data)
-            qr.make(fit=True)
-            qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
-            
-            bw = int(item.get("width", qr_img.width))
-            bh = int(item.get("height", qr_img.height))
-            # CRITICAL: Use NEAREST to prevent anti-aliasing which breaks thermal dithering
-            qr_img = qr_img.resize((bw, bh), Image.Resampling.NEAREST)
-            
-            img.paste(qr_img, (x, y), qr_img)
-            actual_drawn_height = bh
-
-        border = item.get("border_style", "none")
-        b_thick = int(item.get("border_thickness", 2))
-        if border != "none":
-            item_w = int(item.get("width", 100))
-            if border == "box":
-                draw.rectangle([x, y, x + item_w, y + actual_drawn_height], outline="black", width=b_thick)
-            elif border == "top":
-                draw.line([(x, y), (x + item_w, y)], fill="black", width=b_thick)
-            elif border == "bottom":
-                draw.line([(x, y + actual_drawn_height), (x + item_w, y + actual_drawn_height)], fill="black", width=b_thick)
-            elif border == "cut_line":
-                for dash_x in range(x, x + item_w, 15):
-                    draw.line([(dash_x, y + actual_drawn_height + 2), (dash_x + 8, y + actual_drawn_height + 2)], fill="black", width=b_thick)
-
-        if "height" not in item:
-            item["height"] = actual_drawn_height
-
-        index += 1
-
-    canvas_border = template_data.get("canvasBorder", "none")
-    cv_thick = int(template_data.get("canvasBorderThickness", 2))
-    if canvas_border != "none":
-        if canvas_border == "box":
-            draw.rectangle([0, 0, width - 1, height - 1], outline="black", width=cv_thick)
-        elif canvas_border == "top":
-            draw.line([(0, 0), (width, 0)], fill="black", width=cv_thick)
-        elif canvas_border == "bottom":
-            draw.line([(0, height - 1), (width, height - 1)], fill="black", width=cv_thick)
-        elif canvas_border == "cut_line":
-            for dash_x in range(0, width, 15):
-                draw.line([(dash_x, height - 1), (dash_x + 8, height - 1)], fill="black", width=cv_thick)
-
-    if template_data.get("isRotated"):
-        img = img.rotate(90, expand=True)
-
-    return img
+    width = max(1, int((template_data or {}).get("width", 384) or 384))
+    height = max(1, int((template_data or {}).get("height", 384) or 384))
+    return Image.new("RGB", (width, height), "white")

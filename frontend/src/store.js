@@ -14,7 +14,16 @@ export const useStore = create((set, get) => ({
   selectedPrinter: null,
   selectedPrinterInfo: null,
   showAiConfig: false,
+  stageRef: null,
   setShowAiConfig: (val) => set({ showAiConfig: val }),
+  setStageRef: (ref) => set({ stageRef: ref }),
+  getStageB64: () => {
+    const stage = get().stageRef;
+    const zoomScale = get().zoomScale || 1;
+    return stage
+      ? stage.toDataURL({ pixelRatio: 1 / Math.max(zoomScale, 0.1) })
+      : null;
+  },
   setZoomScale: (scale) => set({ zoomScale: Math.max(0.1, Math.min(5, scale)) }),
   manualPrinters: (() => {
     if (typeof window === 'undefined') return [];

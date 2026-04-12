@@ -5,6 +5,7 @@ import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
 import OnboardingWizard from './components/OnboardingWizard';
 import AIConfigModal from './components/AIConfigModal';
+import HeadlessRenderer from './HeadlessRenderer';
 import { useStore } from './store';
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
   const settings = useStore((state) => state.settings);
   const showAiConfig = useStore((state) => state.showAiConfig);
   const setShowAiConfig = useStore((state) => state.setShowAiConfig);
+  const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
 
   useEffect(() => {
     fetchFonts();
@@ -28,6 +30,10 @@ function App() {
       root.classList.add(theme);
     }
   }, [theme, fetchFonts]);
+
+  if (isHeadless) {
+    return <HeadlessRenderer />;
+  }
 
   return (
     <div className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans transition-colors duration-300">

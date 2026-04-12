@@ -42,6 +42,11 @@ if not exist "env\" (
     bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt
     if errorlevel 1 goto error
 
+    echo       Installing Headless Chromium (Portable)...
+    set PLAYWRIGHT_BROWSERS_PATH=0
+    bin\micromamba.exe run -p .\env python -m playwright install chromium
+    if errorlevel 1 goto error
+
     echo [4/4] Building optimized frontend UI...
     :: Use pushd/popd instead of cd. It remembers where you were and guarantees you get back.
     pushd frontend

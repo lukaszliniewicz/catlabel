@@ -140,6 +140,8 @@ export default function AIAssistant() {
     };
 
     try {
+      const b64Image = useStore.getState().getStageB64();
+
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,7 +149,8 @@ export default function AIAssistant() {
            messages: newMessages, 
            canvas_state: currentState,
            mac_address: selectedPrinter || null,
-           printer_info: selectedPrinterInfo || null
+           printer_info: selectedPrinterInfo || null,
+           current_canvas_b64: b64Image ? b64Image.split(',')[1] : null
         })
       });
       

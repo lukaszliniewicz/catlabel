@@ -19,7 +19,7 @@ import pypdfium2 as pdfium
 from sqlmodel import SQLModel, create_engine, Session, select
 
 from .models import PrinterProfile, Font, Category, Project, Settings, Address, LabelPreset
-from ..rendering.template import render_template
+from ..rendering.template import render_template, render_via_browser
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
 from .ai_agent import router as ai_router
@@ -792,47 +792,46 @@ def _extract_pages_from_canvas(canvas_state: Dict[str, Any], variables: Dict[str
 @app.post("/api/print/direct")
 async def print_direct(request: DirectPrintRequest):
     """Endpoint for the frontend to test print without saving a template."""
-    with Session(engine) as session:
-        settings = session.get(Settings, 1)
-        default_font = settings.default_font if settings else "Roboto.ttf"
-
     split_mode = request.canvas_state.get("splitMode", False)
-    images = _extract_pages_from_canvas(request.canvas_state, request.variables, default_font)
+    images = await asyncio.to_thread(
+        render_via_browser,
+        request.canvas_state,
+        [request.variables or {}],
+        1,
+    )
     await execute_print_jobs(request.mac_address, images, split_mode)
-    
+
     return {
-        "status": "success", 
+        "status": "success",
         "message": f"Direct print successful to {request.mac_address}",
         "mac_address": request.mac_address
     }
 
 @app.post("/api/print/batch")
 async def print_batch(request: BatchPrintRequest):
-    with Session(engine) as session:
-        settings = session.get(Settings, 1)
-        default_font = settings.default_font if settings else "Roboto.ttf"
-
     split_mode = request.canvas_state.get("splitMode", False)
-    images = []
-    
+
     variables_collection = []
     if request.variables_list:
         variables_collection.extend(request.variables_list)
-        
+
     if request.variables_matrix:
         import itertools
         keys = list(request.variables_matrix.keys())
         values = list(request.variables_matrix.values())
         for combination in itertools.product(*values):
             variables_collection.append(dict(zip(keys, combination)))
-            
+
     if not variables_collection:
         variables_collection = [{}]
 
-    for variables in variables_collection:
-        for _ in range(request.copies):
-            images.extend(_extract_pages_from_canvas(request.canvas_state, variables, default_font))
-            
+    images = await asyncio.to_thread(
+        render_via_browser,
+        request.canvas_state,
+        variables_collection,
+        request.copies,
+    )
+
     await execute_print_jobs(request.mac_address, images, split_mode)
     return {"status": "success", "printed": len(images)}
 

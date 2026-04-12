@@ -2,8 +2,6 @@ import json
 import os
 import tempfile
 import logging
-import base64
-from io import BytesIO
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -16,7 +14,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] AI_A
 
 from .models import AIConfig, AIConversation, AIProvider, AIModelConfig
 from .ai_tools import TOOLS_SCHEMA, execute_tool
-from ..rendering.template import render_template
 
 router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
 
@@ -25,6 +22,7 @@ class ChatRequest(BaseModel):
     canvas_state: Dict[str, Any]
     mac_address: Optional[str] = None
     printer_info: Optional[Dict[str, Any]] = None
+    current_canvas_b64: Optional[str] = None
 
 class ModelDTO(BaseModel):
     id: Optional[Union[int, str]] = None
@@ -54,41 +52,6 @@ def serialize_msg(msg) -> Dict[str, Any]:
         clean_d["content"] = None
     return clean_d
 
-def _preview_canvas_state(canvas_state):
-    preview_state = dict(canvas_state or {})
-    items = list(preview_state.get("items", []) or [])
-    if not items:
-        preview_state["items"] = []
-        return preview_state
-
-    page_indexes = sorted({int(item.get("pageIndex", 0) or 0) for item in items})
-    current_page = preview_state.get("currentPage", 0)
-    try:
-        current_page = int(current_page or 0)
-    except Exception:
-        current_page = 0
-
-    if current_page not in page_indexes:
-        current_page = page_indexes[0]
-
-    preview_state["items"] = [
-        item for item in items
-        if int(item.get("pageIndex", 0) or 0) == current_page
-    ]
-    return preview_state
-
-def get_canvas_b64(canvas_state, default_font):
-    """Renders the active canvas page to base64 JPEG for Vision models."""
-    try:
-        preview_state = _preview_canvas_state(canvas_state)
-        img = render_template(preview_state, {}, default_font=default_font)
-        buf = BytesIO()
-        # Max resolution bound to save tokens, RGB conversion for JPEG
-        img.convert("RGB").save(buf, format="JPEG", quality=70)
-        return base64.b64encode(buf.getvalue()).decode("utf-8")
-    except Exception as e:
-        logger.error(f"Canvas render failed for vision: {e}")
-        return None
 
 @router.get("/config")
 def get_providers():
@@ -393,16 +356,14 @@ Action (All in one turn):
             
             # --- VISION TRANSIENT INJECTION ---
             temp_messages = messages.copy()
-            if active_model.vision_capable:
-                b64 = get_canvas_b64(canvas_state_copy, context['global_default_font'])
-                if b64:
-                    temp_messages.append({
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": "[SYSTEM AUTO-INJECT] Current visual render of the canvas. Evaluate your layout:"},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                        ]
-                    })
+            if active_model.vision_capable and req.current_canvas_b64:
+                temp_messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "[SYSTEM AUTO-INJECT] Current visual render of the canvas. Evaluate your layout:"},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{req.current_canvas_b64}"}}
+                    ]
+                })
             
             response = litellm.completion(messages=temp_messages, **kwargs)
 
