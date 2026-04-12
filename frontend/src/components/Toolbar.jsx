@@ -249,83 +249,93 @@ export default function Toolbar() {
   };
 
   return (
-    <div className="h-14 bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 flex items-center px-4 justify-between shrink-0 z-20">
-      <div className="flex items-center gap-1">
-        <ToolButton icon={Type} label="Add Text" onClick={handleAddText} />
-        <ToolButton icon={Calendar} label="Add Date" onClick={() => setShowDateModal(true)} />
+    <div className="min-h-[3.5rem] bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center px-4 py-2 justify-between gap-4 shrink-0 z-20">
+      
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+        
+        {/* Text & Data Group */}
+        <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/30 p-1 rounded-md border border-neutral-100 dark:border-neutral-800/60">
+          <ToolButton icon={Type} label="Add Text" onClick={handleAddText} />
+          <ToolButton icon={Calendar} label="Add Date" onClick={() => setShowDateModal(true)} />
+        </div>
 
-        <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
+        {/* Media Group */}
+        <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/30 p-1 rounded-md border border-neutral-100 dark:border-neutral-800/60">
+          <ToolButton icon={Smile} label="Icon Only" onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} />
+          <ToolButton icon={ImagePlus} label="Icon + Text" onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} />
+          <ToolButton component="label" icon={ImageIcon} label="Upload Image">
+            <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
+          </ToolButton>
+          <div className="relative" ref={shapeDropdownRef}>
+            <ToolButton
+              icon={Shapes}
+              label="Shapes"
+              onClick={() => setShowShapeDropdown(!showShapeDropdown)}
+              active={showShapeDropdown}
+            />
+            {showShapeDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-36 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50">
+                <button onClick={() => handleAddShape('rect')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
+                  <Square size={16} /> Rectangle
+                </button>
+                <button onClick={() => handleAddShape('circle')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
+                  <Circle size={16} /> Ellipse
+                </button>
+                <button onClick={() => handleAddShape('line')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
+                  <Minus size={16} /> Line
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
-        <ToolButton icon={Smile} label="Icon Only" onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} />
-        <ToolButton icon={ImagePlus} label="Icon + Text" onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} />
-        <ToolButton component="label" icon={ImageIcon} label="Upload Image">
-          <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
-        </ToolButton>
+        {/* View Group */}
+        <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/30 p-1 rounded-md border border-neutral-100 dark:border-neutral-800/60">
+          <ToolButton icon={ZoomIn} label="Zoom In" onClick={() => setZoomScale(zoomScale + 0.25)} />
+          <ToolButton icon={ZoomOut} label="Zoom Out" onClick={() => setZoomScale(zoomScale - 0.25)} />
+        </div>
 
-        <div className="relative" ref={shapeDropdownRef}>
-          <ToolButton
-            icon={Shapes}
-            label="Shapes"
-            onClick={() => setShowShapeDropdown(!showShapeDropdown)}
-            active={showShapeDropdown}
-          />
-          {showShapeDropdown && (
-            <div className="absolute top-full left-0 mt-2 w-36 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50">
-              <button onClick={() => handleAddShape('rect')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
-                <Square size={16} /> Rectangle
-              </button>
-              <button onClick={() => handleAddShape('circle')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
-                <Circle size={16} /> Ellipse
-              </button>
-              <button onClick={() => handleAddShape('line')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
-                <Minus size={16} /> Line
-              </button>
-            </div>
+        {/* Arrange Group */}
+        <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/30 p-1 rounded-md border border-neutral-100 dark:border-neutral-800/60">
+          <ToolButton icon={MoveUp} label="Bring Forward" onClick={() => moveItemZ('up')} />
+          <ToolButton icon={MoveDown} label="Send Backward" onClick={() => moveItemZ('down')} />
+          {selectedItem?.type === 'group' ? (
+            <ToolButton icon={Ungroup} label="Ungroup" onClick={ungroupSelected} />
+          ) : (
+            <ToolButton icon={Combine} label="Group" onClick={groupSelected} active={selectedIds.length > 1} />
           )}
         </div>
 
-        <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
+        {/* Codes Group */}
+        <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/30 p-1 rounded-md border border-neutral-100 dark:border-neutral-800/60">
+          <ToolButton icon={Barcode} label="Barcode" onClick={handleAddBarcode} />
+          <ToolButton
+            icon={QrCode}
+            label="QR Code"
+            onClick={() => addItem({
+              id: Date.now().toString(),
+              type: 'qrcode',
+              data: 'https://example.com',
+              x: 50,
+              y: 100,
+              width: 120,
+              height: 120
+            })}
+          />
+        </div>
 
-        <ToolButton icon={ZoomIn} label="Zoom In" onClick={() => setZoomScale(zoomScale + 0.25)} />
-        <ToolButton icon={ZoomOut} label="Zoom Out" onClick={() => setZoomScale(zoomScale - 0.25)} />
+        {/* Dev/Extra Group */}
+        <div className="flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900/30 p-1 rounded-md border border-neutral-100 dark:border-neutral-800/60">
+          <ToolButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
+          <ToolButton component="label" icon={FileText} label="Import PDF">
+            <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
+          </ToolButton>
+          <ToolButton icon={Trash2} label="Clear Canvas" onClick={clearCanvas} />
+        </div>
 
-        <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
-
-        <ToolButton icon={MoveUp} label="Bring Forward" onClick={() => moveItemZ('up')} />
-        <ToolButton icon={MoveDown} label="Send Backward" onClick={() => moveItemZ('down')} />
-        {selectedItem?.type === 'group' ? (
-          <ToolButton icon={Ungroup} label="Ungroup" onClick={ungroupSelected} />
-        ) : (
-          <ToolButton icon={Combine} label="Group" onClick={groupSelected} active={selectedIds.length > 1} />
-        )}
-
-        <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
-
-        <ToolButton icon={Barcode} label="Barcode" onClick={handleAddBarcode} />
-        <ToolButton
-          icon={QrCode}
-          label="QR Code"
-          onClick={() => addItem({
-            id: Date.now().toString(),
-            type: 'qrcode',
-            data: 'https://example.com',
-            x: 50,
-            y: 100,
-            width: 120,
-            height: 120
-          })}
-        />
-
-        <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
-
-        <ToolButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
-        <ToolButton component="label" icon={FileText} label="Import PDF">
-          <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
-        </ToolButton>
-        <ToolButton icon={Trash2} label="Clear Canvas" onClick={clearCanvas} />
       </div>
 
-      <div className="flex items-center relative" ref={dropdownRef}>
+      <div className="flex items-center relative ml-auto" ref={dropdownRef}>
         <ToolButton
           icon={Wand2}
           label="Generate"

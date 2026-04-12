@@ -177,7 +177,7 @@ export default function AIConfigModal({ onClose }) {
 
   const modalContent = (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white dark:bg-neutral-950 w-full max-w-4xl rounded-xl shadow-2xl flex border border-neutral-200 dark:border-neutral-800 h-[700px] overflow-hidden">
+      <div className="bg-white dark:bg-neutral-950 w-full max-w-4xl rounded-xl shadow-2xl flex border border-neutral-200 dark:border-neutral-800 h-[85vh] max-h-[700px] overflow-hidden">
         <div className="w-1/3 border-r border-neutral-100 dark:border-neutral-800 flex flex-col bg-neutral-50 dark:bg-neutral-900/50">
           <div className="p-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
             <h3 className="font-serif text-base dark:text-white">AI Providers</h3>
