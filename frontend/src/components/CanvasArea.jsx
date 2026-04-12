@@ -38,6 +38,32 @@ export default function CanvasArea() {
   const maxDisplayedPage = Math.max(maxPage, currentPage);
   const pages = Array.from({ length: maxDisplayedPage + 1 }, (_, i) => i);
 
+  // Global Keyboard Shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if the user is typing in an input field (like the Properties Panel)
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      const { selectedIds, deleteSelectedItems, moveSelectedItems } = useStore.getState();
+      if (selectedIds.length === 0) return;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelectedItems();
+      }
+
+      // Holding shift moves by 10px instead of 1px
+      const step = e.shiftKey ? 10 : 1;
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveSelectedItems(0, -step); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveSelectedItems(0, step); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); moveSelectedItems(-step, 0); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); moveSelectedItems(step, 0); }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const applyVars = (str, record) => {
     if (!str) return str;
     let res = String(str);
@@ -256,13 +282,16 @@ export default function CanvasArea() {
                                 if (isChild) return;
                                 e.cancelBubble = true;
                                 setCurrentPage(pageIndex);
-                                selectItem(currItem.id, e.evt.shiftKey);
+                                // Support Shift, Ctrl, and Cmd(Mac) for multi-select
+                                const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+                                selectItem(currItem.id, isMulti);
                               },
                               onTap: (e) => {
                                 if (isChild) return;
                                 e.cancelBubble = true;
                                 setCurrentPage(pageIndex);
-                                selectItem(currItem.id, e.evt.shiftKey);
+                                const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+                                selectItem(currItem.id, isMulti);
                               },
                               onDragMove: (e) => !isChild && handleDragMove(e, currItem),
                               onDragEnd: (e) => !isChild && handleDragEnd(e, currItem)

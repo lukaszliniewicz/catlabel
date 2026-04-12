@@ -878,6 +878,26 @@ export const useStore = create((set, get) => ({
       selectedId: newIds.length > 0 ? newIds[newIds.length - 1] : null
     };
   }),
+
+  deleteSelectedItems: () => set((state) => {
+    const newItems = state.items.filter((item) => !state.selectedIds.includes(item.id));
+    return {
+      items: newItems,
+      selectedIds: [],
+      selectedId: null
+    };
+  }),
+
+  moveSelectedItems: (dx, dy) => set((state) => {
+    if (state.selectedIds.length === 0) return state;
+    const newItems = state.items.map(item => {
+      if (state.selectedIds.includes(item.id)) {
+        return { ...item, x: item.x + dx, y: item.y + dy };
+      }
+      return item;
+    });
+    return { items: newItems };
+  }),
   
   setCanvasSize: (width, height) => set({ canvasWidth: width, canvasHeight: height }),
 }));
