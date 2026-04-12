@@ -9,6 +9,8 @@ from barcode.writer import ImageWriter
 import qrcode
 import os
 
+from ..app.label_templates import build_label_template_document
+
 def apply_smart_vars(text: str, variables: dict) -> str:
     """Replaces standard {{ var }} and evaluates dynamic {{ $date+X }} variables."""
     if not text or not isinstance(text, str):
@@ -62,6 +64,38 @@ def apply_font_weight(font: ImageFont.FreeTypeFont, weight: int) -> ImageFont.Fr
     except Exception as e:
         print(f"Font variation warning: {e}")
     return font
+
+def _render_html_document(html_wrapper: str, item_w: int, item_h: int):
+    tmp_path = f"html_{os.getpid()}_{id(html_wrapper)}.png"
+    try:
+        from html2image import Html2Image
+
+        hti = Html2Image(custom_flags=[
+            '--no-sandbox',
+            '--disable-gpu',
+            '--force-device-scale-factor=1',
+            '--hide-scrollbars',
+            '--disable-dev-shm-usage'
+        ])
+        hti.screenshot(html_str=html_wrapper, save_as=tmp_path, size=(item_w, item_h))
+
+        if not os.path.exists(tmp_path):
+            return None
+
+        insert_img = Image.open(tmp_path).convert("RGBA")
+        bg = Image.new("RGBA", insert_img.size, "WHITE")
+        bg.paste(insert_img, (0, 0), insert_img)
+        return bg.convert("RGB")
+    except Exception as e:
+        print(f"HTML Rendering Error: {e}")
+        return None
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
 
 def render_template(template_data: dict, variables: dict, default_font: str = "Roboto.ttf") -> Image.Image:
     """
@@ -120,6 +154,29 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             except Exception:
                 pass
 
+        elif item_type == "label_template":
+            item_w = int(item.get("width", width))
+            item_h = int(item.get("height", height))
+            template_html = build_label_template_document(
+                template_id=item.get("template_id", "default"),
+                text=apply_smart_vars(item.get("text", ""), variables),
+                title=apply_smart_vars(item.get("title", ""), variables),
+                subtitle=apply_smart_vars(item.get("subtitle", ""), variables),
+                custom_html=apply_smart_vars(item.get("custom_html", ""), variables),
+            )
+
+            rendered_template = _render_html_document(template_html, item_w, item_h)
+            if rendered_template:
+                img.paste(rendered_template, (x, y))
+            else:
+                fallback_text = apply_smart_vars(
+                    item.get("text") or item.get("title") or item.get("template_id", "template"),
+                    variables,
+                )
+                draw.rectangle([x, y, x + item_w, y + item_h], outline="red", width=2)
+                draw.text((x + 5, y + 5), str(fallback_text), fill="red")
+            actual_drawn_height = item_h
+
         elif item_type == "html":
             item_w = int(item.get("width", 384))
             item_h = int(item.get("height", 200))
@@ -131,30 +188,13 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
 </body>
 </html>"""
             
-            try:
-                from html2image import Html2Image
-                hti = Html2Image(custom_flags=[
-                    '--no-sandbox',
-                    '--disable-gpu',
-                    '--force-device-scale-factor=1',
-                    '--hide-scrollbars',
-                    '--disable-dev-shm-usage'
-                ])
-                tmp_path = f"html_{id(item)}.png"
-                hti.screenshot(html_str=html_wrapper, save_as=tmp_path, size=(item_w, item_h))
-                
-                if os.path.exists(tmp_path):
-                    insert_img = Image.open(tmp_path).convert("RGBA")
-                    bg = Image.new("RGBA", insert_img.size, "WHITE")
-                    bg.paste(insert_img, (0, 0), insert_img)
-                    img.paste(bg.convert("RGB"), (x, y))
-                    os.remove(tmp_path)
-                actual_drawn_height = item_h
-            except Exception as e:
-                print(f"HTML Rendering Error: {e}")
+            rendered_html = _render_html_document(html_wrapper, item_w, item_h)
+            if rendered_html:
+                img.paste(rendered_html, (x, y))
+            else:
                 draw.rectangle([x, y, x + item_w, y + item_h], outline="red", width=2)
                 draw.text((x + 5, y + 5), "HTML Render Failed (Check html2image)", fill="red")
-                actual_drawn_height = item_h
+            actual_drawn_height = item_h
                 
         elif item_type == "shape":
             item_w = int(item.get("width", 100))

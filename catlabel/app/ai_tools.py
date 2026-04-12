@@ -1,6 +1,8 @@
 import json
 import uuid
 
+from .label_templates import TEMPLATE_MAP
+
 
 def _as_int(value, default):
     try:
@@ -69,6 +71,39 @@ def _append_text(
 
 
 TOOLS_SCHEMA = [
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_label",
+            "description": "Generates a label layout. Use predefined templates for standard requests. Use 'custom' ONLY if the user asks for specific colors, fonts, or layouts not covered by templates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "template_id": {
+                        "type": "string",
+                        "enum": list(TEMPLATE_MAP.keys())
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Main text for single-field templates."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Primary text for multi-field templates."
+                    },
+                    "subtitle": {
+                        "type": "string",
+                        "description": "Secondary text for multi-field templates."
+                    },
+                    "custom_html": {
+                        "type": "string",
+                        "description": "HTML and inline CSS. REQUIRED ONLY if template_id is 'custom'. Wrap in a <div> that scales to 100% width/height. Use inline styles."
+                    }
+                },
+                "required": ["template_id"]
+            }
+        }
+    },
     {
         "type": "function",
         "function": {
@@ -429,6 +464,49 @@ TOOLS_SCHEMA = [
 
 def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
     cw, ch = _canvas_size(canvas_state)
+
+    if name == "generate_label":
+        template_id = (args.get("template_id") or "default").strip() or "default"
+        if template_id not in TEMPLATE_MAP:
+            return f"Error: Unknown template_id '{template_id}'."
+
+        page_idx = max(
+            0,
+            _as_int(args.get("pageIndex", canvas_state.get("currentPage", 0)), _as_int(canvas_state.get("currentPage", 0), 0)),
+        )
+        _clear_page(canvas_state, page_idx)
+        items = canvas_state.setdefault("items", [])
+
+        text_value = str(args.get("text") or args.get("title") or "")
+        if template_id == "address" and not text_value:
+            text_value = "\n".join(
+                part for part in [args.get("title"), args.get("subtitle")] if part
+            )
+
+        template_item = {
+            "id": str(uuid.uuid4()),
+            "type": "label_template",
+            "template_id": template_id,
+            "x": 0,
+            "y": 0,
+            "width": cw,
+            "height": ch,
+            "pageIndex": page_idx,
+        }
+
+        if template_id in {"title_subtitle", "price_tag"}:
+            template_item["title"] = str(args.get("title") or "")
+            template_item["subtitle"] = str(args.get("subtitle") or "")
+        elif template_id == "custom":
+            custom_html = str(args.get("custom_html") or "").strip()
+            if not custom_html:
+                return "Error: custom_html is required when template_id is 'custom'."
+            template_item["custom_html"] = custom_html
+        else:
+            template_item["text"] = text_value
+
+        items.append(template_item)
+        return f"Page {page_idx} replaced with template '{template_id}'."
 
     if name == "apply_preset":
         preset_name = (args.get("preset_name") or "").strip()

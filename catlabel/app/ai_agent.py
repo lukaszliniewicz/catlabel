@@ -349,17 +349,27 @@ CRITICAL MEDIA TYPE RULES (MUST OBEY):
 AVAILABLE PRESETS:
 {presets_json}
 
-CRITICAL LAYOUT STRATEGY (MACROS ONLY):
-You lack spatial reasoning (calculating exact pixel coordinates). If you build labels block-by-block using `add_text_element`, you will overlap elements at y=0 and ruin the design.
-Therefore, you MUST build layouts using full-page MACRO functions:
-- `layout_centered_text` -> Single line, short phrases, names.
-- `layout_stacked_text` -> Two items (Title + Subtitle).
-- `layout_list_text` -> 3+ items, specs, ingredients, multi-line details.
-- `layout_columns` -> Price tags, Key-Value pairs (Left column, Right column).
-- `layout_barcode_with_text` -> Asset tags, SKUs, inventory tracking.
-- `layout_shipping_address` -> Mailing labels, return addresses.
+CRITICAL LAYOUT STRATEGY (HYBRID TEMPLATE ARCHITECTURE):
+For NEW one-off labels, prefer the single `generate_label` tool. It is the safest and most consistent path.
+Available `template_id` values:
+- `default` -> Standard block of text.
+- `center` -> Centered text.
+- `maximize` -> Single word/phrase as large as possible.
+- `title_subtitle` -> Big title with smaller subtitle.
+- `warning_banner` -> Bold inverted warning style.
+- `price_tag` -> Huge price with smaller product name.
+- `address` -> Multiline mailing/address block.
+- `custom` -> ESCAPE HATCH. Use ONLY when the user explicitly requests unusual colors, fonts, borders, or a layout not covered above.
 
-WARNING: DO NOT use `add_text_element`, `add_barcode_or_qrcode`, or `add_html_element` unless the user explicitly asks to modify an existing design or place something at a specific pixel coordinate.
+When using `template_id="custom"`, you MUST provide `custom_html`.
+For standard templates, provide `text` for single-field templates, and `title` + `subtitle` for `title_subtitle` or `price_tag`.
+
+Use the older macro/layout tools only when:
+- The user explicitly wants to modify an existing design,
+- You need mixed structured elements like barcodes plus text,
+- Or the user requests precise coordinates/pixel-level placement.
+
+WARNING: DO NOT use `add_text_element`, `add_barcode_or_qrcode`, or `add_html_element` unless the user explicitly asks for coordinate-specific editing or a detailed custom composition.
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
@@ -367,17 +377,21 @@ Do NOT create multiple pages for a list of data. To print a batch:
 2. Call `set_batch_records` passing the array of data. The frontend handles generating the copies automatically!
 
 WORKFLOW EXAMPLES:
+User: "Print a label saying 'FRAGILE' as big as possible."
+Action:
+1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
+2. `generate_label(template_id="maximize", text="FRAGILE")`
+
+User: "Make a price tag for a Hammer, $15.99."
+Action:
+1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
+2. `generate_label(template_id="price_tag", title="$15.99", subtitle="Hammer")`
+
 User: "I have a continuous roll. Make 5 small spice labels: Salt, Pepper, Cumin, Garlic, Paprika."
 Action (All in one turn):
 1. `apply_preset(preset_name="Roll: Narrow Tag (48x15mm)")`
-2. `layout_centered_text(text="{{{{ spice }}}}")`
+2. `generate_label(template_id="center", text="{{{{ spice }}}}")`
 3. `set_batch_records(variables_list=[{{"spice": "Salt"}}, {{"spice": "Pepper"}}, {{"spice": "Cumin"}}, {{"spice": "Garlic"}}, {{"spice": "Paprika"}}])`
-
-User: "Make price tags for my coffee shop. Left side name, right side price."
-Action (All in one turn):
-1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
-2. `layout_columns(left_text="{{{{ item }}}}", right_text="${{{{ price }}}}")`
-3. `set_batch_records(...)`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

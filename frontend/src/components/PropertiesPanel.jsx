@@ -163,6 +163,16 @@ export default function PropertiesPanel() {
 
   const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors";
   const labelClass = "block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 truncate";
+  const labelTemplateOptions = [
+    { id: 'default', label: 'Default' },
+    { id: 'center', label: 'Center' },
+    { id: 'maximize', label: 'Maximize' },
+    { id: 'title_subtitle', label: 'Title + Subtitle' },
+    { id: 'warning_banner', label: 'Warning Banner' },
+    { id: 'price_tag', label: 'Price Tag' },
+    { id: 'address', label: 'Address' },
+    { id: 'custom', label: 'Custom HTML' }
+  ];
 
   // --- Actions ---
 
@@ -321,7 +331,7 @@ export default function PropertiesPanel() {
   const dotsPerMm = localSettings.default_dpi / 25.4;
   const printPx = Math.round(localSettings.print_width_mm * dotsPerMm);
 
-  const templateStr = items.map((i) => `${i.text || ''} ${i.data || ''} ${i.html || ''}`).join(' ');
+  const templateStr = items.map((i) => `${i.text || ''} ${i.title || ''} ${i.subtitle || ''} ${i.data || ''} ${i.html || ''} ${i.custom_html || ''}`).join(' ');
   const templateMatches = templateStr.match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g) || [];
   const templateKeys = templateMatches.map((match) => match.replace(/[{}]/g, '').trim());
   const existingKeys = batchRecords.flatMap((record) => Object.keys(record || {}));
@@ -651,6 +661,42 @@ export default function PropertiesPanel() {
                 </>
               )}
 
+              {selectedItem.type === 'label_template' && (
+                <>
+                  <div>
+                    <label className={labelClass}>Template</label>
+                    <select name="template_id" value={selectedItem.template_id || 'default'} onChange={handleChange} className={inputClass}>
+                      {labelTemplateOptions.map((template) => (
+                        <option key={template.id} value={template.id}>{template.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {['title_subtitle', 'price_tag'].includes(selectedItem.template_id) ? (
+                    <>
+                      <div>
+                        <label className={labelClass}>Title</label>
+                        <input name="title" value={selectedItem.title || ''} onChange={handleChange} className={inputClass} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Subtitle</label>
+                        <input name="subtitle" value={selectedItem.subtitle || ''} onChange={handleChange} className={inputClass} />
+                      </div>
+                    </>
+                  ) : selectedItem.template_id === 'custom' ? (
+                    <div>
+                      <label className={labelClass}>Custom HTML</label>
+                      <textarea name="custom_html" value={selectedItem.custom_html || ''} onChange={handleChange} className={inputClass} rows={10} />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className={labelClass}>{selectedItem.template_id === 'address' ? 'Address Text' : 'Main Text'}</label>
+                      <textarea name="text" value={selectedItem.text || ''} onChange={handleChange} className={inputClass} rows={selectedItem.template_id === 'address' ? 6 : 3} />
+                    </div>
+                  )}
+                </>
+              )}
+
               {selectedItem.type === 'group' && (
                 <>
                   <div className="flex gap-4">
@@ -789,6 +835,12 @@ export default function PropertiesPanel() {
                 </>
               )}
 
+              {selectedItem.type === 'label_template' && (
+                <div className="text-[10px] text-neutral-500 leading-relaxed border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/30 p-3">
+                  Standard templates stay perfectly consistent. Use the <strong>Custom HTML</strong> option only for one-off styling requests.
+                </div>
+              )}
+
               {selectedItem.type === 'image' && (
                 <div className="flex gap-4">
                   <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
@@ -861,22 +913,24 @@ export default function PropertiesPanel() {
                 </>
               )}
 
-              <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                <label className={labelClass}>Duplicate Element Only</label>
-                <div className="flex gap-4 mb-2">
-                  <div className="flex-1">
-                    <label className="block text-[10px] text-neutral-400 mb-1">Copies</label>
-                    <input type="number" min="1" value={dupCopies} onChange={e => setDupCopies(parseInt(e.target.value)||1)} className={inputClass} />
+              {selectedItem.type !== 'label_template' && (
+                <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                  <label className={labelClass}>Duplicate Element Only</label>
+                  <div className="flex gap-4 mb-2">
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-neutral-400 mb-1">Copies</label>
+                      <input type="number" min="1" value={dupCopies} onChange={e => setDupCopies(parseInt(e.target.value)||1)} className={inputClass} />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-neutral-400 mb-1">Gap (mm)</label>
+                      <input type="number" min="0" value={dupGap} onChange={e => setDupGap(parseInt(e.target.value)||0)} className={inputClass} />
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[10px] text-neutral-400 mb-1">Gap (mm)</label>
-                    <input type="number" min="0" value={dupGap} onChange={e => setDupGap(parseInt(e.target.value)||0)} className={inputClass} />
-                  </div>
+                  <button onClick={() => useStore.getState().duplicateItem(selectedId, dupCopies, dupGap)} className="w-full bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200 text-[10px] uppercase tracking-widest font-bold">
+                    Clone Item Down
+                  </button>
                 </div>
-                <button onClick={() => useStore.getState().duplicateItem(selectedId, dupCopies, dupGap)} className="w-full bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200 text-[10px] uppercase tracking-widest font-bold">
-                  Clone Item Down
-                </button>
-              </div>
+              )}
               <div className="mt-2 mb-2 flex gap-4">
                   <div className="flex-1">
                     <label className={labelClass}>Styling Lines</label>

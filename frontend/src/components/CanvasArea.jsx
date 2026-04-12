@@ -1,6 +1,7 @@
 import React from 'react';
 import { Stage, Layer, Text, Rect, Line, Group, Image as KonvaImage, Ellipse } from 'react-konva';
 import { useStore } from '../store';
+import { LABEL_TEMPLATE_STYLES, buildLabelTemplateMarkup } from './templateStyles';
 
 // Custom hook to load base64/url images into Konva
 const useImageLoader = (url) => {
@@ -345,7 +346,10 @@ export default function CanvasArea() {
                           const renderElement = (currItem, isChild = false) => {
                             const isSelected = !isChild && selectedIds.includes(currItem.id);
                             const substitutedText = applyVars(currItem.text, record);
+                            const substitutedTitle = applyVars(currItem.title, record);
+                            const substitutedSubtitle = applyVars(currItem.subtitle, record);
                             const substitutedHtml = applyVars(currItem.html, record);
+                            const substitutedCustomHtml = applyVars(currItem.custom_html, record);
 
                             const numLines = substitutedText ? String(substitutedText).split('\n').length : 1;
                             const pad = currItem.padding !== undefined ? Number(currItem.padding) : ((currItem.invert || currItem.bg_white) ? 4 : 0);
@@ -358,7 +362,7 @@ export default function CanvasArea() {
                               y: currItem.y,
                               width: currItem.width,
                               height: currItem.height,
-                              draggable: !isChild && currItem.type !== 'cut_line_indicator',
+                              draggable: !isChild && currItem.type !== 'cut_line_indicator' && currItem.type !== 'label_template',
                               onMouseDown: (e) => {
                                 if (isChild) return;
                                 e.cancelBubble = true;
@@ -488,6 +492,17 @@ export default function CanvasArea() {
                               );
                             } else if (currItem.type === 'image') {
                               element = <URLImage item={currItem} commonProps={{ width: currItem.width, height: currItem.height }} isSelected={false} />;
+                            } else if (currItem.type === 'label_template') {
+                              const templateMarkup = buildLabelTemplateMarkup({
+                                ...currItem,
+                                text: substitutedText,
+                                title: substitutedTitle,
+                                subtitle: substitutedSubtitle,
+                                custom_html: substitutedCustomHtml
+                              });
+                              const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;"><style>${LABEL_TEMPLATE_STYLES}</style>${templateMarkup}</div></foreignObject></svg>`;
+                              const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgPayload);
+                              element = <URLImage item={{ ...currItem, src: url }} commonProps={{ width: currItem.width, height: approxHeight }} isSelected={false} />;
                             } else if (currItem.type === 'html') {
                               const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;">${substitutedHtml || ''}</div></foreignObject></svg>`;
                               const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgPayload);
