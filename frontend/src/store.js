@@ -20,7 +20,9 @@ export const useStore = create((set, get) => ({
   currentDpi: 203,
   printerProfile: { speed: 0, energy: 0, feed_lines: 100 },
   currentPage: 0,
+  
   setCurrentPage: (idx) => set({ currentPage: Math.max(0, Number(idx) || 0), selectedId: null }),
+  
   addPage: () => set((state) => {
     const maxPage = Math.max(
       state.currentPage,
@@ -28,6 +30,7 @@ export const useStore = create((set, get) => ({
     );
     return { currentPage: maxPage + 1, selectedId: null };
   }),
+  
   deletePage: (pageIndex) => set((state) => {
     const targetPage = Math.max(0, Number(pageIndex) || 0);
     const newItems = state.items
@@ -54,6 +57,7 @@ export const useStore = create((set, get) => ({
       selectedPagesForPrint: newSelectedPages
     };
   }),
+  
   duplicatePage: (pageIndex) => set((state) => {
     const targetPage = Math.max(0, Number(pageIndex) || 0);
     const itemsToClone = state.items.filter((item) => Number(item.pageIndex ?? 0) === targetPage);
@@ -77,9 +81,11 @@ export const useStore = create((set, get) => ({
       selectedId: null
     };
   }),
+
   selectedPagesForPrint: [],
   isPrinting: false,
   setIsPrinting: (val) => set({ isPrinting: val }),
+  
   togglePageForPrint: (pageIndex) => set((state) => {
     const current = state.selectedPagesForPrint;
     if (current.includes(pageIndex)) {
@@ -87,6 +93,7 @@ export const useStore = create((set, get) => ({
     }
     return { selectedPagesForPrint: [...current, pageIndex] };
   }),
+
   printPages: async (pageIndices) => {
     const state = get();
     if (!state.selectedPrinter) {
@@ -135,17 +142,20 @@ export const useStore = create((set, get) => ({
       set({ isPrinting: false });
     }
   },
+
   isSidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+  
   addresses: [],
   settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100, default_font: 'Roboto.ttf' },
   
+  // Refined DPI Math logic that safely falls back
   getPxToMm: (px) => {
-    const dpi = get().currentDpi || 203;
+    const dpi = get().currentDpi || get().settings?.default_dpi || 203;
     return (Number(px || 0) / (dpi / 25.4)).toFixed(1);
   },
   getMmToPx: (mm) => {
-    const dpi = get().currentDpi || 203;
+    const dpi = get().currentDpi || get().settings?.default_dpi || 203;
     return Math.round(Number(mm || 0) * (dpi / 25.4));
   },
   pxToMm: (px) => parseFloat(get().getPxToMm(px)),
@@ -316,7 +326,6 @@ export const useStore = create((set, get) => ({
       selectedPagesForPrint: []
     });
   },
-  // --- END HIERARCHICAL PROJECT MANAGEMENT ---
 
   savePreset: async (name) => {
     const state = get();
@@ -389,7 +398,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  // NEW: Fetch initial settings from SQLite 
   fetchSettings: async () => {
     try {
       const res = await fetch('/api/settings');
@@ -406,7 +414,6 @@ export const useStore = create((set, get) => ({
       const data = await res.json();
       set({ fonts: data });
       
-      // Dynamically inject @font-face rules
       const style = document.createElement('style');
       let css = '';
       data.forEach(font => {
@@ -454,8 +461,9 @@ export const useStore = create((set, get) => ({
     let rot = currentState.isRotated;
     let border = currentState.canvasBorder;
 
+    // Use the exact DPI passed by the hardware info payload
     const activeDpi = info?.dpi || 203;
-    const mmToPx = (mm) => Math.round(mm * (activeDpi / 25.4));
+    const calcMmToPx = (mm) => Math.round(mm * (activeDpi / 25.4));
 
     if (info) {
       const isNewPrinter = currentState.selectedPrinterInfo?.address !== mac;
@@ -466,19 +474,18 @@ export const useStore = create((set, get) => ({
           const model = info.model_id ? info.model_id.toLowerCase() : '';
 
           if (model === 'd11' || model === 'd110' || model === 'd101') {
-            newW = mmToPx(40);
-            newH = mmToPx(12);
+            newW = calcMmToPx(40);
+            newH = calcMmToPx(12);
             rot = true;
           } else if (model === 'b1' || model === 'b21' || model === 'b18') {
-            newW = mmToPx(50);
-            newH = mmToPx(30);
+            newW = calcMmToPx(50);
+            newH = calcMmToPx(30);
             rot = true;
           } else {
-            newW = info.width_px || mmToPx(48);
-            newH = info.width_px || mmToPx(48);
+            newW = info.width_px || calcMmToPx(48);
+            newH = info.width_px || calcMmToPx(48);
             rot = false;
           }
-
           border = 'none';
         } else {
           const hardwareWidth = info.width_px || 384;
@@ -492,7 +499,7 @@ export const useStore = create((set, get) => ({
             newH = Math.round(hardwareWidth * 1.5);
             rot = false;
           } else {
-            newW = mmToPx(40);
+            newW = calcMmToPx(40);
             newH = hardwareWidth;
             rot = true;
             border = 'none';
@@ -535,7 +542,7 @@ export const useStore = create((set, get) => ({
       console.error("Failed to fetch printer profile", e);
       set({ printerProfile: { speed: 0, energy: 0, feed_lines: 100 } });
     }
-  }),
+  }, // <-- The syntax error is fixed right here
   
   setItems: (items) => set({ items, selectedId: null, selectedPagesForPrint: [] }),
   clearCanvas: () => set({ items: [], selectedId: null, currentPage: 0, selectedPagesForPrint: [], currentProjectId: null }),
