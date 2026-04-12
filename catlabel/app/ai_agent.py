@@ -349,22 +349,35 @@ CRITICAL MEDIA TYPE RULES (MUST OBEY):
 AVAILABLE PRESETS:
 {presets_json}
 
-CRITICAL AGENT BEHAVIORS:
-1. MATCH MEDIA TYPE: Read the descriptions in the presets json. Do not apply a pre-cut preset to a continuous printer, or vice versa.
-2. IMPLICIT CONFIRMATION: If the user says "ok" or "looks good" to a previous plan, DO NOT ask them to repeat the list. Immediately execute the tools.
-3. SIMULTANEOUS CHAINING: To complete a batch request, call these in ONE response:
-   a) `apply_preset` (to size the label properly based on the media type and intent)
-   b) `layout_centered_text` (using {{{{ variable }}}} tags)
-   c) `set_batch_records` (passing the list of rows or variables matrix)
-4. NO EMOJIS: Do NOT use Unicode Emojis (e.g. 🚫📦🚀). The monochrome font renderer will draw empty boxes [].
+CRITICAL LAYOUT STRATEGY (MACROS ONLY):
+You lack spatial reasoning (calculating exact pixel coordinates). If you build labels block-by-block using `add_text_element`, you will overlap elements at y=0 and ruin the design.
+Therefore, you MUST build layouts using full-page MACRO functions:
+- `layout_centered_text` -> Single line, short phrases, names.
+- `layout_stacked_text` -> Two items (Title + Subtitle).
+- `layout_list_text` -> 3+ items, specs, ingredients, multi-line details.
+- `layout_columns` -> Price tags, Key-Value pairs (Left column, Right column).
+- `layout_barcode_with_text` -> Asset tags, SKUs, inventory tracking.
+- `layout_shipping_address` -> Mailing labels, return addresses.
+
+WARNING: DO NOT use `add_text_element`, `add_barcode_or_qrcode`, or `add_html_element` unless the user explicitly asks to modify an existing design or place something at a specific pixel coordinate.
+
+BATCH PRINTING PARADIGM:
+Do NOT create multiple pages for a list of data. To print a batch:
+1. Lay out a SINGLE template page using `{{{{ variables }}}}` inside the macro.
+2. Call `set_batch_records` passing the array of data. The frontend handles generating the copies automatically!
 
 WORKFLOW EXAMPLES:
 User: "I have a continuous roll. Make 5 small spice labels: Salt, Pepper, Cumin, Garlic, Paprika."
-Your Thought: The printer is Continuous. The user wants small labels to cut out. I will use the "Roll: Narrow Tag" preset which includes a cut-line, and I will set the batch records.
 Action (All in one turn):
 1. `apply_preset(preset_name="Roll: Narrow Tag (48x15mm)")`
 2. `layout_centered_text(text="{{{{ spice }}}}")`
 3. `set_batch_records(variables_list=[{{"spice": "Salt"}}, {{"spice": "Pepper"}}, {{"spice": "Cumin"}}, {{"spice": "Garlic"}}, {{"spice": "Paprika"}}])`
+
+User: "Make price tags for my coffee shop. Left side name, right side price."
+Action (All in one turn):
+1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
+2. `layout_columns(left_text="{{{{ item }}}}", right_text="${{{{ price }}}}")`
+3. `set_batch_records(...)`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
