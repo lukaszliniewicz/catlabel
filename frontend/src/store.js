@@ -717,6 +717,21 @@ export const useStore = create((set, get) => ({
     return { selectedId: id, selectedIds: [id] };
   }),
 
+  selectItems: (ids, multi = false) => set((state) => {
+    if (!ids || ids.length === 0) return state;
+    if (multi) {
+      const newIds = [...new Set([...state.selectedIds, ...ids])];
+      return {
+        selectedIds: newIds,
+        selectedId: newIds.length > 0 ? newIds[newIds.length - 1] : null
+      };
+    }
+    return {
+      selectedIds: ids,
+      selectedId: ids.length > 0 ? ids[ids.length - 1] : null
+    };
+  }),
+
   moveItemZ: (dir) => set((state) => {
     if (!state.selectedId) return state;
 

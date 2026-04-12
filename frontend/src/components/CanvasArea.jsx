@@ -29,6 +29,7 @@ export default function CanvasArea() {
   const { items, selectedId, selectedIds, selectItem, updateItem, canvasWidth, canvasHeight, zoomScale, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated, currentPage, setCurrentPage, addPage, deletePage, togglePageForPrint, selectedPagesForPrint, printPages, selectedPrinterInfo, currentDpi } = useStore();
   
   const { splitMode } = useStore();
+  const [selectionBox, setSelectionBox] = React.useState(null);
   const cvThick = canvasBorderThickness || 4;
   const dotsPerMm = (currentDpi || settings.default_dpi || 203) / 25.4;
   const printPx = selectedPrinterInfo?.width_px || Math.round((settings.print_width_mm || 48) * dotsPerMm);
@@ -154,7 +155,19 @@ export default function CanvasArea() {
 
   const handleDragEnd = (e, item) => {
     setSnapLines([]);
-    updateItem(item.id, { x: e.target.x(), y: e.target.y() });
+    const newX = e.target.x();
+    const newY = e.target.y();
+    const dx = newX - item.x;
+    const dy = newY - item.y;
+
+    const { selectedIds, moveSelectedItems } = useStore.getState();
+    
+    // If we're dragging a member of a multi-selection, move all selected items
+    if (selectedIds.includes(item.id) && selectedIds.length > 1) {
+      moveSelectedItems(dx, dy);
+    } else {
+      updateItem(item.id, { x: newX, y: newY });
+    }
   };
 
   return (
@@ -234,11 +247,79 @@ export default function CanvasArea() {
                       height={canvasHeight * zoomScale}
                       scale={{ x: zoomScale, y: zoomScale }}
                       onMouseDown={(e) => {
-                        setCurrentPage(pageIndex);
-                        if (e.target === e.target.getStage()) selectItem(null);
+                        const clickedOnEmpty = e.target === e.target.getStage() || e.target.hasName('bg-rect');
+                        if (clickedOnEmpty) {
+                          setCurrentPage(pageIndex);
+                          
+                          const pos = e.target.getStage().getPointerPosition();
+                          const stageX = pos.x / zoomScale;
+                          const stageY = pos.y / zoomScale;
+                          
+                          setSelectionBox({
+                            pageIndex,
+                            startX: stageX,
+                            startY: stageY,
+                            x: stageX,
+                            y: stageY,
+                            width: 0,
+                            height: 0,
+                            active: true
+                          });
+
+                          if (!e.evt.shiftKey && !e.evt.ctrlKey && !e.evt.metaKey) {
+                            selectItem(null);
+                          }
+                        }
+                      }}
+                      onMouseMove={(e) => {
+                        if (!selectionBox || !selectionBox.active || selectionBox.pageIndex !== pageIndex) return;
+                        
+                        const pos = e.target.getStage().getPointerPosition();
+                        const currentX = pos.x / zoomScale;
+                        const currentY = pos.y / zoomScale;
+                        
+                        setSelectionBox(prev => ({
+                          ...prev,
+                          x: Math.min(prev.startX, currentX),
+                          y: Math.min(prev.startY, currentY),
+                          width: Math.abs(currentX - prev.startX),
+                          height: Math.abs(currentY - prev.startY)
+                        }));
+                      }}
+                      onMouseUp={(e) => {
+                        if (selectionBox && selectionBox.active && selectionBox.pageIndex === pageIndex) {
+                          if (selectionBox.width > 2 && selectionBox.height > 2) {
+                            const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+                            
+                            const intersectingIds = pageItems.filter(item => {
+                              const itemX = item.x;
+                              const itemY = item.y;
+                              const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
+                              const numLines = item.text ? String(item.text).split('\n').length : 1;
+                              const itemW = item.width || 100;
+                              const itemH = item.height || (item.type === 'text' ? (item.size * 1.15 * numLines) + (pad * 2) : 50);
+
+                              // Bounding Box overlap
+                              return !(
+                                itemX > selectionBox.x + selectionBox.width ||
+                                itemX + itemW < selectionBox.x ||
+                                itemY > selectionBox.y + selectionBox.height ||
+                                itemY + itemH < selectionBox.y
+                              );
+                            }).map(i => i.id);
+
+                            if (intersectingIds.length > 0) {
+                              useStore.getState().selectItems(intersectingIds, isMulti);
+                            }
+                          }
+                          setSelectionBox(null);
+                        }
                       }}
                     >
                       <Layer>
+                        {/* Base rect catches clicks seamlessly even if borders are removed */}
+                        <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} fill="transparent" name="bg-rect" />
+
                         {/* Canvas Border Background Renders */}
                         {canvasBorder === 'box' && <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} stroke="black" strokeWidth={cvThick} listening={false} />}
                         {canvasBorder === 'top' && <Line points={[0, 0, canvasWidth, 0]} stroke="black" strokeWidth={cvThick} listening={false} />}
@@ -278,15 +359,14 @@ export default function CanvasArea() {
                               width: currItem.width,
                               height: currItem.height,
                               draggable: !isChild && currItem.type !== 'cut_line_indicator',
-                              onClick: (e) => {
+                              onMouseDown: (e) => {
                                 if (isChild) return;
                                 e.cancelBubble = true;
                                 setCurrentPage(pageIndex);
-                                // Support Shift, Ctrl, and Cmd(Mac) for multi-select
                                 const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
                                 selectItem(currItem.id, isMulti);
                               },
-                              onTap: (e) => {
+                              onTouchStart: (e) => {
                                 if (isChild) return;
                                 e.cancelBubble = true;
                                 setCurrentPage(pageIndex);
@@ -435,6 +515,19 @@ export default function CanvasArea() {
                         {isActive && snapLines.map((line, i) => (
                           <Line key={i} points={line.points} stroke={line.stroke} strokeWidth={1} dash={[4, 4]} />
                         ))}
+                        
+                        {selectionBox && selectionBox.active && selectionBox.pageIndex === pageIndex && (
+                          <Rect
+                            x={selectionBox.x}
+                            y={selectionBox.y}
+                            width={selectionBox.width}
+                            height={selectionBox.height}
+                            fill="rgba(59, 130, 246, 0.3)"
+                            stroke="#3b82f6"
+                            strokeWidth={1 / zoomScale}
+                            listening={false}
+                          />
+                        )}
                       </Layer>
                     </Stage>
                   </div>
