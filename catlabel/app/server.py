@@ -242,9 +242,8 @@ def get_agent_context():
             "hardware_width_mm": settings.print_width_mm,
             "hardware_width_px": int(settings.print_width_mm * (settings.default_dpi / 25.4)),
             "behavior_padding": "If you define a canvas narrower than the hardware width, the engine will automatically center and pad it with white space. Do NOT stretch elements to fit the hardware if the user wants a small label.",
-            "behavior_oversize": "If canvas width exceeds hardware width and splitMode=false, the engine scales it down. If splitMode=true, it slices it into parallel printable strips.",
-            "feed_axis": "Thermal tape is infinitely long. Leave splitMode=false and set canvas height to whatever you need for long vertical banners.",
-            "orientation_and_rotation": "CRITICAL: If the design is wider than it is tall (Landscape, e.g., 40x12mm), you MUST set isRotated=true in the canvas state. When isRotated=true, canvas Width is the long feed axis, and canvas Height is the physical tape width."
+            "behavior_oversize": "If the dimension across the print head exceeds hardware width and splitMode=false, the engine scales it down.",
+            "orientation_and_rotation": "CRITICAL: Tape feeds continuously.\n- To print ACROSS the tape (Normal): isRotated=false, width <= hardware_width_px, height = custom length in px.\n- To print ALONG the tape (Banner): isRotated=true, height = hardware_width_px, width = custom length in px."
         },
         "standard_presets": presets_data,
         "available_fonts": font_names,

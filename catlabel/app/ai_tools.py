@@ -20,13 +20,13 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_canvas_dimensions",
-            "description": "Set custom canvas dimensions ONLY if a preset does not apply. Width is the long feed axis for landscape labels (isRotated=true).",
+            "description": "Set custom canvas dimensions in pixels (1mm = 8px). For CONTINUOUS rolls, to use the full width of the tape, set the appropriate dimension to 384.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "width": {"type": "integer"},
-                    "height": {"type": "integer"},
-                    "isRotated": {"type": "boolean"}
+                    "width": {"type": "integer", "description": "Width in pixels. (e.g. 384 for full hardware width)"},
+                    "height": {"type": "integer", "description": "Height in pixels."},
+                    "isRotated": {"type": "boolean", "description": "True to print ALONG the tape (banner mode). False to print ACROSS the tape."}
                 },
                 "required": ["width", "height"]
             }
@@ -130,14 +130,14 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_batch_records",
-            "description": "CRITICAL FOR BATCH/SERIES: Configures multiple labels for batch printing using a single template. Design the template FIRST using {{ var }} syntax, then call this. You MUST provide EITHER variables_list OR variables_matrix.",
+            "description": "CRITICAL FOR BATCH/SERIES: Configures multiple labels for batch printing. Use this immediately in the same response after laying out your {{ var }} template.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "variables_list": {
                         "type": "array",
                         "items": {"type": "object"},
-                        "description": "Use this for a flat list of unrelated records. E.g. [{'name': 'Alice', 'role': 'Manager'}, {'name': 'Bob', 'role': 'IT'}]."
+                        "description": "Use this for a flat list of unrelated records. E.g. [{'name': 'Alice'}, {'name': 'Bob'}]."
                     },
                     "variables_matrix": {
                         "type": "object",
