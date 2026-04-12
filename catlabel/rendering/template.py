@@ -54,7 +54,7 @@ def render_via_browser(canvas_state: dict, variables_collection: list, copies: i
                 "(payload) => { window.__INJECTED_PAYLOAD__ = payload; }",
                 payload,
             )
-            page.wait_for_selector("#render-done", timeout=30000)
+            page.wait_for_selector("#render-done", timeout=30000, state="attached")
             rendered_images = page.evaluate("window.__RENDERED_IMAGES__ || []")
         finally:
             browser.close()

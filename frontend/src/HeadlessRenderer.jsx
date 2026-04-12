@@ -126,7 +126,7 @@ export default function HeadlessRenderer() {
       for (let copyIndex = 0; copyIndex < copies; copyIndex += 1) {
         pages.forEach((pageIndex) => {
           jobs.push({
-            key: `${recordIndex}-${copyIndex}-${pageIndex}`,
+            id: `job-${recordIndex}-${copyIndex}-${pageIndex}`,
             pageIndex,
             record
           });
@@ -139,6 +139,12 @@ export default function HeadlessRenderer() {
 
   useEffect(() => {
     setResults(Array(renderJobs.length).fill(null));
+    window.__RENDERED_IMAGES__ = [];
+
+    const doneMarker = document.getElementById('render-done');
+    if (doneMarker) {
+      doneMarker.remove();
+    }
   }, [renderJobs.length]);
 
   const handlePageReady = useCallback((captureIndex, b64) => {
@@ -155,6 +161,7 @@ export default function HeadlessRenderer() {
         if (!document.getElementById('render-done')) {
           const doneMarker = document.createElement('div');
           doneMarker.id = 'render-done';
+          doneMarker.style.opacity = '0';
           document.body.appendChild(doneMarker);
         }
       }
@@ -170,10 +177,10 @@ export default function HeadlessRenderer() {
   const canvasState = payload.canvas_state || {};
 
   return (
-    <div style={{ position: 'absolute', left: '-10000px', top: 0, pointerEvents: 'none' }}>
+    <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
       {renderJobs.map((job, index) => (
         <HeadlessCaptureStage
-          key={`${job.key}-${index}`}
+          key={job.id}
           canvasState={canvasState}
           record={job.record}
           pageIndex={job.pageIndex}

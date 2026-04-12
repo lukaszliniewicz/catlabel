@@ -149,13 +149,14 @@ export const sanitizeLabelHtml = (html = '') => String(html)
   .trim();
 
 export const buildLabelTemplateMarkup = (record = {}) => {
-  const templateId = record.template_id || 'default';
+  const safeRecord = record && typeof record === 'object' ? record : {};
+  const templateId = safeRecord.template_id || 'default';
   const activeTemplate = TEMPLATE_MAP[templateId] || TEMPLATE_MAP.default;
 
   if (templateId === 'custom') {
     return [
       '<div class="label-canvas-container">',
-      `<div style="width:100%;height:100%;">${sanitizeLabelHtml(record.custom_html || '')}</div>`,
+      `<div style="width:100%;height:100%;">${sanitizeLabelHtml(safeRecord.custom_html || '')}</div>`,
       '</div>'
     ].join('');
   }
@@ -163,15 +164,15 @@ export const buildLabelTemplateMarkup = (record = {}) => {
   if (templateId === 'title_subtitle' || templateId === 'price_tag') {
     return [
       `<div class="label-canvas-container ${activeTemplate.container}">`,
-      `<div class="label-copy ${activeTemplate.text}">${formatText(record.title || '')}</div>`,
-      `<div class="label-copy ${activeTemplate.sub}">${formatText(record.subtitle || '')}</div>`,
+      `<div class="label-copy ${activeTemplate.text}">${formatText(safeRecord.title || '')}</div>`,
+      `<div class="label-copy ${activeTemplate.sub}">${formatText(safeRecord.subtitle || '')}</div>`,
       '</div>'
     ].join('');
   }
 
   return [
     `<div class="label-canvas-container ${activeTemplate.container}">`,
-    `<div class="label-copy ${activeTemplate.text}">${formatText(record.text || record.title || '')}</div>`,
+    `<div class="label-copy ${activeTemplate.text}">${formatText(safeRecord.text || safeRecord.title || '')}</div>`,
     '</div>'
   ].join('');
 };
