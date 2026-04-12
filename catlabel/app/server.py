@@ -207,9 +207,6 @@ def get_agent_context():
     """
     with Session(engine) as session:
         settings = session.get(Settings, 1) or Settings()
-        printer_profile = session.exec(
-            select(PrinterProfile).where(PrinterProfile.mac_address == mac_address)
-        ).first()
 
         fonts = session.exec(select(Font)).all()
         font_names = [f.name for f in fonts]
@@ -305,6 +302,9 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
     
     with Session(engine) as session:
         settings = session.get(Settings, 1) or Settings()
+        printer_profile = session.exec(
+            select(PrinterProfile).where(PrinterProfile.mac_address == mac_address)
+        ).first()
 
     registry = PrinterModelRegistry.load()
     resolver = DeviceResolver(registry)

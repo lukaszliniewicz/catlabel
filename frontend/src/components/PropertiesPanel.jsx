@@ -333,7 +333,7 @@ export default function PropertiesPanel() {
             ${activeTab === 'canvas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
           `}
         >
-          Canvas & Printer
+          Canvas &amp; Printer
         </button>
         <button 
           onClick={() => setActiveTab('assistant')}

@@ -276,7 +276,7 @@ export default function AIAssistant() {
           {loading && (
             <div className="flex justify-start my-2">
               <div className="p-3 rounded-lg bg-neutral-100 dark:bg-neutral-900 text-neutral-500 flex items-center gap-2 text-sm">
-                <Loader2 size={14} className="animate-spin text-blue-500" /> Thinking & Executing Tools...
+                <Loader2 size={14} className="animate-spin text-blue-500" /> Thinking &amp; Executing Tools...
               </div>
             </div>
           )}
