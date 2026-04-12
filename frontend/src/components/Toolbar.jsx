@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import {
   Type, Calendar, Smile, ImagePlus, Image as ImageIcon,
-  Barcode, QrCode, Code, FileText, Wand2, ChevronDown, Package
+  Barcode, QrCode, Code, FileText, Wand2, ChevronDown, Package, Trash2
 } from 'lucide-react';
 
 import IconPicker from './IconPicker';
@@ -10,10 +10,14 @@ import HtmlPickerModal from './HtmlPickerModal';
 import ShippingLabelModal from './ShippingLabelModal';
 import DateToolModal from './DateToolModal';
 
-const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button', children }) => (
+const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button', active = false, children }) => (
   <Component
     onClick={onClick}
-    className="relative group p-2.5 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white rounded transition-colors cursor-pointer flex items-center justify-center"
+    className={`relative group p-2.5 rounded transition-colors cursor-pointer flex items-center justify-center ${
+      active
+        ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+        : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white'
+    }`}
   >
     <Icon size={18} strokeWidth={2} />
     {children}
@@ -24,7 +28,7 @@ const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button
 );
 
 export default function Toolbar() {
-  const { addItem, canvasWidth, canvasHeight } = useStore();
+  const { addItem, clearCanvas, canvasWidth, canvasHeight } = useStore();
 
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [iconPickerMode, setIconPickerMode] = useState('icon');
@@ -247,15 +251,21 @@ export default function Toolbar() {
         <ToolButton component="label" icon={FileText} label="Import PDF">
           <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
         </ToolButton>
+        <ToolButton icon={Trash2} label="Clear Canvas" onClick={clearCanvas} />
       </div>
 
       <div className="flex items-center relative" ref={dropdownRef}>
-        <button
+        <ToolButton
+          icon={Wand2}
+          label="Generate"
           onClick={() => setShowGenDropdown(!showGenDropdown)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-widest rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors border border-blue-200 dark:border-blue-800"
+          active={showGenDropdown}
         >
-          <Wand2 size={16} /> Generate <ChevronDown size={14} className={`transition-transform ${showGenDropdown ? 'rotate-180' : ''}`} />
-        </button>
+          <ChevronDown
+            size={12}
+            className={`absolute right-1 bottom-1 pointer-events-none transition-transform ${showGenDropdown ? 'rotate-180' : ''}`}
+          />
+        </ToolButton>
 
         {showGenDropdown && (
           <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50">

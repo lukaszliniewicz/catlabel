@@ -55,7 +55,7 @@ const TreeNode = ({ node, level, onImport }) => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+  const [menuCoords, setMenuCoords] = useState({ top: null, bottom: null, left: 0, maxHeight: 320 });
   const [showMoveModal, setShowMoveModal] = useState(false);
 
   const isFolder = node.type === 'category';
@@ -121,10 +121,30 @@ const TreeNode = ({ node, level, onImport }) => {
         <div onClick={(e) => e.stopPropagation()}>
           <button
             onClick={(e) => {
+              if (menuOpen) {
+                setMenuOpen(false);
+                return;
+              }
+
               const rect = e.currentTarget.getBoundingClientRect();
-              const leftPos = rect.left + 192 > window.innerWidth ? window.innerWidth - 196 : rect.left;
-              setMenuCoords({ top: rect.bottom, left: leftPos });
-              setMenuOpen(!menuOpen);
+              const menuWidth = 192;
+              const viewportPadding = 8;
+              const estimatedMenuHeight = isFolder ? 300 : 220;
+              const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+              const availableAbove = rect.top - viewportPadding;
+              const renderAbove = availableBelow < estimatedMenuHeight && availableAbove > availableBelow;
+              const leftPos = Math.max(
+                viewportPadding,
+                Math.min(rect.left, window.innerWidth - menuWidth - viewportPadding)
+              );
+
+              setMenuCoords({
+                left: leftPos,
+                top: renderAbove ? null : rect.bottom + 4,
+                bottom: renderAbove ? window.innerHeight - rect.top + 4 : null,
+                maxHeight: Math.max(140, renderAbove ? availableAbove : availableBelow)
+              });
+              setMenuOpen(true);
             }}
             className={`p-1 rounded transition-colors ${menuOpen ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white' : 'opacity-0 group-hover:opacity-100 text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
           >
@@ -136,8 +156,13 @@ const TreeNode = ({ node, level, onImport }) => {
               <div className="fixed inset-0 z-[9998]" onClick={() => setMenuOpen(false)}></div>
               
               <div
-                className="fixed w-48 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl rounded-md z-[9999] py-1 flex flex-col"
-                style={{ top: menuCoords.top + 4, left: menuCoords.left }}
+                className="fixed w-48 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl rounded-md z-[9999] py-1 flex flex-col overflow-y-auto"
+                style={{
+                  top: menuCoords.top ?? undefined,
+                  bottom: menuCoords.bottom ?? undefined,
+                  left: menuCoords.left,
+                  maxHeight: menuCoords.maxHeight
+                }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {isFolder && (

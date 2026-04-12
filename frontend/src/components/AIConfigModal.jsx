@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, Plus, Trash, Eye } from 'lucide-react';
 
 export default function AIConfigModal({ onClose }) {
@@ -80,7 +81,7 @@ export default function AIConfigModal({ onClose }) {
   const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500 transition-colors";
   const labelClass = "block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1 mt-3";
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white dark:bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl flex border border-neutral-200 dark:border-neutral-800 h-[600px] overflow-hidden">
         
@@ -197,4 +198,6 @@ export default function AIConfigModal({ onClose }) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
