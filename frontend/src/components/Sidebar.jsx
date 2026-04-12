@@ -96,7 +96,17 @@ export default function Sidebar() {
   return (
     <div className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-4 flex flex-col gap-6 z-10 overflow-y-auto overflow-x-hidden transition-all duration-300 shrink-0`}>
       <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} mb-2`}>
-        {!isSidebarCollapsed && <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white">CatLabel.</h1>}
+        {!isSidebarCollapsed && (
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src="/logo.webp"
+              alt="CatLabel logo"
+              className="w-9 h-9 object-contain shrink-0"
+              draggable={false}
+            />
+            <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white">CatLabel.</h1>
+          </div>
+        )}
         <button onClick={toggleSidebar} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors flex-shrink-0">
           <Menu size={24} />
         </button>
