@@ -381,7 +381,7 @@ Action (Tool Calls in same response):
 1. `apply_preset(preset_name="Standard Tape (Full Width 48mm)")`
 2. `add_barcode_or_qrcode(type="barcode", data="{{{{ asset }}}}", x=20, y=50, width=344, height=80)`
 3. `add_text_element(text="ID: {{{{ asset }}}}", x=0, y=150, align="center")`
-4. `set_batch_records(variables_sequence={"variable_name": "asset", "prefix": "AST-", "start": 1, "end": 50, "padding": 3})`
+4. `set_batch_records(variables_sequence={{"variable_name": "asset", "prefix": "AST-", "start": 1, "end": 50, "padding": 3}})`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
