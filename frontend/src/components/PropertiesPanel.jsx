@@ -428,29 +428,54 @@ export default function PropertiesPanel() {
 
             <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Printer Config</h2>
-              <div className="text-xs text-blue-600 dark:text-blue-400">
+
+              <div className="text-xs text-blue-600 dark:text-blue-400 mb-2">
                 {selectedPrinter
-                  ? `Hardware Default: Speed ${selectedPrinterInfo?.default_speed ?? 'Auto'}, Energy ${selectedPrinterInfo?.default_energy ?? 'Auto'}`
+                  ? `Hardware Defaults: Speed ${selectedPrinterInfo?.default_speed ?? 'Auto'}, ${selectedPrinterInfo?.vendor === 'niimbot' ? 'Density' : 'Energy'} ${selectedPrinterInfo?.default_energy ?? 'Auto'}`
                   : 'Select a printer to configure device-specific overrides.'}
               </div>
-              <div>
-                <label className={labelClass}>Speed Override (0 = Hardware Default)</label>
-                <input type="number" name="speed" value={printerProfile?.speed || 0} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Energy Override (0 = Hardware Default)</label>
-                <input type="number" name="energy" value={printerProfile?.energy || 0} onChange={handleProfileChange} step="100" disabled={!selectedPrinter} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Feed Lines (Tear Padding)</label>
-                <input type="number" name="feed_lines" value={printerProfile?.feed_lines ?? 100} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
-              </div>
+
+              {selectedPrinterInfo?.vendor === 'niimbot' ? (
+                <div>
+                  <label className={labelClass}>Print Density (1 - {selectedPrinterInfo?.max_density || 5})</label>
+                  <select
+                    name="energy"
+                    value={printerProfile?.energy || selectedPrinterInfo?.default_energy || 3}
+                    onChange={handleProfileChange}
+                    disabled={!selectedPrinter}
+                    className={inputClass}
+                  >
+                    <option value={1}>1 - Light</option>
+                    <option value={2}>2 - Normal</option>
+                    <option value={3}>3 - Dark</option>
+                    {(selectedPrinterInfo?.max_density || 5) >= 4 && <option value={4}>4 - Very Dark</option>}
+                    {(selectedPrinterInfo?.max_density || 5) >= 5 && <option value={5}>5 - Maximum</option>}
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className={labelClass}>Speed Override (0 = Hardware Default)</label>
+                    <input type="number" name="speed" value={printerProfile?.speed || 0} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Energy Override (0 = Hardware Default)</label>
+                    <input type="number" name="energy" value={printerProfile?.energy || 0} onChange={handleProfileChange} step="500" disabled={!selectedPrinter} className={inputClass} />
+                    <p className="text-[9px] text-neutral-400 mt-1">Typically between 5000 and 25000 depending on media.</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Feed Lines (Tear Padding)</label>
+                    <input type="number" name="feed_lines" value={printerProfile?.feed_lines ?? 100} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
+                  </div>
+                </>
+              )}
+
               <button 
                 onClick={handleSaveProfile} 
                 disabled={isSaving || !selectedPrinter}
-                className={`w-full py-3 rounded-none transition-colors text-xs uppercase tracking-widest font-bold border 
+                className={`w-full mt-4 py-3 rounded-none transition-colors text-xs uppercase tracking-widest font-bold border 
                   ${isSaving 
-                    ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200' 
+                    ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' 
                     : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed'}`}
               >
                 {isSaving ? 'Settings Saved ✓' : 'Save Printer Settings'}

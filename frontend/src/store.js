@@ -448,37 +448,33 @@ export const useStore = create((set, get) => ({
   },
   
   setSelectedPrinter: async (mac, info) => {
-    const state = get();
-    let newW = state.canvasWidth;
-    let newH = state.canvasHeight;
-    let rot = state.isRotated;
-    let border = state.canvasBorder;
+    const currentState = get();
+    let newW = currentState.canvasWidth;
+    let newH = currentState.canvasHeight;
+    let rot = currentState.isRotated;
+    let border = currentState.canvasBorder;
+
     const activeDpi = info?.dpi || 203;
     const mmToPx = (mm) => Math.round(mm * (activeDpi / 25.4));
 
     if (info) {
-      const model = info.model_id ? info.model_id.toLowerCase() : '';
-      const isNewPrinter = !state.selectedPrinterInfo || state.selectedPrinterInfo.address !== mac;
-      const isPreCutMedia = info.media_type === 'pre-cut' || info.vendor === 'niimbot';
+      const isNewPrinter = !currentState.selectedPrinterInfo || currentState.selectedPrinterInfo.address !== mac;
 
       if (isNewPrinter) {
-        if (isPreCutMedia) {
+        if (info.media_type === 'pre-cut' || info.vendor === 'niimbot') {
+          const model = info.model_id ? info.model_id.toLowerCase() : '';
+
           if (model === 'd11' || model === 'd110' || model === 'd101') {
             newW = mmToPx(40);
             newH = mmToPx(12);
             rot = true;
-            border = 'none';
           } else if (model === 'b1' || model === 'b21' || model === 'b18') {
             newW = mmToPx(50);
             newH = mmToPx(30);
             rot = true;
-            border = 'none';
-          } else {
-            newW = info.width_px || mmToPx(48);
-            newH = info.width_px || mmToPx(48);
-            rot = false;
-            border = 'none';
           }
+
+          border = 'none';
         } else {
           const hardwareWidth = info.width_px || 384;
 
@@ -518,11 +514,15 @@ export const useStore = create((set, get) => ({
     try {
       const res = await fetch(`/api/printers/${mac}/profile`);
       const profile = await res.json();
+      const normalizedEnergy = info?.vendor === 'niimbot'
+        ? ((profile?.energy ?? 0) > 0 ? profile.energy : (info?.default_energy ?? 3))
+        : (profile?.energy ?? 0);
+
       set({
         printerProfile: {
           ...profile,
           speed: profile?.speed ?? 0,
-          energy: profile?.energy ?? 0,
+          energy: normalizedEnergy,
           feed_lines: profile?.feed_lines ?? 100
         }
       });

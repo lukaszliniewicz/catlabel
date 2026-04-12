@@ -27,12 +27,14 @@ from .ai_agent import router as ai_router
 from .. import reporting
 
 NIIMBOT_MODELS = {
-    "D110": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d110"},
-    "D11":  {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d11"},
-    "D101": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d101"},
-    "B1":   {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b1"},
-    "B18":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b18"},
-    "B21":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b21"},
+    # D-Series (15mm print head = 240px max) - Max Density: 3
+    "D110": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d110", "max_density": 3},
+    "D11":  {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d11", "max_density": 3},
+    "D101": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d101", "max_density": 3},
+    # B-Series (48mm print head = 384px max)
+    "B18":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b18", "max_density": 3},
+    "B1":   {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b1", "max_density": 5},
+    "B21":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b21", "max_density": 5},
 }
 
 def identify_printer_hardware(name: str, device=None):
@@ -42,9 +44,8 @@ def identify_printer_hardware(name: str, device=None):
             return {
                 **info,
                 "media_type": "pre-cut",
-                "default_speed": 5,
+                "default_speed": 1,
                 "default_energy": 3,
-                "max_speed": 5
             }
 
     hw_info = {
@@ -54,7 +55,8 @@ def identify_printer_hardware(name: str, device=None):
         "dpi": 203,
         "model": "generic",
         "default_speed": 0,
-        "default_energy": 5000
+        "default_energy": 5000,
+        "max_density": None,
     }
 
     if device and hasattr(device, "model") and device.model:
@@ -108,22 +110,35 @@ def create_db_and_tables():
 
 DEFAULT_LABEL_PRESETS = [
     {"name": "Standard Tape (Full Width 48mm)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "none"},
-    {"name": "Niimbot D11 (12x40mm)", "width_mm": 40, "height_mm": 12, "is_rotated": True, "split_mode": False, "border": "none"},
-    {"name": "Niimbot B1/B21 (50x30mm)", "width_mm": 50, "height_mm": 30, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "A6 Shipping (105x148mm)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "none"},
+    {"name": "Niimbot 30x15mm", "width_mm": 30, "height_mm": 15, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot 40x12mm", "width_mm": 40, "height_mm": 12, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot 50x14mm", "width_mm": 50, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot 75x12mm", "width_mm": 75, "height_mm": 12, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot Cable 109x12.5mm", "width_mm": 109, "height_mm": 12.5, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot B-Series 40x14mm", "width_mm": 40, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot B-Series 120x14mm", "width_mm": 120, "height_mm": 14, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot B1/B21 50x30mm", "width_mm": 50, "height_mm": 30, "is_rotated": True, "split_mode": False, "border": "none"},
     {"name": "Gridfinity Bin (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "split_mode": False, "border": "none"},
     {"name": "Cable Flag (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "cut_line"},
-    {"name": "A6 Shipping (105x148mm)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "none"},
 ]
 
 def seed_default_presets():
     with Session(engine) as session:
-        existing = session.exec(select(LabelPreset)).first()
-        if existing:
-            return
+        existing_names = {
+            preset.name
+            for preset in session.exec(select(LabelPreset)).all()
+        }
 
+        added = False
         for preset in DEFAULT_LABEL_PRESETS:
+            if preset["name"] in existing_names:
+                continue
             session.add(LabelPreset(**preset))
-        session.commit()
+            added = True
+
+        if added:
+            session.commit()
 
 def download_default_fonts():
     """Silently downloads Variable Fonts from Google Fonts raw CDN."""
@@ -369,14 +384,13 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
     if hardware_info["vendor"] == "niimbot":
         # Route to Niimbot Engine
         from .vendors.niimbot.printer import PrinterClient
-        from .vendors.niimbot.bluetooth import BLETransport
-        
+
         # NiimPrintX expects a 'device' object with an address attribute
         class FakeBleakDevice:
             def __init__(self, address):
                 self.address = address
                 self.name = target_device.name
-        
+
         # Ensure we connect to the BLE endpoint (UUID on macOS, BLE MAC on Win/Lin)
         ble_address = mac_address
         if hasattr(target_device, "ble_endpoint") and target_device.ble_endpoint:
@@ -384,19 +398,19 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
 
         device = FakeBleakDevice(ble_address)
         printer = PrinterClient(device)
-        
+
         if not await printer.connect():
             raise HTTPException(status_code=500, detail="Failed to connect to Niimbot")
-            
+
         try:
-            density_source = (
+            default_density = int(hardware_info.get("default_energy", 3) or 3)
+            max_allowed = max(1, int(hardware_info.get("max_density", 5) or 5))
+            raw_density = (
                 printer_profile.energy
                 if printer_profile and printer_profile.energy not in (None, 0)
-                else settings.energy
+                else default_density
             )
-            density = density_source if 1 <= int(density_source or 0) <= 5 else int(hardware_info.get("default_energy", 3) or 3)
-            if not 1 <= density <= 5:
-                density = 3
+            density = max(1, min(int(raw_density), max_allowed))
 
             for img in final_images:
                 await printer.print_image(img, density=density, quantity=1)
@@ -888,7 +902,8 @@ async def scan_printers():
             "model_id": hardware_info["model"],
             "media_type": hardware_info["media_type"],
             "default_speed": hardware_info.get("default_speed", 0),
-            "default_energy": hardware_info.get("default_energy", 0)
+            "default_energy": hardware_info.get("default_energy", 0),
+            "max_density": hardware_info.get("max_density"),
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
 
