@@ -408,9 +408,10 @@ export const useStore = create((set, get) => ({
     if (info) {
        const model = info.model_id ? info.model_id.toLowerCase() : '';
        const isNewPrinter = !state.selectedPrinterInfo || state.selectedPrinterInfo.address !== mac;
+       const isPreCutMedia = info.media_type === 'pre-cut' || info.vendor === 'niimbot';
        
        if (isNewPrinter) {
-           if (info.vendor === 'niimbot') {
+           if (isPreCutMedia) {
                if (model === 'd11' || model === 'd110') {
                    newW = Math.round(40 * 8);
                    newH = Math.round(12 * 8);

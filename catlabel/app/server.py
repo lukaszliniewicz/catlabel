@@ -39,7 +39,7 @@ def identify_printer_hardware(name: str, device=None):
     name_upper = (name or "").upper()
     for prefix, info in NIIMBOT_MODELS.items():
         if name_upper.startswith(prefix):
-            return info
+            return {**info, "media_type": "pre-cut"}
             
     # Generic Chinese Printer Logic
     # If we have the device object from TiMini-Print's scanner, extract true hardware limits
@@ -51,6 +51,7 @@ def identify_printer_hardware(name: str, device=None):
         hw_info["width_mm"] = round(device.model.width / device.model.dev_dpi * 25.4, 1)
         hw_info["model"] = device.model.model_no
     
+    hw_info["media_type"] = "pre-cut" if hw_info["vendor"] == "niimbot" else "continuous"
     return hw_info
 
 os.makedirs("data", exist_ok=True)
@@ -128,7 +129,6 @@ app.include_router(ai_router)
 STANDARD_PRESETS = [
     {"name": "Standard Tape (Full Width 48mm)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "border": "none"},
     {"name": "Niimbot D11 (12x40mm)", "width_mm": 40, "height_mm": 12, "is_rotated": True, "border": "none"},
-    {"name": "Niimbot D11 (15x30mm)", "width_mm": 30, "height_mm": 15, "is_rotated": True, "border": "none"},
     {"name": "Niimbot B1/B21 (50x30mm)", "width_mm": 50, "height_mm": 30, "is_rotated": True, "border": "none"},
     {"name": "Gridfinity Bin Label (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "border": "none"},
     {"name": "Cable Flag / Wire Wrap (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "border": "cut_line"},
@@ -757,7 +757,8 @@ async def scan_printers():
             "vendor": hardware_info["vendor"],
             "width_px": hardware_info["width_px"],
             "width_mm": hardware_info["width_mm"],
-            "model_id": hardware_info["model"]
+            "model_id": hardware_info["model"],
+            "media_type": hardware_info["media_type"]
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
 

@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]]
     canvas_state: Dict[str, Any]
     mac_address: Optional[str] = None
+    printer_info: Optional[Dict[str, Any]] = None
 
 def serialize_msg(msg) -> Dict[str, Any]:
     if hasattr(msg, "model_dump"): d = msg.model_dump(exclude_none=True)
@@ -222,14 +223,27 @@ def chat_with_agent(req: ChatRequest):
     presets_json = json.dumps(context["standard_presets"], indent=2)
     root_categories_json = json.dumps(context["root_categories"], indent=2)
     root_projects_json = json.dumps(context["root_projects"], indent=2)
+
+    if req.printer_info:
+        p_name = req.printer_info.get("name", "Unknown")
+        p_media = req.printer_info.get("media_type", "continuous")
+        p_width = req.printer_info.get("width_mm", context['engine_rules']['hardware_width_mm'])
+        printer_status = f"CONNECTED PRINTER: '{p_name}' | Media Type: {p_media.upper()} | Max Print Width: {p_width}mm"
+    else:
+        printer_status = "NO PRINTER CONNECTED. (If sizing is ambiguous, ASK the user if they use 'pre-cut' labels or 'continuous' rolls)."
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
 Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions.
 
 CONTEXT:
-- Hardware Print Width: {context['engine_rules']['hardware_width_px']} pixels
 - 1 mm = 8 pixels. ALWAYS use pixels for canvas dimensions and positions.
 - Default Font: {context['global_default_font']}
+
+HARDWARE & MEDIA CONSTRAINTS:
+{printer_status}
+- PRE-CUT MEDIA (e.g. Niimbot): You are constrained to exact physical label dimensions. You MUST use `apply_preset` to select the right physical template. DO NOT invent arbitrary custom lengths.
+- CONTINUOUS MEDIA (e.g. Generic Rolls): Tape is infinitely long. You CAN use `set_canvas_dimensions` to create custom lengths (e.g., a 100mm banner).
+- UNKNOWN / NO PRINTER: If the user requests a custom layout size, politely ask them if their printer uses pre-cut labels or continuous rolls before setting up the canvas.
 
 AVAILABLE PRESETS:
 {presets_json}
@@ -243,7 +257,7 @@ AVAILABLE ROOT PROJECTS:
 CRITICAL ARCHITECTURE RULES:
 1. NO SPATIAL MATH FOR BASIC LAYOUTS: Do not try to manually calculate x/y coordinates to center things. Instead, use the MACRO tools (`layout_centered_text`, `layout_stacked_text`). They automatically scale, wrap, and center elements to fit the label bounds perfectly.
 2. ONE LABEL CANVAS: The canvas dimensions ALWAYS represent the physical size of a SINGLE label. Do not stretch the canvas height to stack multiple labels.
-3. LANDSCAPE TAPE: Thermal tape feeds vertically. If a label is wider than it is tall (e.g. 40mm wide, 12mm tall), the system requires `isRotated=true`. Presets handle this automatically.
+3. LANDSCAPE TAPE: Thermal tape feeds vertically. If a label is wider than it is tall (e.g. 40mm wide, 12mm tall), the system requires `isRotated=true`. The dimension tools automatically handle this.
 
 WORKFLOW PARADIGMS (Choose carefully based on the user's request):
 
@@ -277,7 +291,7 @@ If the user asks you to organize, load, save, or delete files:
 - Use `delete_project` or `delete_category` to clean up the workspace.
 Always confirm the names and IDs before overwriting or deleting.
 
-Always be proactive. Apply the preset first, layout the design, configure the batch data (if any), and finally call `trigger_ui_action` to print if requested.
+Always be proactive. For pre-cut media, apply the preset first; for continuous media, set custom dimensions when appropriate; then layout the design, configure the batch data (if any), and finally call `trigger_ui_action` to print if requested.
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages

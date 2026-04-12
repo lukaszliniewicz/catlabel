@@ -48,7 +48,7 @@ export default function AIAssistant() {
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState([]);
 
-  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, batchRecords, printCopies, currentPage, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCurrentPage } = useStore();
+  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, selectedPrinterInfo, batchRecords, printCopies, currentPage, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCurrentPage } = useStore();
 
   useEffect(() => {
     fetchHistories();
@@ -146,7 +146,8 @@ export default function AIAssistant() {
         body: JSON.stringify({ 
            messages: newMessages, 
            canvas_state: currentState,
-           mac_address: selectedPrinter || null
+           mac_address: selectedPrinter || null,
+           printer_info: selectedPrinterInfo || null
         })
       });
       
