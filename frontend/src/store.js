@@ -458,10 +458,11 @@ export const useStore = create((set, get) => ({
     const mmToPx = (mm) => Math.round(mm * (activeDpi / 25.4));
 
     if (info) {
-      const isNewPrinter = !currentState.selectedPrinterInfo || currentState.selectedPrinterInfo.address !== mac;
+      const isNewPrinter = currentState.selectedPrinterInfo?.address !== mac;
+      const isPreCutMedia = info.media_type === 'pre-cut' || info.vendor === 'niimbot';
 
       if (isNewPrinter) {
-        if (info.media_type === 'pre-cut' || info.vendor === 'niimbot') {
+        if (isPreCutMedia) {
           const model = info.model_id ? info.model_id.toLowerCase() : '';
 
           if (model === 'd11' || model === 'd110' || model === 'd101') {
@@ -472,6 +473,10 @@ export const useStore = create((set, get) => ({
             newW = mmToPx(50);
             newH = mmToPx(30);
             rot = true;
+          } else {
+            newW = info.width_px || mmToPx(48);
+            newH = info.width_px || mmToPx(48);
+            rot = false;
           }
 
           border = 'none';
