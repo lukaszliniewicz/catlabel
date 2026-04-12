@@ -19,7 +19,7 @@ import pypdfium2 as pdfium
 from sqlmodel import SQLModel, create_engine, Session, select
 from sqlalchemy import text
 
-from .models import PrinterProfile, Font, Category, Project, Settings, Address
+from .models import PrinterProfile, Font, Category, Project, Settings, Address, LabelPreset
 from ..rendering.template import render_template
 from ..devices import DeviceResolver, PrinterModelRegistry
 from ..transport.bluetooth import SppBackend
@@ -39,18 +39,32 @@ def identify_printer_hardware(name: str, device=None):
     name_upper = (name or "").upper()
     for prefix, info in NIIMBOT_MODELS.items():
         if name_upper.startswith(prefix):
-            return {**info, "media_type": "pre-cut"}
-            
-    # Generic Chinese Printer Logic
-    # If we have the device object from TiMini-Print's scanner, extract true hardware limits
-    hw_info = {"vendor": "generic", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "generic"}
-    
+            return {
+                **info,
+                "media_type": "pre-cut",
+                "default_speed": 5,
+                "default_energy": 3,
+                "max_speed": 5
+            }
+
+    hw_info = {
+        "vendor": "generic",
+        "width_px": 384,
+        "width_mm": 48.0,
+        "dpi": 203,
+        "model": "generic",
+        "default_speed": 0,
+        "default_energy": 5000
+    }
+
     if device and hasattr(device, "model") and device.model:
         hw_info["width_px"] = device.model.width
         hw_info["dpi"] = device.model.dev_dpi
         hw_info["width_mm"] = round(device.model.width / device.model.dev_dpi * 25.4, 1)
         hw_info["model"] = device.model.model_no
-    
+        hw_info["default_speed"] = device.model.img_print_speed
+        hw_info["default_energy"] = device.model.moderation_energy or 5000
+
     hw_info["media_type"] = "pre-cut" if hw_info["vendor"] == "niimbot" else "continuous"
     return hw_info
 
@@ -63,7 +77,14 @@ _scanned_devices_cache: List[Any] = []
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
-    # Silent migration for reasoning_effort column if upgrading from an older version
+
+    for col in ["speed", "energy", "feed_lines"]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE printerprofile ADD COLUMN {col} INTEGER"))
+        except Exception:
+            pass
+
     try:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE aiagentprofile ADD COLUMN reasoning_effort VARCHAR DEFAULT ''"))
@@ -84,6 +105,25 @@ def create_db_and_tables():
             conn.execute(text("ALTER TABLE project ADD COLUMN category_id INTEGER REFERENCES category(id)"))
     except Exception:
         pass
+
+DEFAULT_LABEL_PRESETS = [
+    {"name": "Standard Tape (Full Width 48mm)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "none"},
+    {"name": "Niimbot D11 (12x40mm)", "width_mm": 40, "height_mm": 12, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Niimbot B1/B21 (50x30mm)", "width_mm": 50, "height_mm": 30, "is_rotated": True, "split_mode": False, "border": "none"},
+    {"name": "Gridfinity Bin (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "split_mode": False, "border": "none"},
+    {"name": "Cable Flag (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "cut_line"},
+    {"name": "A6 Shipping (105x148mm)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "none"},
+]
+
+def seed_default_presets():
+    with Session(engine) as session:
+        existing = session.exec(select(LabelPreset)).first()
+        if existing:
+            return
+
+        for preset in DEFAULT_LABEL_PRESETS:
+            session.add(LabelPreset(**preset))
+        session.commit()
 
 def download_default_fonts():
     """Silently downloads Variable Fonts from Google Fonts raw CDN."""
@@ -108,6 +148,7 @@ def download_default_fonts():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    seed_default_presets()
     download_default_fonts()
     yield
 
@@ -126,19 +167,37 @@ app.add_middleware(
 
 app.include_router(ai_router)
 
-STANDARD_PRESETS = [
-    {"name": "Standard Tape (Full Width 48mm)", "width_mm": 48, "height_mm": 48, "is_rotated": False, "border": "none"},
-    {"name": "Niimbot D11 (12x40mm)", "width_mm": 40, "height_mm": 12, "is_rotated": True, "border": "none"},
-    {"name": "Niimbot B1/B21 (50x30mm)", "width_mm": 50, "height_mm": 30, "is_rotated": True, "border": "none"},
-    {"name": "Gridfinity Bin Label (42x12mm)", "width_mm": 42, "height_mm": 12, "is_rotated": False, "border": "none"},
-    {"name": "Cable Flag / Wire Wrap (30x48mm)", "width_mm": 30, "height_mm": 48, "is_rotated": False, "border": "cut_line"},
-    {"name": "A6 Shipping (105x148mm - Oversize)", "width_mm": 105, "height_mm": 148, "is_rotated": False, "split_mode": True, "border": "none"},
-]
+class PresetCreate(BaseModel):
+    name: str
+    width_mm: float
+    height_mm: float
+    is_rotated: bool = False
+    split_mode: bool = False
+    border: str = "none"
 
 @app.get("/api/presets")
 def list_presets():
-    """Provides standard layout dimensions to the UI and LLM."""
-    return STANDARD_PRESETS
+    with Session(engine) as session:
+        return session.exec(select(LabelPreset).order_by(LabelPreset.name)).all()
+
+@app.post("/api/presets")
+def create_preset(preset: PresetCreate):
+    with Session(engine) as session:
+        payload = preset.model_dump() if hasattr(preset, "model_dump") else preset.dict()
+        db_preset = LabelPreset(**payload)
+        session.add(db_preset)
+        session.commit()
+        session.refresh(db_preset)
+        return db_preset
+
+@app.delete("/api/presets/{preset_id}")
+def delete_preset(preset_id: int):
+    with Session(engine) as session:
+        db_preset = session.get(LabelPreset, preset_id)
+        if db_preset:
+            session.delete(db_preset)
+            session.commit()
+        return {"status": "ok"}
 
 @app.get("/api/agent/context")
 def get_agent_context():
@@ -148,27 +207,32 @@ def get_agent_context():
     """
     with Session(engine) as session:
         settings = session.get(Settings, 1) or Settings()
+        printer_profile = session.exec(
+            select(PrinterProfile).where(PrinterProfile.mac_address == mac_address)
+        ).first()
 
         fonts = session.exec(select(Font)).all()
         font_names = [f.name for f in fonts]
 
         root_projects = session.exec(select(Project).where(Project.category_id == None)).all()
         root_categories = session.exec(select(Category).where(Category.parent_id == None)).all()
+        presets = session.exec(select(LabelPreset).order_by(LabelPreset.name)).all()
 
         project_summaries = [{"id": p.id, "name": p.name} for p in root_projects]
         category_summaries = [{"id": c.id, "name": c.name} for c in root_categories]
+        presets_data = [{"name": p.name, "width_mm": p.width_mm, "height_mm": p.height_mm} for p in presets]
 
     return {
         "engine_rules": {
-            "coordinate_system": "1 mm = 8 pixels. ALWAYS use pixels for canvas width/height and element x/y/width/height.",
+            "coordinate_system": "Dimensions are in PIXELS. 1 mm = (DPI / 25.4) pixels. The active DPI will be provided in your printer_info block. If no printer is connected, assume 203 DPI (1mm ≈ 8px).",
             "hardware_width_mm": settings.print_width_mm,
-            "hardware_width_px": int(settings.print_width_mm * 8),
+            "hardware_width_px": int(settings.print_width_mm * (settings.default_dpi / 25.4)),
             "behavior_padding": "If you define a canvas narrower than the hardware width, the engine will automatically center and pad it with white space. Do NOT stretch elements to fit the hardware if the user wants a small label.",
             "behavior_oversize": "If canvas width exceeds hardware width and splitMode=false, the engine scales it down. If splitMode=true, it slices it into parallel printable strips.",
             "feed_axis": "Thermal tape is infinitely long. Leave splitMode=false and set canvas height to whatever you need for long vertical banners.",
             "orientation_and_rotation": "CRITICAL: If the design is wider than it is tall (Landscape, e.g., 40x12mm), you MUST set isRotated=true in the canvas state. When isRotated=true, canvas Width is the long feed axis, and canvas Height is the physical tape width."
         },
-        "standard_presets": STANDARD_PRESETS,
+        "standard_presets": presets_data,
         "available_fonts": font_names,
         "root_projects": project_summaries,
         "root_categories": category_summaries,
@@ -195,6 +259,45 @@ class BatchPrintRequest(BaseModel):
     copies: int = 1
     variables_list: List[Dict[str, str]] = []
     variables_matrix: Optional[Dict[str, List[str]]] = None
+
+class PrinterProfileUpdate(BaseModel):
+    speed: Optional[int] = None
+    energy: Optional[int] = None
+    feed_lines: Optional[int] = None
+
+@app.get("/api/printers/{mac_address}/profile")
+def get_printer_profile(mac_address: str):
+    with Session(engine) as session:
+        profile = session.exec(
+            select(PrinterProfile).where(PrinterProfile.mac_address == mac_address)
+        ).first()
+        if not profile:
+            profile = PrinterProfile(mac_address=mac_address)
+            session.add(profile)
+            session.commit()
+            session.refresh(profile)
+        return profile
+
+@app.put("/api/printers/{mac_address}/profile")
+def update_printer_profile(mac_address: str, update: PrinterProfileUpdate):
+    with Session(engine) as session:
+        profile = session.exec(
+            select(PrinterProfile).where(PrinterProfile.mac_address == mac_address)
+        ).first()
+        if not profile:
+            profile = PrinterProfile(mac_address=mac_address)
+
+        if update.speed is not None:
+            profile.speed = update.speed
+        if update.energy is not None:
+            profile.energy = update.energy
+        if update.feed_lines is not None:
+            profile.feed_lines = update.feed_lines
+
+        session.add(profile)
+        session.commit()
+        session.refresh(profile)
+        return profile
 
 async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bool = False):
     """Handles scanning, continuous connection, and streaming multiple jobs efficiently."""
@@ -286,8 +389,15 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
             raise HTTPException(status_code=500, detail="Failed to connect to Niimbot")
             
         try:
-            # FIX: Map density correctly from UI settings (1-5 scale)
-            density = settings.energy if 1 <= settings.energy <= 5 else 3
+            density_source = (
+                printer_profile.energy
+                if printer_profile and printer_profile.energy not in (None, 0)
+                else settings.energy
+            )
+            density = density_source if 1 <= int(density_source or 0) <= 5 else int(hardware_info.get("default_energy", 3) or 3)
+            if not 1 <= density <= 5:
+                density = 3
+
             for img in final_images:
                 await printer.print_image(img, density=density, quantity=1)
                 await asyncio.sleep(1.0)
@@ -301,21 +411,38 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
         from ..transport.bluetooth import SppBackend
         
         pipeline_config = target_device.model.image_pipeline
-        
-        # Pre-render all raw protocol jobs
+
+        hardware_default_speed = hardware_info.get("default_speed", getattr(target_device.model, "img_print_speed", 0))
+        hardware_default_energy = hardware_info.get("default_energy", getattr(target_device.model, "moderation_energy", 5000) or 5000)
+
+        use_speed = (
+            printer_profile.speed
+            if printer_profile and printer_profile.speed not in (None, 0)
+            else (settings.speed if settings.speed > 0 else hardware_default_speed)
+        )
+        use_energy = (
+            printer_profile.energy
+            if printer_profile and printer_profile.energy not in (None, 0)
+            else (settings.energy if settings.energy > 0 else hardware_default_energy)
+        )
+        use_feed = (
+            printer_profile.feed_lines
+            if printer_profile and printer_profile.feed_lines is not None
+            else settings.feed_lines
+        )
+
         jobs = []
         total_images = len(final_images)
         for i, img in enumerate(final_images):
-            # 1. Apply feed padding only to the very last segment in a batch sequence
             is_last = (i == total_images - 1)
-            current_feed = settings.feed_lines if is_last else 0
-            
+            current_feed = use_feed if is_last else 0
+
             raster = image_to_raster(img, pipeline_config.default_format, dither=True)
             job = build_job_from_raster(
                 raster=raster,
                 is_text=False,
-                speed=settings.speed if settings.speed > 0 else target_device.model.img_print_speed,
-                energy=settings.energy if settings.energy > 0 else (target_device.model.moderation_energy or 5000),
+                speed=use_speed,
+                energy=use_energy,
                 blackening=3,
                 lsb_first=not target_device.model.a4xii,
                 protocol_family=target_device.model.protocol_family,
@@ -757,8 +884,11 @@ async def scan_printers():
             "vendor": hardware_info["vendor"],
             "width_px": hardware_info["width_px"],
             "width_mm": hardware_info["width_mm"],
+            "dpi": hardware_info["dpi"],
             "model_id": hardware_info["model"],
-            "media_type": hardware_info["media_type"]
+            "media_type": hardware_info["media_type"],
+            "default_speed": hardware_info.get("default_speed", 0),
+            "default_energy": hardware_info.get("default_energy", 0)
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
 

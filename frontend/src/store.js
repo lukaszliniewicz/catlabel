@@ -16,6 +16,9 @@ export const useStore = create((set, get) => ({
   theme: 'auto',
   snapLines: [],
   fonts: [],
+  labelPresets: [],
+  currentDpi: 203,
+  printerProfile: { speed: 0, energy: 0, feed_lines: 100 },
   currentPage: 0,
   setCurrentPage: (idx) => set({ currentPage: Math.max(0, Number(idx) || 0), selectedId: null }),
   addPage: () => set((state) => {
@@ -137,8 +140,16 @@ export const useStore = create((set, get) => ({
   addresses: [],
   settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100, default_font: 'Roboto.ttf' },
   
-  pxToMm: (px) => px / 8,
-  mmToPx: (mm) => Math.round(mm * 8),
+  getPxToMm: (px) => {
+    const dpi = get().currentDpi || 203;
+    return (Number(px || 0) / (dpi / 25.4)).toFixed(1);
+  },
+  getMmToPx: (mm) => {
+    const dpi = get().currentDpi || 203;
+    return Math.round(Number(mm || 0) * (dpi / 25.4));
+  },
+  pxToMm: (px) => parseFloat(get().getPxToMm(px)),
+  mmToPx: (mm) => get().getMmToPx(mm),
 
   // --- HIERARCHICAL PROJECT MANAGEMENT ---
   projects: [],
@@ -153,6 +164,16 @@ export const useStore = create((set, get) => ({
   setPrintCopies: (n) => set({
     printCopies: Math.max(1, Number(n) || 1)
   }),
+
+  fetchPresets: async () => {
+    try {
+      const res = await fetch('/api/presets');
+      const data = await res.json();
+      set({ labelPresets: data });
+    } catch (e) {
+      console.error("Failed to fetch presets", e);
+    }
+  },
 
   fetchProjects: async () => {
     try {
@@ -297,14 +318,41 @@ export const useStore = create((set, get) => ({
   },
   // --- END HIERARCHICAL PROJECT MANAGEMENT ---
 
+  savePreset: async (name) => {
+    const state = get();
+    const widthMm = parseFloat(state.getPxToMm(state.canvasWidth));
+    const heightMm = parseFloat(state.getPxToMm(state.canvasHeight));
+
+    try {
+      await fetch('/api/presets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          width_mm: widthMm,
+          height_mm: heightMm,
+          is_rotated: state.isRotated,
+          split_mode: state.splitMode,
+          border: state.canvasBorder
+        })
+      });
+      await state.fetchPresets();
+    } catch (e) {
+      console.error("Failed to save preset", e);
+    }
+  },
+
   applyPreset: (preset) => set((state) => {
-    const w = Math.round(preset.w * 8);
-    const h = Math.round(preset.h * 8);
+    const widthMm = preset.width_mm ?? preset.w ?? 48;
+    const heightMm = preset.height_mm ?? preset.h ?? 48;
+    const isRotated = preset.is_rotated ?? preset.rotated ?? false;
+    const splitMode = preset.split_mode ?? preset.splitMode ?? false;
+
     return {
-      canvasWidth: w,
-      canvasHeight: h,
-      isRotated: preset.rotated,
-      splitMode: preset.splitMode || false,
+      canvasWidth: state.getMmToPx(widthMm),
+      canvasHeight: state.getMmToPx(heightMm),
+      isRotated,
+      splitMode,
       canvasBorder: preset.border || 'none'
     };
   }),
@@ -399,63 +447,89 @@ export const useStore = create((set, get) => ({
     }
   },
   
-  setSelectedPrinter: (mac, info) => set((state) => {
+  setSelectedPrinter: async (mac, info) => {
+    const state = get();
     let newW = state.canvasWidth;
     let newH = state.canvasHeight;
     let rot = state.isRotated;
     let border = state.canvasBorder;
+    const activeDpi = info?.dpi || 203;
+    const mmToPx = (mm) => Math.round(mm * (activeDpi / 25.4));
 
     if (info) {
-       const model = info.model_id ? info.model_id.toLowerCase() : '';
-       const isNewPrinter = !state.selectedPrinterInfo || state.selectedPrinterInfo.address !== mac;
-       const isPreCutMedia = info.media_type === 'pre-cut' || info.vendor === 'niimbot';
-       
-       if (isNewPrinter) {
-           if (isPreCutMedia) {
-               if (model === 'd11' || model === 'd110') {
-                   newW = Math.round(40 * 8);
-                   newH = Math.round(12 * 8);
-                   rot = true;
-                   border = 'none';
-               } else if (model === 'b1' || model === 'b21' || model === 'b18') {
-                   newW = Math.round(50 * 8);
-                   newH = Math.round(30 * 8);
-                   rot = true;
-                   border = 'none';
-               }
-           } else {
-               // Generic printer fallback
-               const hardwareWidth = info.width_px || 384;
-               
-               // For standard Chinese cat printers (usually ~48mm/384px or 576px)
-               if (hardwareWidth === 384) {
-                   newW = 384;
-                   newH = 384;
-                   rot = false;
-               } else if (hardwareWidth > 384) {
-                   // Shipping label style
-                   newW = hardwareWidth;
-                   newH = Math.round(hardwareWidth * 1.5);
-                   rot = false;
-               } else {
-                   // Narrow tape (like D11 clones)
-                   newW = Math.round(40 * 8);
-                   newH = hardwareWidth;
-                   rot = true;
-                   border = 'none';
-               }
-           }
-       }
+      const model = info.model_id ? info.model_id.toLowerCase() : '';
+      const isNewPrinter = !state.selectedPrinterInfo || state.selectedPrinterInfo.address !== mac;
+      const isPreCutMedia = info.media_type === 'pre-cut' || info.vendor === 'niimbot';
+
+      if (isNewPrinter) {
+        if (isPreCutMedia) {
+          if (model === 'd11' || model === 'd110' || model === 'd101') {
+            newW = mmToPx(40);
+            newH = mmToPx(12);
+            rot = true;
+            border = 'none';
+          } else if (model === 'b1' || model === 'b21' || model === 'b18') {
+            newW = mmToPx(50);
+            newH = mmToPx(30);
+            rot = true;
+            border = 'none';
+          } else {
+            newW = info.width_px || mmToPx(48);
+            newH = info.width_px || mmToPx(48);
+            rot = false;
+            border = 'none';
+          }
+        } else {
+          const hardwareWidth = info.width_px || 384;
+
+          if (hardwareWidth === 384) {
+            newW = hardwareWidth;
+            newH = hardwareWidth;
+            rot = false;
+          } else if (hardwareWidth > 384) {
+            newW = hardwareWidth;
+            newH = Math.round(hardwareWidth * 1.5);
+            rot = false;
+          } else {
+            newW = mmToPx(40);
+            newH = hardwareWidth;
+            rot = true;
+            border = 'none';
+          }
+        }
+      }
     }
 
-    return { 
-      selectedPrinter: mac, 
+    set({
+      selectedPrinter: mac,
       selectedPrinterInfo: info,
+      currentDpi: activeDpi,
       canvasWidth: newW,
       canvasHeight: newH,
       isRotated: rot,
       canvasBorder: border
-    };
+    });
+
+    if (!mac) {
+      set({ printerProfile: { speed: 0, energy: 0, feed_lines: 100 } });
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/printers/${mac}/profile`);
+      const profile = await res.json();
+      set({
+        printerProfile: {
+          ...profile,
+          speed: profile?.speed ?? 0,
+          energy: profile?.energy ?? 0,
+          feed_lines: profile?.feed_lines ?? 100
+        }
+      });
+    } catch (e) {
+      console.error("Failed to fetch printer profile", e);
+      set({ printerProfile: { speed: 0, energy: 0, feed_lines: 100 } });
+    }
   }),
   
   setItems: (items) => set({ items, selectedId: null, selectedPagesForPrint: [] }),

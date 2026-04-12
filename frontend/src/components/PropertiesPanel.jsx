@@ -7,11 +7,13 @@ const pxToMm = (px) => (px / 8).toFixed(1);
 const mmToPx = (mm) => Math.round(mm * 8);
 
 const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
+  const getPxToMm = useStore((state) => state.getPxToMm);
+  const getMmToPx = useStore((state) => state.getMmToPx);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startVal, setStartVal] = useState(0);
 
-  const currentMm = value / 8;
+  const currentMm = parseFloat(getPxToMm(value));
 
   const handleMouseDown = (e) => {
     if (disabled) return;
@@ -24,9 +26,8 @@ const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
     if (!isDragging) return;
     const handleMouseMove = (e) => {
       const dx = e.clientX - startX;
-      // 1 pixel drag = 0.5 mm change
       const newMm = Math.max(0, startVal + dx * 0.5);
-      onChange({ target: { name, value: Math.round(newMm * 8), type: 'number' } });
+      onChange({ target: { name, value: getMmToPx(newMm), type: 'number' } });
     };
     const handleMouseUp = () => setIsDragging(false);
     window.addEventListener('mousemove', handleMouseMove);
@@ -35,12 +36,12 @@ const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, startX, startVal, onChange, name]);
+  }, [getMmToPx, isDragging, name, onChange, startVal, startX]);
 
   const handleChange = (e) => {
     const mm = parseFloat(e.target.value);
     if (!isNaN(mm)) {
-      onChange({ target: { name, value: Math.round(mm * 8), type: 'number' } });
+      onChange({ target: { name, value: getMmToPx(mm), type: 'number' } });
     }
   };
 
@@ -106,7 +107,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 };
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
 
   const [panelWidth, setPanelWidth] = useState(320);
@@ -264,6 +265,31 @@ export default function PropertiesPanel() {
     updateItem(selectedId, { [name]: parsedValue });
   };
 
+  const handleProfileChange = (e) => {
+    const rawValue = e.target.value;
+    useStore.setState((state) => ({
+      printerProfile: {
+        ...state.printerProfile,
+        [e.target.name]: Number(rawValue)
+      }
+    }));
+  };
+
+  const handleSaveProfile = async () => {
+    if (!selectedPrinter) return;
+    setIsSaving(true);
+    try {
+      await fetch(`/api/printers/${selectedPrinter}/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(useStore.getState().printerProfile)
+      });
+    } catch (e) {
+      console.error("Failed to save printer profile", e);
+    }
+    setTimeout(() => setIsSaving(false), 1500);
+  };
+
   const handleLocalSettingChange = (e) => {
     setLocalSettings({ ...localSettings, [e.target.name]: Number(e.target.value) });
   };
@@ -402,18 +428,37 @@ export default function PropertiesPanel() {
 
             <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Printer Config</h2>
-              <div>
-                <label className={labelClass}>Speed (0 = Device Profile Auto)</label>
-                <input type="number" name="speed" value={localSettings.speed} onChange={handleLocalSettingChange} className={inputClass} />
+              <div className="text-xs text-blue-600 dark:text-blue-400">
+                {selectedPrinter
+                  ? `Hardware Default: Speed ${selectedPrinterInfo?.default_speed ?? 'Auto'}, Energy ${selectedPrinterInfo?.default_energy ?? 'Auto'}`
+                  : 'Select a printer to configure device-specific overrides.'}
               </div>
               <div>
-                <label className={labelClass}>Print Energy / Darkness (0 = Auto)</label>
-                <input type="number" name="energy" value={localSettings.energy} onChange={handleLocalSettingChange} step="500" className={inputClass} />
+                <label className={labelClass}>Speed Override (0 = Hardware Default)</label>
+                <input type="number" name="speed" value={printerProfile?.speed || 0} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Energy Override (0 = Hardware Default)</label>
+                <input type="number" name="energy" value={printerProfile?.energy || 0} onChange={handleProfileChange} step="100" disabled={!selectedPrinter} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Feed Lines (Tear Padding)</label>
-                <input type="number" name="feed_lines" value={localSettings.feed_lines} onChange={handleLocalSettingChange} className={inputClass} />
+                <input type="number" name="feed_lines" value={printerProfile?.feed_lines ?? 100} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
               </div>
+              <button 
+                onClick={handleSaveProfile} 
+                disabled={isSaving || !selectedPrinter}
+                className={`w-full py-3 rounded-none transition-colors text-xs uppercase tracking-widest font-bold border 
+                  ${isSaving 
+                    ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200' 
+                    : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed'}`}
+              >
+                {isSaving ? 'Settings Saved ✓' : 'Save Printer Settings'}
+              </button>
+            </div>
+
+            <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Global Defaults</h2>
               <div className="pt-2">
                 <label className={labelClass}>Global Default Font</label>
                 <select name="default_font" value={localSettings.default_font || 'Roboto.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
@@ -424,18 +469,11 @@ export default function PropertiesPanel() {
                 </select>
                 <p className="text-[9px] text-neutral-400 mt-1">Applies to all newly created text items.</p>
               </div>
-            </div>
-
-            <div className="mt-auto pt-6">
               <button 
                 onClick={handleSaveSettings} 
-                disabled={isSaving}
-                className={`w-full py-3 rounded-none transition-colors text-xs uppercase tracking-widest font-bold border 
-                  ${isSaving 
-                    ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200' 
-                    : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent hover:bg-neutral-800 dark:hover:bg-neutral-200'}`}
+                className="w-full py-3 rounded-none transition-colors text-xs uppercase tracking-widest font-bold border bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-white border-neutral-200 dark:border-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800"
               >
-                {isSaving ? 'Settings Saved ✓' : 'Save Printer Settings'}
+                Save Global Defaults
               </button>
             </div>
           </>

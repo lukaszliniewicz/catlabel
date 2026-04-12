@@ -21,10 +21,11 @@ export default function Sidebar() {
     setPrintCopies,
     isPrinting,
     printPages,
-    selectedPagesForPrint
+    selectedPagesForPrint,
+    labelPresets,
+    savePreset
   } = useStore();
 
-  const [presets, setPresets] = useState([]);
   const [printers, setPrinters] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [showProjects, setShowProjects] = useState(true);
@@ -38,7 +39,7 @@ export default function Sidebar() {
       setPrinters(data.devices || []);
 
       if (data.devices && data.devices.length > 0 && !useStore.getState().selectedPrinter) {
-        setSelectedPrinter(data.devices[0].address, data.devices[0]);
+        await setSelectedPrinter(data.devices[0].address, data.devices[0]);
       }
     } catch (e) {
       console.error(e);
@@ -51,11 +52,7 @@ export default function Sidebar() {
     useStore.getState().fetchProjects();
     useStore.getState().fetchSettings();
     useStore.getState().fetchAddresses();
-
-    fetch('/api/presets')
-      .then(res => res.json())
-      .then(data => setPresets(data))
-      .catch(e => console.error(e));
+    useStore.getState().fetchPresets();
 
     handleScan();
   }, []);
@@ -186,18 +183,28 @@ export default function Sidebar() {
             className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
             onChange={(e) => {
               if (e.target.value !== '') {
-                const p = presets[e.target.value];
-                applyPreset({ w: p.width_mm, h: p.height_mm, rotated: p.is_rotated, splitMode: p.split_mode, border: p.border });
+                const presetId = parseInt(e.target.value, 10);
+                const preset = labelPresets.find((p) => p.id === presetId);
+                if (preset) applyPreset(preset);
               }
               e.target.value = '';
             }}
             defaultValue=""
           >
             <option value="" disabled>Select physical layout...</option>
-            {presets.map((p, idx) => (
-              <option key={idx} value={idx}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
+            {labelPresets.map((p) => (
+              <option key={p.id} value={p.id}>{p.name} ({p.width_mm}x{p.height_mm}mm)</option>
             ))}
           </select>
+          <button
+            onClick={() => {
+              const name = prompt("Preset Name:");
+              if (name) savePreset(name);
+            }}
+            className="w-full text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 py-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            Save Current as Preset
+          </button>
         </div>
       ) : (
         <SidebarButton icon={LayoutTemplate} label="Presets (Expand to view)" onClick={toggleSidebar} />

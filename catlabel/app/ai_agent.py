@@ -228,15 +228,16 @@ def chat_with_agent(req: ChatRequest):
         p_name = req.printer_info.get("name", "Unknown")
         p_media = req.printer_info.get("media_type", "continuous")
         p_width = req.printer_info.get("width_mm", context['engine_rules']['hardware_width_mm'])
-        printer_status = f"CONNECTED PRINTER: '{p_name}' | Media Type: {p_media.upper()} | Max Print Width: {p_width}mm"
+        p_dpi = req.printer_info.get("dpi", 203)
+        printer_status = f"CONNECTED PRINTER: '{p_name}' | Media Type: {p_media.upper()} | DPI: {p_dpi} | Max Print Width: {p_width}mm"
     else:
-        printer_status = "NO PRINTER CONNECTED. (If sizing is ambiguous, ASK the user if they use 'pre-cut' labels or 'continuous' rolls)."
+        printer_status = "NO PRINTER CONNECTED. If sizing is ambiguous, ASK the user if they use 'pre-cut' labels or 'continuous' rolls. If you must reason about mm-to-px, assume 203 DPI."
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
 Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions.
 
 CONTEXT:
-- 1 mm = 8 pixels. ALWAYS use pixels for canvas dimensions and positions.
+- {context['engine_rules']['coordinate_system']}
 - Default Font: {context['global_default_font']}
 
 HARDWARE & MEDIA CONSTRAINTS:

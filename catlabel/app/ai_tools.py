@@ -277,17 +277,26 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
 
     if name == "apply_preset":
         preset_name = (args.get("preset_name") or "").strip()
-        from .server import STANDARD_PRESETS
-        preset = next((p for p in STANDARD_PRESETS if p["name"].casefold() == preset_name.casefold()), None)
-        if not preset:
-            return "Error: Preset not found."
-        
-        canvas_state["width"] = int(preset["width_mm"] * 8)
-        canvas_state["height"] = int(preset["height_mm"] * 8)
-        canvas_state["isRotated"] = preset["is_rotated"]
-        canvas_state["splitMode"] = preset.get("split_mode", False)
-        canvas_state["canvasBorder"] = preset.get("border", "none")
-        return f"Applied preset: {preset['name']}"
+        from .server import engine
+        from sqlmodel import Session, select
+        from .models import LabelPreset
+
+        with Session(engine) as session:
+            presets = session.exec(select(LabelPreset)).all()
+            preset = next((p for p in presets if p.name.casefold() == preset_name.casefold()), None)
+
+            if not preset:
+                return "Error: Preset not found."
+
+            current_dpi = canvas_state.get("__dpi__", 203) or 203
+            dots_per_mm = current_dpi / 25.4
+
+            canvas_state["width"] = max(1, int(round(preset.width_mm * dots_per_mm)))
+            canvas_state["height"] = max(1, int(round(preset.height_mm * dots_per_mm)))
+            canvas_state["isRotated"] = preset.is_rotated
+            canvas_state["splitMode"] = preset.split_mode
+            canvas_state["canvasBorder"] = preset.border
+            return f"Applied preset: {preset.name}"
 
     elif name == "set_canvas_dimensions":
         canvas_state["width"] = args["width"]

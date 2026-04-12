@@ -8,6 +8,9 @@ class PrinterProfile(SQLModel, table=True):
     name: Optional[str] = None
     transport: str = "BLE"
     default_darkness: int = 3
+    speed: Optional[int] = None
+    energy: Optional[int] = None
+    feed_lines: Optional[int] = None
 
 class Font(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -24,6 +27,15 @@ class Project(SQLModel, table=True):
     category_id: Optional[int] = Field(default=None, foreign_key="category.id")
     name: str
     canvas_state_json: str
+
+class LabelPreset(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    width_mm: float
+    height_mm: float
+    is_rotated: bool = False
+    split_mode: bool = False
+    border: str = "none"
 
 class Settings(SQLModel, table=True):
     id: Optional[int] = Field(default=1, primary_key=True)

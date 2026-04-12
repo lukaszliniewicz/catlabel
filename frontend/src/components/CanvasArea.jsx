@@ -26,12 +26,12 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 };
 
 export default function CanvasArea() {
-  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated, currentPage, setCurrentPage, addPage, deletePage, togglePageForPrint, selectedPagesForPrint, printPages } = useStore();
+  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated, currentPage, setCurrentPage, addPage, deletePage, togglePageForPrint, selectedPagesForPrint, printPages, selectedPrinterInfo, currentDpi } = useStore();
   
   const { splitMode } = useStore();
   const cvThick = canvasBorderThickness || 4;
-  const dotsPerMm = settings.default_dpi / 25.4;
-  const printPx = Math.round(settings.print_width_mm * dotsPerMm);
+  const dotsPerMm = (currentDpi || settings.default_dpi || 203) / 25.4;
+  const printPx = selectedPrinterInfo?.width_px || Math.round((settings.print_width_mm || 48) * dotsPerMm);
   const batchRecords = useStore(state => state.batchRecords) || [{}];
   const visibleRecords = batchRecords.slice(0, 10);
   const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
