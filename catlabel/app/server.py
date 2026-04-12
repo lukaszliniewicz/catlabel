@@ -113,6 +113,7 @@ def create_db_and_tables():
 DEFAULT_LABEL_PRESETS = [
     # Continuous Media
     {"name": "Roll: Standard Square (48x48mm)", "media_type": "continuous", "description": "Default full-width square for continuous rolls.", "width_mm": 48, "height_mm": 48, "is_rotated": False, "split_mode": False, "border": "none"},
+    {"name": "Roll: Narrow Tag (48x12mm)", "media_type": "continuous", "description": "Generic roll preset with full width and 12mm height.", "width_mm": 48, "height_mm": 12, "is_rotated": False, "split_mode": False, "border": "none"},
     {"name": "Roll: Narrow Tag (48x15mm)", "media_type": "continuous", "description": "Short horizontal tag for lists/names. Prints fast, saves tape. Includes a cut-line for scissors.", "width_mm": 48, "height_mm": 15, "is_rotated": False, "split_mode": False, "border": "cut_line"},
     {"name": "Roll: Small Item / Gridfinity (30x12mm)", "media_type": "continuous", "description": "Small centered label. The printer pads the sides. Includes a bounding box to cut out.", "width_mm": 30, "height_mm": 12, "is_rotated": False, "split_mode": False, "border": "box"},
     {"name": "Roll: Long Banner (48x100mm)", "media_type": "continuous", "description": "Landscape banner for continuous rolls. Use for shipping or long text.", "width_mm": 100, "height_mm": 48, "is_rotated": True, "split_mode": False, "border": "none"},
@@ -502,8 +503,9 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
                 await backend.connect_attempts(attempts)
                 try:
                     # Stream all jobs continuously over the single open connection
+                    interval = getattr(target_device.model, "interval_ms", 0)
                     for i, job in enumerate(jobs):
-                        await backend.write(job, chunk_size=128, interval_ms=0)
+                        await backend.write(job, chunk_size=128, interval_ms=interval)
                         
                         # Thermal cooling pauses for long print batches
                         if i < len(jobs) - 1:

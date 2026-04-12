@@ -124,12 +124,24 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
             item_w = int(item.get("width", 384))
             item_h = int(item.get("height", 200))
             html_str = apply_smart_vars(item.get("html", ""), variables)
+            html_wrapper = f"""<!DOCTYPE html>
+<html style="margin:0;padding:0;width:{item_w}px;height:{item_h}px;overflow:hidden;">
+<body style="margin:0;padding:0;width:{item_w}px;height:{item_h}px;overflow:hidden;background:transparent;">
+{html_str}
+</body>
+</html>"""
             
             try:
                 from html2image import Html2Image
-                hti = Html2Image(custom_flags=['--no-sandbox', '--disable-gpu'])
+                hti = Html2Image(custom_flags=[
+                    '--no-sandbox',
+                    '--disable-gpu',
+                    '--force-device-scale-factor=1',
+                    '--hide-scrollbars',
+                    '--disable-dev-shm-usage'
+                ])
                 tmp_path = f"html_{id(item)}.png"
-                hti.screenshot(html_str=html_str, save_as=tmp_path, size=(item_w, item_h))
+                hti.screenshot(html_str=html_wrapper, save_as=tmp_path, size=(item_w, item_h))
                 
                 if os.path.exists(tmp_path):
                     insert_img = Image.open(tmp_path).convert("RGBA")
