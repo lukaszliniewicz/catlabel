@@ -43,7 +43,7 @@ if not exist "env\" (
     if errorlevel 1 goto error
 
     echo       Installing Headless Chromium (Portable)...
-    set PLAYWRIGHT_BROWSERS_PATH=0
+    set "PLAYWRIGHT_BROWSERS_PATH=0"
     bin\micromamba.exe run -p .\env python -m playwright install chromium
     if errorlevel 1 goto error
 
@@ -69,6 +69,19 @@ if not exist "env\" (
     echo Installation complete!
     echo -----------------------------------
 )
+
+echo Verifying runtime dependencies...
+set "PLAYWRIGHT_BROWSERS_PATH=0"
+bin\micromamba.exe run -p .\env python -c "import playwright" >nul 2>&1
+if errorlevel 1 (
+    echo       Existing environment is missing updated Python packages. Repairing...
+    bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt
+    if errorlevel 1 goto error
+)
+
+echo       Ensuring Headless Chromium is installed...
+bin\micromamba.exe run -p .\env python -m playwright install chromium
+if errorlevel 1 goto error
 
 echo Starting CatLabel Server (http://localhost:8000)...
 bin\micromamba.exe run -p .\env python -m catlabel
