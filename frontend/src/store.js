@@ -3,6 +3,8 @@ import { create } from 'zustand';
 export const useStore = create((set, get) => ({
   items: [],
   selectedId: null,
+  selectedIds: [],
+  zoomScale: 1,
   canvasWidth: 384,
   canvasHeight: 384,
   canvasBorder: 'none',
@@ -13,6 +15,7 @@ export const useStore = create((set, get) => ({
   selectedPrinterInfo: null,
   showAiConfig: false,
   setShowAiConfig: (val) => set({ showAiConfig: val }),
+  setZoomScale: (scale) => set({ zoomScale: Math.max(0.1, Math.min(5, scale)) }),
   manualPrinters: (() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -39,14 +42,14 @@ export const useStore = create((set, get) => ({
   printerProfile: { speed: 0, energy: 0, feed_lines: 100 },
   currentPage: 0,
   
-  setCurrentPage: (idx) => set({ currentPage: Math.max(0, Number(idx) || 0), selectedId: null }),
+  setCurrentPage: (idx) => set({ currentPage: Math.max(0, Number(idx) || 0), selectedId: null, selectedIds: [] }),
   
   addPage: () => set((state) => {
     const maxPage = Math.max(
       state.currentPage,
       ...state.items.map((item) => Number(item.pageIndex ?? 0))
     );
-    return { currentPage: maxPage + 1, selectedId: null };
+    return { currentPage: maxPage + 1, selectedId: null, selectedIds: [] };
   }),
   
   deletePage: (pageIndex) => set((state) => {
@@ -72,6 +75,7 @@ export const useStore = create((set, get) => ({
       items: newItems,
       currentPage: adjustedCurrentPage,
       selectedId: null,
+      selectedIds: [],
       selectedPagesForPrint: newSelectedPages
     };
   }),
@@ -96,7 +100,8 @@ export const useStore = create((set, get) => ({
     return {
       items: [...state.items, ...clones],
       currentPage: newPageIdx,
-      selectedId: null
+      selectedId: null,
+      selectedIds: []
     };
   }),
 
@@ -412,6 +417,7 @@ export const useStore = create((set, get) => ({
       currentPage: s.currentPage || 0,
       items: s.items || [],
       selectedId: null,
+      selectedIds: [],
       selectedPagesForPrint: []
     });
   },
@@ -633,8 +639,8 @@ export const useStore = create((set, get) => ({
     }
   }, // <-- The syntax error is fixed right here
   
-  setItems: (items) => set({ items, selectedId: null, selectedPagesForPrint: [] }),
-  clearCanvas: () => set({ items: [], selectedId: null, currentPage: 0, selectedPagesForPrint: [], currentProjectId: null }),
+  setItems: (items) => set({ items, selectedId: null, selectedIds: [], selectedPagesForPrint: [] }),
+  clearCanvas: () => set({ items: [], selectedId: null, selectedIds: [], currentPage: 0, selectedPagesForPrint: [], currentProjectId: null }),
   
   addItem: (item) => set((state) => ({
     items: [
@@ -697,12 +703,181 @@ export const useStore = create((set, get) => ({
     items: state.items.map((item) => item.id === id ? { ...item, ...newAttrs } : item)
   })),
   
-  selectItem: (id) => set({ selectedId: id }),
+  selectItem: (id, multi = false) => set((state) => {
+    if (!id) return { selectedId: null, selectedIds: [] };
+    if (multi) {
+      const newIds = state.selectedIds.includes(id)
+        ? state.selectedIds.filter((itemId) => itemId !== id)
+        : [...state.selectedIds, id];
+      return {
+        selectedIds: newIds,
+        selectedId: newIds.length > 0 ? newIds[newIds.length - 1] : null
+      };
+    }
+    return { selectedId: id, selectedIds: [id] };
+  }),
+
+  moveItemZ: (dir) => set((state) => {
+    if (!state.selectedId) return state;
+
+    const items = [...state.items];
+    const idx = items.findIndex((item) => item.id === state.selectedId);
+    if (idx < 0) return state;
+
+    const item = items[idx];
+    const pageItems = items.filter((candidate) => candidate.pageIndex === item.pageIndex);
+    const pageIdx = pageItems.findIndex((candidate) => candidate.id === item.id);
+
+    if (dir === 'up' && pageIdx < pageItems.length - 1) {
+      const targetId = pageItems[pageIdx + 1].id;
+      const targetIdx = items.findIndex((candidate) => candidate.id === targetId);
+      [items[idx], items[targetIdx]] = [items[targetIdx], items[idx]];
+    } else if (dir === 'down' && pageIdx > 0) {
+      const targetId = pageItems[pageIdx - 1].id;
+      const targetIdx = items.findIndex((candidate) => candidate.id === targetId);
+      [items[idx], items[targetIdx]] = [items[targetIdx], items[idx]];
+    }
+
+    return { items };
+  }),
+
+  groupSelected: () => set((state) => {
+    if (state.selectedIds.length < 2) return state;
+
+    const selectedItems = state.items.filter((item) => state.selectedIds.includes(item.id));
+    if (selectedItems.length < 2) return state;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    selectedItems.forEach((item) => {
+      const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
+      const numLines = item.text ? String(item.text).split('\n').length : 1;
+      const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.15 * numLines) + (pad * 2) : 50);
+      const width = item.width || 100;
+
+      if (item.x < minX) minX = item.x;
+      if (item.y < minY) minY = item.y;
+      if (item.x + width > maxX) maxX = item.x + width;
+      if (item.y + approxHeight > maxY) maxY = item.y + approxHeight;
+    });
+
+    const children = selectedItems.map((item) => ({
+      ...item,
+      x: item.x - minX,
+      y: item.y - minY
+    }));
+
+    const newGroup = {
+      id: Date.now().toString(),
+      type: 'group',
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      pageIndex: selectedItems[0].pageIndex,
+      children
+    };
+
+    const newItems = state.items.filter((item) => !state.selectedIds.includes(item.id));
+    newItems.push(newGroup);
+
+    return {
+      items: newItems,
+      selectedIds: [newGroup.id],
+      selectedId: newGroup.id
+    };
+  }),
+
+  ungroupSelected: () => set((state) => {
+    const group = state.items.find((item) => item.id === state.selectedId && item.type === 'group');
+    if (!group) return state;
+
+    const newItems = state.items.filter((item) => item.id !== group.id);
+    const ungroupedIds = [];
+
+    group.children.forEach((child) => {
+      const newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+      ungroupedIds.push(newId);
+      newItems.push({
+        ...child,
+        id: newId,
+        x: child.x + group.x,
+        y: child.y + group.y,
+        pageIndex: group.pageIndex
+      });
+    });
+
+    return {
+      items: newItems,
+      selectedIds: ungroupedIds,
+      selectedId: ungroupedIds[0] || null
+    };
+  }),
+
+  fitGroupToWidth: () => set((state) => {
+    const group = state.items.find((item) => item.id === state.selectedId && item.type === 'group');
+    if (!group || !group.width) return state;
+
+    const scale = state.canvasWidth / group.width;
+
+    const scaledChildren = group.children.map((child) => {
+      const nextChild = {
+        ...child,
+        x: child.x * scale,
+        y: child.y * scale
+      };
+
+      if (nextChild.width) nextChild.width *= scale;
+      if (nextChild.height) nextChild.height *= scale;
+
+      if (child.type === 'text') {
+        nextChild.size = Math.round(child.size * scale);
+        if (child.padding !== undefined) {
+          nextChild.padding = Math.round(child.padding * scale);
+        }
+      }
+
+      if (child.type === 'icon_text') {
+        nextChild.size = Math.round(child.size * scale);
+        nextChild.icon_size = Math.round(child.icon_size * scale);
+        nextChild.icon_x = child.icon_x * scale;
+        nextChild.icon_y = child.icon_y * scale;
+        nextChild.text_x = child.text_x * scale;
+        nextChild.text_y = child.text_y * scale;
+      }
+
+      if (child.border_thickness) {
+        nextChild.border_thickness = Math.round(child.border_thickness * scale);
+      }
+
+      return nextChild;
+    });
+
+    const newGroup = {
+      ...group,
+      x: 0,
+      width: state.canvasWidth,
+      height: group.height * scale,
+      children: scaledChildren
+    };
+
+    return {
+      items: state.items.map((item) => item.id === group.id ? newGroup : item)
+    };
+  }),
   
-  deleteItem: (id) => set((state) => ({
-    items: state.items.filter((item) => item.id !== id),
-    selectedId: state.selectedId === id ? null : state.selectedId
-  })),
+  deleteItem: (id) => set((state) => {
+    const newItems = state.items.filter((item) => item.id !== id);
+    const newIds = state.selectedIds.filter((itemId) => itemId !== id);
+    return {
+      items: newItems,
+      selectedIds: newIds,
+      selectedId: newIds.length > 0 ? newIds[newIds.length - 1] : null
+    };
+  }),
   
   setCanvasSize: (width, height) => set({ canvasWidth: width, canvasHeight: height }),
 }));

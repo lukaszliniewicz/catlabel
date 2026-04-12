@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import {
   Type, Calendar, Smile, ImagePlus, Image as ImageIcon,
-  Barcode, QrCode, Code, FileText, Wand2, ChevronDown, Package, Trash2
+  Barcode, QrCode, Code, FileText, Wand2, ChevronDown, Package, Trash2,
+  ZoomIn, ZoomOut, MoveUp, MoveDown, Combine, Ungroup, Shapes, Square, Circle, Minus
 } from 'lucide-react';
 
 import IconPicker from './IconPicker';
@@ -28,7 +29,20 @@ const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button
 );
 
 export default function Toolbar() {
-  const { addItem, clearCanvas, canvasWidth, canvasHeight } = useStore();
+  const {
+    addItem,
+    clearCanvas,
+    canvasWidth,
+    canvasHeight,
+    zoomScale,
+    setZoomScale,
+    selectedId,
+    selectedIds,
+    moveItemZ,
+    groupSelected,
+    ungroupSelected,
+    items
+  } = useStore();
 
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [iconPickerMode, setIconPickerMode] = useState('icon');
@@ -36,24 +50,28 @@ export default function Toolbar() {
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showGenDropdown, setShowGenDropdown] = useState(false);
+  const [showShapeDropdown, setShowShapeDropdown] = useState(false);
 
   const dropdownRef = useRef(null);
+  const shapeDropdownRef = useRef(null);
+
+  const selectedItem = items.find((item) => item.id === selectedId);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowGenDropdown(false);
       }
+      if (shapeDropdownRef.current && !shapeDropdownRef.current.contains(event.target)) {
+        setShowShapeDropdown(false);
+      }
     };
 
-    if (showGenDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showGenDropdown]);
+  }, []);
 
   const handleAddText = () => {
     const defaultFont = useStore.getState().settings.default_font || 'Roboto.ttf';
@@ -138,6 +156,22 @@ export default function Toolbar() {
       width: 200,
       height: 50
     });
+  };
+
+  const handleAddShape = (shapeType) => {
+    addItem({
+      id: Date.now().toString(),
+      type: 'shape',
+      shapeType,
+      x: 50,
+      y: 50,
+      width: 100,
+      height: shapeType === 'line' ? 4 : 100,
+      fill: 'black',
+      stroke: 'transparent',
+      strokeWidth: 2
+    });
+    setShowShapeDropdown(false);
   };
 
   const handleAddImage = (e) => {
@@ -227,6 +261,43 @@ export default function Toolbar() {
         <ToolButton component="label" icon={ImageIcon} label="Upload Image">
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
         </ToolButton>
+
+        <div className="relative" ref={shapeDropdownRef}>
+          <ToolButton
+            icon={Shapes}
+            label="Shapes"
+            onClick={() => setShowShapeDropdown(!showShapeDropdown)}
+            active={showShapeDropdown}
+          />
+          {showShapeDropdown && (
+            <div className="absolute top-full left-0 mt-2 w-36 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50">
+              <button onClick={() => handleAddShape('rect')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
+                <Square size={16} /> Rectangle
+              </button>
+              <button onClick={() => handleAddShape('circle')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
+                <Circle size={16} /> Ellipse
+              </button>
+              <button onClick={() => handleAddShape('line')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left">
+                <Minus size={16} /> Line
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
+
+        <ToolButton icon={ZoomIn} label="Zoom In" onClick={() => setZoomScale(zoomScale + 0.25)} />
+        <ToolButton icon={ZoomOut} label="Zoom Out" onClick={() => setZoomScale(zoomScale - 0.25)} />
+
+        <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
+
+        <ToolButton icon={MoveUp} label="Bring Forward" onClick={() => moveItemZ('up')} />
+        <ToolButton icon={MoveDown} label="Send Backward" onClick={() => moveItemZ('down')} />
+        {selectedItem?.type === 'group' ? (
+          <ToolButton icon={Ungroup} label="Ungroup" onClick={ungroupSelected} />
+        ) : (
+          <ToolButton icon={Combine} label="Group" onClick={groupSelected} active={selectedIds.length > 1} />
+        )}
 
         <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-2" />
 

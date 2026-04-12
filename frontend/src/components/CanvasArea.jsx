@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stage, Layer, Text, Rect, Line, Group, Image as KonvaImage } from 'react-konva';
+import { Stage, Layer, Text, Rect, Line, Group, Image as KonvaImage, Ellipse } from 'react-konva';
 import { useStore } from '../store';
 
 // Custom hook to load base64/url images into Konva
@@ -26,7 +26,7 @@ const URLImage = ({ item, commonProps, isSelected }) => {
 };
 
 export default function CanvasArea() {
-  const { items, selectedId, selectItem, updateItem, canvasWidth, canvasHeight, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated, currentPage, setCurrentPage, addPage, deletePage, togglePageForPrint, selectedPagesForPrint, printPages, selectedPrinterInfo, currentDpi } = useStore();
+  const { items, selectedId, selectedIds, selectItem, updateItem, canvasWidth, canvasHeight, zoomScale, canvasBorder, canvasBorderThickness, snapLines, setSnapLines, settings, isRotated, currentPage, setCurrentPage, addPage, deletePage, togglePageForPrint, selectedPagesForPrint, printPages, selectedPrinterInfo, currentDpi } = useStore();
   
   const { splitMode } = useStore();
   const cvThick = canvasBorderThickness || 4;
@@ -196,7 +196,7 @@ export default function CanvasArea() {
 
                   <div
                     className={`bg-white shadow-2xl relative transition-all duration-300 ${isActive ? 'ring-2 ring-blue-500' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
-                    style={{ width: canvasWidth, height: canvasHeight }}
+                    style={{ width: canvasWidth * zoomScale, height: canvasHeight * zoomScale, transformOrigin: 'top left' }}
                     onClick={() => {
                       if (!isActive) {
                         setCurrentPage(pageIndex);
@@ -204,8 +204,9 @@ export default function CanvasArea() {
                     }}
                   >
                     <Stage
-                      width={canvasWidth}
-                      height={canvasHeight}
+                      width={canvasWidth * zoomScale}
+                      height={canvasHeight * zoomScale}
+                      scale={{ x: zoomScale, y: zoomScale }}
                       onMouseDown={(e) => {
                         setCurrentPage(pageIndex);
                         if (e.target === e.target.getStage()) selectItem(null);
@@ -234,107 +235,172 @@ export default function CanvasArea() {
                         )}
 
                         {pageItems.map((item) => {
-                          const isSelected = item.id === selectedId;
-                          const substitutedText = applyVars(item.text, record);
-                          const substitutedHtml = applyVars(item.html, record);
-                          
-                          const numLines = substitutedText ? String(substitutedText).split('\n').length : 1;
-                          const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
-                          const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.15 * numLines) + (pad * 2) : 50);
-                          const yOffset = item.y;
-                            
-                          const visualW = item.width || 100;
-                            
-                          const commonProps = {
-                            key: item.id, x: item.x, y: yOffset, width: item.width, height: item.height,
-                            draggable: item.type !== 'cut_line_indicator', 
-                            onClick: () => { setCurrentPage(pageIndex); selectItem(item.id); }, 
-                            onTap: () => { setCurrentPage(pageIndex); selectItem(item.id); },
-                            onDragMove: (e) => handleDragMove(e, item), 
-                            onDragEnd: (e) => handleDragEnd(e, item)
+                          const renderElement = (currItem, isChild = false) => {
+                            const isSelected = !isChild && selectedIds.includes(currItem.id);
+                            const substitutedText = applyVars(currItem.text, record);
+                            const substitutedHtml = applyVars(currItem.html, record);
+
+                            const numLines = substitutedText ? String(substitutedText).split('\n').length : 1;
+                            const pad = currItem.padding !== undefined ? Number(currItem.padding) : ((currItem.invert || currItem.bg_white) ? 4 : 0);
+                            const approxHeight = currItem.height || (currItem.type === 'text' ? (currItem.size * 1.15 * numLines) + (pad * 2) : 50);
+                            const visualW = currItem.width || 100;
+
+                            const commonProps = {
+                              key: currItem.id,
+                              x: currItem.x,
+                              y: currItem.y,
+                              width: currItem.width,
+                              height: currItem.height,
+                              draggable: !isChild && currItem.type !== 'cut_line_indicator',
+                              onClick: (e) => {
+                                if (isChild) return;
+                                e.cancelBubble = true;
+                                setCurrentPage(pageIndex);
+                                selectItem(currItem.id, e.evt.shiftKey);
+                              },
+                              onTap: (e) => {
+                                if (isChild) return;
+                                e.cancelBubble = true;
+                                setCurrentPage(pageIndex);
+                                selectItem(currItem.id, e.evt.shiftKey);
+                              },
+                              onDragMove: (e) => !isChild && handleDragMove(e, currItem),
+                              onDragEnd: (e) => !isChild && handleDragEnd(e, currItem)
+                            };
+
+                            if (currItem.type === 'group') {
+                              return (
+                                <Group {...commonProps}>
+                                  {currItem.children.map((child) => renderElement(child, true))}
+                                  {isSelected && (
+                                    <Rect
+                                      width={visualW}
+                                      height={approxHeight}
+                                      stroke="#2563eb"
+                                      strokeWidth={2}
+                                      dash={[4, 4]}
+                                      fillEnabled={false}
+                                      listening={false}
+                                    />
+                                  )}
+                                </Group>
+                              );
+                            }
+
+                            let element = null;
+
+                            if (currItem.type === 'text') {
+                              const fontFamily = currItem.font ? currItem.font.split('.')[0] : 'Arial';
+                              const fill = currItem.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
+                              const bgFill = currItem.invert ? 'black' : (currItem.bg_white ? 'white' : null);
+                              const capHeight = currItem.size * 0.71;
+                              const lineHeightPx = currItem.size * 1.15;
+                              const availWidth = Math.max(0, visualW - (pad * 2));
+                              const availHeight = Math.max(0, approxHeight - (pad * 2));
+                              const boxCenterY = pad + (availHeight / 2);
+                              const firstBaselineY = boxCenterY + (capHeight / 2) - ((numLines - 1) * lineHeightPx / 2);
+                              const konvaY = firstBaselineY - (currItem.size * 0.76);
+
+                              element = (
+                                <Group>
+                                  {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
+                                  <Text
+                                    text={substitutedText}
+                                    x={pad}
+                                    y={konvaY}
+                                    width={availWidth}
+                                    align={currItem.align || 'left'}
+                                    fontFamily={fontFamily}
+                                    fontStyle={(currItem.weight || 700).toString()}
+                                    wrap={currItem.no_wrap ? "none" : "word"}
+                                    fontSize={currItem.size}
+                                    fill={fill}
+                                    lineHeight={1.15}
+                                  />
+                                </Group>
+                              );
+                            } else if (currItem.type === 'icon_text') {
+                              const fontFamily = currItem.font ? currItem.font.split('.')[0] : 'Arial';
+                              const capHeight = currItem.size * 0.71;
+                              const konvaY = currItem.text_y + capHeight - (currItem.size * 0.76);
+
+                              element = (
+                                <Group>
+                                  <URLImage item={{ icon_src: currItem.icon_src }} commonProps={{ x: currItem.icon_x, y: currItem.icon_y, width: currItem.icon_size, height: currItem.icon_size }} isSelected={false} />
+                                  <Text text={substitutedText} x={currItem.text_x} y={konvaY} fontSize={currItem.size} fontFamily={fontFamily} fontStyle={(currItem.weight || 700).toString()} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
+                                </Group>
+                              );
+                            } else if (currItem.type === 'shape') {
+                              if (currItem.shapeType === 'rect') {
+                                element = (
+                                  <Rect
+                                    width={visualW}
+                                    height={approxHeight}
+                                    fill={currItem.fill === 'transparent' ? undefined : currItem.fill}
+                                    stroke={currItem.stroke !== 'transparent' ? currItem.stroke : undefined}
+                                    strokeWidth={currItem.strokeWidth}
+                                  />
+                                );
+                              } else if (currItem.shapeType === 'circle' || currItem.shapeType === 'ellipse') {
+                                element = (
+                                  <Ellipse
+                                    x={visualW / 2}
+                                    y={approxHeight / 2}
+                                    radiusX={visualW / 2}
+                                    radiusY={approxHeight / 2}
+                                    fill={currItem.fill === 'transparent' ? undefined : currItem.fill}
+                                    stroke={currItem.stroke !== 'transparent' ? currItem.stroke : undefined}
+                                    strokeWidth={currItem.strokeWidth}
+                                  />
+                                );
+                              } else if (currItem.shapeType === 'line') {
+                                element = (
+                                  <Line
+                                    points={[0, 0, visualW, 0]}
+                                    stroke={currItem.fill}
+                                    strokeWidth={currItem.height}
+                                    listening={false}
+                                  />
+                                );
+                              }
+                            } else if (currItem.type === 'barcode') {
+                              element = (
+                                <Group>
+                                  <Rect width={visualW} height={approxHeight} fill="#e5e7eb" />
+                                  <Text text="BARCODE" width={visualW} height={approxHeight} align="center" verticalAlign="middle" fill="#9ca3af" fontSize={14} fontStyle="bold" />
+                                </Group>
+                              );
+                            } else if (currItem.type === 'qrcode') {
+                              element = (
+                                <Group>
+                                  <Rect width={visualW} height={approxHeight} fill="#e5e7eb" />
+                                  <Text text="QR" width={visualW} height={approxHeight} align="center" verticalAlign="middle" fill="#9ca3af" fontSize={Math.min(visualW, approxHeight) * 0.3} fontStyle="bold" />
+                                </Group>
+                              );
+                            } else if (currItem.type === 'image') {
+                              element = <URLImage item={currItem} commonProps={{ width: currItem.width, height: currItem.height }} isSelected={false} />;
+                            } else if (currItem.type === 'html') {
+                              const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;">${substitutedHtml || ''}</div></foreignObject></svg>`;
+                              const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgPayload);
+                              element = <URLImage item={{ ...currItem, src: url }} commonProps={{ width: currItem.width, height: approxHeight }} isSelected={false} />;
+                            } else if (currItem.type === 'cut_line_indicator') {
+                              element = <Line points={currItem.isVertical ? [0, 0, 0, canvasHeight] : [0, 0, canvasWidth, 0]} stroke="gray" strokeWidth={1} dash={[10, 10]} listening={false} />;
+                            }
+
+                            const bThick = currItem.border_thickness || 4;
+                            return (
+                              <Group {...commonProps} key={`${currItem.id}-wrap`}>
+                                {element}
+                                {isSelected && currItem.type !== 'cut_line_indicator' && <Rect width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4, 4]} fillEnabled={false} listening={false} />}
+                                {currItem.border_style === 'box' && <Rect width={visualW} height={approxHeight} stroke="black" strokeWidth={bThick} listening={false} />}
+                                {currItem.border_style === 'top' && <Line points={[0, 0, visualW, 0]} stroke="black" strokeWidth={bThick} listening={false} />}
+                                {currItem.border_style === 'bottom' && <Line points={[0, approxHeight, visualW, approxHeight]} stroke="black" strokeWidth={bThick} listening={false} />}
+                                {currItem.border_style === 'cut_line' && <Line points={[0, approxHeight + 2, visualW, approxHeight + 2]} stroke="black" strokeWidth={bThick} dash={[10, 10]} listening={false} />}
+                              </Group>
+                            );
                           };
 
-                          let element = null;
-
-                          if (item.type === 'text') {
-                            const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-                            const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
-                            const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
-                            const capHeight = item.size * 0.71;
-                            const lineHeightPx = item.size * 1.15;
-                            const availWidth = Math.max(0, visualW - (pad * 2));
-                            const availHeight = Math.max(0, approxHeight - (pad * 2));
-                            const boxCenterY = pad + (availHeight / 2);
-                            const firstBaselineY = boxCenterY + (capHeight / 2) - ((numLines - 1) * lineHeightPx / 2);
-                            const konvaY = firstBaselineY - (item.size * 0.76);
-                            
-                            element = (
-                              <Group {...commonProps}>
-                                {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
-                                <Text 
-                                  text={substitutedText} 
-                                  x={pad}
-                                  y={konvaY}
-                                  width={availWidth}
-                                  align={item.align || 'left'} 
-                                  fontFamily={fontFamily} 
-                                  fontStyle={(item.weight || 700).toString()}
-                                  wrap={item.no_wrap ? "none" : "word"} 
-                                  fontSize={item.size} 
-                                  fill={fill} 
-                                  lineHeight={1.15}
-                                />
-                              </Group>
-                            );
-                          } else if (item.type === 'icon_text') {
-                            const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-                            const capHeight = item.size * 0.71;
-                            const baselineY = item.text_y + capHeight;
-                            const konvaY = baselineY - (item.size * 0.76);
-
-                            element = (
-                              <Group {...commonProps}>
-                                <URLImage item={{icon_src: item.icon_src}} commonProps={{x: item.icon_x, y: item.icon_y, width: item.icon_size, height: item.icon_size}} isSelected={false} />
-                                <Text text={substitutedText} x={item.text_x} y={konvaY} fontSize={item.size} fontFamily={fontFamily} fontStyle={(item.weight || 700).toString()} fill={isSelected ? '#2563eb' : 'black'} padding={0} />
-                              </Group>
-                            )
-                          } else if (item.type === 'barcode') {
-                            element = (
-                              <Group {...commonProps}>
-                                <Rect width={visualW} height={approxHeight} fill="#e5e7eb" />
-                                <Text text="BARCODE" width={visualW} height={approxHeight} align="center" verticalAlign="middle" fill="#9ca3af" fontSize={14} fontStyle="bold" />
-                              </Group>
-                            );
-                          } else if (item.type === 'qrcode') {
-                            element = (
-                              <Group {...commonProps}>
-                                <Rect width={visualW} height={approxHeight} fill="#e5e7eb" />
-                                <Text text="QR" width={visualW} height={approxHeight} align="center" verticalAlign="middle" fill="#9ca3af" fontSize={Math.min(visualW, approxHeight) * 0.3} fontStyle="bold" />
-                              </Group>
-                            );
-                          } else if (item.type === 'image') {
-                            element = <URLImage item={item} commonProps={commonProps} isSelected={false} />;
-                          } else if (item.type === 'html') {
-                            // Dynamically build SVG data string to natively render the HTML payload.
-                            const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;">${substitutedHtml || ''}</div></foreignObject></svg>`;
-                            const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgPayload);
-                            element = <URLImage item={{...item, src: url}} commonProps={{...commonProps, height: approxHeight}} isSelected={false} />;
-                          } else if (item.type === 'cut_line_indicator') {
-                            element = <Line points={item.isVertical ? [item.x, item.y, item.x, canvasHeight] : [item.x, item.y, canvasWidth, item.y]} stroke="gray" strokeWidth={1} dash={[10, 10]} listening={false} />;
-                          }
-
-                          const bThick = item.border_thickness || 4;
-                          return (
-                            <Group key={`${item.id}-wrap`}>
-                              {element}
-                              {isSelected && item.type !== 'cut_line_indicator' && <Rect x={item.x} y={item.y} width={visualW} height={approxHeight} stroke="#2563eb" strokeWidth={2} dash={[4,4]} fillEnabled={false} listening={false} />}
-                              
-                              {item.border_style === 'box' && <Rect x={item.x} y={yOffset} width={visualW} height={approxHeight} stroke="black" strokeWidth={bThick} listening={false} />}
-                              {item.border_style === 'top' && <Line points={[item.x, yOffset, item.x + visualW, yOffset]} stroke="black" strokeWidth={bThick} listening={false} />}
-                              {item.border_style === 'bottom' && <Line points={[item.x, yOffset + approxHeight, item.x + visualW, yOffset + approxHeight]} stroke="black" strokeWidth={bThick} listening={false} />}
-                              {item.border_style === 'cut_line' && <Line points={[item.x, yOffset + approxHeight + 2, item.x + visualW, yOffset + approxHeight + 2]} stroke="black" strokeWidth={bThick} dash={[10, 10]} listening={false} />}
-                            </Group>
-                          );
+                          return renderElement(item);
                         })}
                         
                         {isActive && snapLines.map((line, i) => (

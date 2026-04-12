@@ -185,6 +185,10 @@ export default function PropertiesPanel() {
 
   const handleMakeFullWidth = () => {
     if (!selectedItem) return;
+    if (selectedItem.type === 'group') {
+      useStore.getState().fitGroupToWidth();
+      return;
+    }
     
     let newHeight = selectedItem.height;
     
@@ -602,7 +606,10 @@ export default function PropertiesPanel() {
                   <div className="flex gap-4">
                     <ScrubberInput name="size" label="Font Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
                     <ScrubberInput name="weight" label="Weight (100-900)" value={selectedItem.weight || 700} onChange={handleChange} />
+                  </div>
+                  <div className="flex gap-4 mt-2">
                     <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0)} onChange={handleChange} />
+                    <div className="flex-1"></div>
                   </div>
                   <div className="flex gap-4 mt-2">
                     <div className="flex-1">
@@ -640,6 +647,20 @@ export default function PropertiesPanel() {
                     <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
                       <input type="checkbox" name="bg_white" checked={selectedItem.bg_white || false} onChange={handleChange} /> Solid White BG
                     </label>
+                  </div>
+                </>
+              )}
+
+              {selectedItem.type === 'group' && (
+                <>
+                  <div className="flex gap-4">
+                    <MmScrubberInput name="x" label="X Pos" value={selectedItem.x} onChange={handleChange} />
+                    <MmScrubberInput name="y" label="Y Pos" value={selectedItem.y} onChange={handleChange} />
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                    <button onClick={() => useStore.getState().fitGroupToWidth()} className="w-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-200 dark:border-blue-800 text-[10px] uppercase tracking-widest font-bold">
+                      Scale Group to Canvas Width
+                    </button>
                   </div>
                 </>
               )}
@@ -773,6 +794,34 @@ export default function PropertiesPanel() {
                   <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
                   <MmScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
                 </div>
+              )}
+
+              {selectedItem.type === 'shape' && (
+                <>
+                  <div className="flex gap-4">
+                    <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
+                    <MmScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                  </div>
+                  <div className="flex gap-4 mt-2">
+                    <div className="flex-1">
+                      <label className={labelClass}>Fill</label>
+                      <select name="fill" value={selectedItem.fill} onChange={handleChange} className={inputClass}>
+                        <option value="black">Black</option>
+                        <option value="white">White</option>
+                        <option value="transparent">Transparent</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className={labelClass}>Stroke</label>
+                      <select name="stroke" value={selectedItem.stroke} onChange={handleChange} className={inputClass}>
+                        <option value="transparent">Transparent</option>
+                        <option value="black">Black</option>
+                        <option value="white">White</option>
+                      </select>
+                    </div>
+                    <ScrubberInput name="strokeWidth" label="Thickness" value={selectedItem.strokeWidth || 0} onChange={handleChange} />
+                  </div>
+                </>
               )}
 
               {selectedItem.type === 'qrcode' && (

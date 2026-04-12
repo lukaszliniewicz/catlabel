@@ -74,11 +74,24 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
     img = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(img)
     
-    items = template_data.get("items", [])
-    for item in items:
+    items = list(template_data.get("items", []) or [])
+    index = 0
+    while index < len(items):
+        item = items[index]
         x = int(item.get("x", 0))
         y = int(item.get("y", 0))
         item_type = item.get("type")
+
+        if item_type == "group":
+            expanded_children = []
+            for child in item.get("children", []) or []:
+                child_item = dict(child)
+                child_item["x"] = x + int(child.get("x", 0))
+                child_item["y"] = y + int(child.get("y", 0))
+                expanded_children.append(child_item)
+            items[index + 1:index + 1] = expanded_children
+            index += 1
+            continue
         
         item_h = item.get("height")
         if not item_h:
@@ -131,6 +144,25 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
                 draw.text((x + 5, y + 5), "HTML Render Failed (Check html2image)", fill="red")
                 actual_drawn_height = item_h
                 
+        elif item_type == "shape":
+            item_w = int(item.get("width", 100))
+            item_h = int(item.get("height", 100))
+            fill = None if item.get("fill") in (None, "", "transparent") else item.get("fill")
+            outline = None if item.get("stroke") in (None, "", "transparent") else item.get("stroke")
+            stroke_width = max(1, int(item.get("strokeWidth", 1) or 1))
+
+            if item.get("shapeType") == "rect":
+                draw.rectangle([x, y, x + item_w, y + item_h], fill=fill, outline=outline, width=stroke_width)
+                actual_drawn_height = item_h
+            elif item.get("shapeType") in {"circle", "ellipse"}:
+                draw.ellipse([x, y, x + item_w, y + item_h], fill=fill, outline=outline, width=stroke_width)
+                actual_drawn_height = item_h
+            elif item.get("shapeType") == "line":
+                line_width = max(1, int(item.get("height", stroke_width) or stroke_width))
+                line_color = item.get("fill", "black")
+                draw.line([(x, y), (x + item_w, y)], fill=line_color, width=line_width)
+                actual_drawn_height = line_width
+
         elif item_type == "cut_line_indicator":
             is_vert = item.get("isVertical", False)
             w = int(item.get("width", width))
@@ -368,6 +400,8 @@ def render_template(template_data: dict, variables: dict, default_font: str = "R
 
         if "height" not in item:
             item["height"] = actual_drawn_height
+
+        index += 1
 
     canvas_border = template_data.get("canvasBorder", "none")
     cv_thick = int(template_data.get("canvasBorderThickness", 2))
