@@ -249,20 +249,25 @@ export default function Toolbar() {
   };
 
   return (
-    <div className="bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center px-4 py-2 justify-between gap-y-2 shrink-0 z-20 min-h-[56px]">
-      <div className="flex flex-wrap items-center gap-1 flex-1">
+    <div className="bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center justify-center px-4 py-2 gap-x-3 sm:gap-x-6 gap-y-2 shrink-0 z-20 min-h-[56px]">
+
+      {/* Group: Basic Tools */}
+      <div className="flex items-center gap-1">
         <ToolButton icon={Type} label="Add Text" onClick={handleAddText} />
         <ToolButton icon={Calendar} label="Add Date" onClick={() => setShowDateModal(true)} />
+      </div>
 
-        <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-1" />
+      <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800" />
 
+      {/* Group: Visuals */}
+      <div className="flex items-center gap-1">
         <ToolButton icon={Smile} label="Icon Only" onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} />
         <ToolButton icon={ImagePlus} label="Icon + Text" onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} />
         <ToolButton component="label" icon={ImageIcon} label="Upload Image">
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
         </ToolButton>
 
-        <div className="relative" ref={shapeDropdownRef}>
+        <div className="relative flex items-center" ref={shapeDropdownRef}>
           <ToolButton
             icon={Shapes}
             label="Shapes"
@@ -283,14 +288,15 @@ export default function Toolbar() {
             </div>
           )}
         </div>
+      </div>
 
-        <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-1" />
+      <div className="hidden md:block w-px h-6 bg-neutral-200 dark:bg-neutral-800" />
 
+      {/* Group: View & Arrange */}
+      <div className="flex items-center gap-1">
         <ToolButton icon={ZoomIn} label="Zoom In" onClick={() => setZoomScale(zoomScale + 0.25)} />
         <ToolButton icon={ZoomOut} label="Zoom Out" onClick={() => setZoomScale(zoomScale - 0.25)} />
-
-        <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-1" />
-
+        <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
         <ToolButton icon={MoveUp} label="Bring Forward" onClick={() => moveItemZ('up')} />
         <ToolButton icon={MoveDown} label="Send Backward" onClick={() => moveItemZ('down')} />
         {selectedItem?.type === 'group' ? (
@@ -298,9 +304,12 @@ export default function Toolbar() {
         ) : (
           <ToolButton icon={Combine} label="Group" onClick={groupSelected} active={selectedIds.length > 1} />
         )}
+      </div>
 
-        <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-1" />
+      <div className="hidden lg:block w-px h-6 bg-neutral-200 dark:bg-neutral-800" />
 
+      {/* Group: Data, Code & Generators */}
+      <div className="flex items-center gap-1">
         <ToolButton icon={Barcode} label="Barcode" onClick={handleAddBarcode} />
         <ToolButton
           icon={QrCode}
@@ -315,45 +324,51 @@ export default function Toolbar() {
             height: 120
           })}
         />
-
-        <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-1" />
-
+        <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
         <ToolButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
         <ToolButton component="label" icon={FileText} label="Import PDF">
           <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
         </ToolButton>
+
+        {/* Generate / Smart Wizards Button - Now integrated smoothly */}
+        <div className="relative flex items-center" ref={dropdownRef}>
+          <ToolButton
+            icon={Wand2}
+            label="Wizards"
+            onClick={() => setShowGenDropdown(!showGenDropdown)}
+            active={showGenDropdown}
+          >
+            <ChevronDown
+              size={12}
+              className={`absolute right-1 bottom-1 pointer-events-none transition-transform ${showGenDropdown ? 'rotate-180' : ''}`}
+            />
+          </ToolButton>
+
+          {showGenDropdown && (
+            <div className="absolute top-full right-0 sm:left-0 mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50">
+              <div className="px-4 pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800 text-[10px] uppercase tracking-widest font-bold text-neutral-400">
+                Smart Wizards
+              </div>
+              <button
+                onClick={() => { setShowShippingModal(true); setShowGenDropdown(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
+              >
+                <Package size={16} className="text-blue-500" />
+                Shipping Label
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800" />
+
+      {/* Group: Actions */}
+      <div className="flex items-center gap-1">
         <ToolButton icon={Trash2} label="Clear Canvas" onClick={clearCanvas} />
       </div>
 
-      <div className="flex items-center relative shrink-0" ref={dropdownRef}>
-        <ToolButton
-          icon={Wand2}
-          label="Generate"
-          onClick={() => setShowGenDropdown(!showGenDropdown)}
-          active={showGenDropdown}
-        >
-          <ChevronDown
-            size={12}
-            className={`absolute right-1 bottom-1 pointer-events-none transition-transform ${showGenDropdown ? 'rotate-180' : ''}`}
-          />
-        </ToolButton>
-
-        {showGenDropdown && (
-          <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50">
-            <div className="px-4 pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800 text-[10px] uppercase tracking-widest font-bold text-neutral-400">
-              Smart Wizards
-            </div>
-            <button
-              onClick={() => { setShowShippingModal(true); setShowGenDropdown(false); }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
-            >
-              <Package size={16} className="text-blue-500" />
-              Shipping Label
-            </button>
-          </div>
-        )}
-      </div>
-
+      {/* Modals */}
       {showIconPicker && <IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} />}
       {showHtmlPicker && <HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} />}
       {showShippingModal && <ShippingLabelModal onClose={() => setShowShippingModal(false)} />}
