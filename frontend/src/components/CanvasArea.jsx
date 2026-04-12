@@ -196,7 +196,11 @@ export default function CanvasArea() {
                     }}
                   >
                     <Stage
-                      ref={isActive && rIdx === 0 ? (node) => useStore.getState().setStageRef(node) : undefined}
+                      ref={(node) => {
+                        if (node && isActive && rIdx === 0) {
+                          useStore.getState().setStageRef(node);
+                        }
+                      }}
                       width={canvasWidth * zoomScale}
                       height={canvasHeight * zoomScale}
                       scale={{ x: zoomScale, y: zoomScale }}

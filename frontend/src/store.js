@@ -16,7 +16,10 @@ export const useStore = create((set, get) => ({
   showAiConfig: false,
   stageRef: null,
   setShowAiConfig: (val) => set({ showAiConfig: val }),
-  setStageRef: (ref) => set({ stageRef: ref }),
+  setStageRef: (ref) => {
+    if (get().stageRef === ref) return;
+    set({ stageRef: ref });
+  },
   getStageB64: () => {
     const stage = get().stageRef;
     const zoomScale = get().zoomScale || 1;
