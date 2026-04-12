@@ -37,8 +37,30 @@ NIIMBOT_MODELS = {
     "B21":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b21", "max_density": 5},
 }
 
+def _manual_generic_model(model: str, width_mm: float, dpi: int = 203):
+    return {
+        "vendor": "generic",
+        "width_px": max(1, int(round(width_mm * (dpi / 25.4)))),
+        "width_mm": width_mm,
+        "dpi": dpi,
+        "model": model,
+        "model_id": model,
+        "media_type": "continuous",
+        "default_speed": 0,
+        "default_energy": 5000,
+        "max_density": None,
+    }
+
+GENERIC_MODEL_ALIASES = {
+    "GT01": _manual_generic_model("gt01", 48.0),
+    "PD01": _manual_generic_model("gt01", 48.0),
+    "MX05": _manual_generic_model("gt01", 48.0),
+    "GENERIC": _manual_generic_model("generic", 48.0),
+    "M08F": _manual_generic_model("m08f", 210.0),
+}
+
 def identify_printer_hardware(name: str, device=None):
-    name_upper = (name or "").upper()
+    name_upper = (name or "").upper().strip()
 
     # Sort keys by length descending to ensure D110 is checked before D11
     for prefix in sorted(NIIMBOT_MODELS.keys(), key=len, reverse=True):
@@ -48,7 +70,12 @@ def identify_printer_hardware(name: str, device=None):
                 "media_type": "pre-cut",
                 "default_speed": 1,
                 "default_energy": 3,
+                "model_id": NIIMBOT_MODELS[prefix]["model"],
             }
+
+    manual_alias = GENERIC_MODEL_ALIASES.get(name_upper)
+    if manual_alias:
+        return dict(manual_alias)
 
     hw_info = {
         "vendor": "generic",
@@ -56,6 +83,7 @@ def identify_printer_hardware(name: str, device=None):
         "width_mm": 48.0,
         "dpi": 203,
         "model": "generic",
+        "model_id": "generic",
         "default_speed": 0,
         "default_energy": 5000,
         "max_density": None,
@@ -66,6 +94,7 @@ def identify_printer_hardware(name: str, device=None):
         hw_info["dpi"] = device.model.dev_dpi
         hw_info["width_mm"] = round(device.model.width / device.model.dev_dpi * 25.4, 1)
         hw_info["model"] = device.model.model_no
+        hw_info["model_id"] = device.model.model_no
         hw_info["default_speed"] = device.model.img_print_speed
         hw_info["default_energy"] = device.model.moderation_energy or 5000
 
@@ -220,6 +249,11 @@ def delete_preset(preset_id: int):
             session.delete(db_preset)
             session.commit()
         return {"status": "ok"}
+
+@app.get("/api/printers/model/{name}")
+def get_printer_model_info(name: str):
+    """Returns hardware characteristics based on the model name alias."""
+    return identify_printer_hardware(name)
 
 @app.get("/api/agent/context")
 def get_agent_context():

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Send, Settings, Sparkles, Loader2, Copy, Check, History, Trash, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import AIConfigModal from './AIConfigModal';
 import { useStore } from '../store';
 
 const MessageRow = ({ m }) => {
@@ -40,7 +39,6 @@ export default function AIAssistant() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sessionUsage, setSessionUsage] = useState({ tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0 });
   
@@ -49,6 +47,7 @@ export default function AIAssistant() {
   const [histories, setHistories] = useState([]);
 
   const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, selectedPrinterInfo, batchRecords, printCopies, currentPage, currentDpi, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCurrentPage } = useStore();
+  const setShowAiConfig = useStore((state) => state.setShowAiConfig);
 
   useEffect(() => {
     fetchHistories();
@@ -189,6 +188,10 @@ export default function AIAssistant() {
                             alert("The AI attempted to print, but no printer is currently selected!");
                             return;
                         }
+                        if (selectedPrinterInfo?.transport === 'offline') {
+                            alert("The AI attempted to print using an offline/manual printer profile. Scan and select a connected printer first.");
+                            return;
+                        }
                         const thickness = canvasBorderThickness || 4;
                         const batchVariables = data.canvas_state.batchRecords || useStore.getState().batchRecords || [{}];
                         const copies = data.canvas_state.printCopies || useStore.getState().printCopies || 1;
@@ -247,7 +250,7 @@ export default function AIAssistant() {
           <button onClick={handleCopyHistory} className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors" title="Copy Chat History">
             {copied ? <Check size={16} className="text-green-500"/> : <Copy size={16} />}
           </button>
-          <button onClick={() => setShowConfig(true)} className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors" title="AI Settings">
+          <button onClick={() => setShowAiConfig(true)} className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors" title="AI Settings">
             <Settings size={16} />
           </button>
         </div>
@@ -309,7 +312,6 @@ export default function AIAssistant() {
         )}
       </div>
 
-      {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
     </div>
   );
 }

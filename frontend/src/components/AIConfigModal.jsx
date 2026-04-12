@@ -171,10 +171,13 @@ export default function AIConfigModal({ onClose }) {
               )}
 
               {current.provider === 'custom' && (
-                <>
+                <div className="mt-4 p-4 border border-purple-100 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/10 rounded">
                   <label className={labelClass}>Custom Base URL</label>
-                  <input type="text" value={current.base_url} onChange={e => handleUpdateCurrent('base_url', e.target.value)} className={inputClass} placeholder="https://api.your-provider.com/v1" />
-                </>
+                  <input type="text" value={current.base_url} onChange={e => handleUpdateCurrent('base_url', e.target.value)} className={inputClass} placeholder="http://localhost:1234/v1" />
+                  <p className="text-[10px] text-neutral-600 dark:text-neutral-400 mt-2 leading-relaxed">
+                    <strong>Tip for Local AI (e.g., LM Studio / Ollama):</strong> Set your provider to "Custom" and the Base URL to your local server's endpoint (like <code>http://localhost:1234/v1</code>). You can enter any random text in the API Key field above to bypass the requirement. We recommend models like <em>Llama-3</em> or <em>Qwen-2.5</em> for the best tool-calling results!
+                  </p>
+                </div>
               )}
 
               {current.provider === 'vertex_ai' && (

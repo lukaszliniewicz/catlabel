@@ -22,7 +22,8 @@ export default function Sidebar() {
     printPages,
     selectedPagesForPrint,
     labelPresets,
-    savePreset
+    savePreset,
+    manualPrinters
   } = useStore();
 
   const [printers, setPrinters] = useState([]);
@@ -121,22 +122,38 @@ export default function Sidebar() {
 
           <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
 
-          {printers.length > 0 && (
+          {(printers.length > 0 || manualPrinters.length > 0) && (
             <select
               className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs uppercase tracking-wider text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-900 dark:focus:border-white transition-colors"
               value={selectedPrinter || ''}
               onChange={(e) => {
                 const selectedMac = e.target.value;
-                const printerData = printers.find(p => p.address === selectedMac);
+                const allPrinters = [...manualPrinters, ...printers];
+                const printerData = allPrinters.find(p => p.address === selectedMac);
                 setSelectedPrinter(selectedMac, printerData);
               }}
             >
               <option value="" disabled>Select a printer...</option>
-              {printers.map(p => (
-                <option key={p.address} value={p.address}>
-                  {p.name || p.display_address} ({p.width_mm}mm)
-                </option>
-              ))}
+
+              {printers.length > 0 && (
+                <optgroup label="Available Bluetooth Printers">
+                  {printers.map(p => (
+                    <option key={p.address} value={p.address}>
+                      🟢 {p.name || p.display_address} ({p.width_mm}mm)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              {manualPrinters.length > 0 && (
+                <optgroup label="Offline / Manual Profiles">
+                  {manualPrinters.map(p => (
+                    <option key={p.address} value={p.address}>
+                      ⚪ {p.name} ({p.width_mm}mm)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           )}
 

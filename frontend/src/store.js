@@ -11,6 +11,24 @@ export const useStore = create((set, get) => ({
   isRotated: false,
   selectedPrinter: null,
   selectedPrinterInfo: null,
+  showAiConfig: false,
+  setShowAiConfig: (val) => set({ showAiConfig: val }),
+  manualPrinters: (() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(window.localStorage.getItem('catlabel_manual_printers') || '[]');
+    } catch (e) {
+      console.error('Failed to load manual printers', e);
+      return [];
+    }
+  })(),
+  addManualPrinter: (printer) => set((state) => {
+    const newManual = [...state.manualPrinters.filter((p) => p.address !== printer.address), printer];
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('catlabel_manual_printers', JSON.stringify(newManual));
+    }
+    return { manualPrinters: newManual };
+  }),
   batchRecords: [{}],
   printCopies: 1,
   theme: 'auto',
@@ -98,6 +116,11 @@ export const useStore = create((set, get) => ({
     const state = get();
     if (!state.selectedPrinter) {
       alert("Please select a printer first!");
+      return;
+    }
+
+    if (state.selectedPrinterInfo?.transport === 'offline') {
+      alert("This is an offline/manual printer profile. Scan and select a connected printer before printing.");
       return;
     }
 

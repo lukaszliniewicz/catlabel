@@ -4,6 +4,7 @@ import Toolbar from './components/Toolbar';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
 import OnboardingWizard from './components/OnboardingWizard';
+import AIConfigModal from './components/AIConfigModal';
 import { useStore } from './store';
 
 function App() {
@@ -11,6 +12,8 @@ function App() {
   const fetchFonts = useStore((state) => state.fetchFonts);
   const settingsLoaded = useStore((state) => state.settingsLoaded);
   const settings = useStore((state) => state.settings);
+  const showAiConfig = useStore((state) => state.showAiConfig);
+  const setShowAiConfig = useStore((state) => state.setShowAiConfig);
 
   useEffect(() => {
     fetchFonts();
@@ -35,6 +38,7 @@ function App() {
       </div>
       <PropertiesPanel />
       {settingsLoaded && (!settings.intended_media_type || settings.intended_media_type === 'unknown') && <OnboardingWizard />}
+      {showAiConfig && <AIConfigModal onClose={() => setShowAiConfig(false)} />}
     </div>
   );
 }

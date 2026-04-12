@@ -224,12 +224,23 @@ def chat_with_agent(req: ChatRequest):
     root_categories_json = json.dumps(context["root_categories"], indent=2)
     root_projects_json = json.dumps(context["root_projects"], indent=2)
 
-    if req.printer_info:
+    printer_transport = (req.printer_info or {}).get("transport")
+    if req.printer_info and printer_transport != "offline":
         p_name = req.printer_info.get("name", "Unknown")
         p_media = req.printer_info.get("media_type", "continuous")
         p_width = req.printer_info.get("width_mm", context['engine_rules']['hardware_width_mm'])
         p_dpi = req.printer_info.get("dpi", 203)
         printer_status = f"CONNECTED PRINTER: '{p_name}' | Media Type: {p_media.upper()} | DPI: {p_dpi} | Max Print Width: {p_width}mm"
+    elif req.printer_info:
+        p_name = req.printer_info.get("name", "Unknown")
+        p_media = req.printer_info.get("media_type", "continuous")
+        p_width = req.printer_info.get("width_mm", context['engine_rules']['hardware_width_mm'])
+        p_dpi = req.printer_info.get("dpi", 203)
+        printer_status = (
+            f"SELECTED PRINTER PROFILE (NOT CURRENTLY CONNECTED): '{p_name}' | "
+            f"Media Type: {p_media.upper()} | DPI: {p_dpi} | Max Print Width: {p_width}mm. "
+            "Use these exact layout constraints, but do not assume physical printing is currently available."
+        )
     else:
         media_pref = context.get('intended_media_type', 'unknown')
         if media_pref == "continuous":

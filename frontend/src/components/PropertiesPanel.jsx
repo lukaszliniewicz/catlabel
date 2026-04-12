@@ -110,6 +110,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
 export default function PropertiesPanel() {
   const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
+  const isPreCut = selectedPrinterInfo?.media_type === 'pre-cut';
 
   const [panelWidth, setPanelWidth] = useState(320);
 
@@ -137,6 +138,12 @@ export default function PropertiesPanel() {
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (isPreCut && splitMode) {
+      setSplitMode(false);
+    }
+  }, [isPreCut, splitMode, setSplitMode]);
 
   const handleResizeMouseDown = (e) => {
     e.preventDefault();
@@ -391,12 +398,21 @@ export default function PropertiesPanel() {
             <div className="space-y-4">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Dimensions</h2>
               
-              <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-red-600 dark:text-red-400 mt-2 cursor-pointer border px-3 py-2 border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 rounded hover:bg-red-100 dark:hover:bg-red-900/40 w-full transition-colors">
-                <input type="checkbox" checked={splitMode || false} onChange={(e) => setSplitMode(e.target.checked)} />
-                Oversize / Split Print Mode
+              <label className={`flex items-center gap-2 text-[10px] uppercase font-bold mt-2 cursor-pointer border px-3 py-2 rounded w-full transition-colors ${
+                isPreCut
+                  ? 'text-neutral-400 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 opacity-60 cursor-not-allowed'
+                  : 'text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/40'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={splitMode || false}
+                  onChange={(e) => !isPreCut && setSplitMode(e.target.checked)}
+                  disabled={isPreCut}
+                />
+                Oversize / Split Print Mode {isPreCut && '(Disabled for Pre-cut Media)'}
               </label>
               
-              {splitMode && (
+              {splitMode && !isPreCut && (
                 <div className="flex gap-2 mt-2">
                   <button onClick={() => { setCanvasSize(840, 1184); setIsRotated(false); }} className="flex-1 py-2 bg-neutral-100 dark:bg-neutral-900 text-[10px] font-bold uppercase hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">A6</button>
                   <button onClick={() => { setCanvasSize(1184, 1680); setIsRotated(false); }} className="flex-1 py-2 bg-neutral-100 dark:bg-neutral-900 text-[10px] font-bold uppercase hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">A5</button>
