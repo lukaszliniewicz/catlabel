@@ -15,7 +15,7 @@ if [ ! -d "env" ]; then
     echo "[1/4] Environment not found. Starting installation..."
     
     mkdir -p bin data
-    if[ ! -f "bin/micromamba" ]; then
+    if [ ! -f "bin/micromamba" ]; then
         echo "      Downloading standalone Micromamba..."
         OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
         ARCH="$(uname -m)"
