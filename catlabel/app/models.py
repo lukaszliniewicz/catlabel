@@ -46,6 +46,7 @@ class Settings(SQLModel, table=True):
     energy: int = 0
     feed_lines: int = 100
     default_font: str = "Roboto.ttf"
+    intended_media_type: str = "unknown"
 
 class Address(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

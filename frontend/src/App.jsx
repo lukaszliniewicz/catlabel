@@ -3,11 +3,14 @@ import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
+import OnboardingWizard from './components/OnboardingWizard';
 import { useStore } from './store';
 
 function App() {
   const theme = useStore((state) => state.theme);
   const fetchFonts = useStore((state) => state.fetchFonts);
+  const settingsLoaded = useStore((state) => state.settingsLoaded);
+  const settings = useStore((state) => state.settings);
 
   useEffect(() => {
     fetchFonts();
@@ -31,6 +34,7 @@ function App() {
         <CanvasArea />
       </div>
       <PropertiesPanel />
+      {settingsLoaded && (!settings.intended_media_type || settings.intended_media_type === 'unknown') && <OnboardingWizard />}
     </div>
   );
 }

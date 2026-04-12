@@ -522,6 +522,16 @@ export default function PropertiesPanel() {
             <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Global Defaults</h2>
               <div className="pt-2">
+                <label className={labelClass}>AI Media Assumption</label>
+                <select name="intended_media_type" value={localSettings.intended_media_type || 'unknown'} onChange={(e) => setLocalSettings({ ...localSettings, intended_media_type: e.target.value })} className={inputClass}>
+                  <option value="unknown">Not Set (AI will ask)</option>
+                  <option value="continuous">Continuous Roll (Generic)</option>
+                  <option value="pre-cut">Pre-cut Labels (Niimbot)</option>
+                  <option value="both">Both / Mixed</option>
+                </select>
+                <p className="text-[9px] text-neutral-400 mt-1 mb-2">Guides the AI Assistant if no printer is connected.</p>
+              </div>
+              <div className="pt-2">
                 <label className={labelClass}>Global Default Font</label>
                 <select name="default_font" value={localSettings.default_font || 'Roboto.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
                   <option value="arial.ttf">System Arial</option>

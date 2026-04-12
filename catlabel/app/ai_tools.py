@@ -20,15 +20,19 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_canvas_dimensions",
-            "description": "Set custom canvas dimensions in pixels (1mm = 8px). For CONTINUOUS rolls, to use the full width of the tape, set the appropriate dimension to 384.",
+            "description": "Sets custom canvas dimensions in pixels (1mm = 8px) for CONTINUOUS rolls.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "width": {"type": "integer", "description": "Width in pixels. (e.g. 384 for full hardware width)"},
+                    "width": {"type": "integer", "description": "Width in pixels."},
                     "height": {"type": "integer", "description": "Height in pixels."},
-                    "isRotated": {"type": "boolean", "description": "True to print ALONG the tape (banner mode). False to print ACROSS the tape."}
+                    "print_direction": {
+                        "type": "string",
+                        "enum": ["across_tape", "along_tape_banner"],
+                        "description": "CRITICAL: 'across_tape' (Portrait) caps width at hardware max (e.g. 384px) and allows infinite height. 'along_tape_banner' (Landscape) caps height at hardware max and allows infinite width (great for long text/boxes)."
+                    }
                 },
-                "required": ["width", "height"]
+                "required": ["width", "height", "print_direction"]
             }
         }
     },
@@ -299,10 +303,22 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             return f"Applied preset: {preset.name}"
 
     elif name == "set_canvas_dimensions":
-        canvas_state["width"] = args["width"]
-        canvas_state["height"] = args["height"]
-        canvas_state["isRotated"] = args.get("isRotated", False)
-        return "Dimensions updated."
+        w = args["width"]
+        h = args["height"]
+        direction = args.get("print_direction", "across_tape")
+        
+        if direction == "along_tape_banner":
+            if h > w:
+                w, h = h, w
+            canvas_state["isRotated"] = True
+        else:
+            if w > h:
+                w, h = h, w
+            canvas_state["isRotated"] = False
+            
+        canvas_state["width"] = w
+        canvas_state["height"] = h
+        return f"Dimensions updated to {w}x{h}, direction: {direction}."
 
     elif name == "list_directory":
         from .server import engine

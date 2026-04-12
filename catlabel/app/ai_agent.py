@@ -231,7 +231,15 @@ def chat_with_agent(req: ChatRequest):
         p_dpi = req.printer_info.get("dpi", 203)
         printer_status = f"CONNECTED PRINTER: '{p_name}' | Media Type: {p_media.upper()} | DPI: {p_dpi} | Max Print Width: {p_width}mm"
     else:
-        printer_status = "NO PRINTER CONNECTED. If sizing is ambiguous, ASK the user if they use 'pre-cut' labels or 'continuous' rolls. If you must reason about mm-to-px, assume 203 DPI."
+        media_pref = context.get('intended_media_type', 'unknown')
+        if media_pref == "continuous":
+            printer_status = "NO PRINTER CONNECTED. User indicated they use CONTINUOUS rolls. Assume 203 DPI and 48mm/384px print head width. Use set_canvas_dimensions."
+        elif media_pref == "pre-cut":
+            printer_status = "NO PRINTER CONNECTED. User indicated they use PRE-CUT labels (e.g., Niimbot). Assume fixed media limits. ALWAYS use apply_preset."
+        elif media_pref == "both":
+            printer_status = "NO PRINTER CONNECTED. User uses BOTH rolls and pre-cut. Ask them which one they want for this design, or assume based on context."
+        else:
+            printer_status = "NO PRINTER CONNECTED. Media type UNKNOWN. You MUST ASK the user if they use 'pre-cut' labels or 'continuous' rolls before proceeding with sizing, UNLESS they explicitly mention it."
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
 Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions via tool calls.
@@ -256,17 +264,20 @@ CRITICAL AGENT BEHAVIORS:
    b) `layout_stacked_text` OR `layout_centered_text` (using {{{{ variable }}}} tags)
    c) `set_batch_records` (passing either the actual list of rows or a variables matrix for permutations)
    Do NOT stop halfway to ask for permission. Just do it.
-3. FULL WIDTH OF ROLL: If the user wants to use the "full width" of the continuous roll, ensure the relevant dimension is set to {context['engine_rules']['hardware_width_px']} pixels (e.g., width=384 for ACROSS tape, or height=384 for ALONG tape).
+3. FULL WIDTH OF ROLL: If the user wants to use the "full width" of the continuous roll, ensure the constrained dimension is set to {context['engine_rules']['hardware_width_px']} pixels (e.g., width=384 with `print_direction="across_tape"`, or height=384 with `print_direction="along_tape_banner"`).
 4. MACROS FIRST: Always prefer the macro tools (`layout_centered_text`, `layout_stacked_text`) because they handle auto-scaling, wrapping, and centering flawlessly. Avoid manual `add_text_element` coordinate math unless strictly necessary.
 5. COMMA-SEPARATED BATCHES (MATRIX): If a user provides multiple comma-separated lists for variables (e.g., "lengths: 3, 4" and "head: flat, countersunk"), you MUST call `set_batch_records` with the `variables_matrix` parameter. The backend will automatically generate the Cartesian product table for the UI.
 
 WORKFLOW EXAMPLES:
-User: "Make M3 screw labels, 6, 8, and 10mm, full width of roll."
-Your Thought: I will set the canvas to the full hardware width (384px) and a reasonable height (e.g., 240px for 30mm), use a stacked layout, and set the batch records.
-Action (Tool Calls in same response):
-1. `set_canvas_dimensions(width=384, height=240, isRotated=false)`
-2. `layout_stacked_text(top_text="M3", bottom_text="{{{{ length }}}}", primary_is_top=True)`
-3. `set_batch_records(variables_list=[{{"length": "6mm"}}, {{"length": "8mm"}}, {{"length": "10mm"}}])`
+User: "Make M3 screw labels, 6, 8, and 10mm, standard list format."
+Your Thought: Standard list format is Portrait. I will set the canvas height based on items.
+Action: `set_canvas_dimensions(width=384, height=240, print_direction="across_tape")`
+
+User: "Make a huge label for a 20cm shipping box. It needs to say FRAGILE."
+Your Thought: 20cm is 200mm = 1600px. This requires a continuous roll. To fit 1600px length on a 384px print head, I must use banner mode.
+Action:
+1. `set_canvas_dimensions(width=1600, height=384, print_direction="along_tape_banner")`
+2. `layout_centered_text(text="FRAGILE")`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
