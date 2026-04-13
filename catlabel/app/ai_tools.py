@@ -128,21 +128,27 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "add_text_element",
-            "description": "GRANULAR (AVOID IF POSSIBLE): Add a text element at specific X/Y coordinates. WARNING: You lack spatial reasoning. Using this often results in overlapping text at y:0. Use MACROS instead unless strictly required.",
+            "description": "GRANULAR (AVOID IF POSSIBLE): Add a text element at specific X/Y coordinates using a strict bounding box.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "text": {"type": "string"},
                     "x": {"type": "integer"},
                     "y": {"type": "integer"},
-                    "size": {"type": "integer", "default": 24},
-                    "width": {"type": "integer"},
+                    "width": {"type": "integer", "description": "Strict bounding box width in px"},
+                    "height": {"type": "integer", "description": "Strict bounding box height in px"},
+                    "size": {"type": "number", "default": 24, "description": "Target font size. Can be fractional (e.g., 24.5). Ignored if fit_to_width is true."},
                     "align": {"type": "string", "enum": ["left", "center", "right"], "default": "left"},
                     "weight": {"type": "integer", "default": 700},
-                    "fit_to_width": {"type": "boolean", "default": False},
+                    "italic": {"type": "boolean", "default": False},
+                    "underline": {"type": "boolean", "default": False},
+                    "color": {"type": "string", "enum": ["black", "white"], "default": "black"},
+                    "bgColor": {"type": "string", "enum": ["transparent", "black", "white"], "default": "transparent"},
+                    "rotation": {"type": "integer", "default": 0, "description": "Rotation in degrees (0-360)"},
+                    "fit_to_width": {"type": "boolean", "default": True, "description": "CRITICAL: Auto-scales font to fit inside width/height bounding box"},
                     "pageIndex": {"type": "integer", "default": 0}
                 },
-                "required": ["text", "x", "y"]
+                "required": ["text", "x", "y", "width", "height"]
             }
         }
     },
@@ -422,11 +428,17 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             "text": args["text"],
             "x": args.get("x", 0),
             "y": args.get("y", 0),
-            "size": args.get("size", 24),
             "width": args.get("width", cw),
+            "height": args.get("height", 50),
+            "size": args.get("size", 24),
             "align": args.get("align", "left"),
             "weight": args.get("weight", 700),
-            "fit_to_width": args.get("fit_to_width", False),
+            "italic": args.get("italic", False),
+            "underline": args.get("underline", False),
+            "color": args.get("color", "black"),
+            "bgColor": args.get("bgColor", "transparent"),
+            "rotation": args.get("rotation", 0),
+            "fit_to_width": args.get("fit_to_width", True),
             "pageIndex": args.get("pageIndex", 0),
         })
         return "Text element added."

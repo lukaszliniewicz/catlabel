@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { AlignCenter, MoveHorizontal, Maximize2, Sliders, Printer, Database, Sparkles, Plus, Trash2, FileSpreadsheet } from 'lucide-react';
+import {
+  AlignCenter, MoveHorizontal, Maximize2, Sliders, Printer, Database, Sparkles,
+  Plus, Trash2, FileSpreadsheet, Bold, Italic, Underline
+} from 'lucide-react';
 import AIAssistant from './AIAssistant';
 import BatchPrintModal from './BatchPrintModal';
 
@@ -106,6 +109,20 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
     </div>
   );
 };
+
+const ToggleBtn = ({ icon: Icon, active, onClick, label }) => (
+  <button
+    onClick={onClick}
+    title={label}
+    className={`flex-1 flex justify-center items-center py-1.5 transition-colors rounded-sm ${
+      active
+        ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-inner'
+        : 'bg-transparent text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+    }`}
+  >
+    <Icon size={16} />
+  </button>
+);
 
 export default function PropertiesPanel() {
   const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence } = useStore();
@@ -592,6 +609,7 @@ export default function PropertiesPanel() {
                 <div className="flex gap-4">
                   <MmScrubberInput name="x" label="X Pos" value={selectedItem.x} onChange={handleChange} />
                   <MmScrubberInput name="y" label="Y Pos" value={selectedItem.y} onChange={handleChange} />
+                  <ScrubberInput name="rotation" label="Rotation (°)" value={Math.round(selectedItem.rotation || 0)} onChange={handleChange} />
                 </div>
                 
                 <div className="flex gap-2 mt-3">
@@ -615,26 +633,37 @@ export default function PropertiesPanel() {
                     <label className={labelClass}>Text Content</label>
                     <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
                   </div>
-                  <div className="flex gap-4">
-                    <ScrubberInput name="size" label="Font Size" value={Number(selectedItem.size || 0)} onChange={handleChange} />
-                    <ScrubberInput name="weight" label="Weight (100-900)" value={selectedItem.weight || 700} onChange={handleChange} />
+
+                  <div className="flex gap-2 mt-2 border border-neutral-200 dark:border-neutral-800 rounded p-1 bg-neutral-50 dark:bg-neutral-900/50">
+                    <ToggleBtn icon={Bold} label="Bold" active={selectedItem.weight >= 700} onClick={() => updateItem(selectedId, { weight: selectedItem.weight >= 700 ? 400 : 700 })} />
+                    <ToggleBtn icon={Italic} label="Italic" active={selectedItem.italic} onClick={() => updateItem(selectedId, { italic: !selectedItem.italic })} />
+                    <ToggleBtn icon={Underline} label="Underline" active={selectedItem.underline} onClick={() => updateItem(selectedId, { underline: !selectedItem.underline })} />
                   </div>
-                  <div className="flex gap-4 mt-2">
+
+                  <div className="flex gap-4 mt-3">
+                    <ScrubberInput name="size" label="Font Size" value={selectedItem.size} onChange={handleChange} />
                     <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0)} onChange={handleChange} />
-                    <div className="flex-1"></div>
                   </div>
+
                   <div className="flex gap-4 mt-2">
                     <div className="flex-1">
-                      <label className={labelClass}>Font</label>
-                      <select name="font" value={selectedItem.font || 'Roboto.ttf'} onChange={handleChange} className={inputClass}>
-                        <option value="arial.ttf">System Arial</option>
-                        {fonts.map(f => (
-                          <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
-                        ))}
+                      <label className={labelClass}>Text Color</label>
+                      <select name="color" value={selectedItem.color || (selectedItem.invert ? 'white' : 'black')} onChange={handleChange} className={inputClass}>
+                        <option value="black">Black</option>
+                        <option value="white">White</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className={labelClass}>Background</label>
+                      <select name="bgColor" value={selectedItem.bgColor || (selectedItem.invert ? 'black' : (selectedItem.bg_white ? 'white' : 'transparent'))} onChange={handleChange} className={inputClass}>
+                        <option value="transparent">Transparent</option>
+                        <option value="black">Black</option>
+                        <option value="white">White</option>
                       </select>
                     </div>
                   </div>
-                  <div className="flex gap-4">
+
+                  <div className="flex gap-4 mt-2">
                     <MmScrubberInput name="width" label="Box Width" value={selectedItem.width || 0} onChange={handleChange} />
                     <div className="flex-1">
                       <label className={labelClass}>Align</label>
@@ -645,19 +674,13 @@ export default function PropertiesPanel() {
                       </select>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
                       <input type="checkbox" name="no_wrap" checked={selectedItem.no_wrap || false} onChange={handleChange} /> Single Line
                     </label>
                     <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
-                      <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} /> Auto-Fit
-                    </label>
-                    <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
-                      <input type="checkbox" name="invert" checked={selectedItem.invert || false} onChange={handleChange} /> Invert Box
-                    </label>
-                    <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
-                      <input type="checkbox" name="bg_white" checked={selectedItem.bg_white || false} onChange={handleChange} /> Solid White BG
+                      <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} /> Auto-Fit to Box
                     </label>
                   </div>
                 </>

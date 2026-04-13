@@ -324,7 +324,13 @@ GRANULAR PARSING (VERY IMPORTANT):
 When a user provides unstructured data, you MUST parse it into the specific granular fields of the template.
 Example: For a Price Tag, if the user says "Hammer £24.99", you must split it: currency_symbol="£", price_main="24", price_cents="99", product_name="Hammer".
 
-WARNING: DO NOT use `add_text_element`, `add_barcode_or_qrcode`, or `add_html_element` unless the user explicitly asks for coordinate-specific editing or a detailed custom composition.
+WARNING: DO NOT guess X/Y coordinates if a template exists. Always use `apply_template`. 
+If you absolutely MUST build a custom layout using `add_text_element`, you MUST rely on `fit_to_width: true` and provide a strict `width` and `height` (a Bounding Box). The layout engine will perform a binary search to perfectly scale the text to fit your box. Never leave text unconstrained.
+
+STYLING RULES:
+You can use `color: "white"` and `bgColor: "black"` to create inverted emphasis tags.
+You can use `italic: true` and `underline: true` to format text. 
+You can rotate elements using `rotation: 90` (or 180, 270) if you need text to run vertically on the canvas.
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
