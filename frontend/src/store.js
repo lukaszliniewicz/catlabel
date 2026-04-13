@@ -44,6 +44,13 @@ export const useStore = create((set, get) => ({
     }
     return { manualPrinters: newManual };
   }),
+  removeManualPrinter: (address) => set((state) => {
+    const newManual = state.manualPrinters.filter((p) => p.address !== address);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('catlabel_manual_printers', JSON.stringify(newManual));
+    }
+    return { manualPrinters: newManual };
+  }),
   batchRecords: [{}],
   printCopies: 1,
   theme: 'auto',

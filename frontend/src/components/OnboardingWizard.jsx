@@ -64,11 +64,11 @@ export default function OnboardingWizard() {
       const info = await res.json();
 
       const manualPrinter = {
+        ...info,
         name: `Manual Profile (${selectedManualModel})`,
         address: `manual-${selectedManualModel}`,
         transport: 'offline',
         model_id: info.model_id || info.model,
-        ...info
       };
 
       addManualPrinter(manualPrinter);
