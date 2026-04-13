@@ -78,7 +78,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
     if (!isDragging) return;
     const handleMouseMove = (e) => {
       const dx = e.clientX - startX;
-      const newVal = Math.max(0, Math.round(startVal + dx * 0.5));
+      const newVal = Math.max(0, Math.round((startVal + dx * 0.5) * 2) / 2);
       onChange({ target: { name, value: newVal, type: 'number' } });
     };
     const handleMouseUp = () => setIsDragging(false);
@@ -100,7 +100,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
         {label} ⇹
       </label>
       <input 
-        type="number" name={name} value={value} onChange={onChange} 
+        type="number" step="0.5" name={name} value={value} onChange={onChange} 
         className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors" 
       />
     </div>
@@ -234,8 +234,8 @@ export default function PropertiesPanel() {
     let bestSize = selectedItem.size;
     const lines = String(selectedItem.text).split('\n');
 
-    while (low <= high) {
-      let mid = Math.floor((low + high) / 2);
+    while (high - low >= 0.5) {
+      let mid = (low + high) / 2;
       ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; 
       
       let maxLineWidth = 0;
@@ -247,11 +247,13 @@ export default function PropertiesPanel() {
       
       if (maxLineWidth <= targetWidth && textBlockHeight <= targetHeight) {
         bestSize = mid;
-        low = mid + 1;
+        low = mid + 0.5;
       } else {
-        high = mid - 1;
+        high = mid - 0.5;
       }
     }
+
+    bestSize = Math.floor(bestSize * 2) / 2;
     
     ctx.font = `${fontWeight} ${bestSize}px "${fontFamily}"`;
     let finalMaxW = 0;
@@ -614,7 +616,7 @@ export default function PropertiesPanel() {
                     <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
                   </div>
                   <div className="flex gap-4">
-                    <ScrubberInput name="size" label="Font Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
+                    <ScrubberInput name="size" label="Font Size" value={Number(selectedItem.size || 0)} onChange={handleChange} />
                     <ScrubberInput name="weight" label="Weight (100-900)" value={selectedItem.weight || 700} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2">
@@ -805,11 +807,11 @@ export default function PropertiesPanel() {
                     <input type="text" name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} />
                   </div>
                   <div className="flex gap-4 mt-2">
-                    <ScrubberInput name="size" label="Text Size" value={Math.round(selectedItem.size)} onChange={handleChange} />
+                    <ScrubberInput name="size" label="Text Size" value={Number(selectedItem.size || 0)} onChange={handleChange} />
                     <ScrubberInput name="weight" label="Weight (100-900)" value={selectedItem.weight || 700} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2">
-                    <MmScrubberInput name="icon_size" label="Icon Size" value={Math.round(selectedItem.icon_size)} onChange={handleChange} />
+                    <MmScrubberInput name="icon_size" label="Icon Size" value={Number(selectedItem.icon_size || 0)} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
                     <MmScrubberInput name="icon_x" label="Icon X" value={Math.round(selectedItem.icon_x)} onChange={handleChange} />

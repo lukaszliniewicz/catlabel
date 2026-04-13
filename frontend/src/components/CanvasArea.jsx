@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layer, Line, Rect, Stage } from 'react-konva';
+import { Layer, Line, Rect, Stage, Transformer } from 'react-konva';
 import { useStore } from '../store';
 import CanvasItemNode from './CanvasItemNode';
 
@@ -31,6 +31,7 @@ export default function CanvasArea() {
 
   const { splitMode } = useStore();
   const [selectionBox, setSelectionBox] = React.useState(null);
+  const trRef = React.useRef(null);
   const cvThick = canvasBorderThickness || 4;
   const dotsPerMm = (currentDpi || settings.default_dpi || 203) / 25.4;
   const printPx = selectedPrinterInfo?.width_px || Math.round((settings.print_width_mm || 48) * dotsPerMm);
@@ -39,6 +40,12 @@ export default function CanvasArea() {
   const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
   const maxDisplayedPage = Math.max(maxPage, currentPage);
   const pages = Array.from({ length: maxDisplayedPage + 1 }, (_, index) => index);
+
+  React.useEffect(() => {
+    if (!trRef.current || selectedIds.length > 0) return;
+    trRef.current.nodes([]);
+    trRef.current.getLayer()?.batchDraw();
+  }, [currentPage, selectedIds]);
 
   React.useEffect(() => {
     const handleKeyDown = (e) => {
@@ -350,6 +357,16 @@ export default function CanvasArea() {
                             stroke="#3b82f6"
                             strokeWidth={1 / zoomScale}
                             listening={false}
+                          />
+                        )}
+
+                        {isActive && (
+                          <Transformer
+                            ref={trRef}
+                            boundBoxFunc={(oldBox, newBox) => {
+                              if (newBox.width < 5 || newBox.height < 5) return oldBox;
+                              return newBox;
+                            }}
                           />
                         )}
                       </Layer>

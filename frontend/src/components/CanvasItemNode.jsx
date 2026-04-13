@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from 'react-konva';
 import { applyVars, useCodeGenerator } from '../utils/rendering';
+import { useStore } from '../store';
 import { LABEL_TEMPLATE_STYLES, buildLabelTemplateMarkup } from './templateStyles';
 
 const useImageLoader = (url) => {
@@ -104,20 +105,52 @@ export default function CanvasItemNode({
   const substitutedData = applyVars(item.data, record);
 
   const { visualW, approxHeight, pad, lineCount } = getVisualMetrics(item, substitutedText);
+  const groupRef = useRef(null);
+
+  useEffect(() => {
+    if (isSelected && interactive && groupRef.current) {
+      const tr = groupRef.current.getStage()?.findOne('Transformer');
+      if (tr) {
+        tr.nodes([groupRef.current]);
+        tr.getLayer()?.batchDraw();
+      }
+    }
+  }, [interactive, isSelected]);
 
   const commonProps = interactive
     ? {
+        ref: groupRef,
         x: item.x,
         y: item.y,
+        rotation: item.rotation || 0,
         draggable: item.type !== 'cut_line_indicator' && item.type !== 'label_template',
         onMouseDown,
         onTouchStart,
         onDragMove,
-        onDragEnd
+        onDragEnd,
+        onTransformEnd: () => {
+          const node = groupRef.current;
+          if (!node) return;
+
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
+
+          node.scaleX(1);
+          node.scaleY(1);
+
+          useStore.getState().updateItem(item.id, {
+            x: node.x(),
+            y: node.y(),
+            rotation: node.rotation(),
+            width: Math.max(5, (item.width || 100) * scaleX),
+            height: Math.max(5, approxHeight * scaleY)
+          });
+        }
       }
     : {
         x: item.x,
-        y: item.y
+        y: item.y,
+        rotation: item.rotation || 0
       };
 
   if (item.type === 'group') {
@@ -152,8 +185,12 @@ export default function CanvasItemNode({
 
   if (item.type === 'text') {
     const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-    const fill = item.invert ? 'white' : (isSelected ? '#2563eb' : 'black');
-    const bgFill = item.invert ? 'black' : (item.bg_white ? 'white' : null);
+    const fontStyleAttr = [
+      item.italic ? 'italic' : '',
+      item.weight || 700
+    ].filter(Boolean).join(' ') || 'normal';
+    const actualColor = item.color || (item.invert ? 'white' : 'black');
+    const actualBg = item.bgColor || (item.invert ? 'black' : (item.bg_white ? 'white' : 'transparent'));
     const capHeight = item.size * 0.71;
     const lineHeightPx = item.size * 1.15;
     const availWidth = Math.max(0, visualW - (pad * 2));
@@ -164,7 +201,7 @@ export default function CanvasItemNode({
 
     element = (
       <Group>
-        {bgFill && <Rect width={visualW} height={approxHeight} fill={bgFill} cornerRadius={2} listening={false} />}
+        {actualBg !== 'transparent' && <Rect width={visualW} height={approxHeight} fill={actualBg} cornerRadius={2} listening={false} />}
         <Text
           text={substitutedText}
           x={pad}
@@ -172,10 +209,11 @@ export default function CanvasItemNode({
           width={availWidth}
           align={item.align || 'left'}
           fontFamily={fontFamily}
-          fontStyle={(item.weight || 700).toString()}
+          fontStyle={fontStyleAttr}
+          textDecoration={item.underline ? 'underline' : ''}
           wrap={item.no_wrap ? 'none' : 'word'}
           fontSize={item.size}
-          fill={fill}
+          fill={isSelected ? '#2563eb' : actualColor}
           lineHeight={1.15}
         />
       </Group>

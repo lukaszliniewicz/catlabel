@@ -30,10 +30,18 @@ def _text_item(
     weight=700,
     align="center",
     fit=True,
-    invert=False,
+    color="black",
+    bg_color="transparent",
+    italic=False,
+    underline=False,
+    rotation=0,
     no_wrap=False,
+    invert=False,
 ):
-    return {
+    resolved_color = "white" if invert and color == "black" else color
+    resolved_bg_color = "black" if invert and bg_color == "transparent" else bg_color
+
+    item = {
         "id": _id(),
         "type": "text",
         "text": text,
@@ -41,14 +49,23 @@ def _text_item(
         "y": int(y),
         "width": int(w),
         "height": int(h),
-        "size": int(size),
+        "size": float(size),
         "weight": weight,
         "align": align,
         "fit_to_width": fit,
         "no_wrap": no_wrap,
-        "invert": invert,
+        "color": resolved_color,
+        "bgColor": resolved_bg_color,
+        "italic": italic,
+        "underline": underline,
+        "rotation": rotation,
         "font": "Roboto.ttf",
     }
+    if invert:
+        item["invert"] = True
+    if resolved_bg_color == "white":
+        item["bg_white"] = True
+    return item
 
 
 def build_centered_text(width, height, params):
@@ -619,6 +636,160 @@ def build_warning_banner(width, height, params):
     return items
 
 
+def build_sale_tag(width, height, params):
+    currency = params.get("currency", "$")
+    old_price = f"{currency}{params.get('old_price', '29.99')}"
+    new_price = f"{currency}{params.get('new_price', '19.99')}"
+    product = params.get("product_name", "Sale Item")
+
+    items = []
+    is_landscape = width > height
+
+    if is_landscape:
+        items.append(_text_item(10, 10, width * 0.6, height * 0.3, product, size=24, align="left"))
+        items.append(
+            _text_item(
+                10,
+                height * 0.4,
+                width * 0.4,
+                height * 0.5,
+                old_price,
+                size=32,
+                align="left",
+                underline=True,
+                color="#666666",
+            )
+        )
+        items.append(
+            _text_item(
+                width * 0.5,
+                height * 0.2,
+                width * 0.45,
+                height * 0.7,
+                new_price,
+                size=64,
+                align="center",
+                color="white",
+                bg_color="black",
+            )
+        )
+    else:
+        items.append(_text_item(10, 10, width - 20, height * 0.2, product, size=24, align="center"))
+        items.append(
+            _text_item(
+                10,
+                height * 0.3,
+                width - 20,
+                height * 0.2,
+                old_price,
+                size=32,
+                align="center",
+                underline=True,
+            )
+        )
+        items.append(
+            _text_item(
+                10,
+                height * 0.55,
+                width - 20,
+                height * 0.4,
+                new_price,
+                size=50,
+                align="center",
+                color="white",
+                bg_color="black",
+            )
+        )
+    return items
+
+
+def build_asset_tag(width, height, params):
+    asset_id = params.get("asset_id", "AST-0001")
+    dept = params.get("department", "IT DEPT")
+    desc = params.get("description", "Laptop Computer")
+
+    items = []
+    header_h = height * 0.25
+    items.append(
+        _text_item(
+            0,
+            0,
+            width,
+            header_h,
+            dept,
+            size=20,
+            align="center",
+            color="white",
+            bg_color="black",
+        )
+    )
+
+    qr_size = min(width * 0.4, height - header_h - 10)
+    items.append(
+        {
+            "id": _id(),
+            "type": "qrcode",
+            "data": asset_id,
+            "x": 10,
+            "y": int(header_h + 5),
+            "width": int(qr_size),
+            "height": int(qr_size),
+        }
+    )
+
+    text_x = qr_size + 20
+    text_w = width - text_x - 10
+    items.append(
+        _text_item(
+            text_x,
+            header_h + 10,
+            text_w,
+            height * 0.3,
+            asset_id,
+            size=30,
+            weight=900,
+            align="left",
+        )
+    )
+    items.append(
+        _text_item(
+            text_x,
+            header_h + (height * 0.3) + 10,
+            text_w,
+            height * 0.3,
+            desc,
+            size=18,
+            weight=400,
+            italic=True,
+            align="left",
+        )
+    )
+    return items
+
+
+def build_spice_jar(width, height, params):
+    title = params.get("title", "Basil")
+    subtitle = params.get("subtitle", "Ocimum basilicum")
+
+    items = []
+    title_h = height * 0.6
+    items.append(_text_item(10, 10, width - 20, title_h, title, size=40, weight=900, align="center"))
+    items.append(
+        _text_item(
+            10,
+            title_h + 10,
+            width - 20,
+            height * 0.3,
+            subtitle,
+            size=20,
+            weight=400,
+            italic=True,
+            align="center",
+        )
+    )
+    return items
+
+
 TEMPLATE_REGISTRY = {
     "centered_text": build_centered_text,
     "title_subtitle": build_title_subtitle,
@@ -627,6 +798,9 @@ TEMPLATE_REGISTRY = {
     "cable_flag": build_cable_flag,
     "shipping_address": build_shipping_address,
     "warning_banner": build_warning_banner,
+    "sale_tag": build_sale_tag,
+    "asset_tag": build_asset_tag,
+    "spice_jar": build_spice_jar,
 }
 
 
@@ -698,6 +872,36 @@ TEMPLATE_METADATA = [
                 "type": "text",
                 "default": "FRAGILE",
             }
+        ],
+    },
+    {
+        "id": "sale_tag",
+        "name": "Retail Sale Tag",
+        "description": "High contrast inverted price box.",
+        "fields": [
+            {"name": "product_name", "label": "Product", "type": "text"},
+            {"name": "old_price", "label": "Old Price", "type": "text"},
+            {"name": "new_price", "label": "New Price", "type": "text"},
+            {"name": "currency", "label": "Currency", "type": "text", "default": "$"},
+        ],
+    },
+    {
+        "id": "asset_tag",
+        "name": "IT Asset Tag",
+        "description": "Header bar, QR code, and details.",
+        "fields": [
+            {"name": "department", "label": "Department", "type": "text"},
+            {"name": "asset_id", "label": "Asset ID", "type": "text"},
+            {"name": "description", "label": "Description", "type": "text"},
+        ],
+    },
+    {
+        "id": "spice_jar",
+        "name": "Pantry / Spice Jar",
+        "description": "Elegant typography for home organization.",
+        "fields": [
+            {"name": "title", "label": "Main Label", "type": "text"},
+            {"name": "subtitle", "label": "Botanical/Subtitle", "type": "text"},
         ],
     },
 ]
