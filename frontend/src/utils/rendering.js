@@ -58,7 +58,7 @@ export const useCodeGenerator = (type, data, barcodeType) => {
           bwipjs.toCanvas(canvas, {
             bcid,
             text: String(data),
-            scale: 3,
+            scale: 6,
             includetext: false,
             backgroundcolor: 'FFFFFF'
           });
@@ -77,6 +77,7 @@ export const useCodeGenerator = (type, data, barcodeType) => {
       try {
         const dataUrl = await QRCode.toDataURL(String(data), {
           margin: 1,
+          scale: 12,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
 

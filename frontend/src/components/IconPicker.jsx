@@ -32,27 +32,28 @@ export default function IconPicker({ onClose, onSelect }) {
       }
 
       const svgData = new XMLSerializer().serializeToString(svgElement);
+      const CANVAS_SIZE = 800; // Increased resolution for sharp scaling
       const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = 200;
-      tempCanvas.height = 200;
+      tempCanvas.width = CANVAS_SIZE;
+      tempCanvas.height = CANVAS_SIZE;
       const tempCtx = tempCanvas.getContext("2d");
       if (!tempCtx) return;
       
       const img = new Image();
       img.onload = () => {
         // Draw WITHOUT a background to accurately read the alpha transparency
-        tempCtx.clearRect(0, 0, 200, 200);
-        tempCtx.drawImage(img, 0, 0, 200, 200);
-        const imgData = tempCtx.getImageData(0, 0, 200, 200);
+        tempCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        tempCtx.drawImage(img, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        const imgData = tempCtx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
         const data = imgData.data;
         
-        let minX = 200, minY = 200, maxX = 0, maxY = 0;
+        let minX = CANVAS_SIZE, minY = CANVAS_SIZE, maxX = 0, maxY = 0;
         let hasInk = false;
 
         // Scan pixels to find exact tight icon boundaries
-        for (let y = 0; y < 200; y++) {
-            for (let x = 0; x < 200; x++) {
-                const alpha = data[(y * 200 + x) * 4 + 3];
+        for (let y = 0; y < CANVAS_SIZE; y++) {
+            for (let x = 0; x < CANVAS_SIZE; x++) {
+                const alpha = data[(y * CANVAS_SIZE + x) * 4 + 3];
                 if (alpha > 5) { // True ink found
                     hasInk = true;
                     if (x < minX) minX = x;
@@ -66,10 +67,10 @@ export default function IconPicker({ onClose, onSelect }) {
         if (hasInk) {
            minX = Math.max(0, minX - 1);
            minY = Math.max(0, minY - 1);
-           maxX = Math.min(200, maxX + 1);
-           maxY = Math.min(200, maxY + 1);
+           maxX = Math.min(CANVAS_SIZE, maxX + 1);
+           maxY = Math.min(CANVAS_SIZE, maxY + 1);
         } else {
-           minX = 0; minY = 0; maxX = 200; maxY = 200;
+           minX = 0; minY = 0; maxX = CANVAS_SIZE; maxY = CANVAS_SIZE;
         }
 
         const cropW = maxX - minX;
@@ -146,7 +147,7 @@ export default function IconPicker({ onClose, onSelect }) {
       */}
       {selectedIcon && (
         <div ref={svgRef} className="hidden">
-          {React.createElement(Icons[selectedIcon], { size: 200, color: "black", strokeWidth: 2 })}
+          {React.createElement(Icons[selectedIcon], { size: 800, color: "black", strokeWidth: 2 })}
         </div>
       )}
     </div>
