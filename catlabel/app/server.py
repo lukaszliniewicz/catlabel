@@ -37,47 +37,122 @@ NIIMBOT_MODELS = {
     "B21":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b21", "max_density": 5},
 }
 
-def _manual_generic_model(model: str, width_mm: float, dpi: int = 203):
+def _safe_positive_int(value, default):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def _registry_models(registry):
+    models_attr = getattr(registry, "models", None)
+    if callable(models_attr):
+        return list(models_attr())
+    if models_attr is None:
+        return []
+    return list(models_attr)
+
+
+def _registry_find_model(registry, name: str):
+    normalized = (name or "").strip()
+    if not normalized:
+        return None
+
+    get_method = getattr(registry, "get", None)
+    if callable(get_method):
+        for candidate_name in (normalized, normalized.upper(), normalized.lower()):
+            model = get_method(candidate_name)
+            if model:
+                return model
+
+    normalized_upper = normalized.upper()
+    exact_match = None
+    prefix_match = None
+
+    for model in _registry_models(registry):
+        model_no = str(getattr(model, "model_no", "") or "").strip()
+        head_name = str(getattr(model, "head_name", "") or "").strip().strip("-")
+        candidates = [candidate.upper() for candidate in (model_no, head_name) if candidate]
+
+        if normalized_upper in candidates:
+            exact_match = model
+            break
+
+        if any(candidate.startswith(normalized_upper) or normalized_upper.startswith(candidate) for candidate in candidates):
+            prefix_match = prefix_match or model
+
+    return exact_match or prefix_match
+
+
+def _registry_model_info(model):
+    width_px = max(
+        1,
+        int(
+            getattr(model, "width", 0)
+            or getattr(model, "print_size", 0)
+            or getattr(model, "paper_size", 0)
+            or 384
+        ),
+    )
+    dpi = _safe_positive_int(getattr(model, "dev_dpi", 0), 203)
+
+    default_speed = max(0, int(getattr(model, "img_print_speed", 0) or 0))
+    text_speed = max(0, int(getattr(model, "text_print_speed", 0) or 0))
+    max_speed = max(default_speed, text_speed, 1)
+
+    min_energy = _safe_positive_int(getattr(model, "thin_energy", 0), 1)
+    default_energy = _safe_positive_int(getattr(model, "moderation_energy", 0), 5000)
+    default_energy = max(min_energy, default_energy)
+    max_energy = _safe_positive_int(getattr(model, "deepen_energy", 0), default_energy)
+    max_energy = max(default_energy, max_energy)
+
+    model_no = str(getattr(model, "model_no", "") or "generic")
     return {
         "vendor": "generic",
-        "width_px": max(1, int(round(width_mm * (dpi / 25.4)))),
-        "width_mm": width_mm,
+        "width_px": width_px,
+        "width_mm": round(width_px / dpi * 25.4, 1),
         "dpi": dpi,
-        "model": model,
-        "model_id": model,
-        "media_type": "continuous",
-        "default_speed": 0,
-        "default_energy": 5000,
+        "model": model_no,
+        "model_id": model_no,
+        "default_speed": default_speed,
+        "default_energy": default_energy,
+        "min_energy": min_energy,
+        "max_energy": max_energy,
+        "max_speed": max_speed,
         "max_density": None,
+        "media_type": "continuous",
     }
-
-GENERIC_MODEL_ALIASES = {
-    "GT01": _manual_generic_model("gt01", 48.0),
-    "PD01": _manual_generic_model("gt01", 48.0),
-    "MX05": _manual_generic_model("gt01", 48.0),
-    "GENERIC": _manual_generic_model("generic", 48.0),
-    "M08F": _manual_generic_model("m08f", 210.0),
-}
 
 def identify_printer_hardware(name: str, device=None):
     name_upper = (name or "").upper().strip()
 
-    # Sort keys by length descending to ensure D110 is checked before D11
     for prefix in sorted(NIIMBOT_MODELS.keys(), key=len, reverse=True):
-        if name_upper.startswith(prefix):
+        niimbot_model = NIIMBOT_MODELS[prefix]
+        if name_upper.startswith(prefix) or name_upper == niimbot_model["model"].upper():
+            max_density = max(1, int(niimbot_model.get("max_density", 5) or 5))
             return {
-                **NIIMBOT_MODELS[prefix],
+                **niimbot_model,
                 "media_type": "pre-cut",
                 "default_speed": 1,
                 "default_energy": 3,
-                "model_id": NIIMBOT_MODELS[prefix]["model"],
+                "min_energy": 1,
+                "max_energy": max_density,
+                "max_speed": 5,
+                "model_id": niimbot_model["model"],
             }
 
-    manual_alias = GENERIC_MODEL_ALIASES.get(name_upper)
-    if manual_alias:
-        return dict(manual_alias)
+    model = None
+    if device and hasattr(device, "model") and device.model:
+        model = device.model
+    else:
+        registry = PrinterModelRegistry.load()
+        model = _registry_find_model(registry, name)
 
-    hw_info = {
+    if model:
+        return _registry_model_info(model)
+
+    return {
         "vendor": "generic",
         "width_px": 384,
         "width_mm": 48.0,
@@ -86,20 +161,12 @@ def identify_printer_hardware(name: str, device=None):
         "model_id": "generic",
         "default_speed": 0,
         "default_energy": 5000,
+        "min_energy": 1,
+        "max_energy": 65535,
+        "max_speed": 100,
         "max_density": None,
+        "media_type": "continuous",
     }
-
-    if device and hasattr(device, "model") and device.model:
-        hw_info["width_px"] = device.model.width
-        hw_info["dpi"] = device.model.dev_dpi
-        hw_info["width_mm"] = round(device.model.width / device.model.dev_dpi * 25.4, 1)
-        hw_info["model"] = device.model.model_no
-        hw_info["model_id"] = device.model.model_no
-        hw_info["default_speed"] = device.model.img_print_speed
-        hw_info["default_energy"] = device.model.moderation_energy or 5000
-
-    hw_info["media_type"] = "pre-cut" if hw_info["vendor"] == "niimbot" else "continuous"
-    return hw_info
 
 os.makedirs("data", exist_ok=True)
 sqlite_file_name = "data/catlabel.db"
@@ -224,6 +291,44 @@ def delete_preset(preset_id: int):
             session.delete(db_preset)
             session.commit()
         return {"status": "ok"}
+
+@app.get("/api/printers/supported_models")
+def get_supported_models():
+    """Returns all supported printer models for the offline/manual setup UI."""
+    registry = PrinterModelRegistry.load()
+    results = []
+    seen_model_nos = set()
+
+    for model in _registry_models(registry):
+        model_no = str(getattr(model, "model_no", "") or "").strip()
+        if not model_no or model_no in seen_model_nos:
+            continue
+
+        seen_model_nos.add(model_no)
+        model_info = _registry_model_info(model)
+        display_name = str(getattr(model, "head_name", "") or "").strip().strip("-") or model_no
+
+        results.append({
+            "name": display_name,
+            "model_no": model_no,
+            "width_mm": model_info["width_mm"],
+            "dpi": model_info["dpi"],
+            "vendor": "generic",
+            "media_type": "continuous",
+        })
+
+    for prefix, info in NIIMBOT_MODELS.items():
+        results.append({
+            "name": f"Niimbot {prefix}",
+            "model_no": info["model"],
+            "width_mm": info["width_mm"],
+            "dpi": info["dpi"],
+            "vendor": "niimbot",
+            "media_type": "pre-cut",
+        })
+
+    results.sort(key=lambda model: (model["vendor"], model["name"].lower(), model["model_no"].lower()))
+    return {"models": results}
 
 @app.get("/api/printers/model/{name}")
 def get_printer_model_info(name: str):
@@ -457,19 +562,25 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
         
         pipeline_config = target_device.model.image_pipeline
 
-        hardware_default_speed = hardware_info.get("default_speed", getattr(target_device.model, "img_print_speed", 0))
-        hardware_default_energy = hardware_info.get("default_energy", getattr(target_device.model, "moderation_energy", 5000) or 5000)
+        hardware_default_speed = int(hardware_info.get("default_speed", getattr(target_device.model, "img_print_speed", 0)) or 0)
+        hardware_default_energy = int(hardware_info.get("default_energy", getattr(target_device.model, "moderation_energy", 5000) or 5000) or 5000)
+        min_allowed_energy = max(1, int(hardware_info.get("min_energy", 1) or 1))
+        max_allowed_energy = max(min_allowed_energy, int(hardware_info.get("max_energy", hardware_default_energy) or hardware_default_energy))
+        max_allowed_speed = max(1, int(hardware_info.get("max_speed", max(hardware_default_speed, 1)) or max(hardware_default_speed, 1)))
 
-        use_speed = (
+        resolved_speed = (
             printer_profile.speed
             if printer_profile and printer_profile.speed not in (None, 0)
             else (settings.speed if settings.speed > 0 else hardware_default_speed)
         )
-        use_energy = (
+        resolved_energy = (
             printer_profile.energy
             if printer_profile and printer_profile.energy not in (None, 0)
             else (settings.energy if settings.energy > 0 else hardware_default_energy)
         )
+
+        use_speed = max(0, min(int(resolved_speed or 0), max_allowed_speed))
+        use_energy = max(min_allowed_energy, min(int(resolved_energy or hardware_default_energy), max_allowed_energy))
         use_feed = (
             printer_profile.feed_lines
             if printer_profile and printer_profile.feed_lines is not None
@@ -959,6 +1070,9 @@ async def scan_printers():
             "media_type": hardware_info["media_type"],
             "default_speed": hardware_info.get("default_speed", 0),
             "default_energy": hardware_info.get("default_energy", 0),
+            "min_energy": hardware_info.get("min_energy"),
+            "max_energy": hardware_info.get("max_energy"),
+            "max_speed": hardware_info.get("max_speed"),
             "max_density": hardware_info.get("max_density"),
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}

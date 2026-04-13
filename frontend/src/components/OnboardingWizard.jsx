@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Printer, Sparkles, Search, ChevronRight, Loader2, Bot } from 'lucide-react';
 
@@ -18,6 +18,16 @@ export default function OnboardingWizard() {
   const [scannedPrinters, setScannedPrinters] = useState([]);
   const [manualMode, setManualMode] = useState(false);
   const [selectedManualModel, setSelectedManualModel] = useState('');
+  const [supportedModels, setSupportedModels] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/printers/supported_models')
+      .then((res) => res.json())
+      .then((data) => setSupportedModels(data.models || []))
+      .catch((error) => {
+        console.error('Failed to fetch supported printer models', error);
+      });
+  }, []);
 
   const finishOnboarding = (mediaTypeAssumption) => {
     updateSettingsAPI({ ...settings, intended_media_type: mediaTypeAssumption });
@@ -152,18 +162,25 @@ export default function OnboardingWizard() {
                   className="w-full bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm dark:text-white focus:outline-none focus:border-emerald-500 transition-colors mb-2"
                 >
                   <option value="" disabled>Choose a printer family...</option>
-                  <optgroup label="Generic Printers (Continuous Roll)">
-                    <option value="GT01">Standard "Cat Printer" (e.g., PD01, MX05) - 48mm</option>
-                    <option value="M08F">M08F / A4 Tattoo Printer - 210mm</option>
-                    <option value="Generic">Other Generic Continuous Roll - 48mm</option>
+
+                  <optgroup label="Generic Printers (Continuous Roll / A4 / A5)">
+                    {supportedModels.filter((model) => model.vendor !== 'niimbot').map((model) => (
+                      <option key={model.model_no} value={model.model_no}>
+                        {model.name} - {model.width_mm}mm ({model.dpi} DPI)
+                      </option>
+                    ))}
                   </optgroup>
+
                   <optgroup label="Niimbot Printers (Pre-cut Labels)">
-                    <option value="D110">Niimbot D-Series (D11, D110, D101) - 15mm</option>
-                    <option value="B21">Niimbot B-Series (B21, B1, B18) - 48mm</option>
+                    {supportedModels.filter((model) => model.vendor === 'niimbot').map((model) => (
+                      <option key={model.model_no} value={model.model_no}>
+                        {model.name} - {model.width_mm}mm ({model.dpi} DPI)
+                      </option>
+                    ))}
                   </optgroup>
                 </select>
                 <p className="text-[10px] text-neutral-500 leading-relaxed mb-4">
-                  <strong>Hint:</strong> If you bought a generic "Mini Printer" from AliExpress that looks like a cat, it almost always maps to the <strong>PD01 / GT01</strong> profile.
+                  <strong>Hint:</strong> If you bought a generic "Mini Printer" from AliExpress that looks like a cat, it almost always maps to the <strong>GT01</strong> profile.
                 </p>
                 <div className="flex justify-end gap-2">
                   <button onClick={() => setManualMode(false)} className="px-4 py-2 text-xs uppercase font-bold text-neutral-500 hover:text-neutral-800 dark:hover:text-white transition-colors">Cancel</button>

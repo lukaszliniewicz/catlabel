@@ -130,6 +130,12 @@ export default function PropertiesPanel() {
   const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
   const isPreCut = selectedPrinterInfo?.media_type === 'pre-cut';
+  const pInfo = selectedPrinterInfo || {};
+  const maxSpeed = pInfo.max_speed || 100;
+  const defaultSpeed = pInfo.default_speed || 0;
+  const minEnergy = pInfo.min_energy || 1000;
+  const maxEnergy = pInfo.max_energy || 65535;
+  const defaultEnergy = pInfo.default_energy || 5000;
 
   const [panelWidth, setPanelWidth] = useState(320);
 
@@ -265,11 +271,23 @@ export default function PropertiesPanel() {
   };
 
   const handleProfileChange = (e) => {
-    const rawValue = e.target.value;
+    const { name, value } = e.target;
+    const rawValue = Number(value);
+
+    let nextValue = Number.isFinite(rawValue) ? rawValue : 0;
+
+    if (name === 'speed') {
+      nextValue = Math.max(0, Math.min(nextValue, maxSpeed));
+    } else if (name === 'energy') {
+      nextValue = Math.max(0, Math.min(nextValue, maxEnergy));
+    } else if (name === 'feed_lines') {
+      nextValue = Math.max(0, nextValue);
+    }
+
     useStore.setState((state) => ({
       printerProfile: {
         ...state.printerProfile,
-        [e.target.name]: Number(rawValue)
+        [name]: nextValue
       }
     }));
   };
@@ -496,17 +514,49 @@ export default function PropertiesPanel() {
               ) : (
                 <>
                   <div>
-                    <label className={labelClass}>Speed Override (0 = Hardware Default)</label>
-                    <input type="number" name="speed" value={printerProfile?.speed || 0} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
+                    <label className={labelClass}>Speed Override (0 = Auto)</label>
+                    <input
+                      type="number"
+                      name="speed"
+                      min={0}
+                      max={maxSpeed}
+                      value={printerProfile?.speed || 0}
+                      onChange={handleProfileChange}
+                      disabled={!selectedPrinter}
+                      className={inputClass}
+                    />
+                    <p className="text-[9px] text-neutral-400 mt-1">
+                      {pInfo.model ? `Hardware Default: ${defaultSpeed}. Max: ${maxSpeed}.` : 'Select a printer to view limits.'}
+                    </p>
                   </div>
                   <div>
-                    <label className={labelClass}>Energy Override (0 = Hardware Default)</label>
-                    <input type="number" name="energy" value={printerProfile?.energy || 0} onChange={handleProfileChange} step="500" disabled={!selectedPrinter} className={inputClass} />
-                    <p className="text-[9px] text-neutral-400 mt-1">Typically between 5000 and 25000 depending on media.</p>
+                    <label className={labelClass}>Energy / Density Override (0 = Auto)</label>
+                    <input
+                      type="number"
+                      name="energy"
+                      min={0}
+                      max={maxEnergy}
+                      step="500"
+                      value={printerProfile?.energy || 0}
+                      onChange={handleProfileChange}
+                      disabled={!selectedPrinter}
+                      className={inputClass}
+                    />
+                    <p className="text-[9px] text-neutral-400 mt-1">
+                      {pInfo.model ? `Safe Range: ${minEnergy} - ${maxEnergy}. Default: ${defaultEnergy}.` : 'Select a printer to view limits.'}
+                    </p>
                   </div>
                   <div>
                     <label className={labelClass}>Feed Lines (Tear Padding)</label>
-                    <input type="number" name="feed_lines" value={printerProfile?.feed_lines ?? 100} onChange={handleProfileChange} disabled={!selectedPrinter} className={inputClass} />
+                    <input
+                      type="number"
+                      name="feed_lines"
+                      min={0}
+                      value={printerProfile?.feed_lines ?? 100}
+                      onChange={handleProfileChange}
+                      disabled={!selectedPrinter}
+                      className={inputClass}
+                    />
                   </div>
                 </>
               )}

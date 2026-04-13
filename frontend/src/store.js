@@ -681,16 +681,36 @@ export const useStore = create((set, get) => ({
     try {
       const res = await fetch(`/api/printers/${mac}/profile`);
       const profile = await res.json();
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
       const normalizedEnergy = info?.vendor === 'niimbot'
-        ? ((profile?.energy ?? 0) > 0 ? profile.energy : (info?.default_energy ?? 3))
-        : (profile?.energy ?? 0);
+        ? clamp(
+            (profile?.energy ?? 0) > 0 ? profile.energy : (info?.default_energy ?? 3),
+            1,
+            info?.max_density ?? 5
+          )
+        : ((profile?.energy ?? 0) > 0
+            ? clamp(
+                profile.energy,
+                info?.min_energy ?? 1,
+                info?.max_energy ?? 65535
+              )
+            : 0);
+
+      const normalizedSpeed = (profile?.speed ?? 0) > 0
+        ? clamp(
+            profile.speed,
+            0,
+            info?.max_speed ?? 100
+          )
+        : 0;
 
       set({
         printerProfile: {
           ...profile,
-          speed: profile?.speed ?? 0,
+          speed: normalizedSpeed,
           energy: normalizedEnergy,
-          feed_lines: profile?.feed_lines ?? 100
+          feed_lines: Math.max(0, profile?.feed_lines ?? 100)
         }
       });
     } catch (e) {
