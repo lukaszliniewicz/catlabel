@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from 'react-konva';
-import { applyVars, useCodeGenerator } from '../utils/rendering';
+import { applyVars, calculateAutoFitItem, useCodeGenerator } from '../utils/rendering';
 import { useStore } from '../store';
 import { LABEL_TEMPLATE_STYLES, buildLabelTemplateMarkup } from './templateStyles';
 
@@ -107,19 +107,11 @@ export default function CanvasItemNode({
   const { visualW, approxHeight, pad, lineCount } = getVisualMetrics(item, substitutedText);
   const groupRef = useRef(null);
 
-  useEffect(() => {
-    if (isSelected && interactive && groupRef.current) {
-      const tr = groupRef.current.getStage()?.findOne('Transformer');
-      if (tr) {
-        tr.nodes([groupRef.current]);
-        tr.getLayer()?.batchDraw();
-      }
-    }
-  }, [interactive, isSelected]);
 
   const commonProps = interactive
     ? {
         ref: groupRef,
+        id: `node-${item.id}`,
         x: item.x,
         y: item.y,
         rotation: item.rotation || 0,
@@ -138,13 +130,20 @@ export default function CanvasItemNode({
           node.scaleX(1);
           node.scaleY(1);
 
-          useStore.getState().updateItem(item.id, {
+          let updatedItem = {
+            ...item,
             x: node.x(),
             y: node.y(),
             rotation: node.rotation(),
             width: Math.max(5, (item.width || 100) * scaleX),
             height: Math.max(5, approxHeight * scaleY)
-          });
+          };
+
+          if (item.type === 'text' && item.fit_to_width) {
+            updatedItem = calculateAutoFitItem(updatedItem);
+          }
+
+          useStore.getState().updateItem(item.id, updatedItem);
         }
       }
     : {
@@ -165,17 +164,6 @@ export default function CanvasItemNode({
             canvasHeight={canvasHeight}
           />
         ))}
-        {isSelected && (
-          <Rect
-            width={visualW}
-            height={approxHeight}
-            stroke="#2563eb"
-            strokeWidth={2}
-            dash={[4, 4]}
-            fillEnabled={false}
-            listening={false}
-          />
-        )}
         {renderItemBorder(item, visualW, approxHeight)}
       </Group>
     );
@@ -317,17 +305,6 @@ export default function CanvasItemNode({
   return (
     <Group {...commonProps}>
       {element}
-      {isSelected && item.type !== 'cut_line_indicator' && (
-        <Rect
-          width={visualW}
-          height={approxHeight}
-          stroke="#2563eb"
-          strokeWidth={2}
-          dash={[4, 4]}
-          fillEnabled={false}
-          listening={false}
-        />
-      )}
       {renderItemBorder(item, visualW, approxHeight)}
     </Group>
   );

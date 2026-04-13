@@ -2,6 +2,7 @@ import React from 'react';
 import { Layer, Line, Rect, Stage, Transformer } from 'react-konva';
 import { useStore } from '../store';
 import CanvasItemNode from './CanvasItemNode';
+import FloatingToolbar from './FloatingToolbar';
 
 export default function CanvasArea() {
   const {
@@ -44,10 +45,14 @@ export default function CanvasArea() {
   const selectedItem = items.find((item) => item.id === selectedId);
 
   React.useEffect(() => {
-    if (!trRef.current || selectedIds.length > 0) return;
-    trRef.current.nodes([]);
+    if (!trRef.current) return;
+    const stage = trRef.current.getStage();
+    if (!stage) return;
+
+    const selectedNodes = selectedIds.map((id) => stage.findOne(`#node-${id}`)).filter(Boolean);
+    trRef.current.nodes(selectedNodes);
     trRef.current.getLayer()?.batchDraw();
-  }, [currentPage, selectedIds]);
+  }, [selectedIds, currentPage, items]);
 
   React.useEffect(() => {
     const handleKeyDown = (e) => {
@@ -365,7 +370,14 @@ export default function CanvasArea() {
                         {isActive && (
                           <Transformer
                             ref={trRef}
-                            resizeEnabled={selectedItem?.type !== 'text' && selectedItem?.type !== 'icon_text'}
+                            borderStroke="#2563eb"
+                            borderDash={[4, 4]}
+                            borderStrokeWidth={2 / zoomScale}
+                            anchorSize={8 / zoomScale}
+                            anchorStroke="#2563eb"
+                            anchorFill="#ffffff"
+                            anchorStrokeWidth={2 / zoomScale}
+                            resizeEnabled={selectedItem?.type !== 'icon_text'}
                             boundBoxFunc={(oldBox, newBox) => {
                               if (newBox.width < 5 || newBox.height < 5) return oldBox;
                               return newBox;
@@ -374,6 +386,15 @@ export default function CanvasArea() {
                         )}
                       </Layer>
                     </Stage>
+
+                    {isActive && selectedItem && selectedIds.length === 1 && (
+                      <FloatingToolbar
+                        item={selectedItem}
+                        zoomScale={zoomScale}
+                        canvasWidth={canvasWidth}
+                        canvasHeight={canvasHeight}
+                      />
+                    )}
                   </div>
                 </div>
               );
