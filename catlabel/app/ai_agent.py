@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import tempfile
@@ -351,7 +352,7 @@ Action (All in one turn):
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
-    canvas_state_copy = dict(req.canvas_state)
+    canvas_state_copy = copy.deepcopy(req.canvas_state)
 
     try:
         MAX_ITERATIONS = 15

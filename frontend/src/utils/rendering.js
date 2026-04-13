@@ -144,6 +144,7 @@ export const calculateAutoFitItem = (item) => {
   const pad = item.padding !== undefined ? Number(item.padding) : 4;
   const targetWidth = Math.max(10, (item.width || 100) - (pad * 2));
   const targetHeight = Math.max(10, (item.height || 50) - (pad * 2));
+  const safeWidth = Math.max(10, targetWidth - 2);
 
   let low = 6;
   let high = 800;
@@ -165,15 +166,15 @@ export const calculateAutoFitItem = (item) => {
       }
 
       const textBlockHeight = mid * 1.15 * lines.length;
-      fits = maxLineWidth + italicBleed <= targetWidth && textBlockHeight <= targetHeight;
+      fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
     } else {
       const { lines: wrappedLines, maxLineWidth } = measureWrappedText(
         ctx,
         item.text || '',
-        targetWidth - italicBleed
+        safeWidth - italicBleed
       );
       const textBlockHeight = mid * 1.15 * wrappedLines.length;
-      fits = maxLineWidth + italicBleed <= targetWidth && textBlockHeight <= targetHeight;
+      fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
     }
 
     if (fits) {

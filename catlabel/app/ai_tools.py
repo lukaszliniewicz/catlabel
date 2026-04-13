@@ -73,7 +73,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "apply_template",
-            "description": "MACRO: Replaces the canvas with a standard, fully editable layout. Always prefer this over manual coordinate placement. Call apply_preset FIRST to set the canvas size before using this.",
+            "description": "MACRO: Replaces (or appends to) the canvas with a standard layout. Call apply_preset FIRST to set the canvas size.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -84,6 +84,11 @@ TOOLS_SCHEMA = [
                     "params": {
                         "type": "object",
                         "description": "Key-value pairs for the template fields. Use {{ var }} for batch data."
+                    },
+                    "append": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Set to true if you are adding this template to existing elements on the canvas instead of clearing it."
                     }
                 },
                 "required": ["template_id", "params"]
@@ -121,6 +126,20 @@ TOOLS_SCHEMA = [
                     }
                 },
                 "required": ["width", "height", "print_direction"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_canvas_orientation",
+            "description": "Toggles the entire canvas between portrait and landscape. Rotates the dimensions 90 degrees.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "isRotated": {"type": "boolean", "description": "True for landscape (sideways), false for portrait."}
+                },
+                "required": ["isRotated"]
             }
         }
     },
@@ -176,7 +195,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "add_html_element",
-            "description": "GRANULAR: Add an HTML/SVG element for highly complex graphics or icons. (e.g. <svg>...</svg>).",
+            "description": "GRANULAR: Add HTML/SVG. CRITICAL: You MUST wrap your content in <div style='width:100%;height:100%;box-sizing:border-box;'> to prevent it from overflowing the physical label bounds.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -362,6 +381,7 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         )
         template_id = str(args.get("template_id") or "").strip()
         params = args.get("params") or {}
+        should_append = args.get("append", False)
 
         if not template_id:
             return "Error: template_id is required."
@@ -372,13 +392,15 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         if items is None:
             return f"Error: Unknown template_id '{template_id}'."
 
-        _clear_page(canvas_state, page_idx)
+        if not should_append:
+            _clear_page(canvas_state, page_idx)
+
         canvas_items = canvas_state.setdefault("items", [])
         for item in items:
             item["pageIndex"] = page_idx
             canvas_items.append(item)
 
-        return f"Page {page_idx} replaced with fully editable template '{template_id}'."
+        return f"Page {page_idx} {'appended with' if should_append else 'replaced with'} template '{template_id}'."
 
     if name == "apply_preset":
         preset_name = (args.get("preset_name") or "").strip()
@@ -391,7 +413,10 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             preset = next((p for p in presets if p.name.casefold() == preset_name.casefold()), None)
 
             if not preset:
-                return "Error: Preset not found."
+                preset = next((p for p in presets if preset_name.casefold() in p.name.casefold()), None)
+
+            if not preset:
+                return "Error: Preset not found. Check available presets in your system prompt."
 
             current_dpi = canvas_state.get("__dpi__", 203) or 203
             dots_per_mm = current_dpi / 25.4
@@ -402,6 +427,15 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             canvas_state["splitMode"] = preset.split_mode
             canvas_state["canvasBorder"] = preset.border
             return f"Applied preset: {preset.name}"
+
+    elif name == "set_canvas_orientation":
+        current_rot = canvas_state.get("isRotated", False)
+        new_rot = args["isRotated"]
+        if current_rot != new_rot:
+            canvas_state["isRotated"] = new_rot
+            cw, ch = canvas_state.get("width", 384), canvas_state.get("height", 384)
+            canvas_state["width"], canvas_state["height"] = ch, cw
+        return f"Canvas orientation set to {'Landscape (Rotated)' if new_rot else 'Portrait'}."
 
     elif name == "set_canvas_dimensions":
         w = max(1, _as_int(args["width"], 384))

@@ -165,98 +165,159 @@ def build_price_tag(width, height, params):
     full_price = f"{currency}{main}.{cents} {unit}".strip()
 
     is_landscape = width > (height * 1.3)
+    is_micro = height <= 150
 
     if is_landscape:
-        left_w = width * 0.65 if has_barcode else width
-
-        items.append(
-            _text_item(
-                10,
-                10,
-                left_w - 20,
-                height * 0.45,
-                full_price,
-                size=int(height * 0.35),
-                weight=900,
-                align="left",
-                fit=True,
-            )
-        )
-        items.append(_shape_item(10, height * 0.5, left_w - 20, 4, "black"))
-        items.append(
-            _text_item(
-                10,
-                height * 0.55,
-                left_w - 20,
-                height * 0.35,
-                name,
-                size=int(height * 0.25),
-                weight=700,
-                align="left",
-                fit=True,
-            )
-        )
-
-        if has_barcode:
+        if is_micro:
+            price_w = width * 0.55
             items.append(
-                {
-                    "id": _id(),
-                    "type": "barcode",
-                    "barcode_type": "code128",
-                    "data": params.get("barcode", "123456"),
-                    "x": int(left_w),
-                    "y": int(height * 0.1),
-                    "width": int(width * 0.35 - 10),
-                    "height": int(height * 0.8),
-                }
+                _text_item(
+                    10,
+                    10,
+                    price_w - 15,
+                    height - 20,
+                    full_price,
+                    size=int(height * 0.6),
+                    weight=900,
+                    align="left",
+                    fit=True,
+                    no_wrap=True,
+                )
             )
+            items.append(
+                _text_item(
+                    price_w + 5,
+                    10,
+                    width - price_w - 15,
+                    height - 20,
+                    name,
+                    size=int(height * 0.4),
+                    weight=700,
+                    align="right",
+                    fit=True,
+                )
+            )
+        else:
+            left_w = width * 0.65 if has_barcode else width
+            items.append(
+                _text_item(
+                    10,
+                    10,
+                    left_w - 20,
+                    height * 0.45,
+                    full_price,
+                    size=int(height * 0.35),
+                    weight=900,
+                    align="left",
+                    fit=True,
+                    no_wrap=True,
+                )
+            )
+            items.append(_shape_item(10, height * 0.5, left_w - 20, 4, "black"))
+            items.append(
+                _text_item(
+                    10,
+                    height * 0.55,
+                    left_w - 20,
+                    height * 0.35,
+                    name,
+                    size=int(height * 0.25),
+                    weight=700,
+                    align="left",
+                    fit=True,
+                )
+            )
+
+            if has_barcode:
+                items.append(
+                    {
+                        "id": _id(),
+                        "type": "barcode",
+                        "barcode_type": "code128",
+                        "data": params.get("barcode", "123456"),
+                        "x": int(left_w),
+                        "y": int(height * 0.1),
+                        "width": int(width * 0.35 - 10),
+                        "height": int(height * 0.8),
+                    }
+                )
     else:
-        price_h = height * 0.35 if has_barcode else height * 0.45
-        name_h = height * 0.2 if has_barcode else height * 0.3
-
-        items.append(
-            _text_item(
-                10,
-                10,
-                width - 20,
-                price_h,
-                full_price,
-                size=int(price_h * 0.8),
-                weight=900,
-                align="center",
-                fit=True,
-            )
-        )
-        items.append(_shape_item(width * 0.1, price_h + 5, width * 0.8, 4, "black"))
-        items.append(
-            _text_item(
-                10,
-                price_h + 15,
-                width - 20,
-                name_h,
-                name,
-                size=int(name_h * 0.6),
-                weight=700,
-                align="center",
-                fit=True,
-            )
-        )
-
-        if has_barcode:
-            bc_y = price_h + name_h + 20
-            bc_h = height - bc_y - 10
+        if width <= 150:
             items.append(
-                {
-                    "id": _id(),
-                    "type": "barcode",
-                    "barcode_type": "code128",
-                    "data": params.get("barcode", "123456"),
-                    "x": int(width * 0.1),
-                    "y": int(bc_y),
-                    "width": int(width * 0.8),
-                    "height": int(bc_h),
-                }
+                _text_item(
+                    10,
+                    10,
+                    width - 20,
+                    height * 0.5 - 10,
+                    full_price,
+                    size=int(width * 0.4),
+                    weight=900,
+                    align="center",
+                    fit=True,
+                    no_wrap=True,
+                )
             )
+            items.append(
+                _text_item(
+                    10,
+                    height * 0.5,
+                    width - 20,
+                    height * 0.5 - 10,
+                    name,
+                    size=int(width * 0.3),
+                    weight=700,
+                    align="center",
+                    fit=True,
+                )
+            )
+        else:
+            price_h = height * 0.35 if has_barcode else height * 0.45
+            name_h = height * 0.2 if has_barcode else height * 0.3
+
+            items.append(
+                _text_item(
+                    10,
+                    10,
+                    width - 20,
+                    price_h,
+                    full_price,
+                    size=int(price_h * 0.8),
+                    weight=900,
+                    align="center",
+                    fit=True,
+                    no_wrap=True,
+                )
+            )
+            items.append(_shape_item(width * 0.1, price_h + 5, width * 0.8, 4, "black"))
+            items.append(
+                _text_item(
+                    10,
+                    price_h + 15,
+                    width - 20,
+                    name_h,
+                    name,
+                    size=int(name_h * 0.6),
+                    weight=700,
+                    align="center",
+                    fit=True,
+                )
+            )
+
+            if has_barcode:
+                bc_y = price_h + name_h + 20
+                bc_h = height - bc_y - 10
+                items.append(
+                    {
+                        "id": _id(),
+                        "type": "barcode",
+                        "barcode_type": "code128",
+                        "data": params.get("barcode", "123456"),
+                        "x": int(width * 0.1),
+                        "y": int(bc_y),
+                        "width": int(width * 0.8),
+                        "height": int(bc_h),
+                    }
+                )
     return items
 
 
@@ -421,6 +482,7 @@ def build_cable_flag(width, height, params):
                 size=int(height * 0.4),
                 align="center",
                 fit=True,
+                no_wrap=True,
             )
         )
         items.append(
@@ -433,6 +495,7 @@ def build_cable_flag(width, height, params):
                 size=int(height * 0.4),
                 align="center",
                 fit=True,
+                no_wrap=True,
             )
         )
     else:
@@ -458,6 +521,7 @@ def build_cable_flag(width, height, params):
                 size=int(width * 0.25),
                 align="center",
                 fit=True,
+                no_wrap=True,
             )
         )
         items.append(
@@ -470,6 +534,7 @@ def build_cable_flag(width, height, params):
                 size=int(width * 0.25),
                 align="center",
                 fit=True,
+                no_wrap=True,
             )
         )
 
