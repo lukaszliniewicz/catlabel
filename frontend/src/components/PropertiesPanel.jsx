@@ -208,7 +208,7 @@ export default function PropertiesPanel() {
     
     let itemH = selectedItem.height || 0;
     if (!itemH && selectedItem.type === 'text') {
-      const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
+      const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : 0;
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
       itemH = (selectedItem.size * 1.15 * numLines) + (pad * 2);
     }
@@ -646,7 +646,7 @@ export default function PropertiesPanel() {
 
                   <div className="flex gap-4 mt-3">
                     <ScrubberInput name="size" label="Font Size" value={selectedItem.size} onChange={handleChange} />
-                    <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : 4} onChange={handleChange} />
+                    <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : 0} onChange={handleChange} />
                   </div>
 
                   <div className="flex gap-4 mt-2">

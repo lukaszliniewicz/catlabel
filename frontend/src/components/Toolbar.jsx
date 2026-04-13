@@ -96,7 +96,7 @@ export default function Toolbar() {
       height: 40,
       align: 'center',
       verticalAlign: 'middle',
-      padding: 4
+      padding: 0
     });
   };
 

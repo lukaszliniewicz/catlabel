@@ -1,8 +1,10 @@
 import React from 'react';
-import { Layer, Line, Rect, Stage, Transformer } from 'react-konva';
+import { Group, Layer, Line, Rect, Stage, Transformer } from 'react-konva';
 import { useStore } from '../store';
 import CanvasItemNode from './CanvasItemNode';
 import FloatingToolbar from './FloatingToolbar';
+
+const WORKSPACE_PAD = 40;
 
 export default function CanvasArea() {
   const {
@@ -201,8 +203,12 @@ export default function CanvasArea() {
                   </div>
 
                   <div
-                    className={`bg-white shadow-2xl relative transition-all duration-300 ${isActive ? 'ring-2 ring-blue-500' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
-                    style={{ width: canvasWidth * zoomScale, height: canvasHeight * zoomScale, transformOrigin: 'top left' }}
+                    className={`relative transition-all duration-300 ${isActive ? 'ring-2 ring-blue-500 rounded-md' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
+                    style={{
+                      width: (canvasWidth + WORKSPACE_PAD * 2) * zoomScale,
+                      height: (canvasHeight + WORKSPACE_PAD * 2) * zoomScale,
+                      transformOrigin: 'top left'
+                    }}
                     onClick={() => {
                       if (!isActive) {
                         setCurrentPage(pageIndex);
@@ -215,8 +221,8 @@ export default function CanvasArea() {
                           useStore.getState().setStageRef(node);
                         }
                       }}
-                      width={canvasWidth * zoomScale}
-                      height={canvasHeight * zoomScale}
+                      width={(canvasWidth + WORKSPACE_PAD * 2) * zoomScale}
+                      height={(canvasHeight + WORKSPACE_PAD * 2) * zoomScale}
                       scale={{ x: zoomScale, y: zoomScale }}
                       onMouseDown={(e) => {
                         const clickedOnEmpty = e.target === e.target.getStage() || e.target.hasName('bg-rect');
@@ -225,8 +231,8 @@ export default function CanvasArea() {
                         setCurrentPage(pageIndex);
 
                         const pos = e.target.getStage().getPointerPosition();
-                        const stageX = pos.x / zoomScale;
-                        const stageY = pos.y / zoomScale;
+                        const stageX = (pos.x / zoomScale) - WORKSPACE_PAD;
+                        const stageY = (pos.y / zoomScale) - WORKSPACE_PAD;
 
                         setSelectionBox({
                           pageIndex,
@@ -247,8 +253,8 @@ export default function CanvasArea() {
                         if (!selectionBox || !selectionBox.active || selectionBox.pageIndex !== pageIndex) return;
 
                         const pos = e.target.getStage().getPointerPosition();
-                        const currentX = pos.x / zoomScale;
-                        const currentY = pos.y / zoomScale;
+                        const currentX = (pos.x / zoomScale) - WORKSPACE_PAD;
+                        const currentY = (pos.y / zoomScale) - WORKSPACE_PAD;
 
                         setSelectionBox((prev) => ({
                           ...prev,
@@ -289,101 +295,135 @@ export default function CanvasArea() {
                       }}
                     >
                       <Layer>
-                        <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} fill="transparent" name="bg-rect" />
+                        <Rect
+                          x={0}
+                          y={0}
+                          width={canvasWidth + WORKSPACE_PAD * 2}
+                          height={canvasHeight + WORKSPACE_PAD * 2}
+                          fill="transparent"
+                          name="bg-rect"
+                        />
 
-                        {canvasBorder === 'box' && <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} stroke="black" strokeWidth={cvThick} listening={false} />}
-                        {canvasBorder === 'top' && <Line points={[0, 0, canvasWidth, 0]} stroke="black" strokeWidth={cvThick} listening={false} />}
-                        {canvasBorder === 'bottom' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={cvThick} listening={false} />}
-                        {canvasBorder === 'cut_line' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={cvThick} dash={[10, 10]} listening={false} />}
-
-                        {splitMode && (
-                          <>
-                            {!isRotated ? (
-                              Array.from({ length: Math.ceil(canvasWidth / printPx) - 1 }).map((_, index) => (
-                                <Line
-                                  key={`split-v-${index}`}
-                                  points={[(index + 1) * printPx, 0, (index + 1) * printPx, canvasHeight]}
-                                  stroke="#ef4444"
-                                  strokeWidth={2}
-                                  dash={[10, 10]}
-                                  listening={false}
-                                />
-                              ))
-                            ) : (
-                              Array.from({ length: Math.ceil(canvasHeight / printPx) - 1 }).map((_, index) => (
-                                <Line
-                                  key={`split-h-${index}`}
-                                  points={[0, (index + 1) * printPx, canvasWidth, (index + 1) * printPx]}
-                                  stroke="#ef4444"
-                                  strokeWidth={2}
-                                  dash={[10, 10]}
-                                  listening={false}
-                                />
-                              ))
-                            )}
-                          </>
-                        )}
-
-                        {pageItems.map((item) => (
-                          <CanvasItemNode
-                            key={item.id}
-                            item={item}
-                            record={record}
-                            canvasWidth={canvasWidth}
-                            canvasHeight={canvasHeight}
-                            isSelected={selectedIds.includes(item.id)}
-                            interactive
-                            onMouseDown={(e) => {
-                              e.cancelBubble = true;
-                              setCurrentPage(pageIndex);
-                              const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
-                              selectItem(item.id, isMulti);
-                            }}
-                            onTouchStart={(e) => {
-                              e.cancelBubble = true;
-                              setCurrentPage(pageIndex);
-                              const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
-                              selectItem(item.id, isMulti);
-                            }}
-                            onDragMove={(e) => handleDragMove(e, item)}
-                            onDragEnd={(e) => handleDragEnd(e, item)}
-                          />
-                        ))}
-
-                        {isActive && snapLines.map((line, index) => (
-                          <Line key={index} points={line.points} stroke={line.stroke} strokeWidth={1} dash={[4, 4]} />
-                        ))}
-
-                        {selectionBox && selectionBox.active && selectionBox.pageIndex === pageIndex && (
+                        <Group x={WORKSPACE_PAD} y={WORKSPACE_PAD}>
                           <Rect
-                            x={selectionBox.x}
-                            y={selectionBox.y}
-                            width={selectionBox.width}
-                            height={selectionBox.height}
-                            fill="rgba(59, 130, 246, 0.3)"
-                            stroke="#3b82f6"
-                            strokeWidth={1 / zoomScale}
+                            x={0}
+                            y={0}
+                            width={canvasWidth}
+                            height={canvasHeight}
+                            fill="white"
+                            shadowColor="black"
+                            shadowBlur={10}
+                            shadowOpacity={0.15}
+                            shadowOffsetY={4}
+                            name="bg-rect"
+                          />
+
+                          {canvasBorder === 'box' && <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} stroke="black" strokeWidth={cvThick} listening={false} />}
+                          {canvasBorder === 'top' && <Line points={[0, 0, canvasWidth, 0]} stroke="black" strokeWidth={cvThick} listening={false} />}
+                          {canvasBorder === 'bottom' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={cvThick} listening={false} />}
+                          {canvasBorder === 'cut_line' && <Line points={[0, canvasHeight, canvasWidth, canvasHeight]} stroke="black" strokeWidth={cvThick} dash={[10, 10]} listening={false} />}
+
+                          {splitMode && (
+                            <>
+                              {!isRotated ? (
+                                Array.from({ length: Math.ceil(canvasWidth / printPx) - 1 }).map((_, index) => (
+                                  <Line
+                                    key={`split-v-${index}`}
+                                    points={[(index + 1) * printPx, 0, (index + 1) * printPx, canvasHeight]}
+                                    stroke="#ef4444"
+                                    strokeWidth={2}
+                                    dash={[10, 10]}
+                                    listening={false}
+                                  />
+                                ))
+                              ) : (
+                                Array.from({ length: Math.ceil(canvasHeight / printPx) - 1 }).map((_, index) => (
+                                  <Line
+                                    key={`split-h-${index}`}
+                                    points={[0, (index + 1) * printPx, canvasWidth, (index + 1) * printPx]}
+                                    stroke="#ef4444"
+                                    strokeWidth={2}
+                                    dash={[10, 10]}
+                                    listening={false}
+                                  />
+                                ))
+                              )}
+                            </>
+                          )}
+
+                          {pageItems.map((item) => (
+                            <CanvasItemNode
+                              key={item.id}
+                              item={item}
+                              record={record}
+                              canvasWidth={canvasWidth}
+                              canvasHeight={canvasHeight}
+                              isSelected={selectedIds.includes(item.id)}
+                              interactive
+                              onMouseDown={(e) => {
+                                e.cancelBubble = true;
+                                setCurrentPage(pageIndex);
+                                const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+                                selectItem(item.id, isMulti);
+                              }}
+                              onTouchStart={(e) => {
+                                e.cancelBubble = true;
+                                setCurrentPage(pageIndex);
+                                const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+                                selectItem(item.id, isMulti);
+                              }}
+                              onDragMove={(e) => handleDragMove(e, item)}
+                              onDragEnd={(e) => handleDragEnd(e, item)}
+                            />
+                          ))}
+
+                          <Rect
+                            x={0}
+                            y={0}
+                            width={canvasWidth}
+                            height={canvasHeight}
+                            stroke="#ef4444"
+                            strokeWidth={1.5 / zoomScale}
+                            dash={[4, 4]}
+                            opacity={0.6}
                             listening={false}
                           />
-                        )}
 
-                        {isActive && (
-                          <Transformer
-                            ref={trRef}
-                            borderStroke="#2563eb"
-                            borderDash={[4, 4]}
-                            borderStrokeWidth={2 / zoomScale}
-                            anchorSize={8 / zoomScale}
-                            anchorStroke="#2563eb"
-                            anchorFill="#ffffff"
-                            anchorStrokeWidth={2 / zoomScale}
-                            resizeEnabled={selectedItem?.type !== 'icon_text'}
-                            boundBoxFunc={(oldBox, newBox) => {
-                              if (newBox.width < 5 || newBox.height < 5) return oldBox;
-                              return newBox;
-                            }}
-                          />
-                        )}
+                          {isActive && snapLines.map((line, index) => (
+                            <Line key={index} points={line.points} stroke={line.stroke} strokeWidth={1} dash={[4, 4]} />
+                          ))}
+
+                          {selectionBox && selectionBox.active && selectionBox.pageIndex === pageIndex && (
+                            <Rect
+                              x={selectionBox.x}
+                              y={selectionBox.y}
+                              width={selectionBox.width}
+                              height={selectionBox.height}
+                              fill="rgba(59, 130, 246, 0.3)"
+                              stroke="#3b82f6"
+                              strokeWidth={1 / zoomScale}
+                              listening={false}
+                            />
+                          )}
+
+                          {isActive && (
+                            <Transformer
+                              ref={trRef}
+                              borderStroke="#2563eb"
+                              borderDash={[4, 4]}
+                              borderStrokeWidth={2 / zoomScale}
+                              anchorSize={8 / zoomScale}
+                              anchorStroke="#2563eb"
+                              anchorFill="#ffffff"
+                              anchorStrokeWidth={2 / zoomScale}
+                              resizeEnabled={selectedItem?.type !== 'icon_text'}
+                              boundBoxFunc={(oldBox, newBox) => {
+                                if (newBox.width < 5 || newBox.height < 5) return oldBox;
+                                return newBox;
+                              }}
+                            />
+                          )}
+                        </Group>
                       </Layer>
                     </Stage>
 
@@ -393,6 +433,7 @@ export default function CanvasArea() {
                         zoomScale={zoomScale}
                         canvasWidth={canvasWidth}
                         canvasHeight={canvasHeight}
+                        workspacePad={WORKSPACE_PAD}
                       />
                     )}
                   </div>

@@ -141,7 +141,7 @@ export const calculateAutoFitItem = (item) => {
     item.weight || 700
   ].filter(Boolean).join(' ');
 
-  const pad = item.padding !== undefined ? Number(item.padding) : 4;
+  const pad = item.padding !== undefined ? Number(item.padding) : 0;
   const targetWidth = Math.max(10, (item.width || 100) - (pad * 2));
   const targetHeight = Math.max(10, (item.height || 50) - (pad * 2));
   const safeWidth = Math.max(10, targetWidth - 2);

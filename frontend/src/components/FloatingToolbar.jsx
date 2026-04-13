@@ -38,7 +38,7 @@ const HoverMenuGroup = ({ currentIcon: Icon, title, children }) => (
   </div>
 );
 
-export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHeight }) {
+export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHeight, workspacePad = 0 }) {
   const updateItem = useStore((state) => state.updateItem);
 
   if (!item || item.type !== 'text') return null;
@@ -69,8 +69,8 @@ export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHe
   const HAlignIcon = item.align === 'left' ? AlignLeft : item.align === 'right' ? AlignRight : AlignCenter;
   const VAlignIcon = item.verticalAlign === 'top' ? AlignStartVertical : item.verticalAlign === 'bottom' ? AlignEndVertical : AlignCenterVertical;
 
-  const topPos = (item.y * zoomScale) - 48;
-  const leftPos = item.x * zoomScale;
+  const topPos = ((item.y + workspacePad) * zoomScale) - 48;
+  const leftPos = (item.x + workspacePad) * zoomScale;
 
   return (
     <div
