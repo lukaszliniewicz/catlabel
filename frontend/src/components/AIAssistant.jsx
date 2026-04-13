@@ -60,21 +60,46 @@ export default function AIAssistant() {
   };
 
   const handleCopyHistory = () => {
-    const text = messages.map(m => {
-        let out = `[${m.role.toUpperCase()}]\n`;
-        if (m.content) out += `${m.content}\n`;
-        if (m.tool_calls) {
-            m.tool_calls.forEach(tc => {
-                out += `> Tool Call: ${tc.function.name}(${tc.function.arguments})\n`;
-            });
+    let out = `# CatLabel AI Session Debug Report\n\n`;
+    out += `**Session Tokens:** ${(sessionUsage.tokens || 0).toLocaleString()}\n`;
+    out += `**Prompt Tokens:** ${(sessionUsage.promptTokens || 0).toLocaleString()}\n`;
+    out += `**Completion Tokens:** ${(sessionUsage.completionTokens || 0).toLocaleString()}\n`;
+    out += `**Estimated Cost:** $${Number(sessionUsage.cost || 0).toFixed(4)}\n\n`;
+    out += `---\n\n`;
+
+    messages.forEach((m) => {
+      out += `### [${m.role.toUpperCase()}]\n\n`;
+
+      if (m.role !== 'tool' && m.content) {
+        if (typeof m.content === 'string') {
+          out += `${m.content}\n\n`;
+        } else if (Array.isArray(m.content)) {
+          const textContent = m.content.find((c) => c.type === 'text')?.text || '';
+          out += `${textContent}\n\n*[Base64 Image Attached]*\n\n`;
         }
-        if (m.role === 'tool') {
-            out += `> Tool Result: ${m.content}\n`;
-        }
-        return out;
-    }).join('\n');
-    
-    navigator.clipboard.writeText(text);
+      }
+
+      if (m.tool_calls && m.tool_calls.length > 0) {
+        m.tool_calls.forEach((tc) => {
+          out += `**Tool Call:** \`${tc.function?.name || 'unknown'}\`\n\n`;
+          out += "```json\n";
+          try {
+            const parsedArgs = JSON.parse(tc.function?.arguments || '{}');
+            out += `${JSON.stringify(parsedArgs, null, 2)}\n`;
+          } catch (e) {
+            out += `${tc.function?.arguments || ''}\n`;
+          }
+          out += "```\n\n";
+        });
+      }
+
+      if (m.role === 'tool') {
+        out += `> **Tool Result:**\n`;
+        out += `> ${(m.content || '').replace(/\n/g, '\n> ')}\n\n`;
+      }
+    });
+
+    navigator.clipboard.writeText(out);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

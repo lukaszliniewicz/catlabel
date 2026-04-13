@@ -354,6 +354,25 @@ Action (All in one turn):
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
     canvas_state_copy = copy.deepcopy(req.canvas_state)
 
+    if active_model.vision_capable and req.current_canvas_b64:
+        for i in range(len(messages) - 1, -1, -1):
+            if messages[i].get("role") != "user":
+                continue
+
+            original_content = messages[i].get("content", "")
+            if isinstance(original_content, str):
+                messages[i]["content"] = [
+                    {
+                        "type": "text",
+                        "text": original_content + "\n\n[SYSTEM AUTO-INJECT] Current visual render of the canvas. Evaluate your layout:",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{req.current_canvas_b64}"},
+                    },
+                ]
+            break
+
     try:
         MAX_ITERATIONS = 15
         iteration = 0
@@ -361,22 +380,14 @@ Action (All in one turn):
         total_prompt_tokens = 0
         total_completion_tokens = 0
         total_cost = 0.0
-        
+        response = None
+
+        logger.info("Starting LLM Agent loop using model: %s", kwargs.get("model"))
+
         while iteration < MAX_ITERATIONS:
             iteration += 1
-            
-            # --- VISION TRANSIENT INJECTION ---
-            temp_messages = messages.copy()
-            if active_model.vision_capable and req.current_canvas_b64:
-                temp_messages.append({
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "[SYSTEM AUTO-INJECT] Current visual render of the canvas. Evaluate your layout:"},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{req.current_canvas_b64}"}}
-                    ]
-                })
-            
-            response = litellm.completion(messages=temp_messages, **kwargs)
+
+            response = litellm.completion(messages=messages, **kwargs)
 
             usage = getattr(response, "usage", None)
             if usage:
@@ -396,11 +407,11 @@ Action (All in one turn):
 
             resp_msg = response.choices[0].message
             resp_dict = serialize_msg(resp_msg)
-            
+
             messages.append(resp_dict)
             new_messages.append(resp_dict)
-            
-            if hasattr(resp_msg, 'tool_calls') and resp_msg.tool_calls:
+
+            if hasattr(resp_msg, "tool_calls") and resp_msg.tool_calls:
                 for tool_call in resp_msg.tool_calls:
                     if isinstance(tool_call, dict):
                         fn_name = tool_call.get("function", {}).get("name")
@@ -410,24 +421,30 @@ Action (All in one turn):
                         fn_name = tool_call.function.name
                         args_str = tool_call.function.arguments
                         tc_id = tool_call.id
-                        
+
+                    logger.info("➡️ Agent requested Tool Call: %s", fn_name)
+                    logger.info("   Arguments: %s", args_str)
+
                     try:
                         fn_args = json.loads(args_str)
                         tool_result = execute_tool(fn_name, fn_args, canvas_state_copy)
+                        logger.info("✅ Tool Result: %s", tool_result)
                     except Exception as e:
                         tool_result = f"Error executing tool {fn_name}: {str(e)}"
-                    
+                        logger.error("❌ Tool Error: %s", tool_result)
+
                     tool_msg = {
                         "role": "tool",
                         "name": fn_name,
                         "tool_call_id": tc_id,
-                        "content": str(tool_result)
+                        "content": str(tool_result),
                     }
                     messages.append(tool_msg)
                     new_messages.append(tool_msg)
             else:
+                logger.info("Agent finished turn. Total Cost so far: $%.4f", total_cost)
                 break
-                
+
         return {
             "new_messages": new_messages,
             "canvas_state": canvas_state_copy,
@@ -435,10 +452,11 @@ Action (All in one turn):
                 "prompt_tokens": total_prompt_tokens,
                 "completion_tokens": total_completion_tokens,
                 "total_tokens": total_prompt_tokens + total_completion_tokens,
-                "cost": total_cost
-            }
+                "cost": total_cost,
+                "model_used": getattr(response, "model", kwargs.get("model")) if response is not None else kwargs.get("model"),
+            },
         }
-        
+
     except Exception as e:
         logger.exception("Error during Litellm chat generation.")
         return {"error": str(e), "canvas_state": req.canvas_state}
