@@ -560,10 +560,10 @@ export default function PropertiesPanel() {
           <>
             <div className="space-y-4">
               <div>
-                <div className="flex gap-4">
+                <div className="grid grid-cols-3 gap-2">
                   <MmScrubberInput name="x" label="X Pos" value={selectedItem.x} onChange={handleChange} />
                   <MmScrubberInput name="y" label="Y Pos" value={selectedItem.y} onChange={handleChange} />
-                  <ScrubberInput name="rotation" label="Rotation (°)" value={Math.round(selectedItem.rotation || 0)} onChange={handleChange} />
+                  <ScrubberInput name="rotation" label="Rot(°)" value={Math.round(selectedItem.rotation || 0)} onChange={handleChange} />
                 </div>
                 
                 <div className="flex gap-2 mt-3">

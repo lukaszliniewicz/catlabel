@@ -792,10 +792,44 @@ def build_spice_jar(width, height, params):
 
 def build_icon_text(width, height, params):
     text = params.get("text", "Label")
-    star_b64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5Z29uIHBvaW50cz0iMTIgMiAxNS4wOSA4LjI2IDIyIDkuMjcgMTcgMTQuMTQgMTguMTggMjEuMDIgMTIgMTcuNzcgNS44MiAyMS4wMiA3IDE0LjE0IDIgOS4yNyA4LjkxIDguMjYgMTIgMiI+PC9wb2x5Z29uPjwvc3ZnPg=="
+    direction = params.get("direction", "row")
+    icon_src = params.get("icon_src")
+    if not icon_src:
+        icon_src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5Z29uIHBvaW50cz0iMTIgMiAxNS4wOSA4LjI2IDIyIDkuMjcgMTcgMTQuMTQgMTguMTggMjEuMDIgMTIgMTcuNzcgNS44MiAyMS4wMiA3IDE0LjE0IDIgOS4yNyA4LjkxIDguMjYgMTIgMiI+PC9wb2x5Z29uPjwvc3ZnPg=="
+
+    if direction == "col":
+        icon_size = min(width * 0.4, height * 0.4)
+        font_size = int(height * 0.2)
+        gap = height * 0.05
+        total_h = icon_size + gap + font_size
+        start_y = (height - total_h) / 2
+
+        return [
+            {
+                "id": _id(),
+                "type": "icon_text",
+                "x": 10,
+                "y": 10,
+                "icon_src": icon_src,
+                "icon_x": (width - 20 - icon_size) / 2,
+                "icon_y": start_y,
+                "icon_size": int(icon_size),
+                "text": text,
+                "text_x": 0,
+                "text_y": start_y + icon_size + gap,
+                "size": font_size,
+                "weight": 700,
+                "font": "Roboto.ttf",
+                "width": width - 20,
+                "height": height - 20,
+                "align": "center",
+                "fit_to_width": True,
+            }
+        ]
 
     icon_size = min(width * 0.3, height - 20)
     font_size = int(icon_size * 0.6)
+    gap = min(10, width * 0.05)
 
     return [
         {
@@ -803,18 +837,19 @@ def build_icon_text(width, height, params):
             "type": "icon_text",
             "x": 10,
             "y": 10,
-            "icon_src": star_b64,
+            "icon_src": icon_src,
             "icon_x": 0,
             "icon_y": (height - 20 - icon_size) / 2,
             "icon_size": int(icon_size),
             "text": text,
-            "text_x": int(icon_size + 10),
+            "text_x": int(icon_size + gap),
             "text_y": (height - 20 - font_size) / 2,
             "size": font_size,
             "weight": 700,
             "font": "Roboto.ttf",
             "width": width - 20,
             "height": height - 20,
+            "align": "left",
             "fit_to_width": True,
         }
     ]
@@ -920,7 +955,18 @@ TEMPLATE_METADATA = [
         "name": "Icon + Text",
         "description": "A clean icon next to your text.",
         "fields": [
-            {"name": "text", "label": "Text", "type": "text", "default": "Label"}
+            {"name": "icon_src", "label": "Icon", "type": "icon"},
+            {"name": "text", "label": "Text", "type": "text", "default": "Label"},
+            {
+                "name": "direction",
+                "label": "Layout",
+                "type": "select",
+                "options": [
+                    {"label": "Row (Left to Right)", "value": "row"},
+                    {"label": "Column (Top to Bottom)", "value": "col"},
+                ],
+                "default": "row",
+            },
         ],
     },
     {

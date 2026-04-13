@@ -55,7 +55,7 @@ export default function OnboardingWizard() {
 
       const manualPrinter = {
         name: `Manual Profile (${selectedManualModel})`,
-        address: `manual-${selectedManualModel}-${Date.now()}`,
+        address: `manual-${selectedManualModel}`,
         transport: 'offline',
         model_id: info.model_id || info.model,
         ...info

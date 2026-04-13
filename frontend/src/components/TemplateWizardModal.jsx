@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Wand2, Database, AlertTriangle, LayoutTemplate } from 'lucide-react';
 import { useStore } from '../store';
 import { calculateAutoFitItem } from '../utils/rendering';
+import IconPicker from './IconPicker';
 
 export default function TemplateWizardModal({ template, onClose }) {
   const {
@@ -12,11 +13,16 @@ export default function TemplateWizardModal({ template, onClose }) {
   const [formData, setFormData] = useState({});
   const [batchMode, setBatchMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pickerField, setPickerField] = useState(null);
 
   useEffect(() => {
     const initialData = {};
     (template.fields || []).forEach((field) => {
-      initialData[field.name] = batchMode ? `{{ ${field.name} }}` : (field.default || '');
+      let defaultVal = field.default || '';
+      if (field.type === 'select' && field.options?.length > 0) {
+        defaultVal = field.default || (field.options[0].value || field.options[0]);
+      }
+      initialData[field.name] = batchMode && field.type === 'text' ? `{{ ${field.name} }}` : defaultVal;
     });
     setFormData(initialData);
   }, [template, batchMode]);
@@ -156,6 +162,38 @@ export default function TemplateWizardModal({ template, onClose }) {
                   className={inputClass}
                   rows={4}
                 />
+              ) : field.type === 'select' ? (
+                <select
+                  value={formData[field.name] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                  className={inputClass}
+                >
+                  {field.options.map((option) => (
+                    <option key={option.value || option} value={option.value || option}>
+                      {option.label || option}
+                    </option>
+                  ))}
+                </select>
+              ) : field.type === 'icon' ? (
+                <div className="flex items-center gap-3 mb-3">
+                  {formData[field.name] ? (
+                    <img
+                      src={formData[field.name]}
+                      alt="Icon"
+                      className="w-10 h-10 object-contain bg-white border border-neutral-300 dark:border-neutral-700 p-1 rounded"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded flex items-center justify-center text-[10px] text-neutral-400">
+                      None
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setPickerField(field.name)}
+                    className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors dark:text-white rounded"
+                  >
+                    Choose Icon
+                  </button>
+                </div>
               ) : (
                 <input
                   type="text"
@@ -181,5 +219,18 @@ export default function TemplateWizardModal({ template, onClose }) {
     </div>
   );
 
-  return createPortal(modalContent, document.body);
+  return (
+    <>
+      {createPortal(modalContent, document.body)}
+      {pickerField && (
+        <IconPicker
+          onClose={() => setPickerField(null)}
+          onSelect={(b64) => {
+            setFormData((prev) => ({ ...prev, [pickerField]: b64 }));
+            setPickerField(null);
+          }}
+        />
+      )}
+    </>
+  );
 }

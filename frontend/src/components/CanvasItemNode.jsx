@@ -232,6 +232,8 @@ export default function CanvasItemNode({
           text={substitutedText}
           x={item.text_x}
           y={konvaY}
+          width={item.width ? Math.max(0, item.width - item.text_x) : undefined}
+          align={item.align || 'left'}
           fontSize={item.size}
           fontFamily={fontFamily}
           fontStyle={(item.weight || 700).toString()}
