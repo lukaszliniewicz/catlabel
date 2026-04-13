@@ -37,9 +37,22 @@ if [ ! -d "env" ]; then
     echo "[3/4] Installing backend dependencies..."
     ./bin/micromamba run -p ./env python -m pip install -r requirements.txt
 
-    echo "      Installing Headless Chromium (Portable)..."
-    export PLAYWRIGHT_BROWSERS_PATH=0
-    ./bin/micromamba run -p ./env python -m playwright install chromium
+    echo ""
+    echo "----------------------------------------------------------------------"
+    echo "OPTIONAL: Headless Browser (Third-Party API Integrations)"
+    echo "If you plan to send print jobs to CatLabel from external scripts via"
+    echo "the API, you need Playwright (~150MB download). Normal UI usage does NOT."
+    read -p "Install Headless API support? [y/N]: " INSTALL_PLAYWRIGHT
+    if [[ "$INSTALL_PLAYWRIGHT" =~ ^[Yy]$ ]]; then
+        echo "      Installing Playwright and Headless Chromium..."
+        ./bin/micromamba run -p ./env python -m pip install 'playwright>=1.40.0'
+        export PLAYWRIGHT_BROWSERS_PATH=0
+        ./bin/micromamba run -p ./env python -m playwright install chromium
+    else
+        echo "      Skipping Playwright installation."
+    fi
+    echo "----------------------------------------------------------------------"
+    echo ""
 
     # 3. Use pushd/popd for safe directory navigation
     echo "[4/4] Building optimized frontend UI..."

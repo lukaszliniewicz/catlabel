@@ -40,11 +40,26 @@ if not exist "env\" (
     bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt
     if errorlevel 1 goto error
 
-    echo       Installing Headless Chromium ^(Portable^)...
-    REM Setting this to 0 forces Playwright to install inside the local env folder
-    set PLAYWRIGHT_BROWSERS_PATH=0
-    bin\micromamba.exe run -p .\env python -m playwright install chromium
-    if errorlevel 1 goto error
+    echo.
+    echo ----------------------------------------------------------------------
+    echo OPTIONAL: Headless Browser ^(Third-Party API Integrations^)
+    echo If you plan to send print jobs to CatLabel from external scripts via 
+    echo the API, you need Playwright ^(~150MB download^). Normal UI usage does NOT.
+    set /p INSTALL_PLAYWRIGHT="Install Headless API support? [y/N]: "
+    if /i "%INSTALL_PLAYWRIGHT%"=="y" (
+        echo       Installing Playwright and Headless Chromium...
+        bin\micromamba.exe run -p .\env python -m pip install playwright^>=1.40.0
+        if errorlevel 1 goto error
+        
+        REM Setting this to 0 forces Playwright to install inside the local env folder
+        set PLAYWRIGHT_BROWSERS_PATH=0
+        bin\micromamba.exe run -p .\env python -m playwright install chromium
+        if errorlevel 1 goto error
+    ) else (
+        echo       Skipping Playwright installation.
+    )
+    echo ----------------------------------------------------------------------
+    echo.
 
     echo [4/4] Building optimized frontend UI...
     pushd frontend
