@@ -100,6 +100,36 @@ export const useCodeGenerator = (type, data, barcodeType) => {
   return src;
 };
 
+const measureWrappedText = (ctx, text, maxWidth) => {
+  const lines = [];
+  const paragraphs = String(text).split('\n');
+  let maxLineWidth = 0;
+
+  for (const paragraph of paragraphs) {
+    const words = paragraph.split(' ');
+    let currentLine = words[0] || '';
+
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const testLine = `${currentLine} ${word}`;
+      const metrics = ctx.measureText(testLine);
+
+      if (metrics.width > maxWidth) {
+        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
+    lines.push(currentLine);
+  }
+
+  return { lines, maxLineWidth };
+};
+
 export const calculateAutoFitItem = (item) => {
   if (!item?.fit_to_width || item.type !== 'text') return item;
 
@@ -111,28 +141,42 @@ export const calculateAutoFitItem = (item) => {
     item.weight || 700
   ].filter(Boolean).join(' ');
 
-  const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
+  const pad = item.padding !== undefined ? Number(item.padding) : 4;
   const targetWidth = Math.max(10, (item.width || 100) - (pad * 2));
   const targetHeight = Math.max(10, (item.height || 50) - (pad * 2));
 
   let low = 6;
   let high = 800;
   let bestSize = item.size || 24;
-  const lines = String(item.text || '').split('\n');
 
   while (high - low >= 0.5) {
     const mid = (low + high) / 2;
     ctx.font = `${fontStyleAttr} ${mid}px "${fontFamily}"`;
+    const italicBleed = item.italic ? (mid * 0.15) : 0;
 
-    let maxLineWidth = 0;
-    for (const line of lines) {
-      maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
+    let fits = false;
+
+    if (item.no_wrap) {
+      const lines = String(item.text || '').split('\n');
+      let maxLineWidth = 0;
+
+      for (const line of lines) {
+        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
+      }
+
+      const textBlockHeight = mid * 1.15 * lines.length;
+      fits = maxLineWidth + italicBleed <= targetWidth && textBlockHeight <= targetHeight;
+    } else {
+      const { lines: wrappedLines, maxLineWidth } = measureWrappedText(
+        ctx,
+        item.text || '',
+        targetWidth - italicBleed
+      );
+      const textBlockHeight = mid * 1.15 * wrappedLines.length;
+      fits = maxLineWidth + italicBleed <= targetWidth && textBlockHeight <= targetHeight;
     }
 
-    const italicBleed = item.italic ? (mid * 0.15) : 0;
-    const textBlockHeight = mid * 1.15 * lines.length;
-
-    if (maxLineWidth + italicBleed <= targetWidth && textBlockHeight <= targetHeight) {
+    if (fits) {
       bestSize = mid;
       low = mid + 0.5;
     } else {
@@ -140,10 +184,8 @@ export const calculateAutoFitItem = (item) => {
     }
   }
 
-  bestSize = Math.floor(bestSize * 2) / 2;
-
   return {
     ...item,
-    size: bestSize
+    size: Math.floor(bestSize * 2) / 2
   };
 };

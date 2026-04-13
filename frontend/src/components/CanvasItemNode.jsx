@@ -48,7 +48,7 @@ const CodeImage = ({ type, data, barcodeType, width, height }) => {
 const getVisualMetrics = (item, substitutedText) => {
   const textValue = substitutedText || '';
   const lineCount = textValue ? String(textValue).split('\n').length : 1;
-  const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
+  const pad = item.padding !== undefined ? Number(item.padding) : 4;
   const approxHeight = item.height || (
     item.type === 'text'
       ? (item.size * 1.15 * lineCount) + (pad * 2)
@@ -104,7 +104,7 @@ export default function CanvasItemNode({
   const substitutedCustomHtml = applyVars(item.custom_html, record);
   const substitutedData = applyVars(item.data, record);
 
-  const { visualW, approxHeight, pad, lineCount } = getVisualMetrics(item, substitutedText);
+  const { visualW, approxHeight } = getVisualMetrics(item, substitutedText);
   const groupRef = useRef(null);
 
 
@@ -179,23 +179,21 @@ export default function CanvasItemNode({
     ].filter(Boolean).join(' ') || 'normal';
     const actualColor = item.color || (item.invert ? 'white' : 'black');
     const actualBg = item.bgColor || (item.invert ? 'black' : (item.bg_white ? 'white' : 'transparent'));
-    const capHeight = item.size * 0.71;
-    const lineHeightPx = item.size * 1.15;
-    const availWidth = Math.max(0, visualW - (pad * 2));
-    const availHeight = Math.max(0, approxHeight - (pad * 2));
-    const boxCenterY = pad + (availHeight / 2);
-    const firstBaselineY = boxCenterY + (capHeight / 2) - ((lineCount - 1) * lineHeightPx / 2);
-    const konvaY = firstBaselineY - (item.size * 0.76);
+    const activePad = item.padding !== undefined ? Number(item.padding) : 4;
+    const availWidth = Math.max(0, visualW - (activePad * 2));
+    const availHeight = Math.max(0, approxHeight - (activePad * 2));
 
     element = (
       <Group>
         {actualBg !== 'transparent' && <Rect width={visualW} height={approxHeight} fill={actualBg} cornerRadius={2} listening={false} />}
         <Text
           text={substitutedText}
-          x={pad}
-          y={konvaY}
+          x={activePad}
+          y={activePad}
           width={availWidth}
-          align={item.align || 'left'}
+          height={availHeight}
+          align={item.align || 'center'}
+          verticalAlign={item.verticalAlign || 'middle'}
           fontFamily={fontFamily}
           fontStyle={fontStyleAttr}
           textDecoration={item.underline ? 'underline' : ''}

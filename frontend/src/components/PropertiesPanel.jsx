@@ -646,7 +646,7 @@ export default function PropertiesPanel() {
 
                   <div className="flex gap-4 mt-3">
                     <ScrubberInput name="size" label="Font Size" value={selectedItem.size} onChange={handleChange} />
-                    <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0)} onChange={handleChange} />
+                    <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : 4} onChange={handleChange} />
                   </div>
 
                   <div className="flex gap-4 mt-2">
@@ -669,12 +669,23 @@ export default function PropertiesPanel() {
 
                   <div className="flex gap-4 mt-2">
                     <MmScrubberInput name="width" label="Box Width" value={selectedItem.width || 0} onChange={handleChange} />
+                  </div>
+
+                  <div className="flex gap-4 mt-2">
                     <div className="flex-1">
-                      <label className={labelClass}>Align</label>
-                      <select name="align" value={selectedItem.align || 'left'} onChange={handleChange} className={inputClass}>
+                      <label className={labelClass}>Horizontal</label>
+                      <select name="align" value={selectedItem.align || 'center'} onChange={handleChange} className={inputClass}>
                         <option value="left">Left</option>
                         <option value="center">Center</option>
                         <option value="right">Right</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className={labelClass}>Vertical</label>
+                      <select name="verticalAlign" value={selectedItem.verticalAlign || 'middle'} onChange={handleChange} className={inputClass}>
+                        <option value="top">Top</option>
+                        <option value="middle">Middle</option>
+                        <option value="bottom">Bottom</option>
                       </select>
                     </div>
                   </div>

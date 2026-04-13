@@ -93,8 +93,10 @@ export default function Toolbar() {
       weight: 700,
       font: defaultFont,
       width: canvasWidth,
-      height: 24,
-      align: 'center'
+      height: 40,
+      align: 'center',
+      verticalAlign: 'middle',
+      padding: 4
     });
   };
 
