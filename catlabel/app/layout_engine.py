@@ -790,9 +790,101 @@ def build_spice_jar(width, height, params):
     return items
 
 
+def build_icon_text(width, height, params):
+    text = params.get("text", "Label")
+    star_b64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5Z29uIHBvaW50cz0iMTIgMiAxNS4wOSA4LjI2IDIyIDkuMjcgMTcgMTQuMTQgMTguMTggMjEuMDIgMTIgMTcuNzcgNS44MiAyMS4wMiA3IDE0LjE0IDIgOS4yNyA4LjkxIDguMjYgMTIgMiI+PC9wb2x5Z29uPjwvc3ZnPg=="
+
+    icon_size = min(width * 0.3, height - 20)
+    font_size = int(icon_size * 0.6)
+
+    return [
+        {
+            "id": _id(),
+            "type": "icon_text",
+            "x": 10,
+            "y": 10,
+            "icon_src": star_b64,
+            "icon_x": 0,
+            "icon_y": (height - 20 - icon_size) / 2,
+            "icon_size": int(icon_size),
+            "text": text,
+            "text_x": int(icon_size + 10),
+            "text_y": (height - 20 - font_size) / 2,
+            "size": font_size,
+            "weight": 700,
+            "font": "Roboto.ttf",
+            "width": width - 20,
+            "height": height - 20,
+            "fit_to_width": True,
+        }
+    ]
+
+
+def build_qr_text(width, height, params):
+    text = params.get("text", "Scan Me")
+    data = params.get("data", "https://catlabel.com")
+
+    is_landscape = width > height
+    items = []
+
+    if is_landscape:
+        qr_size = height - 20
+        items.append(
+            {
+                "id": _id(),
+                "type": "qrcode",
+                "data": data,
+                "x": 10,
+                "y": 10,
+                "width": int(qr_size),
+                "height": int(qr_size),
+            }
+        )
+        items.append(
+            _text_item(
+                qr_size + 20,
+                10,
+                width - qr_size - 30,
+                height - 20,
+                text,
+                size=32,
+                align="left",
+                fit=True,
+            )
+        )
+    else:
+        qr_size = width - 40
+        items.append(
+            {
+                "id": _id(),
+                "type": "qrcode",
+                "data": data,
+                "x": 20,
+                "y": 10,
+                "width": int(qr_size),
+                "height": int(qr_size),
+            }
+        )
+        items.append(
+            _text_item(
+                10,
+                qr_size + 20,
+                width - 20,
+                height - qr_size - 30,
+                text,
+                size=24,
+                align="center",
+                fit=True,
+            )
+        )
+    return items
+
+
 TEMPLATE_REGISTRY = {
     "centered_text": build_centered_text,
     "title_subtitle": build_title_subtitle,
+    "icon_text": build_icon_text,
+    "qr_text": build_qr_text,
     "price_tag": build_price_tag,
     "inventory_tag": build_inventory_tag,
     "cable_flag": build_cable_flag,
@@ -807,12 +899,14 @@ TEMPLATE_REGISTRY = {
 TEMPLATE_METADATA = [
     {
         "id": "centered_text",
+        "category": "Layout",
         "name": "Centered Text",
-        "description": "A single, auto-scaling text block.",
+        "description": "A single, perfectly auto-scaling text block.",
         "fields": [{"name": "text", "label": "Main Text", "type": "textarea"}],
     },
     {
         "id": "title_subtitle",
+        "category": "Layout",
         "name": "Title & Subtitle",
         "description": "Stacked text with a large bold title.",
         "fields": [
@@ -821,7 +915,27 @@ TEMPLATE_METADATA = [
         ],
     },
     {
+        "id": "icon_text",
+        "category": "Layout",
+        "name": "Icon + Text",
+        "description": "A clean icon next to your text.",
+        "fields": [
+            {"name": "text", "label": "Text", "type": "text", "default": "Label"}
+        ],
+    },
+    {
+        "id": "qr_text",
+        "category": "Layout",
+        "name": "QR Code + Text",
+        "description": "A QR code with adjacent text.",
+        "fields": [
+            {"name": "data", "label": "QR Data", "type": "text", "default": "https://google.com"},
+            {"name": "text", "label": "Text", "type": "textarea", "default": "Scan Me"},
+        ],
+    },
+    {
         "id": "price_tag",
+        "category": "Dedicated",
         "name": "Pro Price Tag",
         "description": "Retail price tag. Automatically adapts to square or wide labels.",
         "fields": [
@@ -835,6 +949,7 @@ TEMPLATE_METADATA = [
     },
     {
         "id": "inventory_tag",
+        "category": "Dedicated",
         "name": "Modern Inventory Tag",
         "description": "Professional asset tag with inverted department header and QR/Barcode.",
         "fields": [
@@ -847,12 +962,14 @@ TEMPLATE_METADATA = [
     },
     {
         "id": "cable_flag",
+        "category": "Dedicated",
         "name": "Cable Flag",
         "description": "Fold-over tag with a dashed center line. Repeats text on both sides.",
         "fields": [{"name": "text", "label": "Cable ID / Text", "type": "text"}],
     },
     {
         "id": "shipping_address",
+        "category": "Dedicated",
         "name": "Shipping Address",
         "description": "Professional shipping label with service banner and sender/recipient blocks.",
         "fields": [
@@ -863,19 +980,16 @@ TEMPLATE_METADATA = [
     },
     {
         "id": "warning_banner",
+        "category": "Dedicated",
         "name": "Warning Banner",
         "description": "Inverted black background with bold white text.",
         "fields": [
-            {
-                "name": "text",
-                "label": "Warning Text",
-                "type": "text",
-                "default": "FRAGILE",
-            }
+            {"name": "text", "label": "Warning Text", "type": "text", "default": "FRAGILE"}
         ],
     },
     {
         "id": "sale_tag",
+        "category": "Dedicated",
         "name": "Retail Sale Tag",
         "description": "High contrast inverted price box.",
         "fields": [
@@ -887,6 +1001,7 @@ TEMPLATE_METADATA = [
     },
     {
         "id": "asset_tag",
+        "category": "Dedicated",
         "name": "IT Asset Tag",
         "description": "Header bar, QR code, and details.",
         "fields": [
@@ -897,6 +1012,7 @@ TEMPLATE_METADATA = [
     },
     {
         "id": "spice_jar",
+        "category": "Dedicated",
         "name": "Pantry / Spice Jar",
         "description": "Elegant typography for home organization.",
         "fields": [

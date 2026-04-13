@@ -6,6 +6,7 @@ import CanvasItemNode from './CanvasItemNode';
 export default function CanvasArea() {
   const {
     items,
+    selectedId,
     selectedIds,
     selectItem,
     updateItem,
@@ -40,6 +41,7 @@ export default function CanvasArea() {
   const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
   const maxDisplayedPage = Math.max(maxPage, currentPage);
   const pages = Array.from({ length: maxDisplayedPage + 1 }, (_, index) => index);
+  const selectedItem = items.find((item) => item.id === selectedId);
 
   React.useEffect(() => {
     if (!trRef.current || selectedIds.length > 0) return;
@@ -363,6 +365,7 @@ export default function CanvasArea() {
                         {isActive && (
                           <Transformer
                             ref={trRef}
+                            resizeEnabled={selectedItem?.type !== 'text' && selectedItem?.type !== 'icon_text'}
                             boundBoxFunc={(oldBox, newBox) => {
                               if (newBox.width < 5 || newBox.height < 5) return oldBox;
                               return newBox;

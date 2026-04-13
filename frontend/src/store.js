@@ -320,7 +320,16 @@ export const useStore = create((set, get) => ({
   fetchPresets: async () => {
     try {
       const res = await fetch('/api/presets');
-      const data = await res.json();
+      let data = await res.json();
+
+      const standard48 = data.find((p) => p.name.includes('Standard Square (48x48mm)'));
+      const a6Shipping = data.find((p) => p.name.includes('A6 Shipping'));
+
+      data = data.filter((p) => p !== standard48 && p !== a6Shipping);
+
+      if (standard48) data.unshift(standard48);
+      if (a6Shipping) data.push(a6Shipping);
+
       set({ labelPresets: data });
     } catch (e) {
       console.error("Failed to fetch presets", e);

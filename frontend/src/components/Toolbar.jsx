@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import {
-  Type, Calendar, Smile, ImagePlus, Image as ImageIcon,
+  Type, Calendar, Smile, Image as ImageIcon,
   Barcode, QrCode, Code, FileText, Wand2, ChevronDown, Package, Trash2,
   ZoomIn, ZoomOut, MoveUp, MoveDown, Combine, Ungroup, Shapes, Square, Circle, Minus
 } from 'lucide-react';
@@ -270,7 +270,6 @@ export default function Toolbar() {
       {/* Group: Visuals */}
       <div className="flex items-center gap-1">
         <ToolButton icon={Smile} label="Icon Only" onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} />
-        <ToolButton icon={ImagePlus} label="Icon + Text" onClick={() => { setIconPickerMode('icon_text'); setShowIconPicker(true); }} />
         <ToolButton component="label" icon={ImageIcon} label="Upload Image">
           <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
         </ToolButton>
@@ -353,17 +352,31 @@ export default function Toolbar() {
           </ToolButton>
 
           {showGenDropdown && (
-            <div className="absolute top-full right-0 sm:left-0 mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50">
-              <div className="px-4 pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800 text-[10px] uppercase tracking-widest font-bold text-neutral-400">
-                Smart Wizards
+            <div className="absolute top-full right-0 sm:left-0 mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl py-2 z-50 max-h-96 overflow-y-auto">
+              <div className="px-4 pb-2 mt-1 mb-2 border-b border-neutral-100 dark:border-neutral-800 text-[10px] uppercase tracking-widest font-bold text-neutral-400">
+                Layouts
               </div>
-              {templates.map((tpl) => (
+              {templates.filter((tpl) => tpl.category === 'Layout').map((tpl) => (
                 <button
                   key={tpl.id}
                   onClick={() => { setSelectedWizard(tpl); setShowGenDropdown(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
                 >
                   <Package size={16} className="text-blue-500" />
+                  {tpl.name}
+                </button>
+              ))}
+
+              <div className="px-4 pt-3 pb-2 mt-2 mb-2 border-y border-neutral-100 dark:border-neutral-800 text-[10px] uppercase tracking-widest font-bold text-neutral-400">
+                Dedicated
+              </div>
+              {templates.filter((tpl) => tpl.category === 'Dedicated').map((tpl) => (
+                <button
+                  key={tpl.id}
+                  onClick={() => { setSelectedWizard(tpl); setShowGenDropdown(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
+                >
+                  <Package size={16} className="text-purple-500" />
                   {tpl.name}
                 </button>
               ))}

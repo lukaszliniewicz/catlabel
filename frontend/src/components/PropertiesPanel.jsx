@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import AIAssistant from './AIAssistant';
 import BatchPrintModal from './BatchPrintModal';
+import IconPicker from './IconPicker';
+import { calculateAutoFitItem } from '../utils/rendering';
 
 const pxToMm = (px) => (px / 8).toFixed(1);
 const mmToPx = (mm) => Math.round(mm * 8);
@@ -134,6 +136,7 @@ export default function PropertiesPanel() {
   // Tab State
   const [activeTab, setActiveTab] = useState('canvas');
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [dataMode, setDataMode] = useState('table');
   const [matrixInputs, setMatrixInputs] = useState({});
   const [seqInputs, setSeqInputs] = useState({ varName: '', start: 1, end: 10, prefix: '', suffix: '', padding: 3 });
@@ -237,60 +240,11 @@ export default function PropertiesPanel() {
   const handleFitToWidth = () => {
     if (!selectedItem || !selectedItem.text) return;
     
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
-    const fontWeight = selectedItem.weight || 700;
+    const optimized = calculateAutoFitItem({ ...selectedItem, fit_to_width: true });
     
-    const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
-    const targetWidth = canvasWidth - (pad * 2);
-    const targetHeight = canvasHeight - (pad * 2);
-
-    let low = 6;
-    let high = 800; 
-    let bestSize = selectedItem.size;
-    const lines = String(selectedItem.text).split('\n');
-
-    while (high - low >= 0.5) {
-      let mid = (low + high) / 2;
-      ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`; 
-      
-      let maxLineWidth = 0;
-      for (let l of lines) {
-        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(l).width);
-      }
-      
-      let textBlockHeight = mid * 1.15 * lines.length;
-      
-      if (maxLineWidth <= targetWidth && textBlockHeight <= targetHeight) {
-        bestSize = mid;
-        low = mid + 0.5;
-      } else {
-        high = mid - 0.5;
-      }
-    }
-
-    bestSize = Math.floor(bestSize * 2) / 2;
-    
-    ctx.font = `${fontWeight} ${bestSize}px "${fontFamily}"`;
-    let finalMaxW = 0;
-    for (let l of lines) {
-      finalMaxW = Math.max(finalMaxW, ctx.measureText(l).width);
-    }
-    
-    const finalInkHeight = bestSize * 1.15 * lines.length;
-    const finalBoxWidth = finalMaxW + (pad * 2);
-    const finalBoxHeight = finalInkHeight + (pad * 2);
-
-    updateItem(selectedId, { 
-      x: (canvasWidth - finalBoxWidth) / 2, 
-      y: (canvasHeight - finalBoxHeight) / 2, 
-      width: finalBoxWidth,
-      height: finalBoxHeight, 
-      size: bestSize, 
-      no_wrap: lines.length === 1,
-      fit_to_width: true,
-      align: 'center'
+    updateItem(selectedId, {
+      size: optimized.size,
+      fit_to_width: true
     });
   };
 
@@ -738,6 +692,11 @@ export default function PropertiesPanel() {
 
               {selectedItem.type === 'icon_text' && (
                 <>
+                  <div className="mb-4">
+                    <button onClick={() => setShowIconPicker(true)} className="w-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-200 dark:border-blue-800 text-[10px] uppercase tracking-widest font-bold">
+                      Change Icon
+                    </button>
+                  </div>
                   <div className="flex gap-2 mb-2 bg-neutral-50 dark:bg-neutral-900 p-1 border border-neutral-200 dark:border-neutral-800">
                      <button onClick={() => {
                         const GAP = Math.max(4, selectedItem.size * 0.08); // Tighter gap
@@ -1191,6 +1150,15 @@ export default function PropertiesPanel() {
       </div>
 
       {showBatchModal && <BatchPrintModal onClose={() => setShowBatchModal(false)} />}
+      {showIconPicker && (
+        <IconPicker 
+          onClose={() => setShowIconPicker(false)} 
+          onSelect={(b64) => {
+            updateItem(selectedId, { icon_src: b64 });
+            setShowIconPicker(false);
+          }} 
+        />
+      )}
     </div>
   );
 }

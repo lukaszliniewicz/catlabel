@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Wand2, Database, AlertTriangle, LayoutTemplate } from 'lucide-react';
 import { useStore } from '../store';
+import { calculateAutoFitItem } from '../utils/rendering';
 
 export default function TemplateWizardModal({ template, onClose }) {
   const {
@@ -54,8 +55,10 @@ export default function TemplateWizardModal({ template, onClose }) {
       }
 
       const data = await res.json();
+      const optimizedItems = (data.items || []).map((item) => calculateAutoFitItem(item));
+
       clearCanvas();
-      setItems(data.items || []);
+      setItems(optimizedItems);
       onClose();
     } catch (err) {
       console.error(err);
