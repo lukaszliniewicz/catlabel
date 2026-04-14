@@ -241,7 +241,7 @@ export default function CanvasArea() {
                         >
                           <div
                             ref={(node) => {
-                              if (isActive && rIdx === 0) {
+                              if (node && isActive && rIdx === 0) {
                                 useStore.getState().setPreviewElementRef(node);
                               }
                             }}
