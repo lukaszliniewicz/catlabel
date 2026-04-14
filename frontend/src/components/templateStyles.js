@@ -139,14 +139,31 @@ const escapeHtml = (value = '') => String(value)
 
 const formatText = (value = '') => escapeHtml(value).replace(/\n/g, '<br />');
 
-export const sanitizeLabelHtml = (html = '') => String(html)
-  .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-  .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
-  .replace(/<(object|embed|form)[\s\S]*?>[\s\S]*?<\/\1>/gi, '')
-  .replace(/<(input|button|textarea|select|link|meta)[^>]*?\/?>/gi, '')
-  .replace(/\son\w+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '')
-  .replace(/javascript\s*:/gi, '')
-  .trim();
+export const sanitizeLabelHtml = (html = '') => {
+  const clean = String(html)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<(object|embed|form)[\s\S]*?>[\s\S]*?<\/\1>/gi, '')
+    .replace(/\son\w+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .trim();
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(clean, 'text/html');
+    const serializer = new XMLSerializer();
+
+    let xmlString = '';
+    Array.from(doc.body.childNodes).forEach((node) => {
+      xmlString += serializer.serializeToString(node);
+    });
+
+    return xmlString;
+  } catch (e) {
+    console.error('HTML to XML serialization failed', e);
+    return clean;
+  }
+};
 
 export const buildLabelTemplateMarkup = (record = {}) => {
   const safeRecord = record && typeof record === 'object' ? record : {};

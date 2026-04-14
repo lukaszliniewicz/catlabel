@@ -529,6 +529,7 @@ Action (All in one turn):
 
             if hasattr(resp_msg, "tool_calls") and resp_msg.tool_calls:
                 layout_changed = False
+                needs_feedback = False
                 for tool_call in resp_msg.tool_calls:
                     if isinstance(tool_call, dict):
                         fn_name = tool_call.get("function", {}).get("name")
@@ -554,6 +555,8 @@ Action (All in one turn):
                         "load_project",
                     }:
                         layout_changed = True
+                        if fn_name not in {"clear_canvas", "apply_preset"}:
+                            needs_feedback = True
 
                     try:
                         fn_args = json.loads(args_str)
@@ -572,7 +575,8 @@ Action (All in one turn):
                     messages.append(tool_msg)
                     new_messages.append(tool_msg)
 
-                if layout_changed and active_model.vision_capable and visual_feedback_count < MAX_VISUAL_FEEDBACKS:
+                has_items = len(canvas_state_copy.get("items", [])) > 0
+                if layout_changed and needs_feedback and has_items and active_model.vision_capable and visual_feedback_count < MAX_VISUAL_FEEDBACKS:
                     try:
                         import base64
                         from io import BytesIO
@@ -593,7 +597,7 @@ Action (All in one turn):
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": "[SYSTEM AUTO-INJECT] Tool execution complete. Here is the new visual render of the canvas. Evaluate your design. If elements overlap, are cut off, or look disproportionate, use your tools to fix them. If it looks perfect, reply to the user.",
+                                    "text": "[SYSTEM AUTO-INJECT] Visual render complete. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. If the canvas is completely blank after adding an element, your HTML/data was malformed. Otherwise, reply to the user.",
                                 },
                                 {
                                     "type": "image_url",

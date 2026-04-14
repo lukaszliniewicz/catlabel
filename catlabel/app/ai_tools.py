@@ -196,7 +196,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "add_html_element",
-            "description": "GRANULAR: Add HTML/SVG. CRITICAL: You MUST wrap your content in <div style='width:100%;height:100%;box-sizing:border-box;'> to prevent it from overflowing the physical label bounds.",
+            "description": "GRANULAR: Add HTML/SVG. CRITICAL: You MUST wrap your content in <div style='width:100%;height:100%;box-sizing:border-box;'> to prevent it from overflowing. WARNING: Rendered via SVG foreignObject. Unclosed tags (like <br> instead of <br/>) may cause a blank screen. Ensure strict XML/XHTML.",
             "parameters": {
                 "type": "object",
                 "properties": {

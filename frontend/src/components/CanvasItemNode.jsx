@@ -15,12 +15,21 @@ const useImageLoader = (url) => {
 
     let cancelled = false;
     const image = new window.Image();
-    image.src = url;
+
     image.onload = () => {
       if (!cancelled) {
         setImg(image);
       }
     };
+
+    image.onerror = () => {
+      console.warn('Failed to load image or SVG on canvas:', `${String(url).substring(0, 50)}...`);
+      if (!cancelled) {
+        setImg(null);
+      }
+    };
+
+    image.src = url;
 
     return () => {
       cancelled = true;
