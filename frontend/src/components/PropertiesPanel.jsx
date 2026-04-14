@@ -647,6 +647,7 @@ export default function PropertiesPanel() {
                 />
               </div>
             ) : selectedItem && (
+              <>
             <div className="space-y-4">
               <div>
                 <div className="grid grid-cols-3 gap-2">
@@ -980,6 +981,7 @@ export default function PropertiesPanel() {
                 Delete Item
               </button>
             </div>
+              </>
             )}
           </>
         )}
