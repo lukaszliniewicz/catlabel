@@ -1,4 +1,22 @@
 import { create } from 'zustand';
+import { calculateAutoFitItem } from './utils/rendering';
+
+const recalcAutoFit = (items, batchRecords) => {
+  let changed = false;
+
+  const nextItems = items.map((item) => {
+    if (item.type === 'text' && item.fit_to_width) {
+      const optimizedItem = calculateAutoFitItem(item, batchRecords);
+      if (optimizedItem.size !== item.size) {
+        changed = true;
+        return optimizedItem;
+      }
+    }
+    return item;
+  });
+
+  return changed ? nextItems : items;
+};
 
 export const useStore = create((set, get) => ({
   items: [],
@@ -252,10 +270,14 @@ export const useStore = create((set, get) => ({
   
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
 
-  setBatchRecords: (records) => set({
-    batchRecords: Array.isArray(records) && records.length ? records : [{}]
+  setBatchRecords: (records) => set((state) => {
+    const validRecords = Array.isArray(records) && records.length ? records : [{}];
+    return {
+      batchRecords: validRecords,
+      items: recalcAutoFit(state.items, validRecords)
+    };
   }),
-  generateBatchMatrix: (matrixDef) => set(() => {
+  generateBatchMatrix: (matrixDef) => set((state) => {
     const keys = Object.keys(matrixDef || {});
     if (keys.length === 0) {
       return {};
@@ -285,11 +307,13 @@ export const useStore = create((set, get) => ({
       return record;
     });
 
+    const validRecords = records.length ? records : [{}];
     return {
-      batchRecords: records.length ? records : [{}]
+      batchRecords: validRecords,
+      items: recalcAutoFit(state.items, validRecords)
     };
   }),
-  generateBatchSequence: (seqDef) => set(() => {
+  generateBatchSequence: (seqDef) => set((state) => {
     const { varName, start, end, prefix = '', suffix = '', padding = 0 } = seqDef || {};
     if (!varName) return {};
 
@@ -304,21 +328,34 @@ export const useStore = create((set, get) => ({
       records.push({ [varName]: `${prefix}${numStr}${suffix}` });
     }
 
+    const validRecords = records.length ? records : [{}];
     return {
-      batchRecords: records.length ? records : [{}]
+      batchRecords: validRecords,
+      items: recalcAutoFit(state.items, validRecords)
     };
   }),
   updateBatchRecord: (index, newRecord) => set((state) => {
     const newRecords = [...state.batchRecords];
     newRecords[index] = newRecord;
-    return { batchRecords: newRecords };
+    return {
+      batchRecords: newRecords,
+      items: recalcAutoFit(state.items, newRecords)
+    };
   }),
-  addBatchRecord: (record = {}) => set((state) => ({
-    batchRecords: [...state.batchRecords, record]
-  })),
+  addBatchRecord: (record = {}) => set((state) => {
+    const newRecords = [...state.batchRecords, record];
+    return {
+      batchRecords: newRecords,
+      items: recalcAutoFit(state.items, newRecords)
+    };
+  }),
   removeBatchRecord: (index) => set((state) => {
     const newRecords = state.batchRecords.filter((_, i) => i !== index);
-    return { batchRecords: newRecords.length ? newRecords : [{}] };
+    const validRecords = newRecords.length ? newRecords : [{}];
+    return {
+      batchRecords: validRecords,
+      items: recalcAutoFit(state.items, validRecords)
+    };
   }),
   setPrintCopies: (n) => set({
     printCopies: Math.max(1, Number(n) || 1)
@@ -469,6 +506,7 @@ export const useStore = create((set, get) => ({
   loadProject: (proj) => {
     set({ currentProjectId: proj.id });
     const s = proj.canvas_state;
+    const batchRecords = s.batchRecords || [{}];
     useStore.setState({
       canvasWidth: s.width || 384,
       canvasHeight: s.height || 384,
@@ -476,10 +514,10 @@ export const useStore = create((set, get) => ({
       canvasBorderThickness: s.canvasBorderThickness || 4,
       splitMode: s.splitMode || false,
       isRotated: s.isRotated || false,
-      batchRecords: s.batchRecords || [{}],
+      batchRecords,
       printCopies: s.printCopies || 1,
       currentPage: s.currentPage || 0,
-      items: s.items || [],
+      items: recalcAutoFit(s.items || [], batchRecords),
       selectedId: null,
       selectedIds: [],
       selectedPagesForPrint: []
@@ -787,9 +825,20 @@ export const useStore = create((set, get) => ({
     };
   }),
 
-  updateItem: (id, newAttrs) => set((state) => ({
-    items: state.items.map((item) => item.id === id ? { ...item, ...newAttrs } : item)
-  })),
+  updateItem: (id, newAttrs) => set((state) => {
+    const newItems = state.items.map((item) => {
+      if (item.id === id) {
+        const updatedItem = { ...item, ...newAttrs };
+        if (updatedItem.type === 'text' && updatedItem.fit_to_width) {
+          return calculateAutoFitItem(updatedItem, state.batchRecords);
+        }
+        return updatedItem;
+      }
+      return item;
+    });
+
+    return { items: newItems };
+  }),
   
   selectItem: (id, multi = false) => set((state) => {
     if (!id) return { selectedId: null, selectedIds: [] };

@@ -61,7 +61,9 @@ export default function TemplateWizardModal({ template, onClose }) {
       }
 
       const data = await res.json();
-      const optimizedItems = (data.items || []).map((item) => calculateAutoFitItem(item));
+      const optimizedItems = (data.items || []).map((item) =>
+        calculateAutoFitItem(item, useStore.getState().batchRecords)
+      );
 
       clearCanvas();
       setItems(optimizedItems);

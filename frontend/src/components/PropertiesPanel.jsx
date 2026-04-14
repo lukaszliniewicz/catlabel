@@ -248,7 +248,10 @@ export default function PropertiesPanel() {
   const handleFitToWidth = () => {
     if (!selectedItem || !selectedItem.text) return;
     
-    const optimized = calculateAutoFitItem({ ...selectedItem, fit_to_width: true });
+    const optimized = calculateAutoFitItem(
+      { ...selectedItem, fit_to_width: true },
+      batchRecords
+    );
     
     updateItem(selectedId, {
       size: optimized.size,

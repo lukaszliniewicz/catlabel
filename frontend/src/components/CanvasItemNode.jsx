@@ -142,7 +142,7 @@ export default function CanvasItemNode({
           };
 
           if (item.type === 'text' && item.fit_to_width) {
-            updatedItem = calculateAutoFitItem(updatedItem);
+            updatedItem = calculateAutoFitItem(updatedItem, useStore.getState().batchRecords);
           }
 
           useStore.getState().updateItem(item.id, updatedItem);

@@ -130,11 +130,24 @@ const measureWrappedText = (ctx, text, maxWidth) => {
   return { lines, maxLineWidth };
 };
 
-export const calculateAutoFitItem = (item) => {
+export const calculateAutoFitItem = (item, batchRecords = [{}]) => {
   if (!item?.fit_to_width || item.type !== 'text') return item;
+
+  const records = Array.isArray(batchRecords) && batchRecords.length > 0
+    ? batchRecords
+    : [{}];
+  const strings = records.map((record) => applyVars(item.text, record) || '');
+  const uniqueStrings = [...new Set(strings)];
+  uniqueStrings.sort((a, b) => b.length - a.length);
+
+  const stringsToTest = uniqueStrings
+    .filter((value) => String(value).length > 0)
+    .slice(0, 10);
 
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
+  if (!ctx) return item;
+
   const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
   const fontStyleAttr = [
     item.italic ? 'italic' : '',
@@ -146,50 +159,62 @@ export const calculateAutoFitItem = (item) => {
   const targetHeight = Math.max(10, (item.height || 50) - (pad * 2));
   const safeWidth = Math.max(10, targetWidth - 2);
 
-  let low = 6;
-  let high = 800;
-  let bestSize = item.size || 24;
+  let overallBestSize = null;
 
-  while (high - low >= 0.1) {
-    const mid = (low + high) / 2;
-    ctx.font = `${fontStyleAttr} ${mid}px "${fontFamily}"`;
-    const italicBleed = item.italic ? (mid * 0.15) : 0;
+  for (const actualText of stringsToTest) {
+    let low = 6;
+    let high = 800;
+    let bestSize = item.size || 24;
 
-    let fits = false;
+    while (high - low >= 0.1) {
+      const mid = (low + high) / 2;
+      ctx.font = `${fontStyleAttr} ${mid}px "${fontFamily}"`;
+      const italicBleed = item.italic ? (mid * 0.15) : 0;
 
-    if (item.no_wrap) {
-      const lines = String(item.text || '').split('\n');
-      let maxLineWidth = 0;
+      let fits = false;
 
-      for (const line of lines) {
-        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
+      if (item.no_wrap) {
+        const lines = String(actualText).split('\n');
+        let maxLineWidth = 0;
+
+        for (const line of lines) {
+          maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
+        }
+
+        const actualLineHeight = item.lineHeight ?? (lines.length > 1 ? 1.15 : 1);
+        const textBlockHeight = mid * actualLineHeight * lines.length;
+        fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
+      } else {
+        const { lines: wrappedLines, maxLineWidth } = measureWrappedText(
+          ctx,
+          actualText,
+          safeWidth - italicBleed
+        );
+
+        const actualLineHeight = item.lineHeight ?? (wrappedLines.length > 1 ? 1.15 : 1);
+        const textBlockHeight = mid * actualLineHeight * wrappedLines.length;
+        fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
       }
 
-      const actualLineHeight = item.lineHeight ?? (lines.length > 1 ? 1.15 : 1);
-      const textBlockHeight = mid * actualLineHeight * lines.length;
-      fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
-    } else {
-      const { lines: wrappedLines, maxLineWidth } = measureWrappedText(
-        ctx,
-        item.text || '',
-        safeWidth - italicBleed
-      );
-
-      const actualLineHeight = item.lineHeight ?? (wrappedLines.length > 1 ? 1.15 : 1);
-      const textBlockHeight = mid * actualLineHeight * wrappedLines.length;
-      fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
+      if (fits) {
+        bestSize = mid;
+        low = mid + 0.1;
+      } else {
+        high = mid - 0.1;
+      }
     }
 
-    if (fits) {
-      bestSize = mid;
-      low = mid + 0.1;
-    } else {
-      high = mid - 0.1;
+    if (overallBestSize === null || bestSize < overallBestSize) {
+      overallBestSize = bestSize;
     }
+  }
+
+  if (overallBestSize === null) {
+    overallBestSize = item.size || 24;
   }
 
   return {
     ...item,
-    size: Math.floor(bestSize * 10) / 10
+    size: Math.floor(overallBestSize * 10) / 10
   };
 };

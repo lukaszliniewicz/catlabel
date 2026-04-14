@@ -54,14 +54,14 @@ export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHe
       verticalAlign: 'middle',
       fit_to_width: true
     };
-    updated = calculateAutoFitItem(updated);
+    updated = calculateAutoFitItem(updated, useStore.getState().batchRecords);
     updateItem(item.id, updated);
   };
 
   const handleFitBox = () => {
     let updated = { ...item, fit_to_width: !item.fit_to_width };
     if (updated.fit_to_width) {
-      updated = calculateAutoFitItem(updated);
+      updated = calculateAutoFitItem(updated, useStore.getState().batchRecords);
     }
     updateItem(item.id, updated);
   };
@@ -104,7 +104,12 @@ export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHe
         active={item.no_wrap}
         onClick={() => {
           const next = { ...item, no_wrap: !item.no_wrap };
-          updateItem(item.id, next.fit_to_width ? calculateAutoFitItem(next) : next);
+          updateItem(
+            item.id,
+            next.fit_to_width
+              ? calculateAutoFitItem(next, useStore.getState().batchRecords)
+              : next
+          );
         }}
         title={item.no_wrap ? 'Enable Word Wrap' : 'Force Single Line'}
       />
