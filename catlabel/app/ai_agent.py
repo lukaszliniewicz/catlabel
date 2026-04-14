@@ -71,6 +71,27 @@ def serialize_msg(msg) -> Dict[str, Any]:
     return clean_d
 
 
+def sanitize_trace_data(data: Any) -> Any:
+    """Recursively walk dictionaries/lists to truncate long base64 strings for logging."""
+    if isinstance(data, dict):
+        return {k: sanitize_trace_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_trace_data(item) for item in data]
+    elif isinstance(data, str):
+        if data.startswith("data:image/") and len(data) > 100:
+            return data[:50] + f"...[TRUNCATED BASE64, len={len(data)}]"
+
+        # Catch base64 strings that might be embedded inside stringified JSON tool arguments
+        if data.startswith("{") and data.endswith("}"):
+            try:
+                parsed = json.loads(data)
+                sanitized = sanitize_trace_data(parsed)
+                return json.dumps(sanitized)
+            except Exception:
+                pass
+    return data
+
+
 @router.get("/config")
 def get_providers():
     from .server import engine
@@ -483,17 +504,22 @@ Action (All in one turn):
             resp_msg = response.choices[0].message
             resp_dict = serialize_msg(resp_msg)
 
+            # Save the exact trace to the database for observability
             if req.conv_id is not None:
                 from .server import engine
                 with Session(engine) as session:
+                    # Sanitize to prevent massive DB bloat from base64 images
+                    safe_messages = sanitize_trace_data(messages)
+                    safe_response = sanitize_trace_data(resp_dict)
+
                     trace_log = AITraceLog(
                         conversation_id=req.conv_id,
-                        model_used=getattr(response, "model", kwargs.get("model", "")) if response is not None else kwargs.get("model", ""),
+                        model_used=kwargs.get("model", ""),
                         prompt_tokens=call_prompt_tokens,
                         completion_tokens=call_completion_tokens,
                         cost=call_cost_val,
-                        request_messages_json=json.dumps(messages),
-                        response_message_json=json.dumps(resp_dict),
+                        request_messages_json=json.dumps(safe_messages),
+                        response_message_json=json.dumps(safe_response),
                     )
                     session.add(trace_log)
                     session.commit()

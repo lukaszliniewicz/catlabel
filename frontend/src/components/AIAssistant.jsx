@@ -73,6 +73,20 @@ export default function AIAssistant() {
     out += `**Estimated Cost:** $${Number(sessionUsage.cost || 0).toFixed(4)}\n\n`;
     out += `---\n\n`;
 
+    // Helper to scrub Base64 from JSON objects before printing to Markdown
+    const sanitizeObj = (obj) => {
+      if (typeof obj === 'string' && obj.startsWith('data:image/') && obj.length > 100) {
+        return obj.substring(0, 50) + '...[TRUNCATED BASE64]';
+      }
+      if (Array.isArray(obj)) return obj.map(sanitizeObj);
+      if (obj && typeof obj === 'object') {
+        const newObj = {};
+        for (let k in obj) newObj[k] = sanitizeObj(obj[k]);
+        return newObj;
+      }
+      return obj;
+    };
+
     try {
       if (currentConvId) {
         const res = await fetch(`/api/ai/history/${currentConvId}/trace`);
@@ -103,9 +117,12 @@ export default function AIAssistant() {
             out += "```json\n";
             try {
               const parsedArgs = JSON.parse(tc.function?.arguments || '{}');
-              out += `${JSON.stringify(parsedArgs, null, 2)}\n`;
+              out += `${JSON.stringify(sanitizeObj(parsedArgs), null, 2)}\n`;
             } catch (e) {
-              out += `${tc.function?.arguments || ''}\n`;
+              // Fallback if args aren't valid JSON
+              let rawArgs = tc.function?.arguments || '';
+              if (rawArgs.length > 500) rawArgs = rawArgs.substring(0, 200) + '...[TRUNCATED]';
+              out += `${rawArgs}\n`;
             }
             out += "```\n\n";
           });
