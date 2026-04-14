@@ -589,7 +589,7 @@ export default function PropertiesPanel() {
               </div>
               <div className="pt-2">
                 <label className={labelClass}>Global Default Font</label>
-                <select name="default_font" value={localSettings.default_font || 'Roboto.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
+                <select name="default_font" value={localSettings.default_font || 'RobotoCondensed.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
                   <option value="arial.ttf">System Arial</option>
                   {fonts.map(f => (
                     <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
@@ -644,6 +644,16 @@ export default function PropertiesPanel() {
                     <ToggleBtn icon={Bold} label="Bold" active={selectedItem.weight >= 700} onClick={() => updateItem(selectedId, { weight: selectedItem.weight >= 700 ? 400 : 700 })} />
                     <ToggleBtn icon={Italic} label="Italic" active={selectedItem.italic} onClick={() => updateItem(selectedId, { italic: !selectedItem.italic })} />
                     <ToggleBtn icon={Underline} label="Underline" active={selectedItem.underline} onClick={() => updateItem(selectedId, { underline: !selectedItem.underline })} />
+                  </div>
+
+                  <div className="mt-3">
+                    <label className={labelClass}>Font Family</label>
+                    <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                      <option value="arial.ttf">System Arial</option>
+                      {fonts.map(f => (
+                        <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="flex gap-2 mt-3">

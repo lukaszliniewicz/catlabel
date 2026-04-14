@@ -82,7 +82,7 @@ export default function Toolbar() {
   }, []);
 
   const handleAddText = () => {
-    const defaultFont = useStore.getState().settings.default_font || 'Roboto.ttf';
+    const defaultFont = useStore.getState().settings.default_font || 'RobotoCondensed.ttf';
     addItem({
       id: Date.now().toString(),
       type: 'text',
@@ -114,7 +114,7 @@ export default function Toolbar() {
   };
 
   const handleAddIconText = (base64Png) => {
-    const defaultFont = useStore.getState().settings.default_font || 'Roboto.ttf';
+    const defaultFont = useStore.getState().settings.default_font || 'RobotoCondensed.ttf';
     addItem({
       id: Date.now().toString(),
       type: 'icon_text',

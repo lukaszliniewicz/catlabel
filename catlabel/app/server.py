@@ -342,7 +342,11 @@ def get_agent_context():
     Gives the agent total situational awareness of the physical layout rules and database state.
     """
     with Session(engine) as session:
-        settings = session.get(Settings, 1) or Settings()
+        settings = session.get(Settings, 1)
+        if not settings:
+            settings = Settings(default_font="RobotoCondensed.ttf")
+        elif not settings.default_font:
+            settings.default_font = "RobotoCondensed.ttf"
 
         fonts = session.exec(select(Font)).all()
         font_names = [f.name for f in fonts]
@@ -649,7 +653,12 @@ def get_settings():
     with Session(engine) as session:
         settings = session.get(Settings, 1)
         if not settings:
-            settings = Settings()
+            settings = Settings(default_font="RobotoCondensed.ttf")
+            session.add(settings)
+            session.commit()
+            session.refresh(settings)
+        elif not settings.default_font:
+            settings.default_font = "RobotoCondensed.ttf"
             session.add(settings)
             session.commit()
             session.refresh(settings)

@@ -86,7 +86,7 @@ def render_via_browser(canvas_state: dict, variables_collection: list, copies: i
     return images
 
 
-def render_template(template_data: dict, variables: dict, default_font: str = "Roboto.ttf") -> Image.Image:
+def render_template(template_data: dict, variables: dict, default_font: str = "RobotoCondensed.ttf") -> Image.Image:
     """
     Backwards-compatible wrapper for any remaining code paths that still expect
     a single rendered PIL image from the old API.

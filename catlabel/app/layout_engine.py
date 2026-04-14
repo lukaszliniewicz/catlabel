@@ -59,7 +59,7 @@ def _text_item(
         "italic": italic,
         "underline": underline,
         "rotation": rotation,
-        "font": "Roboto.ttf",
+        "font": "RobotoCondensed.ttf",
     }
     if invert:
         item["invert"] = True
@@ -884,7 +884,7 @@ def build_icon_text(width, height, params):
                 "text_y": start_y + icon_size + gap,
                 "size": font_size,
                 "weight": 700,
-                "font": "Roboto.ttf",
+                "font": "RobotoCondensed.ttf",
                 "width": width - 20,
                 "height": height - 20,
                 "align": "center",
@@ -911,7 +911,7 @@ def build_icon_text(width, height, params):
             "text_y": (height - 20 - font_size) / 2,
             "size": font_size,
             "weight": 700,
-            "font": "Roboto.ttf",
+            "font": "RobotoCondensed.ttf",
             "width": width - 20,
             "height": height - 20,
             "align": "left",

@@ -150,7 +150,7 @@ export const calculateAutoFitItem = (item) => {
   let high = 800;
   let bestSize = item.size || 24;
 
-  while (high - low >= 0.5) {
+  while (high - low >= 0.1) {
     const mid = (low + high) / 2;
     ctx.font = `${fontStyleAttr} ${mid}px "${fontFamily}"`;
     const italicBleed = item.italic ? (mid * 0.15) : 0;
@@ -182,14 +182,14 @@ export const calculateAutoFitItem = (item) => {
 
     if (fits) {
       bestSize = mid;
-      low = mid + 0.5;
+      low = mid + 0.1;
     } else {
-      high = mid - 0.5;
+      high = mid - 0.1;
     }
   }
 
   return {
     ...item,
-    size: Math.floor(bestSize * 2) / 2
+    size: Math.floor(bestSize * 10) / 10
   };
 };

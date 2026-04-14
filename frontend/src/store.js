@@ -230,7 +230,7 @@ export const useStore = create((set, get) => ({
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   
   addresses: [],
-  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100, default_font: 'Roboto.ttf', intended_media_type: 'unknown' },
+  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100, default_font: 'RobotoCondensed.ttf', intended_media_type: 'unknown' },
   settingsLoaded: false,
   
   // Refined DPI Math logic that safely falls back

@@ -29,7 +29,7 @@ export default function DateToolModal({ onClose }) {
 
   const handleAdd = () => {
     const dateText = generateDateString();
-    const defaultFont = settings.default_font || 'Roboto.ttf';
+    const defaultFont = settings.default_font || 'RobotoCondensed.ttf';
     
     addItem({
       id: Date.now().toString(),
