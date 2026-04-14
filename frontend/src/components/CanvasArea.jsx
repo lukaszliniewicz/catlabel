@@ -84,7 +84,10 @@ export default function CanvasArea() {
     const x = node.x();
     const y = node.y();
     const w = node.getClientRect().width || item.width || 100;
-    const h = node.getClientRect().height || item.height || (item.type === 'text' ? item.size : 50);
+    const lineCount = item.text ? String(item.text).split('\n').length : 1;
+    const pad = item.padding !== undefined ? Number(item.padding) : 0;
+    const actualLineHeight = item.lineHeight ?? (lineCount > 1 ? 1.15 : 1);
+    const h = node.getClientRect().height || item.height || (item.type === 'text' ? (item.size * actualLineHeight * lineCount) + (pad * 2) : 50);
 
     const SNAP_T = 10;
     let newX = x;
@@ -275,8 +278,9 @@ export default function CanvasArea() {
                             const itemY = item.y;
                             const pad = item.padding !== undefined ? Number(item.padding) : ((item.invert || item.bg_white) ? 4 : 0);
                             const numLines = item.text ? String(item.text).split('\n').length : 1;
+                            const actualLineHeight = item.lineHeight ?? (numLines > 1 ? 1.15 : 1);
                             const itemW = item.width || 100;
-                            const itemH = item.height || (item.type === 'text' ? (item.size * 1.15 * numLines) + (pad * 2) : 50);
+                            const itemH = item.height || (item.type === 'text' ? (item.size * actualLineHeight * numLines) + (pad * 2) : 50);
 
                             return !(
                               itemX > selectionBox.x + selectionBox.width ||

@@ -68,7 +68,7 @@ const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
   );
 };
 
-const ScrubberInput = ({ name, value, onChange, label }) => {
+const ScrubberInput = ({ name, value, onChange, label, step = 0.5, dragMultiplier = 0.5 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startVal, setStartVal] = useState(value);
@@ -83,7 +83,8 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
     if (!isDragging) return;
     const handleMouseMove = (e) => {
       const dx = e.clientX - startX;
-      const newVal = Math.max(0, Math.round((startVal + dx * 0.5) * 2) / 2);
+      const factor = 1 / step;
+      const newVal = Math.max(0, Math.round((startVal + dx * dragMultiplier) * factor) / factor);
       onChange({ target: { name, value: newVal, type: 'number' } });
     };
     const handleMouseUp = () => setIsDragging(false);
@@ -93,7 +94,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, startX, startVal, onChange, name]);
+  }, [isDragging, startX, startVal, onChange, name, step, dragMultiplier]);
 
   return (
     <div className="flex-1">
@@ -105,7 +106,7 @@ const ScrubberInput = ({ name, value, onChange, label }) => {
         {label} ⇹
       </label>
       <input 
-        type="number" step="0.5" name={name} value={value} onChange={onChange} 
+        type="number" step={step} name={name} value={value} onChange={onChange} 
         className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors" 
       />
     </div>
@@ -208,9 +209,10 @@ export default function PropertiesPanel() {
     
     let itemH = selectedItem.height || 0;
     if (!itemH && selectedItem.type === 'text') {
-      const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : 0;
+      const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
       const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      itemH = (selectedItem.size * 1.15 * numLines) + (pad * 2);
+      const actualLineHeight = selectedItem.lineHeight ?? (numLines > 1 ? 1.15 : 1);
+      itemH = (selectedItem.size * actualLineHeight * numLines) + (pad * 2);
     }
     
     updateItem(selectedId, { 
@@ -644,9 +646,17 @@ export default function PropertiesPanel() {
                     <ToggleBtn icon={Underline} label="Underline" active={selectedItem.underline} onClick={() => updateItem(selectedId, { underline: !selectedItem.underline })} />
                   </div>
 
-                  <div className="flex gap-4 mt-3">
+                  <div className="flex gap-2 mt-3">
                     <ScrubberInput name="size" label="Font Size" value={selectedItem.size} onChange={handleChange} />
-                    <ScrubberInput name="padding" label="Padding (px)" value={selectedItem.padding !== undefined ? selectedItem.padding : 0} onChange={handleChange} />
+                    <ScrubberInput 
+                      name="lineHeight" 
+                      label="Line Height" 
+                      step={0.05} 
+                      dragMultiplier={0.01} 
+                      value={selectedItem.lineHeight ?? (String(selectedItem.text || '').includes('\n') ? 1.15 : 1)} 
+                      onChange={handleChange} 
+                    />
+                    <ScrubberInput name="padding" label="Padding" value={selectedItem.padding !== undefined ? selectedItem.padding : 0} onChange={handleChange} />
                   </div>
 
                   <div className="flex gap-4 mt-2">

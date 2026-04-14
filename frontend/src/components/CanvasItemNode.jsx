@@ -49,9 +49,10 @@ const getVisualMetrics = (item, substitutedText) => {
   const textValue = substitutedText || '';
   const lineCount = textValue ? String(textValue).split('\n').length : 1;
   const pad = item.padding !== undefined ? Number(item.padding) : 0;
+  const actualLineHeight = item.lineHeight ?? (lineCount > 1 ? 1.15 : 1);
   const approxHeight = item.height || (
     item.type === 'text'
-      ? (item.size * 1.15 * lineCount) + (pad * 2)
+      ? (item.size * actualLineHeight * lineCount) + (pad * 2)
       : 50
   );
 
@@ -59,7 +60,8 @@ const getVisualMetrics = (item, substitutedText) => {
     visualW: item.width || 100,
     approxHeight,
     pad,
-    lineCount
+    lineCount,
+    actualLineHeight
   };
 };
 
@@ -104,7 +106,7 @@ export default function CanvasItemNode({
   const substitutedCustomHtml = applyVars(item.custom_html, record);
   const substitutedData = applyVars(item.data, record);
 
-  const { visualW, approxHeight } = getVisualMetrics(item, substitutedText);
+  const { visualW, approxHeight, actualLineHeight, pad: activePad } = getVisualMetrics(item, substitutedText);
   const groupRef = useRef(null);
 
 
@@ -179,7 +181,6 @@ export default function CanvasItemNode({
     ].filter(Boolean).join(' ') || 'normal';
     const actualColor = item.color || (item.invert ? 'white' : 'black');
     const actualBg = item.bgColor || (item.invert ? 'black' : (item.bg_white ? 'white' : 'transparent'));
-    const activePad = item.padding !== undefined ? Number(item.padding) : 0;
     const availWidth = Math.max(0, visualW - (activePad * 2));
     const availHeight = Math.max(0, approxHeight - (activePad * 2));
 
@@ -200,7 +201,7 @@ export default function CanvasItemNode({
           wrap={item.no_wrap ? 'none' : 'word'}
           fontSize={item.size}
           fill={isSelected ? '#2563eb' : actualColor}
-          lineHeight={1.15}
+          lineHeight={actualLineHeight}
         />
       </Group>
     );

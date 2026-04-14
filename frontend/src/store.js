@@ -744,7 +744,8 @@ export const useStore = create((set, get) => ({
     const gapPx = Math.round(gapMm * 8);
     const numLines = itemToClone.text ? String(itemToClone.text).split('\n').length : 1;
     const pad = itemToClone.padding !== undefined ? Number(itemToClone.padding) : 0;
-    const approxHeight = itemToClone.height || (itemToClone.type === 'text' ? (itemToClone.size * 1.15 * numLines) + (pad * 2) : 50);
+    const actualLineHeight = itemToClone.lineHeight ?? (numLines > 1 ? 1.15 : 1);
+    const approxHeight = itemToClone.height || (itemToClone.type === 'text' ? (itemToClone.size * actualLineHeight * numLines) + (pad * 2) : 50);
     
     let currentY = itemToClone.y;
     
@@ -857,7 +858,8 @@ export const useStore = create((set, get) => ({
     selectedItems.forEach((item) => {
       const pad = item.padding !== undefined ? Number(item.padding) : 0;
       const numLines = item.text ? String(item.text).split('\n').length : 1;
-      const approxHeight = item.height || (item.type === 'text' ? (item.size * 1.15 * numLines) + (pad * 2) : 50);
+      const actualLineHeight = item.lineHeight ?? (numLines > 1 ? 1.15 : 1);
+      const approxHeight = item.height || (item.type === 'text' ? (item.size * actualLineHeight * numLines) + (pad * 2) : 50);
       const width = item.width || 100;
 
       if (item.x < minX) minX = item.x;

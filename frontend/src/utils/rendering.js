@@ -165,7 +165,8 @@ export const calculateAutoFitItem = (item) => {
         maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
       }
 
-      const textBlockHeight = mid * 1.15 * lines.length;
+      const actualLineHeight = item.lineHeight ?? (lines.length > 1 ? 1.15 : 1);
+      const textBlockHeight = mid * actualLineHeight * lines.length;
       fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
     } else {
       const { lines: wrappedLines, maxLineWidth } = measureWrappedText(
@@ -173,7 +174,9 @@ export const calculateAutoFitItem = (item) => {
         item.text || '',
         safeWidth - italicBleed
       );
-      const textBlockHeight = mid * 1.15 * wrappedLines.length;
+
+      const actualLineHeight = item.lineHeight ?? (wrappedLines.length > 1 ? 1.15 : 1);
+      const textBlockHeight = mid * actualLineHeight * wrappedLines.length;
       fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
     }
 
