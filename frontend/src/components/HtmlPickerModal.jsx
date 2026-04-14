@@ -3,7 +3,7 @@ import { X, Code } from 'lucide-react';
 
 export default function HtmlPickerModal({ onClose, onSelect }) {
   const [content, setContent] = useState(
-    '<style>\n  h2 {\n    color: black;\n    font-family: sans-serif;\n  }\n  p {\n    font-size: 14px;\n  }\n</style>\n\n<h2>Hello Printer!</h2>\n<p>This is a custom HTML element.</p>'
+    `<div style="display: flex; flex-direction: column; width: 100%; height: 100%; justify-content: center; align-items: center; text-align: center;">\n  <div class="auto-text" style="font-weight: 900; white-space: nowrap; width: 100%;">HELLO WORLD</div>\n  <div class="auto-text" style="font-weight: 400; width: 100%; margin-top: 4px;">Custom HTML</div>\n</div>`
   );
 
   return (
@@ -30,6 +30,9 @@ export default function HtmlPickerModal({ onClose, onSelect }) {
               className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm dark:text-white focus:outline-none focus:border-blue-500 font-mono" 
               placeholder="<div>...</div>"
             />
+            <p className="text-[10px] text-neutral-500 mt-2">
+              Tip: Use <strong>white-space: nowrap;</strong> with the <strong>auto-text</strong> class to force text onto a single line!
+            </p>
           </div>
         </div>
 

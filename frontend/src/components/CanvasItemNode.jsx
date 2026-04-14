@@ -5,7 +5,7 @@ import { applyVars, calculateAutoFitItem, computeOptimalTextSize, resolveDim, us
 import { useStore } from '../store';
 import { LABEL_TEMPLATE_STYLES, buildLabelTemplateMarkup } from './templateStyles';
 
-const useHtmlRasterizer = (htmlString, width, height, isTemplate = false) => {
+const useHtmlRasterizer = (htmlString, width, height, isTemplate = false, font = 'Arial') => {
   const [img, setImg] = useState(null);
 
   useEffect(() => {
@@ -15,6 +15,7 @@ const useHtmlRasterizer = (htmlString, width, height, isTemplate = false) => {
     }
 
     let cancelled = false;
+    const fontFamily = font.split('.')[0];
     const container = document.createElement('div');
     container.style.position = 'fixed';
     container.style.left = '-9999px';
@@ -25,6 +26,8 @@ const useHtmlRasterizer = (htmlString, width, height, isTemplate = false) => {
     container.style.boxSizing = 'border-box';
     container.style.pointerEvents = 'none';
     container.style.backgroundColor = 'transparent';
+    container.style.color = 'black';
+    container.style.fontFamily = `'${fontFamily}', sans-serif`;
     container.innerHTML = isTemplate
       ? `<style>${LABEL_TEMPLATE_STYLES}</style>${htmlString}`
       : htmlString;
@@ -116,8 +119,8 @@ const useHtmlRasterizer = (htmlString, width, height, isTemplate = false) => {
   return img;
 };
 
-const RasterizedHtml = ({ html, width, height, isTemplate = false }) => {
-  const image = useHtmlRasterizer(html, width, height, isTemplate);
+const RasterizedHtml = ({ html, width, height, isTemplate = false, font = 'Arial' }) => {
+  const image = useHtmlRasterizer(html, width, height, isTemplate, font);
 
   if (!image) {
     return null;
@@ -241,6 +244,7 @@ export default function CanvasItemNode({
 
   const { visualW, approxHeight, actualLineHeight, pad: activePad } = getVisualMetrics(item, substitutedText, canvasWidth, canvasHeight);
   const groupRef = useRef(null);
+  const defaultFont = useStore((state) => state.settings?.default_font) || 'Arial';
 
   let activeItem = item;
   if (item.type === 'text' && item.fit_to_width && item.batch_scale_mode === 'individual') {
@@ -431,6 +435,7 @@ export default function CanvasItemNode({
         width={visualW}
         height={approxHeight}
         isTemplate
+        font={item.font || defaultFont}
       />
     );
   } else if (item.type === 'html') {
@@ -439,6 +444,7 @@ export default function CanvasItemNode({
         html={substitutedHtml || ''}
         width={visualW}
         height={approxHeight}
+        font={item.font || defaultFont}
       />
     );
   } else if (item.type === 'cut_line_indicator') {

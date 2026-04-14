@@ -412,13 +412,21 @@ export default function PropertiesPanel() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setDesignMode('canvas')}
-                  className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest border ${designMode === 'canvas' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30' : 'bg-neutral-50 text-neutral-500 border-transparent dark:bg-neutral-900'}`}
+                  className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest border transition-colors ${
+                    designMode === 'canvas'
+                      ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                      : 'bg-neutral-50 text-neutral-500 border-transparent dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                  }`}
                 >
                   Canvas (WYSIWYG)
                 </button>
                 <button
                   onClick={() => setDesignMode('html')}
-                  className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest border ${designMode === 'html' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30' : 'bg-neutral-50 text-neutral-500 border-transparent dark:bg-neutral-900'}`}
+                  className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest border transition-colors ${
+                    designMode === 'html'
+                      ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'
+                      : 'bg-neutral-50 text-neutral-500 border-transparent dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                  }`}
                 >
                   HTML/CSS
                 </button>
@@ -775,6 +783,15 @@ export default function PropertiesPanel() {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className={labelClass}>Font Family</label>
+                    <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                      <option value="arial.ttf">System Arial</option>
+                      {fonts.map(f => (
+                        <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                      ))}
+                    </select>
+                  </div>
 
                   {['title_subtitle', 'price_tag'].includes(selectedItem.template_id) ? (
                     <>
@@ -851,6 +868,15 @@ export default function PropertiesPanel() {
 
               {selectedItem.type === 'html' && (
                 <>
+                  <div>
+                    <label className={labelClass}>Font Family</label>
+                    <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                      <option value="arial.ttf">System Arial</option>
+                      {fonts.map(f => (
+                        <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className={labelClass}>HTML Content</label>
                     <textarea name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={8} />

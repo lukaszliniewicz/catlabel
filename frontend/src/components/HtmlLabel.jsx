@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { applyVars } from '../utils/rendering';
+import { useStore } from '../store';
 
 const overlayBaseStyle = {
   position: 'absolute',
@@ -17,6 +18,8 @@ export default function HtmlLabel({
   onRenderComplete
 }) {
   const containerRef = useRef(null);
+  const defaultFont = useStore((state) => state.settings?.default_font) || 'Arial';
+  const fontFamily = defaultFont.split('.')[0];
   const processedHtml = applyVars(html || '', record);
   const borderThickness = Math.max(1, Number(canvasBorderThickness) || 4);
 
@@ -71,7 +74,9 @@ export default function HtmlLabel({
         height,
         overflow: 'hidden',
         position: 'relative',
-        backgroundColor: 'white'
+        backgroundColor: 'white',
+        color: 'black',
+        fontFamily: `'${fontFamily}', sans-serif`
       }}
     >
       <div
