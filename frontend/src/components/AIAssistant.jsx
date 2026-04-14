@@ -14,6 +14,9 @@ const MessageRow = ({ m }) => {
   // Hide Vision system auto-inject messages (where content is an array)
   if (m.role === 'user' && Array.isArray(m.content)) return null;
 
+  // Hide the lightweight text trace of the visual feedback loop
+  if (m.role === 'user' && typeof m.content === 'string' && m.content.includes('[SYSTEM AUTO-INJECT]')) return null;
+
   const isUser = m.role === 'user';
 
   return (
@@ -34,15 +37,18 @@ const MessageRow = ({ m }) => {
 };
 
 export default function AIAssistant() {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }
-  ]);
-  const [input, setInput] = useState('');
+  const messages = useStore((state) => state.aiMessages);
+  const setMessages = useStore((state) => state.setAiMessages);
+  const input = useStore((state) => state.aiInput);
+  const setInput = useStore((state) => state.setAiInput);
+  const currentConvId = useStore((state) => state.aiConvId);
+  const setCurrentConvId = useStore((state) => state.setAiConvId);
+  const sessionUsage = useStore((state) => state.aiSessionUsage);
+  const setSessionUsage = useStore((state) => state.setAiSessionUsage);
+  const resetAiChat = useStore((state) => state.resetAiChat);
+
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [sessionUsage, setSessionUsage] = useState({ tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0 });
-  
-  const [currentConvId, setCurrentConvId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState([]);
 
@@ -258,6 +264,9 @@ export default function AIAssistant() {
           <Sparkles size={18} className="text-blue-500" /> AI Assistant
         </h2>
         <div className="flex gap-1">
+          <button onClick={resetAiChat} className="p-1.5 text-neutral-400 hover:text-blue-500 transition-colors" title="New Chat">
+            <Plus size={16} />
+          </button>
           <button onClick={() => setShowHistory(!showHistory)} className={`p-1.5 transition-colors ${showHistory ? 'text-blue-500' : 'text-neutral-400 hover:text-neutral-900 dark:hover:text-white'}`} title="Chat History">
             <History size={16} />
           </button>
@@ -272,7 +281,7 @@ export default function AIAssistant() {
 
       {showHistory ? (
         <div className="flex-1 overflow-y-auto py-4 pr-2 flex flex-col">
-          <button onClick={() => { setMessages([{ role: 'assistant', content: 'Hi! Tell me what kind of label you want to design.' }]); setCurrentConvId(null); setShowHistory(false); setSessionUsage({ tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0 }); }} className="mb-4 text-blue-500 font-bold text-xs uppercase tracking-widest flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors">
+          <button onClick={() => { resetAiChat(); setShowHistory(false); }} className="mb-4 text-blue-500 font-bold text-xs uppercase tracking-widest flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors">
             <Plus size={16} /> Start New Conversation
           </button>
           {histories.map(h => (

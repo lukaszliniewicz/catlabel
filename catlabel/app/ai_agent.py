@@ -375,7 +375,9 @@ Action (All in one turn):
 
     try:
         MAX_ITERATIONS = 15
+        MAX_VISUAL_FEEDBACKS = 3
         iteration = 0
+        visual_feedback_count = 0
         new_messages = []
         total_prompt_tokens = 0
         total_completion_tokens = 0
@@ -412,6 +414,7 @@ Action (All in one turn):
             new_messages.append(resp_dict)
 
             if hasattr(resp_msg, "tool_calls") and resp_msg.tool_calls:
+                layout_changed = False
                 for tool_call in resp_msg.tool_calls:
                     if isinstance(tool_call, dict):
                         fn_name = tool_call.get("function", {}).get("name")
@@ -424,6 +427,19 @@ Action (All in one turn):
 
                     logger.info("➡️ Agent requested Tool Call: %s", fn_name)
                     logger.info("   Arguments: %s", args_str)
+
+                    if fn_name in {
+                        "apply_template",
+                        "apply_preset",
+                        "set_canvas_dimensions",
+                        "set_canvas_orientation",
+                        "add_text_element",
+                        "add_barcode_or_qrcode",
+                        "add_html_element",
+                        "clear_canvas",
+                        "load_project",
+                    }:
+                        layout_changed = True
 
                     try:
                         fn_args = json.loads(args_str)
@@ -441,6 +457,46 @@ Action (All in one turn):
                     }
                     messages.append(tool_msg)
                     new_messages.append(tool_msg)
+
+                if layout_changed and active_model.vision_capable and visual_feedback_count < MAX_VISUAL_FEEDBACKS:
+                    try:
+                        import base64
+                        from io import BytesIO
+
+                        from ..rendering.template import render_template
+
+                        image = render_template(
+                            canvas_state_copy,
+                            {},
+                            default_font=context["global_default_font"],
+                        )
+                        buffered = BytesIO()
+                        image.save(buffered, format="PNG")
+                        img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+                        feedback_msg_for_llm = {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "[SYSTEM AUTO-INJECT] Tool execution complete. Here is the new visual render of the canvas. Evaluate your design. If elements overlap, are cut off, or look disproportionate, use your tools to fix them. If it looks perfect, reply to the user.",
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+                                },
+                            ],
+                        }
+                        feedback_msg_for_ui = {
+                            "role": "user",
+                            "content": "[SYSTEM AUTO-INJECT] The canvas layout was updated and visually evaluated.",
+                        }
+                        messages.append(feedback_msg_for_llm)
+                        new_messages.append(feedback_msg_for_ui)
+                        visual_feedback_count += 1
+                        logger.info("📸 Injected visual feedback to agent.")
+                    except Exception as e:
+                        logger.warning("⚠️ Could not generate visual feedback: %s", e)
             else:
                 logger.info("Agent finished turn. Total Cost so far: $%.4f", total_cost)
                 break

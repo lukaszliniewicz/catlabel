@@ -349,8 +349,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "clear_canvas",
-            "description": "Deletes all elements from all pages.",
-            "parameters": {"type": "object", "properties": {}}
+            "description": "Deletes all elements from all pages."
         }
     },
     {

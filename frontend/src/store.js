@@ -263,6 +263,22 @@ export const useStore = create((set, get) => ({
   pxToMm: (px) => parseFloat(get().getPxToMm(px)),
   mmToPx: (mm) => get().getMmToPx(mm),
 
+  // --- AI CHAT STATE ---
+  aiMessages: [{ role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }],
+  aiInput: '',
+  aiConvId: null,
+  aiSessionUsage: { tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0 },
+  setAiMessages: (msgs) => set({ aiMessages: msgs }),
+  setAiInput: (input) => set({ aiInput: input }),
+  setAiConvId: (id) => set({ aiConvId: id }),
+  setAiSessionUsage: (usage) => set({ aiSessionUsage: usage }),
+  resetAiChat: () => set({
+    aiMessages: [{ role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }],
+    aiInput: '',
+    aiConvId: null,
+    aiSessionUsage: { tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0 }
+  }),
+
   // --- HIERARCHICAL PROJECT MANAGEMENT ---
   projects: [],
   categories: [],
