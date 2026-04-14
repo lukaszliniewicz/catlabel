@@ -262,7 +262,9 @@ export default function CanvasArea() {
                       <Stage
                         ref={(node) => {
                           if (node && isActive && rIdx === 0) {
-                            useStore.getState().setStageRef(node);
+                            if (useStore.getState().stageRef !== node) {
+                              useStore.getState().setStageRef(node);
+                            }
                           }
                         }}
                         width={(canvasWidth + WORKSPACE_PAD * 2) * zoomScale}

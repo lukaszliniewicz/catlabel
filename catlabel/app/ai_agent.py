@@ -394,7 +394,7 @@ AVAILABLE TEMPLATES (Use apply_template):
 {templates_json}
 
 READABILITY & SIZING (CRITICAL):
-ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Text elements, icons, and custom HTML MUST be made as large as physically possible to fill the available space. Never use small font sizes (like 12px or 14px) on small labels. If using custom HTML with variable or batch-driven text, DO NOT rely on fixed px fonts or container-only units like cqw/cqh alone. Instead, wrap that text in <div class='auto-text' style='width:100%; height:100%;'>...</div> inside a bounded flex/grid container so it auto-scales to fit the actual content length. Never leave empty space if elements can be safely scaled up.
+ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Text elements, icons, and custom HTML MUST be made as large as physically possible to fill the available space. Never use small font sizes (like 12px or 14px) on small labels. If using custom HTML with variable or batch-driven text, DO NOT rely on fixed px fonts or container-only units like cqw/cqh alone. Instead, wrap that text in <div class='auto-text' style='width:100%; height:100%; display:flex; align-items:center; justify-content:center;'>...</div> inside a bounded flex/grid container so it auto-scales to fit the actual content length. Never leave empty space if elements can be safely scaled up.
 
 CRITICAL LAYOUT STRATEGY (WYSIWYG SYNERGY):
 For NEW labels, you MUST use `apply_template` passing the exact `template_id` and filling the `params` object based on the fields listed above.
