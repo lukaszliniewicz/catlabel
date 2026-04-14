@@ -87,7 +87,7 @@ export default function HeadlessRenderer() {
   const canvasState = payload.canvas_state || {};
 
   return (
-    <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+    <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
       {renderJobs.map((job, index) => (
         <HeadlessPage
           key={job.id}

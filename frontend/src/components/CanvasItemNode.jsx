@@ -1,8 +1,130 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from 'react-konva';
+import { toPng } from 'html-to-image';
 import { applyVars, calculateAutoFitItem, computeOptimalTextSize, resolveDim, useCodeGenerator } from '../utils/rendering';
 import { useStore } from '../store';
 import { LABEL_TEMPLATE_STYLES, buildLabelTemplateMarkup } from './templateStyles';
+
+const useHtmlRasterizer = (htmlString, width, height, isTemplate = false) => {
+  const [img, setImg] = useState(null);
+
+  useEffect(() => {
+    if (!htmlString || width <= 0 || height <= 0) {
+      setImg(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = `${width}px`;
+    container.style.height = `${height}px`;
+    container.style.overflow = 'hidden';
+    container.style.boxSizing = 'border-box';
+    container.style.pointerEvents = 'none';
+    container.style.backgroundColor = 'transparent';
+    container.innerHTML = isTemplate
+      ? `<style>${LABEL_TEMPLATE_STYLES}</style>${htmlString}`
+      : htmlString;
+
+    document.body.appendChild(container);
+
+    const rasterize = async () => {
+      const autoTexts = container.querySelectorAll('.auto-text');
+
+      autoTexts.forEach((el) => {
+        let low = 4;
+        let high = 500;
+        let best = 4;
+
+        const targetW = el.clientWidth || el.parentElement?.clientWidth || width;
+        const targetH = el.clientHeight || el.parentElement?.clientHeight || height;
+
+        while (high - low >= 0.5) {
+          const mid = (low + high) / 2;
+          el.style.fontSize = `${mid}px`;
+
+          if (el.scrollWidth <= targetW && el.scrollHeight <= targetH) {
+            best = mid;
+            low = mid + 0.5;
+          } else {
+            high = mid - 0.5;
+          }
+        }
+
+        el.style.fontSize = `${Math.floor(best)}px`;
+      });
+
+      try {
+        if (document.fonts?.ready) {
+          await document.fonts.ready;
+        }
+      } catch (error) {
+        console.warn('Font readiness check failed', error);
+      }
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
+          try {
+            const dataUrl = await toPng(container, {
+              pixelRatio: 1,
+              useCORS: true
+            });
+
+            if (cancelled) {
+              return;
+            }
+
+            const imageObj = new window.Image();
+            imageObj.onload = () => {
+              if (!cancelled) {
+                setImg(imageObj);
+              }
+            };
+            imageObj.onerror = () => {
+              if (!cancelled) {
+                setImg(null);
+              }
+            };
+            imageObj.src = dataUrl;
+          } catch (error) {
+            console.error('Rasterization failed', error);
+            if (!cancelled) {
+              setImg(null);
+            }
+          } finally {
+            if (document.body.contains(container)) {
+              document.body.removeChild(container);
+            }
+          }
+        });
+      });
+    };
+
+    rasterize();
+
+    return () => {
+      cancelled = true;
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    };
+  }, [htmlString, width, height, isTemplate]);
+
+  return img;
+};
+
+const RasterizedHtml = ({ html, width, height, isTemplate = false }) => {
+  const image = useHtmlRasterizer(html, width, height, isTemplate);
+
+  if (!image) {
+    return null;
+  }
+
+  return <KonvaImage image={image} width={width} height={height} />;
+};
 
 const useImageLoader = (url) => {
   const [img, setImg] = React.useState(null);
@@ -303,13 +425,22 @@ export default function CanvasItemNode({
       subtitle: substitutedSubtitle,
       custom_html: substitutedCustomHtml
     });
-    const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;"><style>${LABEL_TEMPLATE_STYLES}</style>${templateMarkup}</div></foreignObject></svg>`;
-    const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgPayload)}`;
-    element = <URLImage src={src} width={item.width} height={approxHeight} />;
+    element = (
+      <RasterizedHtml
+        html={templateMarkup}
+        width={visualW}
+        height={approxHeight}
+        isTemplate
+      />
+    );
   } else if (item.type === 'html') {
-    const svgPayload = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualW}" height="${approxHeight}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;width:100%;height:100%;box-sizing:border-box;">${substitutedHtml || ''}</div></foreignObject></svg>`;
-    const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgPayload)}`;
-    element = <URLImage src={src} width={item.width} height={approxHeight} />;
+    element = (
+      <RasterizedHtml
+        html={substitutedHtml || ''}
+        width={visualW}
+        height={approxHeight}
+      />
+    );
   } else if (item.type === 'cut_line_indicator') {
     element = (
       <Line

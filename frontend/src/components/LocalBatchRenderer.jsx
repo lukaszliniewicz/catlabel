@@ -84,7 +84,7 @@ export default function LocalBatchRenderer({ onComplete }) {
         </div>
       </div>
 
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
         {jobs.map((job, index) => (
           <HeadlessPage
             key={job.id}

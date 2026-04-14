@@ -1,12 +1,8 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Layer, Line, Rect, Stage } from 'react-konva';
 import { toPng } from 'html-to-image';
 import CanvasItemNode from './CanvasItemNode';
 import HtmlLabel from './HtmlLabel';
-
-const waitForPaint = () => new Promise((resolve) => {
-  requestAnimationFrame(() => requestAnimationFrame(resolve));
-});
 
 const renderCanvasBorder = (canvasState) => {
   const width = Math.max(1, Number(canvasState?.width) || 384);
@@ -32,7 +28,7 @@ const renderCanvasBorder = (canvasState) => {
   return null;
 };
 
-export default function HeadlessPage({ state, record, pageIndex, onReady, readyDelayMs = 500 }) {
+export default function HeadlessPage({ state, record, pageIndex, onReady }) {
   const stageRef = useRef(null);
   const htmlRef = useRef(null);
   const items = state?.items || [];
@@ -45,10 +41,33 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, readyD
     [items, pageIndex]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    let timeoutId = null;
+  const captureHtml = useCallback(async () => {
+    if (!htmlRef.current) return;
 
+    try {
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+    } catch (error) {
+      console.warn('Font readiness check failed', error);
+    }
+
+    try {
+      const dataUrl = await toPng(htmlRef.current, {
+        pixelRatio: 1,
+        backgroundColor: 'white',
+        useCORS: true
+      });
+      onReady(dataUrl);
+    } catch (error) {
+      console.error('html-to-image failed', error);
+    }
+  }, [onReady]);
+
+  useEffect(() => {
+    if (isHtmlMode) return undefined;
+
+    let cancelled = false;
     const capture = async () => {
       try {
         if (document.fonts?.ready) {
@@ -58,45 +77,27 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, readyD
         console.warn('Font readiness check failed', error);
       }
 
-      await waitForPaint();
-
-      timeoutId = window.setTimeout(async () => {
-        if (cancelled) {
-          return;
-        }
-
-        if (isHtmlMode && htmlRef.current) {
-          try {
-            const dataUrl = await toPng(htmlRef.current, {
-              pixelRatio: 1,
-              backgroundColor: 'white'
-            });
-            onReady(dataUrl);
-          } catch (error) {
-            console.error('html-to-image failed', error);
+      requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          if (cancelled || !stageRef.current) {
+            return;
           }
-          return;
-        }
 
-        if (stageRef.current) {
           onReady(stageRef.current.toDataURL({ pixelRatio: 1 }));
-        }
-      }, readyDelayMs);
+        }, 300);
+      });
     };
 
     capture();
 
     return () => {
       cancelled = true;
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
     };
-  }, [isHtmlMode, onReady, pageItems, record, readyDelayMs, state, width, height]);
+  }, [isHtmlMode, onReady, pageItems, record, state, width, height]);
 
   if (isHtmlMode) {
     return (
-      <div ref={htmlRef} style={{ width, height, position: 'relative', backgroundColor: 'white' }}>
+      <div ref={htmlRef} style={{ width, height, position: 'absolute', backgroundColor: 'white' }}>
         <HtmlLabel
           html={state?.htmlContent || ''}
           record={record}
@@ -104,6 +105,7 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, readyD
           height={height}
           canvasBorder={state?.canvasBorder}
           canvasBorderThickness={state?.canvasBorderThickness}
+          onRenderComplete={captureHtml}
         />
       </div>
     );

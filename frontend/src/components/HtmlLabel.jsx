@@ -13,7 +13,8 @@ export default function HtmlLabel({
   width,
   height,
   canvasBorder = 'none',
-  canvasBorderThickness = 4
+  canvasBorderThickness = 4,
+  onRenderComplete
 }) {
   const containerRef = useRef(null);
   const processedHtml = applyVars(html || '', record);
@@ -21,8 +22,9 @@ export default function HtmlLabel({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) return undefined;
 
+    let cancelled = false;
     const elements = container.querySelectorAll('.auto-text');
 
     elements.forEach((el) => {
@@ -47,7 +49,20 @@ export default function HtmlLabel({
 
       el.style.fontSize = `${Math.floor(best)}px`;
     });
-  }, [processedHtml, width, height]);
+
+    requestAnimationFrame(() => {
+      if (cancelled) return;
+      requestAnimationFrame(() => {
+        if (!cancelled && onRenderComplete) {
+          onRenderComplete();
+        }
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [processedHtml, width, height, onRenderComplete]);
 
   return (
     <div
