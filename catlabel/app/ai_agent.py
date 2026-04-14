@@ -413,7 +413,7 @@ You can use `italic: true` and `underline: true` to format text.
 You can rotate elements using `rotation: 90` (or 180, 270) if you need text to run vertically on the canvas.
 You can design standard labels using Canvas tools (`add_text_element`, `apply_template`).
 For complex, beautiful layouts (grids, flexbox, premium styles), use the `set_html_design` tool.
-In HTML Mode, ANY text that might vary in length MUST be wrapped in `<div class='auto-text' style='width:100%; height:100%;'>...</div>`. This triggers a React auto-sizing component that scales the font to the actual content. Build robust CSS Grid/Flex boundaries around these divs. Avoid fixed px fonts for dynamic data.
+In HTML Mode, ANY text that might vary in length MUST be wrapped in `<div class='auto-text' style='width:100%; height:100%; display:flex; align-items:center; justify-content:center;'>...</div>`. This triggers native browser auto-sizing in the preview renderer so the font scales to the actual content. Build robust CSS Grid/Flex boundaries around these divs. Avoid fixed px fonts for dynamic data.
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
