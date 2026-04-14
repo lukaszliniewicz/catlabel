@@ -407,10 +407,12 @@ Example: For a Price Tag, if the user says "Hammer £24.99", you must split it: 
 WARNING: DO NOT guess X/Y coordinates if a template exists. Always use `apply_template`. 
 If you absolutely MUST build a custom layout using `add_text_element`, you MUST rely on `fit_to_width: true` and provide a strict bounding box. You can now use `width: "100%"` and `height: "100%"` to make the text dynamically expand to the canvas boundaries without needing to calculate exact pixels. Never leave text unconstrained.
 
-STYLING RULES:
+STYLING & HTML MODE:
 You can use `color: "white"` and `bgColor: "black"` to create inverted emphasis tags.
 You can use `italic: true` and `underline: true` to format text. 
 You can rotate elements using `rotation: 90` (or 180, 270) if you need text to run vertically on the canvas.
+For complex, beautiful layouts (grids, flexbox, premium styles), use the `set_html_design` tool.
+In HTML Mode, wrap text in `<div class='auto-text' style='width:100%; height:100%;'>...</div>` to automatically scale text to fit perfectly. The browser parses it natively.
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
@@ -550,7 +552,7 @@ Action (All in one turn):
                         "set_canvas_orientation",
                         "add_text_element",
                         "add_barcode_or_qrcode",
-                        "add_html_element",
+                        "set_html_design",
                         "clear_canvas",
                         "load_project",
                     }:
@@ -575,7 +577,7 @@ Action (All in one turn):
                     messages.append(tool_msg)
                     new_messages.append(tool_msg)
 
-                has_items = len(canvas_state_copy.get("items", [])) > 0
+                has_items = len(canvas_state_copy.get("items", [])) > 0 or canvas_state_copy.get("designMode") == "html"
                 if layout_changed and needs_feedback and has_items and active_model.vision_capable and visual_feedback_count < MAX_VISUAL_FEEDBACKS:
                     try:
                         import base64
@@ -606,7 +608,7 @@ Action (All in one turn):
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": "[SYSTEM AUTO-INJECT] Visual render complete. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. If the canvas is completely blank after adding an element, your HTML/data was malformed. Otherwise, reply to the user.",
+                                    "text": "[SYSTEM AUTO-INJECT] Visual render complete. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. Otherwise, reply to the user.",
                                 },
                                 {
                                     "type": "image_url",
@@ -614,16 +616,21 @@ Action (All in one turn):
                                 },
                             ],
                         }
-                        feedback_msg_for_ui = {
+                    except Exception as render_err:
+                        logger.warning("Visual feedback skipped: %s", render_err)
+                        feedback_msg_for_llm = {
                             "role": "user",
-                            "content": "[SYSTEM AUTO-INJECT] The canvas layout was updated and visually evaluated.",
+                            "content": "[SYSTEM AUTO-INJECT] Tool execution complete. Visual feedback is unavailable (Playwright missing on server). Proceed based on layout logic or ask the user to verify."
                         }
-                        messages.append(feedback_msg_for_llm)
-                        new_messages.append(feedback_msg_for_ui)
-                        visual_feedback_count += 1
-                        logger.info("📸 Injected visual feedback to agent.")
-                    except Exception as e:
-                        logger.warning("⚠️ Could not generate visual feedback: %s", e)
+
+                    feedback_msg_for_ui = {
+                        "role": "user",
+                        "content": "[SYSTEM AUTO-INJECT] The canvas layout was updated.",
+                    }
+                    messages.append(feedback_msg_for_llm)
+                    new_messages.append(feedback_msg_for_ui)
+                    visual_feedback_count += 1
+                    logger.info("📸 Injected visual feedback to agent.")
             else:
                 logger.info("Agent finished turn. Total Cost so far: $%.4f", total_cost)
                 break

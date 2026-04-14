@@ -52,7 +52,7 @@ export default function AIAssistant() {
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState([]);
 
-  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, selectedPrinterInfo, batchRecords, printCopies, currentPage, currentDpi, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCanvasBorderThickness, setCurrentPage } = useStore();
+  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, selectedPrinterInfo, batchRecords, printCopies, currentPage, currentDpi, designMode, htmlContent, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCanvasBorderThickness, setCurrentPage, setDesignMode, setHtmlContent } = useStore();
   const setShowAiConfig = useStore((state) => state.setShowAiConfig);
 
   useEffect(() => {
@@ -207,6 +207,8 @@ export default function AIAssistant() {
       splitMode,
       canvasBorder,
       canvasBorderThickness,
+      designMode,
+      htmlContent,
       items,
       currentPage,
       batchRecords,
@@ -215,7 +217,7 @@ export default function AIAssistant() {
     };
 
     try {
-      const b64Image = useStore.getState().getStageB64();
+      const b64Image = await useStore.getState().getStageB64();
 
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -249,6 +251,8 @@ export default function AIAssistant() {
         }
         
         if (data.canvas_state) {
+            setDesignMode(data.canvas_state.designMode || 'canvas');
+            setHtmlContent(data.canvas_state.htmlContent || '');
             setItems(data.canvas_state.items ||[]);
             if (data.canvas_state.width && data.canvas_state.height) {
                 setCanvasSize(data.canvas_state.width, data.canvas_state.height);

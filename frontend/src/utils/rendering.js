@@ -128,6 +128,12 @@ export const computeOptimalTextSize = (baseItem, textToFit, targetWidth, targetH
     padding: baseItem.padding !== undefined ? Number(baseItem.padding) : 0,
   });
 
+  const words = String(textToFit).split(/\s+/).filter(Boolean);
+  const tempWordNode = new Konva.Text({
+    fontFamily,
+    fontStyle: fontStyleAttr,
+  });
+
   while (high - low >= 0.5) {
     const mid = (low + high) / 2;
     textNode.fontSize(mid);
@@ -141,7 +147,17 @@ export const computeOptimalTextSize = (baseItem, textToFit, targetWidth, targetH
     const metrics = textNode.getClientRect();
     const italicBleed = baseItem.italic ? (mid * 0.15) : 0;
 
-    if (metrics.width + italicBleed <= targetWidth && metrics.height <= targetHeight) {
+    let wordOverflow = false;
+    tempWordNode.fontSize(mid);
+    for (const word of words) {
+      tempWordNode.text(word);
+      if (tempWordNode.width() + italicBleed > targetWidth) {
+        wordOverflow = true;
+        break;
+      }
+    }
+
+    if (metrics.width + italicBleed <= targetWidth && metrics.height <= targetHeight && !wordOverflow) {
       bestSize = mid;
       low = mid + 0.5;
     } else {
@@ -150,6 +166,7 @@ export const computeOptimalTextSize = (baseItem, textToFit, targetWidth, targetH
   }
 
   textNode.destroy();
+  tempWordNode.destroy();
   return Math.floor(bestSize * 10) / 10;
 };
 

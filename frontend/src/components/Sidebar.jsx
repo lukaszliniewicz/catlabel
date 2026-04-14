@@ -25,7 +25,8 @@ export default function Sidebar() {
     selectedPagesForPrint,
     labelPresets,
     manualPrinters,
-    selectedPrinterInfo
+    selectedPrinterInfo,
+    designMode
   } = useStore();
 
   const [printers, setPrinters] = useState([]);
@@ -59,7 +60,9 @@ export default function Sidebar() {
     handleScan();
   }, []);
 
-  const maxPage = items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
+  const maxPage = designMode === 'html'
+    ? 0
+    : items.reduce((max, item) => Math.max(max, Number(item.pageIndex ?? 0)), 0);
   const pageCount = maxPage + 1;
 
   const handlePrintCollapsed = () => {

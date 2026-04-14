@@ -195,19 +195,14 @@ TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "add_html_element",
-            "description": "GRANULAR: Add HTML/SVG. CRITICAL: You MUST wrap your content in <div style='width:100%;height:100%;box-sizing:border-box;'> to prevent it from overflowing. WARNING: Rendered via SVG foreignObject. Unclosed tags (like <br> instead of <br/>) may cause a blank screen. Ensure strict XML/XHTML.",
+            "name": "set_html_design",
+            "description": "Switches the label to HTML Mode and sets the entire label using raw HTML/CSS. Use <div class='auto-text'>...</div> to automatically scale text to fit its container. Use standard CSS flexbox/grid for complex or premium layouts.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "html": {"type": "string"},
-                    "x": {"type": "integer"},
-                    "y": {"type": "integer"},
-                    "width": {"type": ["integer", "string"], "description": "Strict bounding box width. Use '100%' to fill the canvas."},
-                    "height": {"type": ["integer", "string"], "description": "Strict bounding box height. Use '100%' to fill the canvas."},
-                    "pageIndex": {"type": "integer", "default": 0}
+                    "html": {"type": "string"}
                 },
-                "required": ["html", "x", "y", "width", "height"]
+                "required": ["html"]
             }
         }
     },
@@ -491,18 +486,12 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         })
         return f"{args['type']} added."
 
-    elif name == "add_html_element":
-        canvas_state.setdefault("items", []).append({
-            "id": str(uuid.uuid4()),
-            "type": "html",
-            "html": args["html"],
-            "x": args.get("x", 0),
-            "y": args.get("y", 0),
-            "width": args.get("width", cw),
-            "height": args.get("height", ch),
-            "pageIndex": args.get("pageIndex", 0)
-        })
-        return "HTML element added."
+    elif name == "set_html_design":
+        canvas_state["designMode"] = "html"
+        canvas_state["htmlContent"] = args["html"]
+        canvas_state["items"] = []
+        canvas_state["currentPage"] = 0
+        return "Switched to HTML design mode and applied layout."
 
     elif name == "set_batch_records":
         records = list(args.get("variables_list", []) or [])
@@ -664,7 +653,9 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
     elif name == "clear_canvas":
         canvas_state["items"] = []
         canvas_state["currentPage"] = 0
-        return "Canvas cleared."
+        canvas_state["designMode"] = "canvas"
+        canvas_state["htmlContent"] = ""
+        return "Canvas cleared and reset to WYSIWYG mode."
 
     elif name == "trigger_ui_action":
         canvas_state.setdefault("__actions__", []).append({

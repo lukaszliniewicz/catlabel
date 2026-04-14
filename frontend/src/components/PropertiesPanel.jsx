@@ -128,7 +128,7 @@ const ToggleBtn = ({ icon: Icon, active, onClick, label }) => (
 );
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence, designMode, setDesignMode, htmlContent, setHtmlContent } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
   const isPreCut = selectedPrinterInfo?.media_type === 'pre-cut';
   const pInfo = selectedPrinterInfo || {};
@@ -150,8 +150,8 @@ export default function PropertiesPanel() {
   
   // Automatically switch tabs based on selection
   useEffect(() => {
-    if (selectedItem) setActiveTab('element');
-  }, [selectedId]);
+    if (selectedItem || designMode === 'html') setActiveTab('element');
+  }, [selectedId, selectedItem, designMode]);
 
   // Local settings state for explicit DB saving
   const [localSettings, setLocalSettings] = useState(settings);
@@ -361,9 +361,9 @@ export default function PropertiesPanel() {
       <div className="flex border-b border-neutral-200 dark:border-neutral-800">
         <button 
           onClick={() => setActiveTab('element')}
-          disabled={!selectedItem}
+          disabled={designMode !== 'html' && !selectedItem}
           className={`flex-1 flex justify-center py-4 transition-colors relative group
-            ${!selectedItem ? 'text-neutral-300 dark:text-neutral-700 cursor-not-allowed' : 
+            ${designMode !== 'html' && !selectedItem ? 'text-neutral-300 dark:text-neutral-700 cursor-not-allowed' : 
             activeTab === 'element' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
           `}
         >
@@ -407,6 +407,24 @@ export default function PropertiesPanel() {
         {/* === CANVAS & PRINTER TAB === */}
         {activeTab === 'canvas' && (
           <>
+            <div className="space-y-4">
+              <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Design Mode</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDesignMode('canvas')}
+                  className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest border ${designMode === 'canvas' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30' : 'bg-neutral-50 text-neutral-500 border-transparent dark:bg-neutral-900'}`}
+                >
+                  Canvas (WYSIWYG)
+                </button>
+                <button
+                  onClick={() => setDesignMode('html')}
+                  className={`flex-1 py-2 text-[10px] uppercase font-bold tracking-widest border ${designMode === 'html' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30' : 'bg-neutral-50 text-neutral-500 border-transparent dark:bg-neutral-900'}`}
+                >
+                  HTML/CSS
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Dimensions</h2>
               
@@ -613,8 +631,22 @@ export default function PropertiesPanel() {
         )}
 
         {/* === ELEMENT TAB === */}
-        {activeTab === 'element' && selectedItem && (
+        {activeTab === 'element' && (
           <>
+            {designMode === 'html' ? (
+              <div className="space-y-4 h-full flex flex-col">
+                <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">HTML Editor</h2>
+                <p className="text-[10px] text-neutral-500">
+                  Wrap text in <code>&lt;div class=&quot;auto-text&quot;&gt;</code> to automatically scale it to fit the container.
+                </p>
+                <textarea
+                  value={htmlContent}
+                  onChange={(e) => setHtmlContent(e.target.value)}
+                  className="w-full flex-1 bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm font-mono dark:text-white focus:outline-none focus:border-blue-500"
+                  placeholder="<div class='auto-text'>Hello World</div>"
+                />
+              </div>
+            ) : selectedItem && (
             <div className="space-y-4">
               <div>
                 <div className="grid grid-cols-3 gap-2">
@@ -948,6 +980,7 @@ export default function PropertiesPanel() {
                 Delete Item
               </button>
             </div>
+            )}
           </>
         )}
 

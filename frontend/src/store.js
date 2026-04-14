@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { toPng } from 'html-to-image';
 import { calculateAutoFitItem } from './utils/rendering';
 
 const recalcAutoFit = (items, batchRecords, cw, ch) => {
@@ -31,16 +32,39 @@ export const useStore = create((set, get) => ({
   isRotated: false,
   selectedPrinter: null,
   selectedPrinterInfo: null,
+  designMode: 'canvas',
+  htmlContent: '',
   showAiConfig: false,
   stageRef: null,
+  previewElementRef: null,
   setShowAiConfig: (val) => set({ showAiConfig: val }),
+  setDesignMode: (val) => set({ designMode: val }),
+  setHtmlContent: (val) => set({ htmlContent: val }),
   setStageRef: (ref) => {
     if (get().stageRef === ref) return;
     set({ stageRef: ref });
   },
-  getStageB64: () => {
-    const stage = get().stageRef;
-    const zoomScale = get().zoomScale || 1;
+  setPreviewElementRef: (ref) => {
+    if (get().previewElementRef === ref) return;
+    set({ previewElementRef: ref });
+  },
+  getStageB64: async () => {
+    const state = get();
+
+    if (state.designMode === 'html' && state.previewElementRef) {
+      try {
+        return await toPng(state.previewElementRef, {
+          pixelRatio: 1,
+          backgroundColor: 'white'
+        });
+      } catch (e) {
+        console.error('Failed to capture HTML preview', e);
+        return null;
+      }
+    }
+
+    const stage = state.stageRef;
+    const zoomScale = state.zoomScale || 1;
     return stage
       ? stage.toDataURL({ pixelRatio: 1 / Math.max(zoomScale, 0.1) })
       : null;
@@ -197,6 +221,8 @@ export const useStore = create((set, get) => ({
           canvasBorder: state.canvasBorder,
           canvasBorderThickness: state.canvasBorderThickness || 4,
           splitMode: state.splitMode,
+          designMode: state.designMode,
+          htmlContent: state.htmlContent,
           items: itemsToPrint
         }
       }
@@ -463,6 +489,7 @@ export const useStore = create((set, get) => ({
             width: state.canvasWidth, height: state.canvasHeight,
             isRotated: state.isRotated, canvasBorder: state.canvasBorder,
             canvasBorderThickness: thickness, splitMode: state.splitMode,
+            designMode: state.designMode, htmlContent: state.htmlContent,
             items: state.items, currentPage: state.currentPage,
             batchRecords, printCopies
           }
@@ -487,6 +514,7 @@ export const useStore = create((set, get) => ({
         width: state.canvasWidth, height: state.canvasHeight,
         isRotated: state.isRotated, canvasBorder: state.canvasBorder,
         canvasBorderThickness: thickness, splitMode: state.splitMode,
+        designMode: state.designMode, htmlContent: state.htmlContent,
         items: state.items, currentPage: state.currentPage,
         batchRecords, printCopies
       }
@@ -529,6 +557,8 @@ export const useStore = create((set, get) => ({
       canvasBorder: s.canvasBorder || 'none',
       canvasBorderThickness: s.canvasBorderThickness || 4,
       splitMode: s.splitMode || false,
+      designMode: s.designMode || 'canvas',
+      htmlContent: s.htmlContent || '',
       isRotated: s.isRotated || false,
       batchRecords,
       printCopies: s.printCopies || 1,
@@ -794,7 +824,7 @@ export const useStore = create((set, get) => ({
     selectedIds: [],
     selectedPagesForPrint: []
   })),
-  clearCanvas: () => set({ items: [], selectedId: null, selectedIds: [], currentPage: 0, selectedPagesForPrint: [], currentProjectId: null }),
+  clearCanvas: () => set({ items: [], selectedId: null, selectedIds: [], currentPage: 0, selectedPagesForPrint: [], currentProjectId: null, designMode: 'canvas', htmlContent: '' }),
   
   addItem: (item) => set((state) => ({
     items: [

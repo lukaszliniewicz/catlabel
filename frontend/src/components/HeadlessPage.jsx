@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Layer, Line, Rect, Stage } from 'react-konva';
+import { toPng } from 'html-to-image';
 import CanvasItemNode from './CanvasItemNode';
+import HtmlLabel from './HtmlLabel';
 
 const waitForPaint = () => new Promise((resolve) => {
   requestAnimationFrame(() => requestAnimationFrame(resolve));
@@ -32,9 +34,11 @@ const renderCanvasBorder = (canvasState) => {
 
 export default function HeadlessPage({ state, record, pageIndex, onReady, readyDelayMs = 500 }) {
   const stageRef = useRef(null);
+  const htmlRef = useRef(null);
   const items = state?.items || [];
   const width = Math.max(1, Number(state?.width) || 384);
   const height = Math.max(1, Number(state?.height) || 384);
+  const isHtmlMode = state?.designMode === 'html';
 
   const pageItems = useMemo(
     () => items.filter((item) => Number(item.pageIndex ?? 0) === pageIndex),
@@ -56,8 +60,25 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, readyD
 
       await waitForPaint();
 
-      timeoutId = window.setTimeout(() => {
-        if (!cancelled && stageRef.current) {
+      timeoutId = window.setTimeout(async () => {
+        if (cancelled) {
+          return;
+        }
+
+        if (isHtmlMode && htmlRef.current) {
+          try {
+            const dataUrl = await toPng(htmlRef.current, {
+              pixelRatio: 1,
+              backgroundColor: 'white'
+            });
+            onReady(dataUrl);
+          } catch (error) {
+            console.error('html-to-image failed', error);
+          }
+          return;
+        }
+
+        if (stageRef.current) {
           onReady(stageRef.current.toDataURL({ pixelRatio: 1 }));
         }
       }, readyDelayMs);
@@ -71,7 +92,22 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, readyD
         window.clearTimeout(timeoutId);
       }
     };
-  }, [onReady, pageItems, record, readyDelayMs, width, height, state?.canvasBorder, state?.canvasBorderThickness]);
+  }, [isHtmlMode, onReady, pageItems, record, readyDelayMs, state, width, height]);
+
+  if (isHtmlMode) {
+    return (
+      <div ref={htmlRef} style={{ width, height, position: 'relative', backgroundColor: 'white' }}>
+        <HtmlLabel
+          html={state?.htmlContent || ''}
+          record={record}
+          width={width}
+          height={height}
+          canvasBorder={state?.canvasBorder}
+          canvasBorderThickness={state?.canvasBorderThickness}
+        />
+      </div>
+    );
+  }
 
   return (
     <Stage ref={stageRef} width={width} height={height}>
