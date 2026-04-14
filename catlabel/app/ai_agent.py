@@ -4,10 +4,10 @@ import os
 import tempfile
 import logging
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional, Union
-from sqlmodel import Session, select
+from sqlmodel import Field, SQLModel, Session, select
 import litellm
 
 logger = logging.getLogger(__name__)
@@ -18,12 +18,27 @@ from .ai_tools import TOOLS_SCHEMA, execute_tool
 
 router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
 
+
+class AITraceLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    conversation_id: Optional[int] = Field(default=None, index=True)
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    model_used: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cost: float = 0.0
+    request_messages_json: str = "[]"
+    response_message_json: str = "{}"
+
+
 class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]]
     canvas_state: Dict[str, Any]
     mac_address: Optional[str] = None
     printer_info: Optional[Dict[str, Any]] = None
     current_canvas_b64: Optional[str] = None
+    conv_id: Optional[int] = None
+
 
 class ModelDTO(BaseModel):
     id: Optional[Union[int, str]] = None
@@ -32,6 +47,7 @@ class ModelDTO(BaseModel):
     vision_capable: bool
     reasoning_effort: str
     is_active: bool
+
 
 class ProviderDTO(BaseModel):
     id: Optional[Union[int, str]] = None
@@ -42,6 +58,7 @@ class ProviderDTO(BaseModel):
     use_env: bool
     vertex_region: str
     models: List[ModelDTO] = []
+
 
 def serialize_msg(msg) -> Dict[str, Any]:
     if hasattr(msg, "model_dump"): d = msg.model_dump(exclude_none=True)
@@ -95,6 +112,7 @@ def get_providers():
             ]
             result.append(provider_dict)
         return result
+
 
 @router.post("/config")
 def save_provider(payload: ProviderDTO):
@@ -165,6 +183,7 @@ def save_provider(payload: ProviderDTO):
 
         return {"status": "ok", "id": provider.id}
 
+
 @router.delete("/config/{provider_id}")
 def delete_provider(provider_id: int):
     from .server import engine
@@ -178,12 +197,14 @@ def delete_provider(provider_id: int):
             session.commit()
         return {"status": "ok"}
 
+
 @router.get("/history")
 def get_histories():
     from .server import engine
     with Session(engine) as session:
         convos = session.exec(select(AIConversation).order_by(AIConversation.updated_at.desc())).all()
         return [{"id": c.id, "title": c.title, "updated_at": c.updated_at} for c in convos]
+
 
 @router.get("/history/{conv_id}")
 def get_history(conv_id: int):
@@ -192,6 +213,31 @@ def get_history(conv_id: int):
         c = session.get(AIConversation, conv_id)
         if not c: raise HTTPException(status_code=404)
         return {"id": c.id, "title": c.title, "messages": json.loads(c.messages_json)}
+
+
+@router.get("/history/{conv_id}/trace")
+def get_history_trace(conv_id: int):
+    from .server import engine
+    with Session(engine) as session:
+        traces = session.exec(
+            select(AITraceLog)
+            .where(AITraceLog.conversation_id == conv_id)
+            .order_by(AITraceLog.id.asc())
+        ).all()
+        return [
+            {
+                "id": t.id,
+                "timestamp": t.timestamp.isoformat(),
+                "model_used": t.model_used,
+                "prompt_tokens": t.prompt_tokens,
+                "completion_tokens": t.completion_tokens,
+                "cost": t.cost,
+                "request_messages": json.loads(t.request_messages_json),
+                "response_message": json.loads(t.response_message_json),
+            }
+            for t in traces
+        ]
+
 
 @router.post("/history")
 def create_history(data: dict):
@@ -204,6 +250,7 @@ def create_history(data: dict):
         session.commit()
         session.refresh(c)
         return {"id": c.id}
+
 
 @router.put("/history/{conv_id}")
 def update_history(conv_id: int, data: dict):
@@ -218,6 +265,7 @@ def update_history(conv_id: int, data: dict):
         session.commit()
         return {"status": "ok"}
 
+
 @router.delete("/history/{conv_id}")
 def delete_history(conv_id: int):
     from .server import engine
@@ -225,8 +273,16 @@ def delete_history(conv_id: int):
         c = session.get(AIConversation, conv_id)
         if c:
             session.delete(c)
+
+            traces = session.exec(
+                select(AITraceLog).where(AITraceLog.conversation_id == conv_id)
+            ).all()
+            for t in traces:
+                session.delete(t)
+
             session.commit()
         return {"status": "ok"}
+
 
 @router.post("/chat")
 def chat_with_agent(req: ChatRequest):
@@ -274,7 +330,6 @@ def chat_with_agent(req: ChatRequest):
 
     media_pref = context.get('intended_media_type', 'unknown')
 
-    # Determine the strict media constraint for the AI
     p_media = "unknown"
     printer_transport = (req.printer_info or {}).get("transport")
 
@@ -316,6 +371,9 @@ AVAILABLE PRESETS (Use apply_preset):
 
 AVAILABLE TEMPLATES (Use apply_template):
 {templates_json}
+
+READABILITY & SIZING (CRITICAL):
+ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Text elements, icons, and custom HTML MUST be made as large as physically possible to fill the available space. Never use small font sizes (like 12px or 14px) on small labels. If using custom HTML, ensure text heavily scales up (e.g., using 'cqw/cqh' units, 'vw/vh', or large percentages) so it is highly legible from a distance. Never leave empty space if elements can be safely scaled up.
 
 CRITICAL LAYOUT STRATEGY (WYSIWYG SYNERGY):
 For NEW labels, you MUST use `apply_template` passing the exact `template_id` and filling the `params` object based on the fields listed above.
@@ -374,7 +432,7 @@ Action (All in one turn):
             break
 
     try:
-        MAX_ITERATIONS = 15
+        MAX_ITERATIONS = 20
         MAX_VISUAL_FEEDBACKS = 3
         iteration = 0
         visual_feedback_count = 0
@@ -387,28 +445,58 @@ Action (All in one turn):
         logger.info("Starting LLM Agent loop using model: %s", kwargs.get("model"))
 
         while iteration < MAX_ITERATIONS:
+            if iteration == MAX_ITERATIONS - 1:
+                logger.warning("Agent reached maximum iterations (20). Forcing graceful termination.")
+                messages.append({
+                    "role": "system",
+                    "content": "SYSTEM WARNING: You have reached the maximum number of tool execution turns allowed (20). You cannot use tools anymore in this session. Summarize what you have done so far, explain what is left, and ask the user if they want you to continue."
+                })
+                kwargs.pop("tools", None)
+                kwargs.pop("tool_choice", None)
+
             iteration += 1
 
             response = litellm.completion(messages=messages, **kwargs)
 
+            call_prompt_tokens = 0
+            call_completion_tokens = 0
+            call_cost_val = 0.0
+
             usage = getattr(response, "usage", None)
             if usage:
                 if isinstance(usage, dict):
-                    total_prompt_tokens += int(usage.get("prompt_tokens", 0) or 0)
-                    total_completion_tokens += int(usage.get("completion_tokens", 0) or 0)
+                    call_prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+                    call_completion_tokens = int(usage.get("completion_tokens", 0) or 0)
                 else:
-                    total_prompt_tokens += int(getattr(usage, "prompt_tokens", 0) or 0)
-                    total_completion_tokens += int(getattr(usage, "completion_tokens", 0) or 0)
+                    call_prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+                    call_completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+
+                total_prompt_tokens += call_prompt_tokens
+                total_completion_tokens += call_completion_tokens
 
             try:
-                call_cost = litellm.completion_cost(completion_response=response)
-                if call_cost:
-                    total_cost += float(call_cost)
+                call_cost_val = float(litellm.completion_cost(completion_response=response) or 0.0)
+                total_cost += call_cost_val
             except Exception:
                 pass
 
             resp_msg = response.choices[0].message
             resp_dict = serialize_msg(resp_msg)
+
+            if req.conv_id is not None:
+                from .server import engine
+                with Session(engine) as session:
+                    trace_log = AITraceLog(
+                        conversation_id=req.conv_id,
+                        model_used=getattr(response, "model", kwargs.get("model", "")) if response is not None else kwargs.get("model", ""),
+                        prompt_tokens=call_prompt_tokens,
+                        completion_tokens=call_completion_tokens,
+                        cost=call_cost_val,
+                        request_messages_json=json.dumps(messages),
+                        response_message_json=json.dumps(resp_dict),
+                    )
+                    session.add(trace_log)
+                    session.commit()
 
             messages.append(resp_dict)
             new_messages.append(resp_dict)

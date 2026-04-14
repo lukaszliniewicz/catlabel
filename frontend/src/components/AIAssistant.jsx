@@ -65,7 +65,7 @@ export default function AIAssistant() {
     setHistories(data);
   };
 
-  const handleCopyHistory = () => {
+  const handleCopyHistory = async () => {
     let out = `# CatLabel AI Session Debug Report\n\n`;
     out += `**Session Tokens:** ${(sessionUsage.tokens || 0).toLocaleString()}\n`;
     out += `**Prompt Tokens:** ${(sessionUsage.promptTokens || 0).toLocaleString()}\n`;
@@ -73,44 +73,60 @@ export default function AIAssistant() {
     out += `**Estimated Cost:** $${Number(sessionUsage.cost || 0).toFixed(4)}\n\n`;
     out += `---\n\n`;
 
-    messages.forEach((m) => {
-      out += `### [${m.role.toUpperCase()}]\n\n`;
-
-      if (m.role !== 'tool' && m.content) {
-        if (typeof m.content === 'string') {
-          out += `${m.content}\n\n`;
-        } else if (Array.isArray(m.content)) {
-          const textContent = m.content.find((c) => c.type === 'text')?.text || '';
-          out += `${textContent}\n\n*[Base64 Image Attached]*\n\n`;
+    try {
+      if (currentConvId) {
+        const res = await fetch(`/api/ai/history/${currentConvId}/trace`);
+        if (res.ok) {
+          const traces = await res.json();
+          out += `## RAW LLM TRACES (Database Logs)\n\n`;
+          out += "```json\n" + JSON.stringify(traces, null, 2) + "\n```\n\n";
+          out += `---\n\n`;
         }
       }
 
-      if (m.tool_calls && m.tool_calls.length > 0) {
-        m.tool_calls.forEach((tc) => {
-          out += `**Tool Call:** \`${tc.function?.name || 'unknown'}\`\n\n`;
-          out += "```json\n";
-          try {
-            const parsedArgs = JSON.parse(tc.function?.arguments || '{}');
-            out += `${JSON.stringify(parsedArgs, null, 2)}\n`;
-          } catch (e) {
-            out += `${tc.function?.arguments || ''}\n`;
+      out += `## UI MESSAGE HISTORY\n\n`;
+      messages.forEach((m) => {
+        out += `### [${m.role.toUpperCase()}]\n\n`;
+
+        if (m.role !== 'tool' && m.content) {
+          if (typeof m.content === 'string') {
+            out += `${m.content}\n\n`;
+          } else if (Array.isArray(m.content)) {
+            const textContent = m.content.find((c) => c.type === 'text')?.text || '';
+            out += `${textContent}\n\n*[Base64 Image Attached]*\n\n`;
           }
-          out += "```\n\n";
-        });
-      }
+        }
 
-      if (m.role === 'tool') {
-        out += `> **Tool Result:**\n`;
-        out += `> ${(m.content || '').replace(/\n/g, '\n> ')}\n\n`;
-      }
-    });
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          m.tool_calls.forEach((tc) => {
+            out += `**Tool Call:** \`${tc.function?.name || 'unknown'}\`\n\n`;
+            out += "```json\n";
+            try {
+              const parsedArgs = JSON.parse(tc.function?.arguments || '{}');
+              out += `${JSON.stringify(parsedArgs, null, 2)}\n`;
+            } catch (e) {
+              out += `${tc.function?.arguments || ''}\n`;
+            }
+            out += "```\n\n";
+          });
+        }
 
-    navigator.clipboard.writeText(out);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+        if (m.role === 'tool') {
+          out += `> **Tool Result:**\n`;
+          out += `> ${(m.content || '').replace(/\n/g, '\n> ')}\n\n`;
+        }
+      });
+
+      await navigator.clipboard.writeText(out);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error("Copy failed", e);
+      alert("Failed to copy trace logs to clipboard.");
+    }
   };
 
-  const saveConversation = async (msgs, convId = currentConvId) => {
+  const saveConversation = async (msgs, convId) => {
     try {
       if (convId) {
         await fetch(`/api/ai/history/${convId}`, {
@@ -118,16 +134,6 @@ export default function AIAssistant() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: msgs })
         });
-      } else {
-        const title = msgs.length > 1 ? msgs[1].content.substring(0, 30) + '...' : 'New Conversation';
-        const res = await fetch('/api/ai/history', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, messages: msgs })
-        });
-        const data = await res.json();
-        setCurrentConvId(data.id);
-        fetchHistories();
       }
     } catch (e) {
       console.error("Failed to save AI history", e);
@@ -151,10 +157,31 @@ export default function AIAssistant() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
+    
+    setLoading(true);
+
+    // Eagerly create the conversation in the DB so we have a conv_id for the backend trace logger
+    let activeConvId = currentConvId;
+    if (!activeConvId) {
+        try {
+            const title = input.substring(0, 30) + '...';
+            const res = await fetch('/api/ai/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, messages: messages })
+            });
+            const data = await res.json();
+            activeConvId = data.id;
+            setCurrentConvId(data.id);
+            fetchHistories();
+        } catch (e) {
+            console.error("Failed to eagerly create conversation", e);
+        }
+    }
+
     const newMessages = [...messages, { role: 'user', content: input }];
     setMessages(newMessages);
     setInput('');
-    setLoading(true);
 
     const currentState = {
       width: canvasWidth,
@@ -181,7 +208,8 @@ export default function AIAssistant() {
            canvas_state: currentState,
            mac_address: selectedPrinter || null,
            printer_info: selectedPrinterInfo || null,
-           current_canvas_b64: b64Image ? b64Image.split(',')[1] : null
+           current_canvas_b64: b64Image ? b64Image.split(',')[1] : null,
+           conv_id: activeConvId
         })
       });
       
@@ -192,7 +220,7 @@ export default function AIAssistant() {
       } else if (data.new_messages) {
         const finalMessages = [...newMessages, ...data.new_messages];
         setMessages(finalMessages);
-        saveConversation(finalMessages, currentConvId);
+        saveConversation(finalMessages, activeConvId);
 
         if (data.usage) {
           setSessionUsage(prev => ({
@@ -246,7 +274,6 @@ export default function AIAssistant() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-neutral-950">
-      {/* Inline styles for markdown to keep it zero-config */}
       <style dangerouslySetInnerHTML={{__html: `
         .markdown-body p { margin-bottom: 0.75rem; }
         .markdown-body p:last-child { margin-bottom: 0; }
@@ -270,7 +297,7 @@ export default function AIAssistant() {
           <button onClick={() => setShowHistory(!showHistory)} className={`p-1.5 transition-colors ${showHistory ? 'text-blue-500' : 'text-neutral-400 hover:text-neutral-900 dark:hover:text-white'}`} title="Chat History">
             <History size={16} />
           </button>
-          <button onClick={handleCopyHistory} className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors" title="Copy Chat History">
+          <button onClick={handleCopyHistory} className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors" title="Copy Raw Session Trace">
             {copied ? <Check size={16} className="text-green-500"/> : <Copy size={16} />}
           </button>
           <button onClick={() => setShowAiConfig(true)} className="p-1.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors" title="AI Settings">
