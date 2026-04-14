@@ -54,14 +54,14 @@ export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHe
       verticalAlign: 'middle',
       fit_to_width: true
     };
-    updated = calculateAutoFitItem(updated, useStore.getState().batchRecords);
+    updated = calculateAutoFitItem(updated, useStore.getState().batchRecords, canvasWidth, canvasHeight);
     updateItem(item.id, updated);
   };
 
   const handleFitBox = () => {
     let updated = { ...item, fit_to_width: !item.fit_to_width };
     if (updated.fit_to_width) {
-      updated = calculateAutoFitItem(updated, useStore.getState().batchRecords);
+      updated = calculateAutoFitItem(updated, useStore.getState().batchRecords, canvasWidth, canvasHeight);
     }
     updateItem(item.id, updated);
   };
@@ -107,7 +107,7 @@ export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHe
           updateItem(
             item.id,
             next.fit_to_width
-              ? calculateAutoFitItem(next, useStore.getState().batchRecords)
+              ? calculateAutoFitItem(next, useStore.getState().batchRecords, canvasWidth, canvasHeight)
               : next
           );
         }}

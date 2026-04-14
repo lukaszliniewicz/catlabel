@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Konva from 'konva';
 import bwipjs from 'bwip-js';
 import QRCode from 'qrcode';
 
@@ -100,121 +101,129 @@ export const useCodeGenerator = (type, data, barcodeType) => {
   return src;
 };
 
-const measureWrappedText = (ctx, text, maxWidth) => {
-  const lines = [];
-  const paragraphs = String(text).split('\n');
-  let maxLineWidth = 0;
-
-  for (const paragraph of paragraphs) {
-    const words = paragraph.split(' ');
-    let currentLine = words[0] || '';
-
-    for (let i = 1; i < words.length; i++) {
-      const word = words[i];
-      const testLine = `${currentLine} ${word}`;
-      const metrics = ctx.measureText(testLine);
-
-      if (metrics.width > maxWidth) {
-        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = testLine;
-      }
-    }
-
-    maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
-    lines.push(currentLine);
+export const resolveDim = (dim, maxDim) => {
+  if (typeof dim === 'string' && dim.endsWith('%')) {
+    return (parseFloat(dim) / 100) * maxDim;
   }
-
-  return { lines, maxLineWidth };
+  return Number(dim) || 0;
 };
 
-export const calculateAutoFitItem = (item, batchRecords = [{}]) => {
-  if (!item?.fit_to_width || item.type !== 'text') return item;
-
-  const records = Array.isArray(batchRecords) && batchRecords.length > 0
-    ? batchRecords
-    : [{}];
-  const strings = records.map((record) => applyVars(item.text, record) || '');
-  const uniqueStrings = [...new Set(strings)];
-  uniqueStrings.sort((a, b) => b.length - a.length);
-
-  const stringsToTest = uniqueStrings
-    .filter((value) => String(value).length > 0)
-    .slice(0, 10);
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return item;
-
-  const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+export const computeOptimalTextSize = (baseItem, textToFit, targetWidth, targetHeight) => {
+  const fontFamily = baseItem.font ? baseItem.font.split('.')[0] : 'Arial';
   const fontStyleAttr = [
-    item.italic ? 'italic' : '',
-    item.weight || 700
+    baseItem.italic ? 'italic' : '',
+    baseItem.weight || 700
   ].filter(Boolean).join(' ');
 
-  const pad = item.padding !== undefined ? Number(item.padding) : 0;
-  const targetWidth = Math.max(10, (item.width || 100) - (pad * 2));
-  const targetHeight = Math.max(10, (item.height || 50) - (pad * 2));
-  const safeWidth = Math.max(10, targetWidth - 2);
+  let low = 6;
+  let high = 800;
+  let bestSize = baseItem.size || 24;
 
-  let overallBestSize = null;
+  const textNode = new Konva.Text({
+    text: textToFit,
+    fontFamily,
+    fontStyle: fontStyleAttr,
+    wrap: baseItem.no_wrap ? 'none' : 'word',
+    lineHeight: baseItem.lineHeight ?? (String(textToFit).includes('\n') ? 1.15 : 1),
+    padding: baseItem.padding !== undefined ? Number(baseItem.padding) : 0,
+  });
 
-  for (const actualText of stringsToTest) {
-    let low = 6;
-    let high = 800;
-    let bestSize = item.size || 24;
+  while (high - low >= 0.5) {
+    const mid = (low + high) / 2;
+    textNode.fontSize(mid);
 
-    while (high - low >= 0.1) {
-      const mid = (low + high) / 2;
-      ctx.font = `${fontStyleAttr} ${mid}px "${fontFamily}"`;
-      const italicBleed = item.italic ? (mid * 0.15) : 0;
-
-      let fits = false;
-
-      if (item.no_wrap) {
-        const lines = String(actualText).split('\n');
-        let maxLineWidth = 0;
-
-        for (const line of lines) {
-          maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
-        }
-
-        const actualLineHeight = item.lineHeight ?? (lines.length > 1 ? 1.15 : 1);
-        const textBlockHeight = mid * actualLineHeight * lines.length;
-        fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
-      } else {
-        const { lines: wrappedLines, maxLineWidth } = measureWrappedText(
-          ctx,
-          actualText,
-          safeWidth - italicBleed
-        );
-
-        const actualLineHeight = item.lineHeight ?? (wrappedLines.length > 1 ? 1.15 : 1);
-        const textBlockHeight = mid * actualLineHeight * wrappedLines.length;
-        fits = maxLineWidth + italicBleed <= safeWidth && textBlockHeight <= targetHeight;
-      }
-
-      if (fits) {
-        bestSize = mid;
-        low = mid + 0.1;
-      } else {
-        high = mid - 0.1;
-      }
+    if (!baseItem.no_wrap) {
+      textNode.width(targetWidth);
+    } else {
+      textNode.width(undefined);
     }
 
-    if (overallBestSize === null || bestSize < overallBestSize) {
-      overallBestSize = bestSize;
+    const metrics = textNode.getClientRect();
+    const italicBleed = baseItem.italic ? (mid * 0.15) : 0;
+
+    if (metrics.width + italicBleed <= targetWidth && metrics.height <= targetHeight) {
+      bestSize = mid;
+      low = mid + 0.5;
+    } else {
+      high = mid - 0.5;
     }
   }
 
-  if (overallBestSize === null) {
-    overallBestSize = item.size || 24;
+  textNode.destroy();
+  return Math.floor(bestSize * 10) / 10;
+};
+
+export const calculateAutoFitItem = (item, batchRecords = [{}], canvasWidth = 384, canvasHeight = 384) => {
+  if (!item?.fit_to_width) return item;
+  if (item.batch_scale_mode === 'individual') return item;
+
+  const records = Array.isArray(batchRecords) && batchRecords.length > 0 ? batchRecords : [{}];
+  const strings = records.map((record) => applyVars(item.text, record) || '');
+  const uniqueStrings = [...new Set(strings)].sort((a, b) => b.length - a.length);
+  const stringsToTest = uniqueStrings.filter((value) => String(value).length > 0).slice(0, 10);
+
+  const resolvedW = resolveDim(item.width || 100, canvasWidth);
+  const resolvedH = resolveDim(item.height || 50, canvasHeight);
+
+  if (item.type === 'text') {
+    const pad = item.padding !== undefined ? Number(item.padding) : 0;
+    const targetWidth = Math.max(10, resolvedW - (pad * 2));
+    const targetHeight = Math.max(10, resolvedH - (pad * 2));
+
+    let overallBestSize = null;
+    for (const actualText of stringsToTest) {
+      const bestSize = computeOptimalTextSize(item, actualText, targetWidth, targetHeight);
+      if (overallBestSize === null || bestSize < overallBestSize) {
+        overallBestSize = bestSize;
+      }
+    }
+
+    return { ...item, size: overallBestSize || item.size };
   }
 
-  return {
-    ...item,
-    size: Math.floor(overallBestSize * 10) / 10
-  };
+  if (item.type === 'icon_text') {
+    let overallBestScale = null;
+
+    for (const actualText of stringsToTest) {
+      const textNode = new Konva.Text({
+        text: actualText,
+        fontFamily: item.font ? item.font.split('.')[0] : 'Arial',
+        fontStyle: (item.weight || 700).toString(),
+        fontSize: 100,
+      });
+      const tWidth = textNode.getClientRect().width;
+      textNode.destroy();
+
+      const baseRatio = item.icon_size / item.size;
+      const testIconSize = 100 * baseRatio;
+      const testGap = Math.max(4, 100 * 0.08);
+      const totalW = testIconSize + testGap + tWidth;
+
+      const scaleToFitWidth = resolvedW / totalW;
+      const scaleToFitHeight = resolvedH / Math.max(testIconSize, 100);
+
+      const bestScale = Math.min(scaleToFitWidth, scaleToFitHeight);
+      if (overallBestScale === null || bestScale < overallBestScale) {
+        overallBestScale = bestScale;
+      }
+    }
+
+    if (overallBestScale) {
+      const newSize = Math.floor(100 * overallBestScale * 10) / 10;
+      const newIconSize = Math.floor(100 * (item.icon_size / item.size) * overallBestScale * 10) / 10;
+      const GAP = Math.max(4, newSize * 0.08);
+      const newH = Math.max(newIconSize, newSize);
+
+      return {
+        ...item,
+        size: newSize,
+        icon_size: newIconSize,
+        icon_y: (newH - newIconSize) / 2,
+        text_x: newIconSize + GAP,
+        text_y: (newH / 2) - ((newSize * 0.71) / 2),
+      };
+    }
+  }
+
+  return item;
 };

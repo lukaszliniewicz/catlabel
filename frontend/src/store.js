@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { calculateAutoFitItem } from './utils/rendering';
 
-const recalcAutoFit = (items, batchRecords) => {
+const recalcAutoFit = (items, batchRecords, cw, ch) => {
   let changed = false;
 
   const nextItems = items.map((item) => {
-    if (item.type === 'text' && item.fit_to_width) {
-      const optimizedItem = calculateAutoFitItem(item, batchRecords);
+    if (item.fit_to_width) {
+      const optimizedItem = calculateAutoFitItem(item, batchRecords, cw, ch);
       if (optimizedItem.size !== item.size) {
         changed = true;
         return optimizedItem;
@@ -274,7 +274,7 @@ export const useStore = create((set, get) => ({
     const validRecords = Array.isArray(records) && records.length ? records : [{}];
     return {
       batchRecords: validRecords,
-      items: recalcAutoFit(state.items, validRecords)
+      items: recalcAutoFit(state.items, validRecords, state.canvasWidth, state.canvasHeight)
     };
   }),
   generateBatchMatrix: (matrixDef) => set((state) => {
@@ -310,7 +310,7 @@ export const useStore = create((set, get) => ({
     const validRecords = records.length ? records : [{}];
     return {
       batchRecords: validRecords,
-      items: recalcAutoFit(state.items, validRecords)
+      items: recalcAutoFit(state.items, validRecords, state.canvasWidth, state.canvasHeight)
     };
   }),
   generateBatchSequence: (seqDef) => set((state) => {
@@ -331,7 +331,7 @@ export const useStore = create((set, get) => ({
     const validRecords = records.length ? records : [{}];
     return {
       batchRecords: validRecords,
-      items: recalcAutoFit(state.items, validRecords)
+      items: recalcAutoFit(state.items, validRecords, state.canvasWidth, state.canvasHeight)
     };
   }),
   updateBatchRecord: (index, newRecord) => set((state) => {
@@ -339,14 +339,14 @@ export const useStore = create((set, get) => ({
     newRecords[index] = newRecord;
     return {
       batchRecords: newRecords,
-      items: recalcAutoFit(state.items, newRecords)
+      items: recalcAutoFit(state.items, newRecords, state.canvasWidth, state.canvasHeight)
     };
   }),
   addBatchRecord: (record = {}) => set((state) => {
     const newRecords = [...state.batchRecords, record];
     return {
       batchRecords: newRecords,
-      items: recalcAutoFit(state.items, newRecords)
+      items: recalcAutoFit(state.items, newRecords, state.canvasWidth, state.canvasHeight)
     };
   }),
   removeBatchRecord: (index) => set((state) => {
@@ -354,7 +354,7 @@ export const useStore = create((set, get) => ({
     const validRecords = newRecords.length ? newRecords : [{}];
     return {
       batchRecords: validRecords,
-      items: recalcAutoFit(state.items, validRecords)
+      items: recalcAutoFit(state.items, validRecords, state.canvasWidth, state.canvasHeight)
     };
   }),
   setPrintCopies: (n) => set({
@@ -517,7 +517,7 @@ export const useStore = create((set, get) => ({
       batchRecords,
       printCopies: s.printCopies || 1,
       currentPage: s.currentPage || 0,
-      items: recalcAutoFit(s.items || [], batchRecords),
+      items: recalcAutoFit(s.items || [], batchRecords, s.width || 384, s.height || 384),
       selectedId: null,
       selectedIds: [],
       selectedPagesForPrint: []
@@ -556,13 +556,16 @@ export const useStore = create((set, get) => ({
     const heightMm = preset.height_mm ?? preset.h ?? 48;
     const isRotated = preset.is_rotated ?? preset.rotated ?? false;
     const splitMode = preset.split_mode ?? preset.splitMode ?? false;
+    const nextCanvasWidth = state.getMmToPx(widthMm);
+    const nextCanvasHeight = state.getMmToPx(heightMm);
 
     return {
-      canvasWidth: state.getMmToPx(widthMm),
-      canvasHeight: state.getMmToPx(heightMm),
+      canvasWidth: nextCanvasWidth,
+      canvasHeight: nextCanvasHeight,
       isRotated,
       splitMode,
-      canvasBorder: preset.border || 'none'
+      canvasBorder: preset.border || 'none',
+      items: recalcAutoFit(state.items, state.batchRecords, nextCanvasWidth, nextCanvasHeight)
     };
   }),
   
@@ -629,7 +632,12 @@ export const useStore = create((set, get) => ({
 
   setIsRotated: (val) => set((state) => {
     if (val !== state.isRotated) {
-      return { isRotated: val, canvasWidth: state.canvasHeight, canvasHeight: state.canvasWidth };
+      return {
+        isRotated: val,
+        canvasWidth: state.canvasHeight,
+        canvasHeight: state.canvasWidth,
+        items: recalcAutoFit(state.items, state.batchRecords, state.canvasHeight, state.canvasWidth)
+      };
     }
     return { isRotated: val };
   }),
@@ -764,7 +772,12 @@ export const useStore = create((set, get) => ({
     }
   }, // <-- The syntax error is fixed right here
   
-  setItems: (items) => set({ items, selectedId: null, selectedIds: [], selectedPagesForPrint: [] }),
+  setItems: (items) => set((state) => ({
+    items: recalcAutoFit(items, state.batchRecords, state.canvasWidth, state.canvasHeight),
+    selectedId: null,
+    selectedIds: [],
+    selectedPagesForPrint: []
+  })),
   clearCanvas: () => set({ items: [], selectedId: null, selectedIds: [], currentPage: 0, selectedPagesForPrint: [], currentProjectId: null }),
   
   addItem: (item) => set((state) => ({
@@ -829,8 +842,8 @@ export const useStore = create((set, get) => ({
     const newItems = state.items.map((item) => {
       if (item.id === id) {
         const updatedItem = { ...item, ...newAttrs };
-        if (updatedItem.type === 'text' && updatedItem.fit_to_width) {
-          return calculateAutoFitItem(updatedItem, state.batchRecords);
+        if (updatedItem.fit_to_width) {
+          return calculateAutoFitItem(updatedItem, state.batchRecords, state.canvasWidth, state.canvasHeight);
         }
         return updatedItem;
       }
@@ -1052,5 +1065,9 @@ export const useStore = create((set, get) => ({
     return { items: newItems };
   }),
   
-  setCanvasSize: (width, height) => set({ canvasWidth: width, canvasHeight: height }),
+  setCanvasSize: (width, height) => set((state) => ({
+    canvasWidth: width,
+    canvasHeight: height,
+    items: recalcAutoFit(state.items, state.batchRecords, width, height)
+  })),
 }));

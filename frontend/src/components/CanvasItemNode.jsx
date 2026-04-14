@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from 'react-konva';
-import { applyVars, calculateAutoFitItem, useCodeGenerator } from '../utils/rendering';
+import { applyVars, calculateAutoFitItem, computeOptimalTextSize, resolveDim, useCodeGenerator } from '../utils/rendering';
 import { useStore } from '../store';
 import { LABEL_TEMPLATE_STYLES, buildLabelTemplateMarkup } from './templateStyles';
 
@@ -45,19 +45,21 @@ const CodeImage = ({ type, data, barcodeType, width, height }) => {
   return <URLImage src={src} width={width} height={height} />;
 };
 
-const getVisualMetrics = (item, substitutedText) => {
+const getVisualMetrics = (item, substitutedText, canvasWidth, canvasHeight) => {
   const textValue = substitutedText || '';
   const lineCount = textValue ? String(textValue).split('\n').length : 1;
   const pad = item.padding !== undefined ? Number(item.padding) : 0;
   const actualLineHeight = item.lineHeight ?? (lineCount > 1 ? 1.15 : 1);
-  const approxHeight = item.height || (
+
+  const visualW = resolveDim(item.width || 100, canvasWidth);
+  const approxHeight = resolveDim(item.height, canvasHeight) || (
     item.type === 'text'
       ? (item.size * actualLineHeight * lineCount) + (pad * 2)
       : 50
   );
 
   return {
-    visualW: item.width || 100,
+    visualW,
     approxHeight,
     pad,
     lineCount,
@@ -106,9 +108,19 @@ export default function CanvasItemNode({
   const substitutedCustomHtml = applyVars(item.custom_html, record);
   const substitutedData = applyVars(item.data, record);
 
-  const { visualW, approxHeight, actualLineHeight, pad: activePad } = getVisualMetrics(item, substitutedText);
+  const { visualW, approxHeight, actualLineHeight, pad: activePad } = getVisualMetrics(item, substitutedText, canvasWidth, canvasHeight);
   const groupRef = useRef(null);
 
+  let activeItem = item;
+  if (item.type === 'text' && item.fit_to_width && item.batch_scale_mode === 'individual') {
+    const targetWidth = Math.max(10, visualW - (activePad * 2));
+    const targetHeight = Math.max(10, approxHeight - (activePad * 2));
+    const dynamicSize = computeOptimalTextSize(item, substitutedText, targetWidth, targetHeight);
+    activeItem = { ...item, size: dynamicSize };
+  }
+
+  const resolvedX = resolveDim(activeItem.x, canvasWidth);
+  const resolvedY = resolveDim(activeItem.y, canvasHeight);
 
   const commonProps = interactive
     ? {
@@ -149,9 +161,9 @@ export default function CanvasItemNode({
         }
       }
     : {
-        x: item.x,
-        y: item.y,
-        rotation: item.rotation || 0
+        x: resolvedX,
+        y: resolvedY,
+        rotation: activeItem.rotation || 0
       };
 
   if (item.type === 'group') {
@@ -174,13 +186,13 @@ export default function CanvasItemNode({
   let element = null;
 
   if (item.type === 'text') {
-    const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
+    const fontFamily = activeItem.font ? activeItem.font.split('.')[0] : 'Arial';
     const fontStyleAttr = [
-      item.italic ? 'italic' : '',
-      item.weight || 700
+      activeItem.italic ? 'italic' : '',
+      activeItem.weight || 700
     ].filter(Boolean).join(' ') || 'normal';
-    const actualColor = item.color || (item.invert ? 'white' : 'black');
-    const actualBg = item.bgColor || (item.invert ? 'black' : (item.bg_white ? 'white' : 'transparent'));
+    const actualColor = activeItem.color || (activeItem.invert ? 'white' : 'black');
+    const actualBg = activeItem.bgColor || (activeItem.invert ? 'black' : (activeItem.bg_white ? 'white' : 'transparent'));
     const availWidth = Math.max(0, visualW - (activePad * 2));
     const availHeight = Math.max(0, approxHeight - (activePad * 2));
 
@@ -193,37 +205,37 @@ export default function CanvasItemNode({
           y={activePad}
           width={availWidth}
           height={availHeight}
-          align={item.align || 'center'}
-          verticalAlign={item.verticalAlign || 'middle'}
+          align={activeItem.align || 'center'}
+          verticalAlign={activeItem.verticalAlign || 'middle'}
           fontFamily={fontFamily}
           fontStyle={fontStyleAttr}
-          textDecoration={item.underline ? 'underline' : ''}
-          wrap={item.no_wrap ? 'none' : 'word'}
-          fontSize={item.size}
+          textDecoration={activeItem.underline ? 'underline' : ''}
+          wrap={activeItem.no_wrap ? 'none' : 'word'}
+          fontSize={activeItem.size}
           fill={isSelected ? '#2563eb' : actualColor}
           lineHeight={actualLineHeight}
         />
       </Group>
     );
   } else if (item.type === 'icon_text') {
-    const fontFamily = item.font ? item.font.split('.')[0] : 'Arial';
-    const capHeight = item.size * 0.71;
-    const konvaY = item.text_y + capHeight - (item.size * 0.76);
+    const fontFamily = activeItem.font ? activeItem.font.split('.')[0] : 'Arial';
+    const capHeight = activeItem.size * 0.71;
+    const konvaY = activeItem.text_y + capHeight - (activeItem.size * 0.76);
 
     element = (
       <Group>
-        <Group x={item.icon_x} y={item.icon_y}>
-          <URLImage src={item.icon_src} width={item.icon_size} height={item.icon_size} />
+        <Group x={activeItem.icon_x} y={activeItem.icon_y}>
+          <URLImage src={activeItem.icon_src} width={activeItem.icon_size} height={activeItem.icon_size} />
         </Group>
         <Text
           text={substitutedText}
-          x={item.text_x}
+          x={activeItem.text_x}
           y={konvaY}
-          width={item.width ? Math.max(0, item.width - item.text_x) : undefined}
-          align={item.align || 'left'}
-          fontSize={item.size}
+          width={activeItem.width ? Math.max(0, visualW - activeItem.text_x) : undefined}
+          align={activeItem.align || 'left'}
+          fontSize={activeItem.size}
           fontFamily={fontFamily}
-          fontStyle={(item.weight || 700).toString()}
+          fontStyle={(activeItem.weight || 700).toString()}
           fill={isSelected ? '#2563eb' : 'black'}
           padding={0}
         />

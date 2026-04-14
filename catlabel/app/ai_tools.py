@@ -154,8 +154,8 @@ TOOLS_SCHEMA = [
                     "text": {"type": "string"},
                     "x": {"type": "integer"},
                     "y": {"type": "integer"},
-                    "width": {"type": "integer", "description": "Strict bounding box width in px"},
-                    "height": {"type": "integer", "description": "Strict bounding box height in px"},
+                    "width": {"type": ["integer", "string"], "description": "Strict bounding box width. Use '100%' to fill the canvas."},
+                    "height": {"type": ["integer", "string"], "description": "Strict bounding box height. Use '100%' to fill the canvas."},
                     "size": {"type": "number", "default": 24, "description": "Target font size. Can be fractional (e.g., 24.5). Ignored if fit_to_width is true."},
                     "align": {"type": "string", "enum": ["left", "center", "right"], "default": "left"},
                     "weight": {"type": "integer", "default": 700},
@@ -165,6 +165,7 @@ TOOLS_SCHEMA = [
                     "bgColor": {"type": "string", "enum": ["transparent", "black", "white"], "default": "transparent"},
                     "rotation": {"type": "integer", "default": 0, "description": "Rotation in degrees (0-360)"},
                     "fit_to_width": {"type": "boolean", "default": True, "description": "CRITICAL: Auto-scales font to fit inside width/height bounding box"},
+                    "batch_scale_mode": {"type": "string", "enum": ["uniform", "individual"], "default": "uniform", "description": "If fit_to_width is true, 'uniform' matches the longest string in the batch. 'individual' scales each label independently."},
                     "pageIndex": {"type": "integer", "default": 0}
                 },
                 "required": ["text", "x", "y", "width", "height"]
@@ -202,8 +203,8 @@ TOOLS_SCHEMA = [
                     "html": {"type": "string"},
                     "x": {"type": "integer"},
                     "y": {"type": "integer"},
-                    "width": {"type": "integer"},
-                    "height": {"type": "integer"},
+                    "width": {"type": ["integer", "string"], "description": "Strict bounding box width. Use '100%' to fill the canvas."},
+                    "height": {"type": ["integer", "string"], "description": "Strict bounding box height. Use '100%' to fill the canvas."},
                     "pageIndex": {"type": "integer", "default": 0}
                 },
                 "required": ["html", "x", "y", "width", "height"]
@@ -473,6 +474,7 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
             "bgColor": args.get("bgColor", "transparent"),
             "rotation": args.get("rotation", 0),
             "fit_to_width": args.get("fit_to_width", True),
+            "batch_scale_mode": args.get("batch_scale_mode", "uniform"),
             "pageIndex": args.get("pageIndex", 0),
         })
         return "Text element added."

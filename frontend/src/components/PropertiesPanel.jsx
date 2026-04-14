@@ -247,12 +247,14 @@ export default function PropertiesPanel() {
 
   const handleFitToWidth = () => {
     if (!selectedItem || !selectedItem.text) return;
-    
+
     const optimized = calculateAutoFitItem(
       { ...selectedItem, fit_to_width: true },
-      batchRecords
+      batchRecords,
+      canvasWidth,
+      canvasHeight
     );
-    
+
     updateItem(selectedId, {
       size: optimized.size,
       fit_to_width: true
@@ -720,6 +722,12 @@ export default function PropertiesPanel() {
                     <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 cursor-pointer">
                       <input type="checkbox" name="fit_to_width" checked={selectedItem.fit_to_width || false} onChange={handleChange} /> Auto-Fit to Box
                     </label>
+                    {selectedItem.fit_to_width && (
+                      <label className="col-span-2 flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-500 cursor-pointer bg-neutral-50 dark:bg-neutral-900 p-2 border border-neutral-200 dark:border-neutral-800 mt-1">
+                        <input type="checkbox" checked={selectedItem.batch_scale_mode === 'individual'} onChange={(e) => updateItem(selectedId, { batch_scale_mode: e.target.checked ? 'individual' : 'uniform' })} />
+                        Scale Individually (Varies per record)
+                      </label>
+                    )}
                   </div>
                 </>
               )}
@@ -782,91 +790,9 @@ export default function PropertiesPanel() {
                     </button>
                   </div>
                   <div className="flex gap-2 mb-2 bg-neutral-50 dark:bg-neutral-900 p-1 border border-neutral-200 dark:border-neutral-800">
-                     <button onClick={() => {
-                        const GAP = Math.max(4, selectedItem.size * 0.08); // Tighter gap
-                        const newH = Math.max(selectedItem.icon_size, selectedItem.size);
-                        const iconY = (newH - selectedItem.icon_size)/2;
-                        const capHeight = selectedItem.size * 0.71;
-                        const textY = (newH / 2) - (capHeight / 2);
-                        
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
-                        const fontWeight = selectedItem.weight || 700;
-                        ctx.font = `${fontWeight} ${selectedItem.size}px "${fontFamily}"`;
-                        const textW = ctx.measureText(selectedItem.text || '').width;
-                        
-                        updateItem(selectedId, {
-                           icon_x: 0, icon_y: iconY,
-                           text_x: selectedItem.icon_size + GAP, text_y: textY,
-                           width: selectedItem.icon_size + GAP + textW,
-                           height: newH
-                        });
-                     }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Row</button>
-                     
-                     <button onClick={() => {
-                        const GAP = Math.max(4, selectedItem.size * 0.08);
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
-                        const fontWeight = selectedItem.weight || 700;
-                        ctx.font = `${fontWeight} ${selectedItem.size}px "${fontFamily}"`;
-                        const textW = ctx.measureText(selectedItem.text || '').width;
-                        
-                        const newW = Math.max(selectedItem.icon_size, textW);
-                        updateItem(selectedId, {
-                           icon_x: (newW - selectedItem.icon_size)/2, icon_y: 0,
-                           text_x: (newW - textW)/2, text_y: selectedItem.icon_size + GAP,
-                           width: newW,
-                           height: selectedItem.icon_size + GAP + selectedItem.size
-                        });
-                     }} className="flex-1 text-[10px] uppercase font-bold text-neutral-500 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">Col</button>
-                     
-                     <button onClick={() => {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const fontFamily = selectedItem.font ? selectedItem.font.split('.')[0] : 'Arial';
-                        const fontWeight = selectedItem.weight || 700;
-                        
-                        let low = 6; let high = 800;
-                        let bestScale = 1; let bestTextSize = selectedItem.size;
-                        
-                        while (low <= high) {
-                            let mid = Math.floor((low + high) / 2);
-                            ctx.font = `${fontWeight} ${mid}px "${fontFamily}"`;
-                            let tWidth = ctx.measureText(selectedItem.text || '').width;
-                            let testScale = mid / selectedItem.size;
-                            let GAP = Math.max(4, mid * 0.08);
-                            let totalW = (selectedItem.icon_size * testScale) + GAP + tWidth;
-                            
-                            // Stronger 8px safety margin to prevent right-edge bleeding
-                            if (totalW <= canvasWidth - 8) {
-                                bestTextSize = mid; bestScale = testScale;
-                                low = mid + 1;
-                            } else {
-                                high = mid - 1;
-                            }
-                        }
-                        
-                        const GAP = Math.max(4, bestTextSize * 0.08);
-                        const newIconSize = selectedItem.icon_size * bestScale;
-                        const newH = Math.max(newIconSize, bestTextSize);
-                        ctx.font = `${fontWeight} ${bestTextSize}px "${fontFamily}"`;
-                        const actualTextW = ctx.measureText(selectedItem.text || '').width;
-                        const finalW = newIconSize + GAP + actualTextW;
-                        
-                        const iconY = (newH - newIconSize) / 2;
-                        const capHeight = bestTextSize * 0.71;
-                        const textY = (newH / 2) - (capHeight / 2);
-
-                        updateItem(selectedId, {
-                            icon_size: newIconSize, size: bestTextSize,
-                            icon_x: 0, icon_y: iconY,
-                            text_x: newIconSize + GAP, text_y: textY,
-                            width: finalW, height: newH,
-                            x: (canvasWidth - finalW) / 2
-                        });
-                     }} className="flex-1 text-[10px] uppercase font-bold text-blue-600 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">Fit Width</button>
+                    <button onClick={() => updateItem(selectedId, { fit_to_width: true })} className="flex-1 text-[10px] uppercase font-bold text-blue-600 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
+                      Auto-Fit to Box
+                    </button>
                   </div>
                   <div>
                     <label className={labelClass}>Group Text</label>
