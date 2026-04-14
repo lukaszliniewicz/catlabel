@@ -583,9 +583,18 @@ Action (All in one turn):
 
                         from ..rendering.template import render_template
 
+                        batch_records = canvas_state_copy.get("batchRecords", [{}])
+                        if isinstance(batch_records, list) and batch_records:
+                            preview_record = batch_records[0]
+                        else:
+                            preview_record = {}
+
+                        if not isinstance(preview_record, dict):
+                            preview_record = {}
+
                         image = render_template(
                             canvas_state_copy,
-                            {},
+                            preview_record,
                             default_font=context["global_default_font"],
                         )
                         buffered = BytesIO()
