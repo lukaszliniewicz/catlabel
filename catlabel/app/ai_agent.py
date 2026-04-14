@@ -394,7 +394,7 @@ AVAILABLE TEMPLATES (Use apply_template):
 {templates_json}
 
 READABILITY & SIZING (CRITICAL):
-ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Text elements, icons, and custom HTML MUST be made as large as physically possible to fill the available space. Never use small font sizes (like 12px or 14px) on small labels. If using custom HTML, ensure text heavily scales up (e.g., using 'cqw/cqh' units, 'vw/vh', or large percentages) so it is highly legible from a distance. Never leave empty space if elements can be safely scaled up.
+ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Text elements, icons, and custom HTML MUST be made as large as physically possible to fill the available space. Never use small font sizes (like 12px or 14px) on small labels. If using custom HTML with variable or batch-driven text, DO NOT rely on fixed px fonts or container-only units like cqw/cqh alone. Instead, wrap that text in <div class='auto-text' style='width:100%; height:100%;'>...</div> inside a bounded flex/grid container so it auto-scales to fit the actual content length. Never leave empty space if elements can be safely scaled up.
 
 CRITICAL LAYOUT STRATEGY (WYSIWYG SYNERGY):
 For NEW labels, you MUST use `apply_template` passing the exact `template_id` and filling the `params` object based on the fields listed above.
@@ -411,8 +411,9 @@ STYLING & HTML MODE:
 You can use `color: "white"` and `bgColor: "black"` to create inverted emphasis tags.
 You can use `italic: true` and `underline: true` to format text. 
 You can rotate elements using `rotation: 90` (or 180, 270) if you need text to run vertically on the canvas.
+You can design standard labels using Canvas tools (`add_text_element`, `apply_template`).
 For complex, beautiful layouts (grids, flexbox, premium styles), use the `set_html_design` tool.
-In HTML Mode, wrap text in `<div class='auto-text' style='width:100%; height:100%;'>...</div>` to automatically scale text to fit perfectly. The browser parses it natively.
+In HTML Mode, ANY text that might vary in length MUST be wrapped in `<div class='auto-text' style='width:100%; height:100%;'>...</div>`. This triggers a React auto-sizing component that scales the font to the actual content. Build robust CSS Grid/Flex boundaries around these divs. Avoid fixed px fonts for dynamic data.
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:

@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { autoTextSize } from 'auto-text-size';
+import React, { useMemo } from 'react';
+import parse, { attributesToProps, domToReact } from 'html-react-parser';
+import { AutoTextSize } from 'auto-text-size';
 import { applyVars } from '../utils/rendering';
 
 const overlayBaseStyle = {
@@ -16,41 +17,45 @@ export default function HtmlLabel({
   canvasBorder = 'none',
   canvasBorderThickness = 4
 }) {
-  const containerRef = useRef(null);
   const processedHtml = useMemo(() => applyVars(html || '', record), [html, record]);
   const borderThickness = Math.max(1, Number(canvasBorderThickness) || 4);
 
-  useEffect(() => {
-    if (!containerRef.current) {
-      return undefined;
-    }
-
-    const elements = containerRef.current.querySelectorAll('.auto-text');
-    const cleanups = Array.from(elements).map((element) => {
-      try {
-        return autoTextSize({ containerEl: element });
-      } catch (error) {
-        console.error('auto-text-size failed', error);
-        return null;
-      }
-    });
-
-    return () => {
-      cleanups.forEach((cleanup) => {
-        if (typeof cleanup === 'function') {
-          cleanup();
-        } else if (cleanup && typeof cleanup.disconnect === 'function') {
-          cleanup.disconnect();
-        } else if (cleanup && typeof cleanup.destroy === 'function') {
-          cleanup.destroy();
+  const parsedContent = useMemo(() => {
+    const options = {
+      replace: (domNode) => {
+        if (domNode?.name !== 'div' || !domNode.attribs) {
+          return undefined;
         }
-      });
+
+        const className = String(domNode.attribs.class || '');
+        if (!className.split(/\s+/).includes('auto-text')) {
+          return undefined;
+        }
+
+        const parsedProps = attributesToProps(domNode.attribs || {});
+        const finalStyle = {
+          width: '100%',
+          height: '100%',
+          minWidth: 0,
+          minHeight: 0,
+          ...(parsedProps.style || {})
+        };
+
+        return (
+          <div {...parsedProps} style={finalStyle}>
+            <AutoTextSize mode="box" maxFontSizePx={300}>
+              {domToReact(domNode.children || [], options)}
+            </AutoTextSize>
+          </div>
+        );
+      }
     };
-  }, [processedHtml, width, height]);
+
+    return parse(processedHtml || '', options);
+  }, [processedHtml]);
 
   return (
     <div
-      ref={containerRef}
       style={{
         width,
         height,
@@ -59,10 +64,9 @@ export default function HtmlLabel({
         backgroundColor: 'white'
       }}
     >
-      <div
-        style={{ width: '100%', height: '100%' }}
-        dangerouslySetInnerHTML={{ __html: processedHtml }}
-      />
+      <div style={{ width: '100%', height: '100%' }}>
+        {parsedContent}
+      </div>
       {canvasBorder === 'box' && (
         <div
           style={{

@@ -196,7 +196,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_html_design",
-            "description": "Switches the label to HTML Mode and sets the entire label using raw HTML/CSS. Use <div class='auto-text'>...</div> to automatically scale text to fit its container. Use standard CSS flexbox/grid for complex or premium layouts.",
+            "description": "Switches to HTML Mode and designs the label using raw HTML/CSS. CRITICAL: For text that must automatically scale to fit its bounding box (especially titles and dynamic batch variables), wrap it in <div class='auto-text' style='width:100%; height:100%;'>...</div>. You MUST use CSS flexbox or grid to define bounded layout containers around that auto-text so it knows its limits. Avoid fixed px fonts for dynamic data.",
             "parameters": {
                 "type": "object",
                 "properties": {
