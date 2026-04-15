@@ -8,6 +8,16 @@ const overlayBaseStyle = {
   boxSizing: 'border-box'
 };
 
+const AUTO_TEXT_HTML_STYLES = `
+.auto-text-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+`;
+
 export default function HtmlLabel({
   html,
   record,
@@ -79,6 +89,7 @@ export default function HtmlLabel({
         fontFamily: `'${fontFamily}', sans-serif`
       }}
     >
+      <style>{AUTO_TEXT_HTML_STYLES}</style>
       <div
         ref={containerRef}
         style={{ width: '100%', height: '100%' }}

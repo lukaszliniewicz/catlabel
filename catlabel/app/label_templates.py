@@ -131,6 +131,13 @@ body {
   line-height: 1.4;
   white-space: pre-wrap;
 }
+.auto-text-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 """
 
 _SCRIPT_RE = re.compile(r"<script[\s\S]*?>[\s\S]*?</script>", re.IGNORECASE)

@@ -15,7 +15,7 @@ const MessageRow = ({ m }) => {
   if (m.role === 'user' && Array.isArray(m.content)) return null;
 
   // Hide the lightweight text trace of the visual feedback loop
-  if (m.role === 'user' && typeof m.content === 'string' && m.content.includes('[SYSTEM AUTO-INJECT]')) return null;
+  if (m.role === 'user' && typeof m.content === 'string' && (m.content.includes('[SYSTEM AUTO-INJECT]') || m.content.includes('[SYSTEM]'))) return null;
 
   const isUser = m.role === 'user';
 

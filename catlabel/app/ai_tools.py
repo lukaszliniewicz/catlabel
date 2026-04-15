@@ -196,7 +196,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_html_design",
-            "description": "Switches to HTML Mode and designs the label using raw HTML/CSS. CRITICAL: For text that must automatically scale to fit its box (especially titles and dynamic batch variables), wrap it in <div class='auto-text' style='width:100%; height:100%; display:flex; align-items:center; justify-content:center;'>...</div>. You MUST use CSS flexbox or grid to define bounded layout containers around that auto-text so it knows its boundaries. Avoid fixed px fonts for dynamic data.",
+            "description": "Switches to HTML Mode and designs the label using raw HTML/CSS. CRITICAL: For text that must automatically scale to fit its box, wrap it in <div class='auto-text-wrapper'><div class='auto-text'>...</div></div>. Use CSS flexbox or grid creatively for elegant layouts, and avoid fixed px fonts for dynamic data.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -204,6 +204,13 @@ TOOLS_SCHEMA = [
                 },
                 "required": ["html"]
             }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "request_visual_preview",
+            "description": "Renders the current canvas and returns it as an image to you. Use this ONLY if you need to visually verify a complex layout, check for overlapping text, or ensure design quality."
         }
     },
     {
@@ -492,6 +499,9 @@ def execute_tool(name: str, args: dict, canvas_state: dict) -> str:
         canvas_state["items"] = []
         canvas_state["currentPage"] = 0
         return "Switched to HTML design mode and applied layout."
+
+    elif name == "request_visual_preview":
+        return "Visual preview generated and will be provided in the next message."
 
     elif name == "set_batch_records":
         records = list(args.get("variables_list", []) or [])

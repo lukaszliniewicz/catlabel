@@ -374,7 +374,8 @@ def chat_with_agent(req: ChatRequest):
             printer_status = "NO PRINTER CONNECTED. Media type UNKNOWN. Ask the user if they use 'pre-cut' labels or 'continuous' rolls."
     
     sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
-Your job is to act as a layout engineer, designing thermal printer labels and executing physical UI actions via tool calls.
+Your job is to act as a layout engineer and creative designer, generating thermal printer labels via tool calls.
+Be creative! You can design elegant vintage labels, modern minimalist tags, or utilitarian barcodes.
 
 CONTEXT:
 - {context['engine_rules']['coordinate_system']}
@@ -394,72 +395,29 @@ AVAILABLE TEMPLATES (Use apply_template):
 {templates_json}
 
 READABILITY & SIZING (CRITICAL):
-ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Text elements, icons, and custom HTML MUST be made as large as physically possible to fill the available space. Never use small font sizes (like 12px or 14px) on small labels. If using custom HTML with variable or batch-driven text, DO NOT rely on fixed px fonts or container-only units like cqw/cqh alone. Instead, wrap that text in <div class='auto-text' style='width:100%; height:100%; display:flex; align-items:center; justify-content:center;'>...</div> inside a bounded flex/grid container so it auto-scales to fit the actual content length. Never leave empty space if elements can be safely scaled up.
+ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Never use small font sizes (like 12px) on small labels. Never leave empty space if elements can be safely scaled up.
 
-CRITICAL LAYOUT STRATEGY (WYSIWYG SYNERGY):
-For NEW labels, you MUST use `apply_template` passing the exact `template_id` and filling the `params` object based on the fields listed above.
-The system will automatically convert this into perfectly measured, editable items on the user's canvas based on the current preset's Aspect Ratio!
+STYLING & HTML MODE (FOR CREATIVE DESIGNS):
+- You can design standard labels using Canvas tools (`add_text_element`, `apply_template`).
+- For beautiful, complex, or highly styled layouts (like vintage borders, CSS grids, or flexbox), use the `set_html_design` tool.
+- CRITICAL: In HTML Mode, ANY text that might vary in length MUST be wrapped in `<div class='auto-text-wrapper'><div class='auto-text'>...</div></div>`. This triggers native browser auto-sizing so the font scales to fit the content.
+- Feel free to use inline CSS creatively for styling (e.g., `font-family: 'RobotoCondensed'`, `border: 2px solid black`, `border-radius`, `align-items: center`).
 
-GRANULAR PARSING (VERY IMPORTANT):
-When a user provides unstructured data, you MUST parse it into the specific granular fields of the template.
-Example: For a Price Tag, if the user says "Hammer £24.99", you must split it: currency_symbol="£", price_main="24", price_cents="99", product_name="Hammer".
-
-WARNING: DO NOT guess X/Y coordinates if a template exists. Always use `apply_template`. 
-If you absolutely MUST build a custom layout using `add_text_element`, you MUST rely on `fit_to_width: true` and provide a strict bounding box. You can now use `width: "100%"` and `height: "100%"` to make the text dynamically expand to the canvas boundaries without needing to calculate exact pixels. Never leave text unconstrained.
-
-STYLING & HTML MODE:
-You can use `color: "white"` and `bgColor: "black"` to create inverted emphasis tags.
-You can use `italic: true` and `underline: true` to format text. 
-You can rotate elements using `rotation: 90` (or 180, 270) if you need text to run vertically on the canvas.
-You can design standard labels using Canvas tools (`add_text_element`, `apply_template`).
-For complex, beautiful layouts (grids, flexbox, premium styles), use the `set_html_design` tool.
-In HTML Mode, ANY text that might vary in length MUST be wrapped in `<div class='auto-text' style='width:100%; height:100%; display:flex; align-items:center; justify-content:center;'>...</div>`. This triggers native browser auto-sizing in the preview renderer so the font scales to the actual content. Build robust CSS Grid/Flex boundaries around these divs. Avoid fixed px fonts for dynamic data.
+VISUAL FEEDBACK:
+If you are building a complex layout from scratch and need to visually verify it (check for overlapping text, cut-offs, or alignment), call the `request_visual_preview` tool. The system will render the canvas and send you an image. Do not guess blindly if you are unsure!
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
-1. Call `apply_template` placing `{{{{ variables }}}}` inside the params (e.g., `params: {{"product_name": "{{{{ name }}}}"}}`).
+1. Create your layout placing `{{{{ variables }}}}` where dynamic data goes.
 2. Call `set_batch_records` passing the array of data. The frontend handles generating the copies automatically!
-
-WORKFLOW EXAMPLES:
-User: "Make a price tag for a Hammer, $15.99."
-Action:
-1. `apply_preset(preset_name="Roll: Standard Square (48x48mm)")`
-2. `apply_template(template_id="price_tag", params={{"currency_symbol": "$", "price_main": "15", "price_cents": "99", "product_name": "Hammer", "barcode": "123456"}})`
-
-User: "I have a continuous roll. Make 5 small inventory tags: Desk, Chair, Lamp, Monitor, Keyboard."
-Action (All in one turn):
-1. `apply_preset(preset_name="Roll: Narrow Tag (48x15mm)")`
-2. `apply_template(template_id="inventory_tag", params={{"department": "OFFICE", "title": "{{{{ item }}}}", "sku": "SKU-{{{{ item }}}}", "code_data": "ID-{{{{ item }}}}", "code_type": "qrcode"}})`
-3. `set_batch_records(variables_list=[{{"item": "Desk"}}, {{"item": "Chair"}}, {{"item": "Lamp"}}, {{"item": "Monitor"}}, {{"item": "Keyboard"}}])`
 """
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
     canvas_state_copy = copy.deepcopy(req.canvas_state)
 
-    if active_model.vision_capable and req.current_canvas_b64:
-        for i in range(len(messages) - 1, -1, -1):
-            if messages[i].get("role") != "user":
-                continue
-
-            original_content = messages[i].get("content", "")
-            if isinstance(original_content, str):
-                messages[i]["content"] = [
-                    {
-                        "type": "text",
-                        "text": original_content + "\n\n[SYSTEM AUTO-INJECT] Current visual render of the canvas. Evaluate your layout:",
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{req.current_canvas_b64}"},
-                    },
-                ]
-            break
-
     try:
         MAX_ITERATIONS = 20
-        MAX_VISUAL_FEEDBACKS = 3
         iteration = 0
-        visual_feedback_count = 0
         new_messages = []
         total_prompt_tokens = 0
         total_completion_tokens = 0
@@ -531,8 +489,6 @@ Action (All in one turn):
             new_messages.append(resp_dict)
 
             if hasattr(resp_msg, "tool_calls") and resp_msg.tool_calls:
-                layout_changed = False
-                needs_feedback = False
                 for tool_call in resp_msg.tool_calls:
                     if isinstance(tool_call, dict):
                         fn_name = tool_call.get("function", {}).get("name")
@@ -545,21 +501,6 @@ Action (All in one turn):
 
                     logger.info("➡️ Agent requested Tool Call: %s", fn_name)
                     logger.info("   Arguments: %s", args_str)
-
-                    if fn_name in {
-                        "apply_template",
-                        "apply_preset",
-                        "set_canvas_dimensions",
-                        "set_canvas_orientation",
-                        "add_text_element",
-                        "add_barcode_or_qrcode",
-                        "set_html_design",
-                        "clear_canvas",
-                        "load_project",
-                    }:
-                        layout_changed = True
-                        if fn_name not in {"clear_canvas", "apply_preset"}:
-                            needs_feedback = True
 
                     try:
                         fn_args = json.loads(args_str)
@@ -578,8 +519,12 @@ Action (All in one turn):
                     messages.append(tool_msg)
                     new_messages.append(tool_msg)
 
-                has_items = len(canvas_state_copy.get("items", [])) > 0 or canvas_state_copy.get("designMode") == "html"
-                if layout_changed and needs_feedback and has_items and active_model.vision_capable and visual_feedback_count < MAX_VISUAL_FEEDBACKS:
+                requested_preview = any(
+                    (tc.get("function", {}).get("name") if isinstance(tc, dict) else tc.function.name) == "request_visual_preview"
+                    for tc in resp_msg.tool_calls
+                )
+
+                if requested_preview and active_model.vision_capable:
                     try:
                         import base64
                         from io import BytesIO
@@ -587,11 +532,7 @@ Action (All in one turn):
                         from ..rendering.template import render_template
 
                         batch_records = canvas_state_copy.get("batchRecords", [{}])
-                        if isinstance(batch_records, list) and batch_records:
-                            preview_record = batch_records[0]
-                        else:
-                            preview_record = {}
-
+                        preview_record = batch_records[0] if (isinstance(batch_records, list) and batch_records) else {}
                         if not isinstance(preview_record, dict):
                             preview_record = {}
 
@@ -609,7 +550,7 @@ Action (All in one turn):
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": "[SYSTEM AUTO-INJECT] Visual render complete. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. Otherwise, reply to the user.",
+                                    "text": "[SYSTEM] Visual render complete. Evaluate your layout. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. Otherwise, reply to the user.",
                                 },
                                 {
                                     "type": "image_url",
@@ -617,21 +558,22 @@ Action (All in one turn):
                                 },
                             ],
                         }
+
+                        feedback_msg_for_ui = {
+                            "role": "user",
+                            "content": "[SYSTEM] Provided visual preview to AI.",
+                        }
+                        messages.append(feedback_msg_for_llm)
+                        new_messages.append(feedback_msg_for_ui)
+                        logger.info("📸 Provided requested visual feedback to agent.")
                     except Exception as render_err:
                         logger.warning("Visual feedback skipped: %s", render_err)
-                        feedback_msg_for_llm = {
+                        fallback_msg = {
                             "role": "user",
-                            "content": "[SYSTEM AUTO-INJECT] Tool execution complete. Visual feedback is unavailable (Playwright missing on server). Proceed based on layout logic or ask the user to verify."
+                            "content": "[SYSTEM] Tool execution complete. Visual feedback is unavailable (Playwright might be missing on server). Proceed based on layout logic."
                         }
-
-                    feedback_msg_for_ui = {
-                        "role": "user",
-                        "content": "[SYSTEM AUTO-INJECT] The canvas layout was updated.",
-                    }
-                    messages.append(feedback_msg_for_llm)
-                    new_messages.append(feedback_msg_for_ui)
-                    visual_feedback_count += 1
-                    logger.info("📸 Injected visual feedback to agent.")
+                        messages.append(fallback_msg)
+                        new_messages.append(fallback_msg)
             else:
                 logger.info("Agent finished turn. Total Cost so far: $%.4f", total_cost)
                 break

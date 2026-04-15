@@ -3,7 +3,7 @@ import { X, Code } from 'lucide-react';
 
 export default function HtmlPickerModal({ onClose, onSelect }) {
   const [content, setContent] = useState(
-    `<div style="display: flex; flex-direction: column; width: 100%; height: 100%; justify-content: center; align-items: center; text-align: center;">\n  <div class="auto-text" style="font-weight: 900; white-space: nowrap; width: 100%;">HELLO WORLD</div>\n  <div class="auto-text" style="font-weight: 400; width: 100%; margin-top: 4px;">Custom HTML</div>\n</div>`
+    `<div style="display:flex; flex-direction:column; width:100%; height:100%; text-align:center;">\n  <div style="flex:1;">\n    <div class="auto-text-wrapper">\n      <div class="auto-text" style="font-weight:900; white-space:nowrap; width:100%;">HELLO WORLD</div>\n    </div>\n  </div>\n  <div style="flex:1;">\n    <div class="auto-text-wrapper">\n      <div class="auto-text" style="font-weight:400; width:100%;">Custom HTML</div>\n    </div>\n  </div>\n</div>`
   );
 
   return (
@@ -31,7 +31,7 @@ export default function HtmlPickerModal({ onClose, onSelect }) {
               placeholder="<div>...</div>"
             />
             <p className="text-[10px] text-neutral-500 mt-2">
-              Tip: Use <strong>white-space: nowrap;</strong> with the <strong>auto-text</strong> class to force text onto a single line!
+              Tip: Wrap dynamic text in <strong>auto-text-wrapper</strong> + <strong>auto-text</strong>, and use <strong>white-space: nowrap;</strong> when you need a forced single line.
             </p>
           </div>
         </div>
