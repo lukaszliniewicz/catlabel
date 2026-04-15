@@ -288,6 +288,17 @@ export const useStore = create((set, get) => ({
   },
   pxToMm: (px) => parseFloat(get().getPxToMm(px)),
   mmToPx: (mm) => get().getMmToPx(mm),
+  getActivePreset: () => {
+    const state = get();
+    const { labelPresets, canvasWidth, canvasHeight, isRotated, getMmToPx } = state;
+    return labelPresets.find((p) => {
+      const presetWidthPx = getMmToPx(p.width_mm);
+      const presetHeightPx = getMmToPx(p.height_mm);
+      const directMatch = presetWidthPx === canvasWidth && presetHeightPx === canvasHeight;
+      const swappedMatch = presetWidthPx === canvasHeight && presetHeightPx === canvasWidth;
+      return p.is_rotated === isRotated && (directMatch || swappedMatch);
+    });
+  },
 
   // --- AI CHAT STATE ---
   aiMessages: [{ role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }],

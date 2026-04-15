@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import * as Icons from 'lucide-react';
 import { X, Search } from 'lucide-react';
 
@@ -95,8 +96,8 @@ export default function IconPicker({ onClose, onSelect }) {
     return () => clearTimeout(timer);
   }, [selectedIcon, onSelect]);
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white dark:bg-neutral-900 w-full max-w-2xl rounded-xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden border border-neutral-200 dark:border-neutral-800">
         
         {/* Header */}
@@ -150,6 +151,7 @@ export default function IconPicker({ onClose, onSelect }) {
           {React.createElement(Icons[selectedIcon], { size: 800, color: "black", strokeWidth: 2 })}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

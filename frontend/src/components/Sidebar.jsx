@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import ProjectTree from './ProjectTree';
 import SavePresetModal from './SavePresetModal';
 import PrinterDropdown from './PrinterDropdown';
+import PresetPickerModal from './PresetPickerModal';
 import {
   ChevronDown, ChevronRight, LayoutTemplate,
   Menu, Printer, Wifi, Archive
@@ -15,7 +16,6 @@ export default function Sidebar() {
     setSelectedPrinter,
     theme,
     setTheme,
-    applyPreset,
     isSidebarCollapsed,
     toggleSidebar,
     printCopies,
@@ -23,9 +23,7 @@ export default function Sidebar() {
     isPrinting,
     printPages,
     selectedPagesForPrint,
-    labelPresets,
     manualPrinters,
-    selectedPrinterInfo,
     designMode
   } = useStore();
 
@@ -33,6 +31,8 @@ export default function Sidebar() {
   const [isScanning, setIsScanning] = useState(false);
   const [showProjects, setShowProjects] = useState(true);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+  const [showPresetPicker, setShowPresetPicker] = useState(false);
+  const activePreset = useStore((state) => state.getActivePreset());
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -176,55 +176,15 @@ export default function Sidebar() {
       {!isSidebarCollapsed ? (
         <div className="space-y-3">
           <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas Presets</h2>
-          <select
-            className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white focus:outline-none transition-colors mb-2"
-            onChange={(e) => {
-              if (e.target.value !== '') {
-                const presetId = parseInt(e.target.value, 10);
-                const preset = labelPresets.find((p) => p.id === presetId);
-                if (preset) applyPreset(preset);
-              }
-              e.target.value = '';
-            }}
-            defaultValue=""
+          <button
+            onClick={() => setShowPresetPicker(true)}
+            className="w-full flex items-center justify-between bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white hover:border-blue-500 transition-colors mb-2"
           >
-            <option value="" disabled>Select physical layout...</option>
-
-            {/* Continuous Media Presets */}
-            <optgroup label="Continuous Roll Labels">
-              {labelPresets.filter(p => p.media_type === 'continuous').map((p) => {
-                const isConflict = selectedPrinterInfo?.media_type === 'pre-cut';
-                return (
-                  <option key={p.id} value={p.id} disabled={isConflict} title={p.description || ''}>
-                    {isConflict ? '🚫 ' : ''}{p.name} ({p.width_mm}x{p.height_mm}mm)
-                  </option>
-                );
-              })}
-            </optgroup>
-
-            {/* Pre-cut Media Presets */}
-            <optgroup label="Pre-cut Labels (Niimbot)">
-              {labelPresets.filter(p => p.media_type === 'pre-cut').map((p) => {
-                const isConflict = selectedPrinterInfo?.media_type === 'continuous';
-                return (
-                  <option key={p.id} value={p.id} disabled={isConflict} title={p.description || ''}>
-                    {isConflict ? '🚫 ' : ''}{p.name} ({p.width_mm}x{p.height_mm}mm)
-                  </option>
-                );
-              })}
-            </optgroup>
-
-            {/* Any/Other Presets */}
-            {labelPresets.filter(p => p.media_type !== 'continuous' && p.media_type !== 'pre-cut').length > 0 && (
-              <optgroup label="Other / Universal">
-                {labelPresets.filter(p => p.media_type !== 'continuous' && p.media_type !== 'pre-cut').map((p) => (
-                  <option key={p.id} value={p.id} title={p.description || ''}>
-                    {p.name} ({p.width_mm}x{p.height_mm}mm)
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+            <span className="truncate pr-2">
+              {activePreset ? `${activePreset.name} (${activePreset.width_mm}x${activePreset.height_mm}mm)` : 'Custom Size (Unsaved)'}
+            </span>
+            <ChevronDown size={14} className="text-neutral-500 shrink-0" />
+          </button>
 
           <button
             onClick={() => setShowSavePresetModal(true)}
@@ -261,6 +221,9 @@ export default function Sidebar() {
 
       {showSavePresetModal && (
         <SavePresetModal onClose={() => setShowSavePresetModal(false)} />
+      )}
+      {showPresetPicker && (
+        <PresetPickerModal onClose={() => setShowPresetPicker(false)} />
       )}
     </div>
   );
