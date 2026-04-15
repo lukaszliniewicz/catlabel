@@ -152,6 +152,8 @@ export const sanitizeLabelHtml = (html = '') => String(html)
   .replace(/<(object|embed|form)[\s\S]*?>[\s\S]*?<\/\1>/gi, '')
   .replace(/\son\w+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '')
   .replace(/javascript\s*:/gi, '')
+  .replace(/<link[\s\S]*?>/gi, '')
+  .replace(/@import\s+(?:url\()?['"]?([^'")]+)['"]?\)?;/gi, '')
   .trim();
 
 export const buildLabelTemplateMarkup = (record = {}) => {

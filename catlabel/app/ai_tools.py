@@ -196,7 +196,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "set_html_design",
-            "description": "Switches to HTML Mode and designs the label using raw HTML/CSS. CRITICAL AUTO-SCALING: To make text dynamically scale to fit, wrap it exactly as <div class='auto-text-wrapper'><div class='auto-text'>{{ var }}</div></div>. The parent container MUST have strict CSS boundaries (use min-width: 0; min-height: 0; overflow: hidden; in grids/flexbox). Do NOT apply font-size to .auto-text in your CSS!",
+            "description": "Switches to HTML Mode and designs the label using raw HTML/CSS. CRITICAL AUTO-SCALING: To make text dynamically scale to fit, wrap it exactly as <div class='auto-text'><h1>{{ var }}</h1></div>. The parent container MUST have strict CSS boundaries (use min-width: 0; min-height: 0; overflow: hidden; in grids/flexbox). Do NOT apply font-size to .auto-text or its children!",
             "parameters": {
                 "type": "object",
                 "properties": {

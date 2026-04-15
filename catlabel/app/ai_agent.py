@@ -344,11 +344,8 @@ def chat_with_agent(req: ChatRequest):
         kwargs["vertex_location"] = active_provider.vertex_region
 
     context = get_agent_context()
-    presets_json = json.dumps(context["standard_presets"], indent=2)
-    templates_json = json.dumps(context["available_templates"], indent=2)
-    root_categories_json = json.dumps(context["root_categories"], indent=2)
-    root_projects_json = json.dumps(context["root_projects"], indent=2)
-    available_fonts_str = ", ".join(context.get("available_fonts", []))
+
+    from .prompts import build_system_prompt
 
     media_pref = context.get('intended_media_type', 'unknown')
 
@@ -374,52 +371,7 @@ def chat_with_agent(req: ChatRequest):
         else:
             printer_status = "NO PRINTER CONNECTED. Media type UNKNOWN. Ask the user if they use 'pre-cut' labels or 'continuous' rolls."
     
-    sys_prompt = f"""You are an expert Label Design AI Assistant for CatLabel.
-Your job is to act as a layout engineer and creative designer, generating thermal printer labels via tool calls.
-Be creative! You can design elegant vintage labels, modern minimalist tags, or utilitarian barcodes.
-
-CONTEXT:
-- {context['engine_rules']['coordinate_system']}
-- Default Font: {context['global_default_font']}
-- Available Fonts: {available_fonts_str}
-
-HARDWARE STATUS:
-{printer_status}
-
-CRITICAL MEDIA TYPE RULES (MUST OBEY):
-1. CONTINUOUS MEDIA (Generic Rolls): Tape feeds infinitely. You MUST use presets marked media_type="continuous".
-2. PRE-CUT MEDIA (Niimbot): Fixed boundaries. You MUST use presets marked media_type="pre-cut". Pre-cut labels are fed sideways, so they are almost always rotated.
-
-AVAILABLE PRESETS (Use apply_preset):
-{presets_json}
-
-AVAILABLE TEMPLATES (Use apply_template):
-{templates_json}
-
-READABILITY & SIZING (CRITICAL):
-ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Never use small font sizes (like 12px) on small labels. Never leave empty space if elements can be safely scaled up.
-
-STYLING & HTML MODE (FOR CREATIVE DESIGNS):
-- Use `set_html_design` for complex, highly styled layouts (vintage borders, CSS grids, flexbox).
-- CRITICAL AUTO-SCALING TEXT: You do NOT need to guess font sizes! To make text automatically shrink or grow to perfectly fill its container, wrap it exactly like this:
-  <div class="my-constrained-box">
-    <div class="auto-text-wrapper"><div class="auto-text">Wildflower Honey</div></div>
-  </div>
-- RULES FOR AUTO-TEXT TO WORK PROPERLY:
-  1. The parent element (e.g., `.my-constrained-box`) MUST have strict physical boundaries.
-  2. If using CSS Grid or Flexbox, add `min-width: 0; min-height: 0; overflow: hidden;` to the parent cell so it bounds the text instead of stretching.
-  3. Do NOT set `font-size` on `.auto-text` in your CSS! The system calculates it. Only set `font-family`, `font-weight`, `text-transform`, `line-height`, etc.
-  4. AVOID SUFFOCATION: On tiny canvases (e.g. 48x48mm), heavy padding, thick borders, or multi-row grids will crush the `.auto-text` bounding box. Give the main text container at least 80% of the canvas height. Keep decorations minimal.
-  5. Use single lines (`white-space: nowrap`) for main titles whenever possible to maximize font size.
-
-VISUAL FEEDBACK:
-If you are building a complex layout from scratch (especially HTML designs on tiny canvases), ALWAYS visually verify it to check for cut-offs, suffocated auto-text, or alignment issues by calling the `request_visual_preview` tool. Do not guess blindly if you are unsure!
-
-BATCH PRINTING PARADIGM:
-Do NOT create multiple pages for a list of data. To print a batch:
-1. Create your layout placing `{{{{ variables }}}}` where dynamic data goes.
-2. Call `set_batch_records` passing the array of data. The frontend handles generating the copies automatically!
-"""
+    sys_prompt = build_system_prompt(context, printer_status)
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
     canvas_state_copy = copy.deepcopy(req.canvas_state)

@@ -349,7 +349,7 @@ def get_agent_context():
             settings.default_font = "RobotoCondensed.ttf"
 
         fonts = session.exec(select(Font)).all()
-        font_names = [f.name for f in fonts]
+        font_names = [f.name.rsplit(".", 1)[0] for f in fonts]
 
         root_projects = session.exec(select(Project).where(Project.category_id == None)).all()
         root_categories = session.exec(select(Category).where(Category.parent_id == None)).all()

@@ -9,12 +9,23 @@ const overlayBaseStyle = {
 };
 
 const AUTO_TEXT_HTML_STYLES = `
-.auto-text-wrapper {
+/* Hardened container */
+.auto-text {
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* CRITICAL RESET: Strip LLM formatting from children so scrollHeight doesn't blow up */
+.auto-text * {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.1 !important;
 }
 `;
 
