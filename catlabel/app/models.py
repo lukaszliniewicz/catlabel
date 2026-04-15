@@ -46,7 +46,7 @@ class Settings(SQLModel, table=True):
     default_dpi: int = 203
     speed: int = 0
     energy: int = 0
-    feed_lines: int = 100
+    feed_lines: int = 50
     default_font: str = "Roboto.ttf"
     intended_media_type: str = "unknown"
 

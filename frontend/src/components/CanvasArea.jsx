@@ -1,5 +1,5 @@
 import React from 'react';
-import { Group, Layer, Line, Rect, Stage, Transformer } from 'react-konva';
+import { Group, Layer, Line, Path, Rect, Stage, Transformer } from 'react-konva';
 import { useStore } from '../store';
 import CanvasItemNode from './CanvasItemNode';
 import FloatingToolbar from './FloatingToolbar';
@@ -209,7 +209,7 @@ export default function CanvasArea() {
                   </div>
 
                   <div
-                    className={`relative transition-all duration-300 ${isActive ? 'ring-2 ring-blue-500 rounded-md' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
+                    className={`relative transition-all duration-300 bg-white shadow-md ${isActive ? 'ring-1 ring-blue-400' : 'opacity-60 hover:opacity-100 cursor-pointer'}`}
                     style={{
                       width: (canvasWidth + WORKSPACE_PAD * 2) * zoomScale,
                       height: (canvasHeight + WORKSPACE_PAD * 2) * zoomScale,
@@ -357,12 +357,22 @@ export default function CanvasArea() {
                               y={0}
                               width={canvasWidth}
                               height={canvasHeight}
-                              fill="white"
-                              shadowColor="black"
-                              shadowBlur={10}
-                              shadowOpacity={0.15}
-                              shadowOffsetY={4}
-                              name="bg-rect"
+                              stroke="#e5e5e5"
+                              strokeWidth={1}
+                              dash={[4, 4]}
+                              listening={false}
+                            />
+
+                            <Path
+                              stroke="#a3a3a3"
+                              strokeWidth={1}
+                              listening={false}
+                              data={`
+                                M -${WORKSPACE_PAD} 0 L -5 0 M 0 -${WORKSPACE_PAD} L 0 -5
+                                M ${canvasWidth + 5} 0 L ${canvasWidth + WORKSPACE_PAD} 0 M ${canvasWidth} -${WORKSPACE_PAD} L ${canvasWidth} -5
+                                M -${WORKSPACE_PAD} ${canvasHeight} L -5 ${canvasHeight} M 0 ${canvasHeight + 5} L 0 ${canvasHeight + WORKSPACE_PAD}
+                                M ${canvasWidth + 5} ${canvasHeight} L ${canvasWidth + WORKSPACE_PAD} ${canvasHeight} M ${canvasWidth} ${canvasHeight + 5} L ${canvasWidth} ${canvasHeight + WORKSPACE_PAD}
+                              `}
                             />
 
                             {canvasBorder === 'box' && <Rect x={0} y={0} width={canvasWidth} height={canvasHeight} stroke="black" strokeWidth={cvThick} listening={false} />}

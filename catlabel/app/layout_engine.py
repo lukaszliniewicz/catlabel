@@ -833,25 +833,69 @@ def build_asset_tag(width, height, params):
 
 
 def build_spice_jar(width, height, params):
-    title = params.get("title", "Basil")
-    subtitle = params.get("subtitle", "Ocimum basilicum")
+    title = str(params.get("title", "Basil") or "Basil").strip()
+    subtitle = str(params.get("subtitle", "Sweet & Aromatic") or "").strip()
 
     items = []
-    title_h = height * 0.6
-    items.append(_text_item(10, 10, width - 20, title_h, title, size=40, weight=900, align="center"))
-    items.append(
-        _text_item(
-            10,
-            title_h + 10,
-            width - 20,
-            height * 0.3,
-            subtitle,
-            size=20,
-            weight=400,
-            italic=True,
-            align="center",
+    if subtitle:
+        title_h = height * 0.55
+        sub_h = height * 0.25
+        line_thickness = max(2, int(height * 0.01))
+
+        items.append(
+            _text_item(
+                10,
+                10,
+                width - 20,
+                title_h,
+                title,
+                size=int(title_h * 0.8),
+                weight=900,
+                align="center",
+                fit=True,
+            )
         )
-    )
+
+        line_y = 10 + title_h + (height * 0.05)
+        items.append(_shape_item(width * 0.2, line_y, width * 0.6, line_thickness, "black"))
+        items.append(
+            _text_item(
+                10,
+                line_y + line_thickness + 5,
+                width - 20,
+                sub_h,
+                subtitle,
+                size=int(sub_h * 0.6),
+                weight=400,
+                italic=True,
+                align="center",
+                fit=True,
+            )
+        )
+        items.append(
+            _shape_item(
+                width * 0.3,
+                height - max(2, int(height * 0.02)),
+                width * 0.4,
+                line_thickness,
+                "black",
+            )
+        )
+    else:
+        items.append(
+            _text_item(
+                10,
+                10,
+                width - 20,
+                height - 20,
+                title,
+                size=int(height * 0.6),
+                weight=900,
+                align="center",
+                fit=True,
+            )
+        )
+
     return items
 
 
@@ -921,8 +965,8 @@ def build_icon_text(width, height, params):
 
 
 def build_qr_text(width, height, params):
-    text = params.get("text", "Scan Me")
-    data = params.get("data", "https://catlabel.com")
+    text = str(params.get("text", "Scan Me") or "Scan Me").strip()
+    data = str(params.get("data", "https://catlabel.com") or "https://catlabel.com")
 
     is_landscape = width > height
     items = []
@@ -947,36 +991,110 @@ def build_qr_text(width, height, params):
                 width - qr_size - 30,
                 height - 20,
                 text,
-                size=32,
-                align="left",
+                size=int(height * 0.4),
+                weight=900,
+                align="center",
                 fit=True,
             )
         )
     else:
-        qr_size = width - 40
+        qr_size = width - 20
         items.append(
             {
                 "id": _id(),
                 "type": "qrcode",
                 "data": data,
-                "x": 20,
+                "x": 10,
                 "y": 10,
                 "width": int(qr_size),
                 "height": int(qr_size),
             }
         )
+        text_y = qr_size + 20
+        text_h = height - qr_size - 30
         items.append(
             _text_item(
                 10,
-                qr_size + 20,
+                text_y,
                 width - 20,
-                height - qr_size - 30,
+                text_h,
                 text,
-                size=24,
+                size=int(text_h * 0.5),
+                weight=900,
                 align="center",
                 fit=True,
             )
         )
+    return items
+
+
+def build_expiration_date(width, height, params):
+    product = str(params.get("product_name", "") or "").strip()
+    made = str(params.get("made_date", "") or "").strip()
+    exp = str(params.get("exp_date", "2025-12-31") or "2025-12-31").strip()
+
+    items = []
+    available_h = height - 20
+    current_y = 10
+
+    parts = []
+    if product:
+        parts.append(("product", product))
+    if made:
+        parts.append(("made", f"MFG: {made}"))
+    if exp:
+        parts.append(("exp", f"EXP: {exp}"))
+
+    if not parts:
+        return items
+
+    part_h = available_h / len(parts)
+
+    for part_type, text in parts:
+        if part_type == "product":
+            items.append(
+                _text_item(
+                    10,
+                    current_y,
+                    width - 20,
+                    part_h,
+                    text,
+                    size=int(part_h * 0.6),
+                    weight=700,
+                    align="center",
+                    fit=True,
+                )
+            )
+        elif part_type == "made":
+            items.append(
+                _text_item(
+                    10,
+                    current_y,
+                    width - 20,
+                    part_h,
+                    text,
+                    size=int(part_h * 0.5),
+                    weight=400,
+                    align="center",
+                    fit=True,
+                )
+            )
+        elif part_type == "exp":
+            items.append(
+                _text_item(
+                    10,
+                    current_y,
+                    width - 20,
+                    part_h,
+                    text,
+                    size=int(part_h * 0.8),
+                    weight=900,
+                    align="center",
+                    fit=True,
+                )
+            )
+        current_y += part_h
+
     return items
 
 
@@ -993,6 +1111,7 @@ TEMPLATE_REGISTRY = {
     "sale_tag": build_sale_tag,
     "asset_tag": build_asset_tag,
     "spice_jar": build_spice_jar,
+    "expiration_date": build_expiration_date,
 }
 
 
@@ -1128,7 +1247,18 @@ TEMPLATE_METADATA = [
         "description": "Elegant typography for home organization.",
         "fields": [
             {"name": "title", "label": "Main Label", "type": "text"},
-            {"name": "subtitle", "label": "Botanical/Subtitle", "type": "text"},
+            {"name": "subtitle", "label": "Subtitle / Details", "type": "text"},
+        ],
+    },
+    {
+        "id": "expiration_date",
+        "category": "Dedicated",
+        "name": "Expiration / Batch Date",
+        "description": "Prominent expiration date, optionally with product name and manufacturing date.",
+        "fields": [
+            {"name": "product_name", "label": "Product Name (Optional)", "type": "text", "default": ""},
+            {"name": "exp_date", "label": "Expiration Date", "type": "text", "default": "2025-12-31"},
+            {"name": "made_date", "label": "Mfg / Made On (Optional)", "type": "text", "default": ""},
         ],
     },
 ]

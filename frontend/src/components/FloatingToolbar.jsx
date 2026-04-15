@@ -32,8 +32,10 @@ const HoverMenuGroup = ({ currentIcon: Icon, title, children }) => (
     >
       <Icon size={16} strokeWidth={2.5} />
     </div>
-    <div className="absolute bottom-full left-1/2 z-50 hidden -translate-x-1/2 gap-1 rounded-lg border border-neutral-200 bg-white p-1 shadow-xl dark:border-neutral-700 dark:bg-neutral-800 group-hover:flex mb-1">
-      {children}
+    <div className="absolute bottom-full left-1/2 z-50 hidden -translate-x-1/2 group-hover:block pb-2">
+      <div className="flex gap-1 rounded-lg border border-neutral-200 bg-white p-1 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
+        {children}
+      </div>
     </div>
   </div>
 );

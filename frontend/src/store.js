@@ -100,7 +100,7 @@ export const useStore = create((set, get) => ({
   fonts: [],
   labelPresets: [],
   currentDpi: 203,
-  printerProfile: { speed: 0, energy: 0, feed_lines: 100 },
+  printerProfile: { speed: 0, energy: 0, feed_lines: 50 },
   currentPage: 0,
   
   setCurrentPage: (idx) => set({ currentPage: Math.max(0, Number(idx) || 0), selectedId: null, selectedIds: [] }),
@@ -274,7 +274,7 @@ export const useStore = create((set, get) => ({
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   
   addresses: [],
-  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 100, default_font: 'RobotoCondensed.ttf', intended_media_type: 'unknown' },
+  settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 50, default_font: 'RobotoCondensed.ttf', intended_media_type: 'unknown' },
   settingsLoaded: false,
   
   // Refined DPI Math logic that safely falls back
@@ -773,7 +773,7 @@ export const useStore = create((set, get) => ({
     });
 
     if (!mac) {
-      set({ printerProfile: { speed: 0, energy: 0, feed_lines: 100 } });
+      set({ printerProfile: { speed: 0, energy: 0, feed_lines: 50 } });
       return;
     }
 
@@ -809,12 +809,12 @@ export const useStore = create((set, get) => ({
           ...profile,
           speed: normalizedSpeed,
           energy: normalizedEnergy,
-          feed_lines: Math.max(0, profile?.feed_lines ?? 100)
+          feed_lines: Math.max(0, profile?.feed_lines ?? 50)
         }
       });
     } catch (e) {
       console.error("Failed to fetch printer profile", e);
-      set({ printerProfile: { speed: 0, energy: 0, feed_lines: 100 } });
+      set({ printerProfile: { speed: 0, energy: 0, feed_lines: 50 } });
     }
   }, // <-- The syntax error is fixed right here
   

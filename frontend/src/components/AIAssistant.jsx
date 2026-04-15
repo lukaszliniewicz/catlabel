@@ -357,7 +357,7 @@ export default function AIAssistant() {
         </div>
       )}
 
-      <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 mt-auto">
+      <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 mt-auto shrink-0">
         <form onSubmit={e => { e.preventDefault(); handleSend(); }} className="flex gap-2">
           <input 
             type="text" 
@@ -371,10 +371,10 @@ export default function AIAssistant() {
             <Send size={18} />
           </button>
         </form>
-        {sessionUsage.tokens > 0 && (
+        {(sessionUsage.tokens > 0 || sessionUsage.promptTokens > 0) && (
           <div className="flex justify-between items-center mt-2 px-1 text-[10px] uppercase tracking-widest font-bold text-neutral-400 dark:text-neutral-500">
-            <span title={`Prompt: ${sessionUsage.promptTokens.toLocaleString()} | Completion: ${sessionUsage.completionTokens.toLocaleString()}`}>
-              Session Tokens: {sessionUsage.tokens.toLocaleString()}
+            <span title={`Prompt: ${(sessionUsage.promptTokens || 0).toLocaleString()} | Completion: ${(sessionUsage.completionTokens || 0).toLocaleString()}`}>
+              Session Tokens: {((sessionUsage.tokens || 0) > 0 ? sessionUsage.tokens : ((sessionUsage.promptTokens || 0) + (sessionUsage.completionTokens || 0))).toLocaleString()}
             </span>
             <span title="Estimated API cost based on LiteLLM pricing">
               Cost: {sessionUsage.cost > 0 ? `$${sessionUsage.cost.toFixed(4)}` : 'Unknown / Free'}
