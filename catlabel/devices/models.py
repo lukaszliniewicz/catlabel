@@ -108,6 +108,12 @@ class PrinterModel:
     # Experimental entries are family-based proxies derived from third-party apps.
     testing: bool = False
     testing_note: Optional[str] = None
+    vendor: str = "generic"
+    media_type: str = "continuous"
+    max_density: Optional[int] = None
+    max_speed: Optional[int] = None
+    min_energy: Optional[int] = None
+    max_energy: Optional[int] = None
 
     @property
     def width(self) -> int:

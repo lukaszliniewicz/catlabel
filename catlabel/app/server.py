@@ -21,21 +21,10 @@ from sqlmodel import SQLModel, create_engine, Session, select
 from .models import PrinterProfile, Font, Category, Project, Settings, Address, LabelPreset
 from ..rendering.template import render_template, render_via_browser
 from ..devices import DeviceResolver, PrinterModelRegistry
-from ..transport.bluetooth import SppBackend
 from .ai_agent import router as ai_router
 from .layout_engine import TEMPLATE_METADATA, generate_template_items
 from .. import reporting
 
-NIIMBOT_MODELS = {
-    # D-Series (15mm print head = 240px max) - Max Density: 3
-    "D110": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d110", "max_density": 3},
-    "D11":  {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d11", "max_density": 3},
-    "D101": {"vendor": "niimbot", "width_px": 240, "width_mm": 15.0, "dpi": 203, "model": "d101", "max_density": 3},
-    # B-Series (48mm print head = 384px max)
-    "B18":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b18", "max_density": 3},
-    "B1":   {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b1", "max_density": 5},
-    "B21":  {"vendor": "niimbot", "width_px": 384, "width_mm": 48.0, "dpi": 203, "model": "b21", "max_density": 5},
-}
 
 def _safe_positive_int(value, default):
     try:
@@ -59,30 +48,70 @@ def _registry_find_model(registry, name: str):
     if not normalized:
         return None
 
-    get_method = getattr(registry, "get", None)
-    if callable(get_method):
-        for candidate_name in (normalized, normalized.upper(), normalized.lower()):
-            model = get_method(candidate_name)
-            if model:
-                return model
+    search_names = [normalized]
+    tokenized = (
+        normalized.replace("_", " ")
+        .replace("/", " ")
+        .replace("-", " ")
+        .replace("(", " ")
+        .replace(")", " ")
+        .split()
+    )
+    derived_names = []
+    if tokenized:
+        derived_names.extend(
+            candidate
+            for candidate in (
+                tokenized[-1],
+                tokenized[0],
+                "".join(tokenized),
+                " ".join(tokenized[-2:]) if len(tokenized) > 1 else "",
+                "".join(tokenized[-2:]) if len(tokenized) > 1 else "",
+            )
+            if candidate
+        )
 
-    normalized_upper = normalized.upper()
-    exact_match = None
-    prefix_match = None
+    for candidate_name in derived_names:
+        if candidate_name not in search_names:
+            search_names.append(candidate_name)
 
-    for model in _registry_models(registry):
-        model_no = str(getattr(model, "model_no", "") or "").strip()
-        head_name = str(getattr(model, "head_name", "") or "").strip().strip("-")
-        candidates = [candidate.upper() for candidate in (model_no, head_name) if candidate]
+    def _find_single(candidate_name: str):
+        get_method = getattr(registry, "get", None)
+        if callable(get_method):
+            for lookup_name in (candidate_name, candidate_name.upper(), candidate_name.lower()):
+                model = get_method(lookup_name)
+                if model:
+                    return model
 
-        if normalized_upper in candidates:
-            exact_match = model
-            break
+        normalized_upper = candidate_name.upper()
+        exact_match = None
+        prefix_match = None
 
-        if any(candidate.startswith(normalized_upper) or normalized_upper.startswith(candidate) for candidate in candidates):
-            prefix_match = prefix_match or model
+        for model in _registry_models(registry):
+            model_no = str(getattr(model, "model_no", "") or "").strip()
+            head_name = str(getattr(model, "head_name", "") or "").strip().strip("-")
+            candidates = [candidate.upper() for candidate in (model_no, head_name) if candidate]
 
-    return exact_match or prefix_match
+            if normalized_upper in candidates:
+                exact_match = model
+                break
+
+            if any(
+                candidate.startswith(normalized_upper)
+                or normalized_upper.startswith(candidate)
+                or normalized_upper.endswith(candidate)
+                for candidate in candidates
+            ):
+                prefix_match = prefix_match or model
+
+        return exact_match or prefix_match
+
+    for candidate_name in search_names:
+        model = _find_single(candidate_name)
+        if model:
+            return model
+
+    return None
 
 
 def _registry_model_info(model):
@@ -108,8 +137,14 @@ def _registry_model_info(model):
     max_energy = max(default_energy, max_energy)
 
     model_no = str(getattr(model, "model_no", "") or "generic")
+    vendor = str(getattr(model, "vendor", "generic") or "generic")
+    media_type = str(getattr(model, "media_type", "continuous") or "continuous")
+    model_min_energy = getattr(model, "min_energy", None)
+    model_max_energy = getattr(model, "max_energy", None)
+    model_max_speed = getattr(model, "max_speed", None)
+
     return {
-        "vendor": "generic",
+        "vendor": vendor,
         "width_px": width_px,
         "width_mm": round(width_px / dpi * 25.4, 1),
         "dpi": dpi,
@@ -117,31 +152,26 @@ def _registry_model_info(model):
         "model_id": model_no,
         "default_speed": default_speed,
         "default_energy": default_energy,
-        "min_energy": min_energy,
-        "max_energy": max_energy,
-        "max_speed": max_speed,
-        "max_density": None,
-        "media_type": "continuous",
+        "min_energy": (
+            _safe_positive_int(model_min_energy, min_energy)
+            if model_min_energy is not None
+            else min_energy
+        ),
+        "max_energy": (
+            _safe_positive_int(model_max_energy, max_energy)
+            if model_max_energy is not None
+            else max_energy
+        ),
+        "max_speed": (
+            max(1, int(model_max_speed or 0))
+            if model_max_speed is not None
+            else max_speed
+        ),
+        "max_density": getattr(model, "max_density", None),
+        "media_type": media_type,
     }
 
 def identify_printer_hardware(name: str, device=None):
-    name_upper = (name or "").upper().strip()
-
-    for prefix in sorted(NIIMBOT_MODELS.keys(), key=len, reverse=True):
-        niimbot_model = NIIMBOT_MODELS[prefix]
-        if name_upper.startswith(prefix) or name_upper == niimbot_model["model"].upper():
-            max_density = max(1, int(niimbot_model.get("max_density", 5) or 5))
-            return {
-                **niimbot_model,
-                "media_type": "pre-cut",
-                "default_speed": 1,
-                "default_energy": 3,
-                "min_energy": 1,
-                "max_energy": max_density,
-                "max_speed": 5,
-                "model_id": niimbot_model["model"],
-            }
-
     model = None
     if device and hasattr(device, "model") and device.model:
         model = device.model
@@ -315,18 +345,8 @@ def get_supported_models():
             "model_no": model_no,
             "width_mm": model_info["width_mm"],
             "dpi": model_info["dpi"],
-            "vendor": "generic",
-            "media_type": "continuous",
-        })
-
-    for prefix, info in NIIMBOT_MODELS.items():
-        results.append({
-            "name": f"Niimbot {prefix}",
-            "model_no": info["model"],
-            "width_mm": info["width_mm"],
-            "dpi": info["dpi"],
-            "vendor": "niimbot",
-            "media_type": "pre-cut",
+            "vendor": model_info["vendor"],
+            "media_type": model_info["media_type"],
         })
 
     results.sort(key=lambda model: (model["vendor"], model["name"].lower(), model["model_no"].lower()))
@@ -454,9 +474,9 @@ def update_printer_profile(mac_address: str, update: PrinterProfileUpdate):
         return profile
 
 async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bool = False):
-    """Handles scanning, continuous connection, and streaming multiple jobs efficiently."""
+    """Resolves the target device and dispatches printing to the appropriate vendor client."""
     global _scanned_devices_cache
-    
+
     with Session(engine) as session:
         settings = session.get(Settings, 1) or Settings()
         printer_profile = session.exec(
@@ -465,187 +485,38 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
 
     registry = PrinterModelRegistry.load()
     resolver = DeviceResolver(registry)
-    
-    # 1. Try to fetch from recent scans first
+
     target_device = next((d for d in _scanned_devices_cache if d.address == mac_address), None)
-    
-    # 2. If not found, scan the environment (e.g., first print after backend restart)
+
     if not target_device:
         devices, _ = await resolver.scan_printer_devices_with_failures(
-            include_classic=True, include_ble=True
+            include_classic=True,
+            include_ble=True,
         )
         _scanned_devices_cache = devices
         target_device = next((d for d in _scanned_devices_cache if d.address == mac_address), None)
-        
+
     if not target_device:
         raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found. Is it turned on?")
-        
-    # 2. Check Vendor
-    hardware_info = identify_printer_hardware(target_device.name, target_device)
-    print_width_px = hardware_info["width_px"]
-    
-    from PIL import Image
-    
-    final_images = []
-    for img in images:
-        if split_mode and img.width > print_width_px:
-            # Slice image horizontally into printer-sized vertical strips
-            for x in range(0, img.width, print_width_px):
-                strip = img.crop((x, 0, min(x + print_width_px, img.width), img.height))
-                if strip.width < print_width_px:
-                    padded = Image.new("RGB", (print_width_px, strip.height), "white")
-                    padded.paste(strip, (0, 0))
-                    strip = padded
-                final_images.append(strip)
-        else:
-            if hardware_info["vendor"] == "niimbot":
-                # CRITICAL FIX: Do NOT pad Niimbot labels. Let the Niimbot engine set actual dimensions.
-                if img.width > print_width_px:
-                    ratio = print_width_px / float(img.width)
-                    new_height = max(1, int(img.height * ratio))
-                    img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
-                final_images.append(img)
-            else:
-                # Generic Chinese Printers MUST pad narrower canvases to physical head width
-                if img.width != print_width_px:
-                    if img.width < print_width_px:
-                        padded = Image.new("RGB", (print_width_px, img.height), "white")
-                        offset_x = (print_width_px - img.width) // 2
-                        padded.paste(img, (offset_x, 0))
-                        img = padded
-                    else:
-                        ratio = print_width_px / float(img.width)
-                        new_height = max(1, int(img.height * ratio))
-                        img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
-                final_images.append(img)
 
-    # ==========================================
-    # BRANCH: ROUTE TO SPECIFIC VENDOR ENGINE
-    # ==========================================
-    
-    if hardware_info["vendor"] == "niimbot":
-        # Route to Niimbot Engine
-        from .vendors.niimbot.printer import PrinterClient
+    hardware_info = identify_printer_hardware(getattr(target_device, "name", ""), target_device)
 
-        # NiimPrintX expects a 'device' object with an address attribute
-        class FakeBleakDevice:
-            def __init__(self, address):
-                self.address = address
-                self.name = target_device.name
+    from ..vendors import get_printer_client_class
 
-        # Ensure we connect to the BLE endpoint (UUID on macOS, BLE MAC on Win/Lin)
-        ble_address = mac_address
-        if hasattr(target_device, "ble_endpoint") and target_device.ble_endpoint:
-            ble_address = target_device.ble_endpoint.address
+    client_cls = get_printer_client_class(hardware_info["vendor"])
+    client = client_cls(target_device, hardware_info, printer_profile, settings)
 
-        device = FakeBleakDevice(ble_address)
-        printer = PrinterClient(device)
-
-        if not await printer.connect():
-            raise HTTPException(status_code=500, detail="Failed to connect to Niimbot")
-
-        try:
-            default_density = int(hardware_info.get("default_energy", 3) or 3)
-            max_allowed = max(1, int(hardware_info.get("max_density", 5) or 5))
-            raw_density = (
-                printer_profile.energy
-                if printer_profile and printer_profile.energy not in (None, 0)
-                else default_density
-            )
-            density = max(1, min(int(raw_density), max_allowed))
-
-            for img in final_images:
-                await printer.print_image(img, density=density, quantity=1)
-                await asyncio.sleep(1.0)
-        finally:
-            await printer.disconnect()
-
-    else:
-        # Route to Generic Chinese Engine (CatLabel default)
-        from ..rendering.renderer import image_to_raster
-        from ..protocol.job import build_job_from_raster
-        from ..transport.bluetooth import SppBackend
-        
-        pipeline_config = target_device.model.image_pipeline
-
-        hardware_default_speed = int(hardware_info.get("default_speed", getattr(target_device.model, "img_print_speed", 0)) or 0)
-        hardware_default_energy = int(hardware_info.get("default_energy", getattr(target_device.model, "moderation_energy", 5000) or 5000) or 5000)
-        min_allowed_energy = max(1, int(hardware_info.get("min_energy", 1) or 1))
-        max_allowed_energy = max(min_allowed_energy, int(hardware_info.get("max_energy", hardware_default_energy) or hardware_default_energy))
-        max_allowed_speed = max(1, int(hardware_info.get("max_speed", max(hardware_default_speed, 1)) or max(hardware_default_speed, 1)))
-
-        resolved_speed = (
-            printer_profile.speed
-            if printer_profile and printer_profile.speed not in (None, 0)
-            else (settings.speed if settings.speed > 0 else hardware_default_speed)
-        )
-        resolved_energy = (
-            printer_profile.energy
-            if printer_profile and printer_profile.energy not in (None, 0)
-            else (settings.energy if settings.energy > 0 else hardware_default_energy)
+    connected = await client.connect()
+    if not connected:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to connect to printer via {hardware_info['vendor']} engine.",
         )
 
-        use_speed = max(0, min(int(resolved_speed or 0), max_allowed_speed))
-        use_energy = max(min_allowed_energy, min(int(resolved_energy or hardware_default_energy), max_allowed_energy))
-        use_feed = (
-            printer_profile.feed_lines
-            if printer_profile and printer_profile.feed_lines is not None
-            else settings.feed_lines
-        )
-
-        jobs = []
-        total_images = len(final_images)
-        for i, img in enumerate(final_images):
-            is_last = (i == total_images - 1)
-            current_feed = use_feed if is_last else 0
-
-            raster = image_to_raster(img, pipeline_config.default_format, dither=True)
-            job = build_job_from_raster(
-                raster=raster,
-                is_text=False,
-                speed=use_speed,
-                energy=use_energy,
-                blackening=3,
-                lsb_first=not target_device.model.a4xii,
-                protocol_family=target_device.model.protocol_family,
-                feed_padding=current_feed,
-                dev_dpi=target_device.model.dev_dpi,
-                can_print_label=target_device.model.can_print_label,
-                image_pipeline=pipeline_config,
-            )
-            jobs.append(job)
-        
-        backend = SppBackend()
-        attempts = resolver.build_connection_attempts(target_device)
-        if not attempts:
-            raise HTTPException(status_code=500, detail="No valid connection endpoints found.")
-            
-        max_retries = 3
-        last_error = None
-        
-        for attempt in range(max_retries):
-            try:
-                await backend.connect_attempts(attempts)
-                try:
-                    # Stream all jobs continuously over the single open connection
-                    interval = getattr(target_device.model, "interval_ms", 0)
-                    for i, job in enumerate(jobs):
-                        await backend.write(job, chunk_size=128, interval_ms=interval)
-                        
-                        # Thermal cooling pauses for long print batches
-                        if i < len(jobs) - 1:
-                            if (i + 1) % 3 == 0:
-                                await asyncio.sleep(2.0)  # Let thermal head cool down
-                            else:
-                                await asyncio.sleep(0.3)  # Small gap between jobs
-                finally:
-                    await backend.disconnect()
-                return
-            except Exception as e:
-                last_error = e
-                await asyncio.sleep(1.5)
-                
-        raise HTTPException(status_code=500, detail=f"Failed to connect: {str(last_error)}")
+    try:
+        await client.print_images(images, split_mode)
+    finally:
+        await client.disconnect()
 
 async def execute_print_job(mac_address: str, img: Any, split_mode: bool = False):
     await execute_print_jobs(mac_address, [img], split_mode)

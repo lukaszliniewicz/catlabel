@@ -30,6 +30,14 @@ class ProtocolFamily(str, Enum):
     V5X = "v5x"
     V5C = "v5c"
     DCK = "dck"
+    NIIMBOT = "niimbot"
+    PHOMEMO_M = "phomemo_m"
+    PHOMEMO_M02 = "phomemo_m02"
+    PHOMEMO_M04 = "phomemo_m04"
+    PHOMEMO_M110 = "phomemo_m110"
+    PHOMEMO_D = "phomemo_d"
+    PHOMEMO_P12 = "phomemo_p12"
+    TSPL = "tspl"
 
     @classmethod
     def from_value(cls, value: "ProtocolFamily | str | None") -> "ProtocolFamily":
