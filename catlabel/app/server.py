@@ -142,6 +142,16 @@ def _registry_model_info(model):
     model_min_energy = getattr(model, "min_energy", None)
     model_max_energy = getattr(model, "max_energy", None)
     model_max_speed = getattr(model, "max_speed", None)
+    protocol_family = getattr(model, "protocol_family", "legacy")
+    if hasattr(protocol_family, "value"):
+        protocol_family = protocol_family.value
+
+    reported_default_energy = default_energy
+    if vendor == "phomemo":
+        reported_default_energy = min(
+            _safe_positive_int(getattr(model, "max_density", 0), 8),
+            6,
+        )
 
     return {
         "vendor": vendor,
@@ -151,7 +161,7 @@ def _registry_model_info(model):
         "model": model_no,
         "model_id": model_no,
         "default_speed": default_speed,
-        "default_energy": default_energy,
+        "default_energy": reported_default_energy,
         "min_energy": (
             _safe_positive_int(model_min_energy, min_energy)
             if model_min_energy is not None
@@ -169,6 +179,7 @@ def _registry_model_info(model):
         ),
         "max_density": getattr(model, "max_density", None),
         "media_type": media_type,
+        "protocol_family": str(protocol_family or "legacy"),
     }
 
 def identify_printer_hardware(name: str, device=None):
@@ -196,6 +207,7 @@ def identify_printer_hardware(name: str, device=None):
         "max_speed": 100,
         "max_density": None,
         "media_type": "continuous",
+        "protocol_family": "legacy",
     }
 
 os.makedirs("data", exist_ok=True)
@@ -347,6 +359,9 @@ def get_supported_models():
             "dpi": model_info["dpi"],
             "vendor": model_info["vendor"],
             "media_type": model_info["media_type"],
+            "default_energy": model_info["default_energy"],
+            "max_density": model_info["max_density"],
+            "protocol_family": model_info["protocol_family"],
         })
 
     results.sort(key=lambda model: (model["vendor"], model["name"].lower(), model["model_no"].lower()))
@@ -956,6 +971,7 @@ async def scan_printers():
             "max_energy": hardware_info.get("max_energy"),
             "max_speed": hardware_info.get("max_speed"),
             "max_density": hardware_info.get("max_density"),
+            "protocol_family": hardware_info.get("protocol_family", "legacy"),
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
 

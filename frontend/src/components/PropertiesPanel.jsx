@@ -128,7 +128,7 @@ const ToggleBtn = ({ icon: Icon, active, onClick, label }) => (
 );
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence, designMode, setDesignMode, htmlContent, setHtmlContent } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, getMmToPx, getPxToMm, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence, designMode, setDesignMode, htmlContent, setHtmlContent } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
   const isPreCut = selectedPrinterInfo?.media_type === 'pre-cut';
   const pInfo = selectedPrinterInfo || {};
@@ -137,6 +137,7 @@ export default function PropertiesPanel() {
   const minEnergy = pInfo.min_energy || 1000;
   const maxEnergy = pInfo.max_energy || 65535;
   const defaultEnergy = pInfo.default_energy || 5000;
+  const maxDensity = selectedPrinterInfo?.max_density || 5;
 
   const [panelWidth, setPanelWidth] = useState(320);
 
@@ -523,13 +524,36 @@ export default function PropertiesPanel() {
 
               <div className="text-xs text-blue-600 dark:text-blue-400 mb-2">
                 {selectedPrinter
-                  ? `Hardware Defaults: Speed ${selectedPrinterInfo?.default_speed ?? 'Auto'}, ${selectedPrinterInfo?.vendor === 'niimbot' ? 'Density' : 'Energy'} ${selectedPrinterInfo?.default_energy ?? 'Auto'}`
+                  ? `Hardware Defaults: Speed ${selectedPrinterInfo?.default_speed ?? 'Auto'}, ${['niimbot', 'phomemo'].includes(selectedPrinterInfo?.vendor) ? 'Density' : 'Energy'} ${selectedPrinterInfo?.default_energy ?? 'Auto'}`
                   : 'Select a printer to configure device-specific overrides.'}
               </div>
 
-              {selectedPrinterInfo?.vendor === 'niimbot' ? (
+              {selectedPrinterInfo?.media_type === 'continuous' && selectedPrinterInfo?.protocol_family?.includes('p12') && (
+                <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded">
+                  <label className={labelClass}>Adjust Tape Length</label>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={() => setCanvasSize(Math.max(getMmToPx(5), canvasWidth - getMmToPx(5)), canvasHeight)}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors rounded text-lg font-bold dark:text-white"
+                    >
+                      -
+                    </button>
+                    <span className="flex-1 text-center text-xs font-bold dark:text-neutral-300">
+                      {parseFloat(getPxToMm(canvasWidth)).toFixed(0)} mm
+                    </span>
+                    <button
+                      onClick={() => setCanvasSize(canvasWidth + getMmToPx(5), canvasHeight)}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors rounded text-lg font-bold dark:text-white"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {['niimbot', 'phomemo'].includes(selectedPrinterInfo?.vendor) ? (
                 <div>
-                  <label className={labelClass}>Print Density (1 - {selectedPrinterInfo?.max_density || 5})</label>
+                  <label className={labelClass}>Print Density (1 - {maxDensity})</label>
                   <select
                     name="energy"
                     value={printerProfile?.energy || selectedPrinterInfo?.default_energy || 3}
@@ -537,11 +561,11 @@ export default function PropertiesPanel() {
                     disabled={!selectedPrinter}
                     className={inputClass}
                   >
-                    <option value={1}>1 - Light</option>
-                    <option value={2}>2 - Normal</option>
-                    <option value={3}>3 - Dark</option>
-                    {(selectedPrinterInfo?.max_density || 5) >= 4 && <option value={4}>4 - Very Dark</option>}
-                    {(selectedPrinterInfo?.max_density || 5) >= 5 && <option value={5}>5 - Maximum</option>}
+                    {Array.from({ length: maxDensity }, (_, i) => i + 1).map((level) => (
+                      <option key={level} value={level}>
+                        {level} - {level <= 2 ? 'Light' : level >= (maxDensity - 1) ? 'Dark' : 'Normal'}
+                      </option>
+                    ))}
                   </select>
                 </div>
               ) : (
