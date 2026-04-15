@@ -409,7 +409,7 @@ STYLING & HTML MODE (FOR CREATIVE DESIGNS):
   3. Do NOT set `font-size` on `.auto-text` in your CSS! The system calculates it. Only set `font-family`, `font-weight`, `text-transform`, `line-height`, etc.
 
 VISUAL FEEDBACK:
-If you are building a complex layout from scratch and need to visually verify it (check for overlapping text, cut-offs, or alignment), call the `request_visual_preview` tool. The system will render the canvas and send you an image. Do not guess blindly if you are unsure!
+If you are building a complex layout from scratch and need to visually verify it (check for overlapping text, cut-offs, or alignment), call the `request_visual_preview` tool. Do not guess blindly if you are unsure!
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
@@ -524,61 +524,82 @@ Do NOT create multiple pages for a list of data. To print a batch:
                     messages.append(tool_msg)
                     new_messages.append(tool_msg)
 
+                # Check if the preview tool was called in this turn
                 requested_preview = any(
                     (tc.get("function", {}).get("name") if isinstance(tc, dict) else tc.function.name) == "request_visual_preview"
                     for tc in resp_msg.tool_calls
                 )
 
+                # Execute the preview generation and append it sequentially as a user message
                 if requested_preview and active_model.vision_capable:
-                    try:
-                        import base64
-                        from io import BytesIO
+                    design_mode = canvas_state_copy.get("designMode", "canvas")
+                    canvas_items = canvas_state_copy.get("items", [])
+                    html_content = str(canvas_state_copy.get("htmlContent", "")).strip()
 
-                        from ..rendering.template import render_template
+                    # FAST-FAIL: Check if canvas is completely empty to save rendering time and tokens
+                    is_blank = (design_mode == "canvas" and not canvas_items) or (design_mode == "html" and not html_content)
 
-                        batch_records = canvas_state_copy.get("batchRecords", [{}])
-                        preview_record = batch_records[0] if (isinstance(batch_records, list) and batch_records) else {}
-                        if not isinstance(preview_record, dict):
-                            preview_record = {}
-
-                        image = render_template(
-                            canvas_state_copy,
-                            preview_record,
-                            default_font=context["global_default_font"],
-                        )
-                        buffered = BytesIO()
-                        image.save(buffered, format="PNG")
-                        img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-
+                    if is_blank:
                         feedback_msg_for_llm = {
                             "role": "user",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "[SYSTEM] Visual render complete. Evaluate your layout. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. Otherwise, reply to the user.",
-                                },
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/png;base64,{img_b64}"},
-                                },
-                            ],
+                            "content": "[SYSTEM] The canvas is currently completely blank. Please add elements or HTML content before requesting a visual preview."
                         }
-
                         feedback_msg_for_ui = {
                             "role": "user",
-                            "content": "[SYSTEM] Provided visual preview to AI.",
+                            "content": "[SYSTEM] Intercepted visual preview request (canvas is blank).",
                         }
                         messages.append(feedback_msg_for_llm)
                         new_messages.append(feedback_msg_for_ui)
-                        logger.info("📸 Provided requested visual feedback to agent.")
-                    except Exception as render_err:
-                        logger.warning("Visual feedback skipped: %s", render_err)
-                        fallback_msg = {
-                            "role": "user",
-                            "content": "[SYSTEM] Tool execution complete. Visual feedback is unavailable (Playwright might be missing on server). Proceed based on layout logic."
-                        }
-                        messages.append(fallback_msg)
-                        new_messages.append(fallback_msg)
+                        logger.info("🛑 Intercepted preview request for blank canvas.")
+                    else:
+                        try:
+                            import base64
+                            from io import BytesIO
+                            from ..rendering.template import render_template
+
+                            batch_records = canvas_state_copy.get("batchRecords", [{}])
+                            preview_record = batch_records[0] if (isinstance(batch_records, list) and batch_records) else {}
+                            if not isinstance(preview_record, dict):
+                                preview_record = {}
+
+                            image = render_template(
+                                canvas_state_copy,
+                                preview_record,
+                                default_font=context["global_default_font"],
+                            )
+                            buffered = BytesIO()
+                            image.save(buffered, format="PNG")
+                            img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+                            feedback_msg_for_llm = {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "[SYSTEM] Visual render complete. Evaluate your layout. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. Otherwise, reply to the user.",
+                                    },
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+                                    },
+                                ],
+                            }
+
+                            feedback_msg_for_ui = {
+                                "role": "user",
+                                "content": "[SYSTEM] Provided visual preview to AI.",
+                            }
+                            messages.append(feedback_msg_for_llm)
+                            new_messages.append(feedback_msg_for_ui)
+                            logger.info("📸 Provided requested visual feedback to agent.")
+                        except Exception as render_err:
+                            logger.warning("Visual feedback skipped: %s", render_err)
+                            fallback_msg = {
+                                "role": "user",
+                                "content": "[SYSTEM] Tool execution complete. Visual feedback is unavailable (Playwright might be missing on server). Proceed based on layout logic."
+                            }
+                            messages.append(fallback_msg)
+                            new_messages.append(fallback_msg)
             else:
                 logger.info("Agent finished turn. Total Cost so far: $%.4f", total_cost)
                 break
