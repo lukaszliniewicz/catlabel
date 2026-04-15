@@ -348,6 +348,7 @@ def chat_with_agent(req: ChatRequest):
     templates_json = json.dumps(context["available_templates"], indent=2)
     root_categories_json = json.dumps(context["root_categories"], indent=2)
     root_projects_json = json.dumps(context["root_projects"], indent=2)
+    available_fonts_str = ", ".join(context.get("available_fonts", []))
 
     media_pref = context.get('intended_media_type', 'unknown')
 
@@ -380,6 +381,7 @@ Be creative! You can design elegant vintage labels, modern minimalist tags, or u
 CONTEXT:
 - {context['engine_rules']['coordinate_system']}
 - Default Font: {context['global_default_font']}
+- Available Fonts: {available_fonts_str}
 
 HARDWARE STATUS:
 {printer_status}
@@ -407,9 +409,11 @@ STYLING & HTML MODE (FOR CREATIVE DESIGNS):
   1. The parent element (e.g., `.my-constrained-box`) MUST have strict physical boundaries.
   2. If using CSS Grid or Flexbox, add `min-width: 0; min-height: 0; overflow: hidden;` to the parent cell so it bounds the text instead of stretching.
   3. Do NOT set `font-size` on `.auto-text` in your CSS! The system calculates it. Only set `font-family`, `font-weight`, `text-transform`, `line-height`, etc.
+  4. AVOID SUFFOCATION: On tiny canvases (e.g. 48x48mm), heavy padding, thick borders, or multi-row grids will crush the `.auto-text` bounding box. Give the main text container at least 80% of the canvas height. Keep decorations minimal.
+  5. Use single lines (`white-space: nowrap`) for main titles whenever possible to maximize font size.
 
 VISUAL FEEDBACK:
-If you are building a complex layout from scratch and need to visually verify it (check for overlapping text, cut-offs, or alignment), call the `request_visual_preview` tool. Do not guess blindly if you are unsure!
+If you are building a complex layout from scratch (especially HTML designs on tiny canvases), ALWAYS visually verify it to check for cut-offs, suffocated auto-text, or alignment issues by calling the `request_visual_preview` tool. Do not guess blindly if you are unsure!
 
 BATCH PRINTING PARADIGM:
 Do NOT create multiple pages for a list of data. To print a batch:
