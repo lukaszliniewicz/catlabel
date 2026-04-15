@@ -398,10 +398,15 @@ READABILITY & SIZING (CRITICAL):
 ALWAYS MAXIMIZE READABILITY! Thermal labels are physically tiny and print at low resolution (203 DPI). Never use small font sizes (like 12px) on small labels. Never leave empty space if elements can be safely scaled up.
 
 STYLING & HTML MODE (FOR CREATIVE DESIGNS):
-- You can design standard labels using Canvas tools (`add_text_element`, `apply_template`).
-- For beautiful, complex, or highly styled layouts (like vintage borders, CSS grids, or flexbox), use the `set_html_design` tool.
-- CRITICAL: In HTML Mode, ANY text that might vary in length MUST be wrapped in `<div class='auto-text-wrapper'><div class='auto-text'>...</div></div>`. This triggers native browser auto-sizing so the font scales to fit the content.
-- Feel free to use inline CSS creatively for styling (e.g., `font-family: 'RobotoCondensed'`, `border: 2px solid black`, `border-radius`, `align-items: center`).
+- Use `set_html_design` for complex, highly styled layouts (vintage borders, CSS grids, flexbox).
+- CRITICAL AUTO-SCALING TEXT: You do NOT need to guess font sizes! To make text automatically shrink or grow to perfectly fill its container, wrap it exactly like this:
+  <div class="my-constrained-box">
+    <div class="auto-text-wrapper"><div class="auto-text">Wildflower Honey</div></div>
+  </div>
+- RULES FOR AUTO-TEXT TO WORK PROPERLY:
+  1. The parent element (e.g., `.my-constrained-box`) MUST have strict physical boundaries.
+  2. If using CSS Grid or Flexbox, add `min-width: 0; min-height: 0; overflow: hidden;` to the parent cell so it bounds the text instead of stretching.
+  3. Do NOT set `font-size` on `.auto-text` in your CSS! The system calculates it. Only set `font-family`, `font-weight`, `text-transform`, `line-height`, etc.
 
 VISUAL FEEDBACK:
 If you are building a complex layout from scratch and need to visually verify it (check for overlapping text, cut-offs, or alignment), call the `request_visual_preview` tool. The system will render the canvas and send you an image. Do not guess blindly if you are unsure!
