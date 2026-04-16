@@ -7,12 +7,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Iterable, Optional, List, Tuple, Set
 
-from ..protocol.family import ProtocolFamily
-from ..protocol.families import get_protocol_definition
-from ..protocol.types import ImageEncoding, ImagePipelineConfig, PixelFormat
+from ...protocol.family import ProtocolFamily
+from ...protocol.families import get_protocol_definition
+from ...protocol.types import ImageEncoding, ImagePipelineConfig, PixelFormat
 
-DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "printer_models.json"
-ALIAS_PATH = DATA_PATH.with_name("printer_model_aliases.json")
+DATA_PATH = Path(__file__).resolve().parent / "data" / "printer_models.json"
+ALIAS_PATH = Path(__file__).resolve().parent / "data" / "aliases.json"
 
 
 def _family_default_image_pipeline(protocol_family: ProtocolFamily) -> ImagePipelineConfig:
@@ -407,7 +407,12 @@ class PrinterModelRegistry:
         if cached:
             return cached
         raw = json.loads(path.read_text(encoding="utf-8"))
-        models = [cls._parse_model(item) for item in raw]
+        models = []
+        for item in raw:
+            vendor = str(item.get("vendor", "generic")).strip().lower() if isinstance(item, dict) else "generic"
+            if vendor in {"niimbot", "phomemo"}:
+                continue
+            models.append(cls._parse_model(item))
         alias_registry = PrinterModelAliasRegistry.load(alias_path)
         registry = cls(models, alias_registry)
         cls._cache[key] = registry

@@ -1,9 +1,9 @@
 from typing import Dict, List, Optional
 
-from ...devices import PrinterModelRegistry
 from ..manifest import VendorManifest
-from ..utils import _registry_models, extract_raw_hardware_info, find_model_in_registry
 from .client import GenericClient
+from .models import PrinterModelRegistry
+from .utils import _registry_models, extract_raw_hardware_info, find_model_in_registry
 
 
 class GenericManifest(VendorManifest):

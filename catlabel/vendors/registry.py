@@ -33,12 +33,22 @@ class VendorRegistry:
 
     @classmethod
     def identify_device(cls, name: str, device=None, mac: str = None) -> Dict:
-        for plugin in cls._plugins.values():
+        generic_plugin = cls._plugins.get("generic")
+
+        for vendor_id, plugin in cls._plugins.items():
+            if vendor_id == "generic":
+                continue
             info = plugin.identify_device(name, device, mac)
             if info:
                 return info
 
-        return cls._plugins["generic"].get_fallback_info()
+        if generic_plugin is not None:
+            info = generic_plugin.identify_device(name, device, mac)
+            if info:
+                return info
+            return generic_plugin.get_fallback_info()
+
+        raise KeyError("Generic vendor manifest is not registered")
 
     @classmethod
     def get_manifest(cls, vendor_id: str) -> VendorManifest:

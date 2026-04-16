@@ -20,7 +20,7 @@ from sqlmodel import SQLModel, create_engine, Session, select
 
 from .models import PrinterProfile, Font, Category, Project, Settings, Address, LabelPreset
 from ..rendering.template import render_template, render_via_browser
-from ..devices import DeviceResolver, PrinterModelRegistry
+from ..transport.bluetooth import SppBackend
 from .ai_agent import router as ai_router
 from .layout_engine import TEMPLATE_METADATA, generate_template_items
 from .. import reporting
@@ -183,32 +183,10 @@ def _registry_model_info(model):
     }
 
 def identify_printer_hardware(name: str, device=None):
-    model = None
-    if device and hasattr(device, "model") and device.model:
-        model = device.model
-    else:
-        registry = PrinterModelRegistry.load()
-        model = _registry_find_model(registry, name)
+    from ..vendors import VendorRegistry
 
-    if model:
-        return _registry_model_info(model)
-
-    return {
-        "vendor": "generic",
-        "width_px": 384,
-        "width_mm": 48.0,
-        "dpi": 203,
-        "model": "generic",
-        "model_id": "generic",
-        "default_speed": 0,
-        "default_energy": 10000,
-        "min_energy": 1,
-        "max_energy": 20000,
-        "max_speed": 100,
-        "max_density": None,
-        "media_type": "continuous",
-        "protocol_family": "legacy",
-    }
+    address = getattr(device, "address", None) if device is not None else None
+    return VendorRegistry.identify_device(name or "Unknown Printer", device, address)
 
 os.makedirs("data", exist_ok=True)
 sqlite_file_name = "data/catlabel.db"
@@ -216,6 +194,45 @@ sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=False)
 
 _scanned_devices_cache: List[Any] = []
+
+
+def _recognized_scanned_devices(devices: List[Any]) -> List[Any]:
+    from ..vendors import VendorRegistry
+
+    recognized = []
+    for device in devices:
+        name = device.name or "Unknown Printer"
+        hardware_info = VendorRegistry.identify_device(name, device, device.address)
+
+        if hardware_info.get("vendor") == "generic" and hardware_info.get("model_id") == "generic":
+            continue
+
+        transport = getattr(device, "transport", None)
+        transport_value = transport.value if hasattr(transport, "value") else str(transport or "").lower()
+        if hardware_info.get("vendor") in {"niimbot", "phomemo"} and transport_value != "ble":
+            continue
+
+        recognized.append(device)
+
+    return recognized
+
+
+def _scan_result_payload(device: Any) -> Dict[str, Any]:
+    from ..vendors import VendorRegistry
+
+    name = device.name or "Unknown Printer"
+    hardware_info = VendorRegistry.identify_device(name, device, device.address)
+    transport = getattr(device, "transport", None)
+    transport_value = transport.value if hasattr(transport, "value") else str(transport or "").lower()
+
+    return {
+        **hardware_info,
+        "name": name,
+        "address": device.address,
+        "display_address": getattr(device, "display_address", device.address),
+        "paired": device.paired,
+        "transport": transport_value or None,
+    }
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -478,17 +495,14 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
             select(PrinterProfile).where(PrinterProfile.mac_address == mac_address)
         ).first()
 
-    registry = PrinterModelRegistry.load()
-    resolver = DeviceResolver(registry)
-
     target_device = next((d for d in _scanned_devices_cache if d.address == mac_address), None)
 
     if not target_device:
-        devices, _ = await resolver.scan_printer_devices_with_failures(
+        devices, _ = await SppBackend.scan_with_failures(
             include_classic=True,
             include_ble=True,
         )
-        _scanned_devices_cache = devices
+        _scanned_devices_cache = _recognized_scanned_devices(devices)
         target_device = next((d for d in _scanned_devices_cache if d.address == mac_address), None)
 
     if not target_device:
@@ -920,33 +934,13 @@ def list_fonts():
 @app.get("/api/printers/scan")
 async def scan_printers():
     global _scanned_devices_cache
-    registry = PrinterModelRegistry.load()
-    resolver = DeviceResolver(registry)
-    devices, failures = await resolver.scan_printer_devices_with_failures(
+    devices, failures = await SppBackend.scan_with_failures(
         include_classic=True,
         include_ble=True,
     )
-    _scanned_devices_cache = devices
-    
-    results = []
-    for device in devices:
-        # Safely get the name, falling back to the model name if available
-        name = getattr(device, "name", None)
-        if not name and hasattr(device, "model") and device.model:
-            name = getattr(device.model, "head_name", "").strip('-')
-        
-        from ..vendors import VendorRegistry
+    _scanned_devices_cache = _recognized_scanned_devices(devices)
 
-        name = name or "Unknown Printer"
-        hardware_info = VendorRegistry.identify_device(name, device, device.address)
-
-        results.append({
-            **hardware_info,
-            "name": name,
-            "address": device.address,
-            "display_address": getattr(device, "display_address", device.address),
-            "paired": device.paired,
-        })
+    results = [_scan_result_payload(device) for device in _scanned_devices_cache]
     return {"devices": results, "failures": [str(f.error) for f in failures]}
 
 @app.get("/api/addresses")

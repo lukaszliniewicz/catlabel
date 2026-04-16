@@ -5,10 +5,11 @@ from fastapi import HTTPException
 from PIL import Image
 
 from ..base import BasePrinterClient
-from ...devices import DeviceResolver, PrinterModelRegistry
+from .models import PrinterModelRegistry
 from ...protocol.job import build_job_from_raster
 from ...rendering.renderer import image_to_raster
-from ...transport.bluetooth import SppBackend
+from ...transport.bluetooth import DeviceInfo, SppBackend
+from ...transport.bluetooth.types import DeviceTransport
 
 
 class GenericClient(BasePrinterClient):
@@ -16,7 +17,6 @@ class GenericClient(BasePrinterClient):
         super().__init__(device, hardware_info, printer_profile, settings)
         self.backend = SppBackend()
         self.registry = PrinterModelRegistry.load()
-        self.resolver = DeviceResolver(self.registry)
         self.model = (
             getattr(device, "model", None)
             or self.registry.detect_from_device_name(
@@ -27,7 +27,21 @@ class GenericClient(BasePrinterClient):
         )
 
     async def connect(self) -> bool:
-        attempts = self.resolver.build_connection_attempts(self.device)
+        attempts = []
+        prefer_spp = getattr(self.model, "use_spp", False)
+        ordered = [DeviceTransport.CLASSIC, DeviceTransport.BLE] if prefer_spp else [DeviceTransport.BLE, DeviceTransport.CLASSIC]
+
+        for transport in ordered:
+            attempts.append(
+                DeviceInfo(
+                    name=getattr(self.device, "name", "Unknown"),
+                    address=self.device.address,
+                    paired=getattr(self.device, "paired", None),
+                    transport=transport,
+                    protocol_family=self.model.protocol_family if self.model else None,
+                )
+            )
+
         if not attempts:
             raise HTTPException(status_code=500, detail="No valid connection endpoints found.")
 
