@@ -732,7 +732,7 @@ export const useStore = create((set, get) => ({
 
     if (info) {
       const isNewPrinter = currentState.selectedPrinterInfo?.address !== mac;
-      const isPreCutMedia = info.media_type === 'pre-cut' || info.vendor === 'niimbot';
+      const isPreCutMedia = info.media_type === 'pre-cut';
 
       if (isNewPrinter) {
         if (isPreCutMedia) {
@@ -792,27 +792,32 @@ export const useStore = create((set, get) => ({
       const res = await fetch(`/api/printers/${mac}/profile`);
       const profile = await res.json();
       const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+      const caps = info?.capabilities || {};
 
-      const normalizedEnergy = info?.vendor === 'niimbot'
+      const normalizedEnergy = caps.density?.available
         ? clamp(
-            (profile?.energy ?? 0) > 0 ? profile.energy : (info?.default_energy ?? 3),
-            1,
-            info?.max_density ?? 5
+            (profile?.energy > 0 ? profile.energy : caps.density.default) || 3,
+            caps.density.min || 1,
+            caps.density.max || 8
           )
-        : ((profile?.energy ?? 0) > 0
+        : (caps.energy?.available
             ? clamp(
-                profile.energy,
-                info?.min_energy ?? 1,
-                info?.max_energy ?? 65535
+                (profile?.energy > 0 ? profile.energy : caps.energy.default) || 5000,
+                caps.energy.min || 1,
+                caps.energy.max || 65535
               )
             : 0);
 
-      const normalizedSpeed = (profile?.speed ?? 0) > 0
+      const normalizedSpeed = caps.speed?.available
         ? clamp(
-            profile.speed,
-            0,
-            info?.max_speed ?? 100
+            profile?.speed > 0 ? profile.speed : (caps.speed.default || 0),
+            caps.speed.min || 0,
+            caps.speed.max || 100
           )
+        : 0;
+
+      const normalizedFeed = caps.feed?.available
+        ? Math.max(0, profile?.feed_lines ?? (caps.feed.default || 50))
         : 0;
 
       set({
@@ -820,7 +825,7 @@ export const useStore = create((set, get) => ({
           ...profile,
           speed: normalizedSpeed,
           energy: normalizedEnergy,
-          feed_lines: Math.max(0, profile?.feed_lines ?? 50)
+          feed_lines: normalizedFeed
         }
       });
     } catch (e) {

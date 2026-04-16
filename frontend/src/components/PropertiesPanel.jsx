@@ -132,12 +132,11 @@ export default function PropertiesPanel() {
   const selectedItem = items.find(i => i.id === selectedId);
   const isPreCut = selectedPrinterInfo?.media_type === 'pre-cut';
   const pInfo = selectedPrinterInfo || {};
-  const maxSpeed = pInfo.max_speed || 100;
-  const defaultSpeed = pInfo.default_speed || 0;
-  const minEnergy = pInfo.min_energy || 1000;
-  const maxEnergy = pInfo.max_energy || 65535;
-  const defaultEnergy = pInfo.default_energy || 5000;
-  const maxDensity = selectedPrinterInfo?.max_density || 5;
+  const caps = pInfo.capabilities || {};
+  const maxSpeed = caps.speed?.max || 100;
+  const minEnergy = caps.energy?.min || 1000;
+  const maxEnergy = caps.energy?.max || 65535;
+  const maxDensity = caps.density?.max || 5;
 
   const [panelWidth, setPanelWidth] = useState(320);
 
@@ -524,11 +523,11 @@ export default function PropertiesPanel() {
 
               <div className="text-xs text-blue-600 dark:text-blue-400 mb-2">
                 {selectedPrinter
-                  ? `Hardware Defaults: Speed ${selectedPrinterInfo?.default_speed ?? 'Auto'}, ${['niimbot', 'phomemo'].includes(selectedPrinterInfo?.vendor) ? 'Density' : 'Energy'} ${selectedPrinterInfo?.default_energy ?? 'Auto'}`
+                  ? `Hardware Defaults: Speed ${caps.speed?.default ?? 'Auto'}, ${caps.density?.available ? 'Density' : 'Energy'} ${caps.density?.available ? (caps.density.default || 'Auto') : (caps.energy?.default || 'Auto')}`
                   : 'Select a printer to configure device-specific overrides.'}
               </div>
 
-              {selectedPrinterInfo?.media_type === 'continuous' && selectedPrinterInfo?.protocol_family?.includes('p12') && (
+              {pInfo.media_type === 'continuous' && pInfo.protocol_family?.includes('p12') && (
                 <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded">
                   <label className={labelClass}>Adjust Tape Length</label>
                   <div className="flex items-center gap-2 mt-2">
@@ -551,12 +550,12 @@ export default function PropertiesPanel() {
                 </div>
               )}
 
-              {['niimbot', 'phomemo'].includes(selectedPrinterInfo?.vendor) ? (
+              {caps.density?.available && (
                 <div>
                   <label className={labelClass}>Print Density (1 - {maxDensity})</label>
                   <select
                     name="energy"
-                    value={printerProfile?.energy || selectedPrinterInfo?.default_energy || 3}
+                    value={printerProfile?.energy || caps.density.default || 3}
                     onChange={handleProfileChange}
                     disabled={!selectedPrinter}
                     className={inputClass}
@@ -568,54 +567,60 @@ export default function PropertiesPanel() {
                     ))}
                   </select>
                 </div>
-              ) : (
-                <>
-                  <div>
-                    <label className={labelClass}>Speed Override (0 = Auto)</label>
-                    <input
-                      type="number"
-                      name="speed"
-                      min={0}
-                      max={maxSpeed}
-                      value={printerProfile?.speed || 0}
-                      onChange={handleProfileChange}
-                      disabled={!selectedPrinter}
-                      className={inputClass}
-                    />
-                    <p className="text-[9px] text-neutral-400 mt-1">
-                      {pInfo.model ? `Hardware Default: ${defaultSpeed}. Max: ${maxSpeed}.` : 'Select a printer to view limits.'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Energy / Density Override (0 = Auto)</label>
-                    <input
-                      type="number"
-                      name="energy"
-                      min={0}
-                      max={maxEnergy}
-                      step="500"
-                      value={printerProfile?.energy || 0}
-                      onChange={handleProfileChange}
-                      disabled={!selectedPrinter}
-                      className={inputClass}
-                    />
-                    <p className="text-[9px] text-neutral-400 mt-1">
-                      {pInfo.model ? `Safe Range: ${minEnergy} - ${maxEnergy}. Default: ${defaultEnergy}.` : 'Select a printer to view limits.'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Feed Lines (Tear Padding)</label>
-                    <input
-                      type="number"
-                      name="feed_lines"
-                      min={0}
-                      value={printerProfile?.feed_lines ?? 100}
-                      onChange={handleProfileChange}
-                      disabled={!selectedPrinter}
-                      className={inputClass}
-                    />
-                  </div>
-                </>
+              )}
+
+              {caps.speed?.available && (
+                <div>
+                  <label className={labelClass}>Speed Override (0 = Auto)</label>
+                  <input
+                    type="number"
+                    name="speed"
+                    min={0}
+                    max={maxSpeed}
+                    value={printerProfile?.speed || 0}
+                    onChange={handleProfileChange}
+                    disabled={!selectedPrinter}
+                    className={inputClass}
+                  />
+                  <p className="text-[9px] text-neutral-400 mt-1">
+                    {pInfo.model ? `Hardware Default: ${caps.speed.default || 0}. Max: ${maxSpeed}.` : 'Select a printer to view limits.'}
+                  </p>
+                </div>
+              )}
+
+              {caps.energy?.available && (
+                <div>
+                  <label className={labelClass}>Energy Override (0 = Auto)</label>
+                  <input
+                    type="number"
+                    name="energy"
+                    min={0}
+                    max={maxEnergy}
+                    step={caps.energy.step || 500}
+                    value={printerProfile?.energy || 0}
+                    onChange={handleProfileChange}
+                    disabled={!selectedPrinter}
+                    className={inputClass}
+                  />
+                  <p className="text-[9px] text-neutral-400 mt-1">
+                    {pInfo.model ? `Safe Range: ${minEnergy} - ${maxEnergy}. Default: ${caps.energy.default || 5000}.` : 'Select a printer to view limits.'}
+                  </p>
+                </div>
+              )}
+
+              {caps.feed?.available && (
+                <div>
+                  <label className={labelClass}>Feed Lines (Tear Padding)</label>
+                  <input
+                    type="number"
+                    name="feed_lines"
+                    min={0}
+                    value={printerProfile?.feed_lines ?? (caps.feed.default || 50)}
+                    onChange={handleProfileChange}
+                    disabled={!selectedPrinter}
+                    className={inputClass}
+                  />
+                </div>
               )}
 
               <button 

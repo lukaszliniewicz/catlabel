@@ -242,6 +242,8 @@ DEFAULT_LABEL_PRESETS = [
 ]
 
 def seed_default_presets():
+    from ..vendors import VendorRegistry
+
     with Session(engine) as session:
         existing_names = {
             preset.name
@@ -249,7 +251,7 @@ def seed_default_presets():
         }
 
         added = False
-        for preset in DEFAULT_LABEL_PRESETS:
+        for preset in VendorRegistry.get_all_presets():
             if preset["name"] in existing_names:
                 continue
             session.add(LabelPreset(**preset))
@@ -339,38 +341,16 @@ def delete_preset(preset_id: int):
 @app.get("/api/printers/supported_models")
 def get_supported_models():
     """Returns all supported printer models for the offline/manual setup UI."""
-    registry = PrinterModelRegistry.load()
-    results = []
-    seen_model_nos = set()
+    from ..vendors import VendorRegistry
 
-    for model in _registry_models(registry):
-        model_no = str(getattr(model, "model_no", "") or "").strip()
-        if not model_no or model_no in seen_model_nos:
-            continue
-
-        seen_model_nos.add(model_no)
-        model_info = _registry_model_info(model)
-        display_name = str(getattr(model, "head_name", "") or "").strip().strip("-") or model_no
-
-        results.append({
-            "name": display_name,
-            "model_no": model_no,
-            "width_mm": model_info["width_mm"],
-            "dpi": model_info["dpi"],
-            "vendor": model_info["vendor"],
-            "media_type": model_info["media_type"],
-            "default_energy": model_info["default_energy"],
-            "max_density": model_info["max_density"],
-            "protocol_family": model_info["protocol_family"],
-        })
-
-    results.sort(key=lambda model: (model["vendor"], model["name"].lower(), model["model_no"].lower()))
-    return {"models": results}
+    return {"models": VendorRegistry.get_all_models()}
 
 @app.get("/api/printers/model/{name}")
 def get_printer_model_info(name: str):
     """Returns hardware characteristics based on the model name alias."""
-    return identify_printer_hardware(name)
+    from ..vendors import VendorRegistry
+
+    return VendorRegistry.identify_device(name)
 
 @app.get("/api/agent/context")
 def get_agent_context():
@@ -514,12 +494,16 @@ async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bo
     if not target_device:
         raise HTTPException(status_code=404, detail=f"Printer {mac_address} not found. Is it turned on?")
 
-    hardware_info = identify_printer_hardware(getattr(target_device, "name", ""), target_device)
+    from ..vendors import VendorRegistry
 
-    from ..vendors import get_printer_client_class
+    hardware_info = VendorRegistry.identify_device(
+        getattr(target_device, "name", ""),
+        target_device,
+        target_device.address,
+    )
 
-    client_cls = get_printer_client_class(hardware_info["vendor"])
-    client = client_cls(target_device, hardware_info, printer_profile, settings)
+    manifest = VendorRegistry.get_manifest(hardware_info["vendor"])
+    client = manifest.get_client(target_device, hardware_info, printer_profile, settings)
 
     connected = await client.connect()
     if not connected:
@@ -951,27 +935,17 @@ async def scan_printers():
         if not name and hasattr(device, "model") and device.model:
             name = getattr(device.model, "head_name", "").strip('-')
         
+        from ..vendors import VendorRegistry
+
         name = name or "Unknown Printer"
-        hardware_info = identify_printer_hardware(name, device)
-            
+        hardware_info = VendorRegistry.identify_device(name, device, device.address)
+
         results.append({
+            **hardware_info,
             "name": name,
             "address": device.address,
             "display_address": getattr(device, "display_address", device.address),
             "paired": device.paired,
-            "vendor": hardware_info["vendor"],
-            "width_px": hardware_info["width_px"],
-            "width_mm": hardware_info["width_mm"],
-            "dpi": hardware_info["dpi"],
-            "model_id": hardware_info["model"],
-            "media_type": hardware_info["media_type"],
-            "default_speed": hardware_info.get("default_speed", 0),
-            "default_energy": hardware_info.get("default_energy", 0),
-            "min_energy": hardware_info.get("min_energy"),
-            "max_energy": hardware_info.get("max_energy"),
-            "max_speed": hardware_info.get("max_speed"),
-            "max_density": hardware_info.get("max_density"),
-            "protocol_family": hardware_info.get("protocol_family", "legacy"),
         })
     return {"devices": results, "failures": [str(f.error) for f in failures]}
 

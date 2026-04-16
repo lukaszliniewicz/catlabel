@@ -163,21 +163,22 @@ export default function OnboardingWizard() {
                 >
                   <option value="" disabled>Choose a printer family...</option>
 
-                  <optgroup label="Generic Printers (Continuous Roll / A4 / A5)">
-                    {supportedModels.filter((model) => model.vendor !== 'niimbot').map((model) => (
-                      <option key={model.model_no} value={model.model_no}>
-                        {model.name} - {model.width_mm}mm ({model.dpi} DPI)
-                      </option>
-                    ))}
-                  </optgroup>
-
-                  <optgroup label="Niimbot Printers (Pre-cut Labels)">
-                    {supportedModels.filter((model) => model.vendor === 'niimbot').map((model) => (
-                      <option key={model.model_no} value={model.model_no}>
-                        {model.name} - {model.width_mm}mm ({model.dpi} DPI)
-                      </option>
-                    ))}
-                  </optgroup>
+                  {Object.entries(
+                    supportedModels.reduce((acc, model) => {
+                      const groupName = model.vendor_display || 'Other Printers';
+                      if (!acc[groupName]) acc[groupName] = [];
+                      acc[groupName].push(model);
+                      return acc;
+                    }, {})
+                  ).map(([groupName, models]) => (
+                    <optgroup key={groupName} label={groupName}>
+                      {models.map((model) => (
+                        <option key={model.model_no || model.model_id} value={model.model_no || model.model_id}>
+                          {model.name} - {model.width_mm}mm ({model.dpi} DPI)
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
                 <p className="text-[10px] text-neutral-500 leading-relaxed mb-4">
                   <strong>Hint:</strong> If you bought a generic "Mini Printer" from AliExpress that looks like a cat, it almost always maps to the <strong>GT01</strong> profile.
