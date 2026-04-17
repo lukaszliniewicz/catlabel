@@ -62,6 +62,11 @@ class SppBackend:
     def is_connected(self) -> bool:
         return self._connected
 
+    def register_notify_callback(self, callback) -> None:
+        """Allow a vendor client to intercept raw incoming packets."""
+        if hasattr(self._sock, "register_notify_callback"):
+            self._sock.register_notify_callback(callback)
+
     async def disconnect(self) -> None:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._disconnect_blocking)

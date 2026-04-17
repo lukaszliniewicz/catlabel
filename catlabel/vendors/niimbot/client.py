@@ -1,14 +1,14 @@
 import asyncio
-import struct
 import enum
-from typing import List
+import struct
+from typing import Dict, List, Optional
 
-from PIL import Image, ImageOps
+from PIL import Image
 
 from ..base import BasePrinterClient
 from ...rendering.renderer import image_to_raster
 from ...protocol.encoding import pack_line
-from ...transport.bluetooth import SppBackend, DeviceInfo, DeviceTransport
+from ...transport.bluetooth import DeviceInfo, DeviceTransport, SppBackend
 from ...protocol.types import PixelFormat
 
 
@@ -30,13 +30,31 @@ class RequestCodeEnum(enum.IntEnum):
 
 class NiimbotPacket:
     def __init__(self, type_, data):
-        self.type = type_
-        self.data = data
+        self.type = int(type_)
+        self.data = bytes(data)
 
-    def to_bytes(self):
+    @classmethod
+    def from_bytes(cls, pkt: bytes) -> Optional["NiimbotPacket"]:
+        if len(pkt) < 7 or pkt[:2] != b"\x55\x55" or pkt[-2:] != b"\xaa\xaa":
+            return None
+        type_ = pkt[2]
+        length = pkt[3]
+        if len(pkt) != length + 7:
+            return None
+        data = pkt[4 : 4 + length]
+
+        checksum = type_ ^ length
+        for value in data:
+            checksum ^= value
+
+        if checksum != pkt[-3]:
+            return None
+        return cls(type_, data)
+
+    def to_bytes(self) -> bytes:
         checksum = self.type ^ len(self.data)
-        for i in self.data:
-            checksum ^= i
+        for value in self.data:
+            checksum ^= value
         return bytes((0x55, 0x55, self.type, len(self.data), *self.data, checksum, 0xAA, 0xAA))
 
 
@@ -44,12 +62,60 @@ class NiimbotClient(BasePrinterClient):
     def __init__(self, device, hardware_info, printer_profile, settings):
         super().__init__(device, hardware_info, printer_profile, settings)
         self.transport = SppBackend()
+        self._buffer = bytearray()
+        self._events: Dict[int, asyncio.Event] = {}
+        self._responses: Dict[int, NiimbotPacket] = {}
+        self._event_loop: Optional[asyncio.AbstractEventLoop] = None
+
+    def _publish_response(self, packet: NiimbotPacket) -> None:
+        self._responses[packet.type] = packet
+        event = self._events.get(packet.type)
+        if event is not None:
+            event.set()
+
+    def _on_notify(self, payload: bytes) -> None:
+        self._buffer.extend(payload)
+
+        while True:
+            start = self._buffer.find(b"\x55\x55")
+            if start == -1:
+                self._buffer.clear()
+                return
+            if start > 0:
+                del self._buffer[:start]
+
+            if len(self._buffer) < 7:
+                return
+
+            length = self._buffer[3]
+            total_length = length + 7
+            if len(self._buffer) < total_length:
+                return
+
+            if self._buffer[total_length - 2 : total_length] != b"\xaa\xaa":
+                del self._buffer[:2]
+                continue
+
+            packet_bytes = bytes(self._buffer[:total_length])
+            del self._buffer[:total_length]
+
+            packet = NiimbotPacket.from_bytes(packet_bytes)
+            if packet is None:
+                continue
+
+            if self._event_loop is not None and not self._event_loop.is_closed():
+                self._event_loop.call_soon_threadsafe(self._publish_response, packet)
 
     async def connect(self) -> bool:
+        self._event_loop = asyncio.get_running_loop()
+        self._buffer.clear()
+        self._events.clear()
+        self._responses.clear()
+
         address = self.device.address
         if hasattr(self.device, "ble_endpoint") and self.device.ble_endpoint:
             address = self.device.ble_endpoint.address
-            
+
         attempts = [
             DeviceInfo(
                 name=getattr(self.device, "name", "Niimbot Printer"),
@@ -59,11 +125,13 @@ class NiimbotClient(BasePrinterClient):
                 protocol_family=None,
             )
         ]
-        
+
         max_retries = 3
         for _ in range(max_retries):
             try:
                 await self.transport.connect_attempts(attempts)
+                if hasattr(self.transport, "register_notify_callback"):
+                    self.transport.register_notify_callback(self._on_notify)
                 return True
             except Exception as exc:
                 self.last_error = exc
@@ -71,23 +139,67 @@ class NiimbotClient(BasePrinterClient):
         return False
 
     async def disconnect(self) -> None:
-        await self.transport.disconnect()
+        try:
+            await self.transport.disconnect()
+        finally:
+            self._buffer.clear()
+            self._events.clear()
+            self._responses.clear()
 
-    async def _send(self, req_code, data=b""):
-        packet = NiimbotPacket(req_code, data)
-        await self.transport.write(packet.to_bytes(), chunk_size=128, interval_ms=20)
+    async def send_command(self, req_code, data=b"", timeout=5.0):
+        request_code = int(req_code)
+        packet = NiimbotPacket(request_code, data)
+        event = asyncio.Event()
+        self._responses.pop(request_code, None)
+        self._events[request_code] = event
+
+        await self.transport.write(packet.to_bytes(), chunk_size=128, interval_ms=0)
+        try:
+            await asyncio.wait_for(event.wait(), timeout)
+            return self._responses.pop(request_code, None)
+        except asyncio.TimeoutError:
+            return None
+        finally:
+            current = self._events.get(request_code)
+            if current is event:
+                self._events.pop(request_code, None)
+
+    async def write_raw(self, data: bytes) -> None:
+        await self.transport.write(data, chunk_size=128, interval_ms=0)
+
+    def _prepare_print_image(self, image: Image.Image, print_width_px: int) -> Image.Image:
+        rotated = image.rotate(-90, expand=True)
+
+        if rotated.width > print_width_px:
+            ratio = print_width_px / float(rotated.width)
+            new_height = max(1, int(rotated.height * ratio))
+            rotated = rotated.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
+
+        if rotated.width < print_width_px:
+            padded = Image.new("RGB", (print_width_px, rotated.height), "white")
+            offset = (print_width_px - rotated.width) // 2
+            padded.paste(rotated, (offset, 0))
+            rotated = padded
+
+        return rotated.convert("RGB")
+
+    async def _wait_for_page_completion(self, timeout: float = 30.0) -> None:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+
+        while True:
+            status_pkt = await self.send_command(RequestCodeEnum.GET_PRINT_STATUS, b"\x01")
+            if status_pkt and len(status_pkt.data) >= 2:
+                page = struct.unpack(">H", status_pkt.data[:2])[0]
+                if page >= 1:
+                    return
+
+            if loop.time() >= deadline:
+                raise RuntimeError("Timed out waiting for Niimbot print completion")
+
+            await asyncio.sleep(0.2)
 
     async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
-        print_width_px = self.hardware_info["width_px"]
-        final_images = []
-
-        for img in images:
-            if img.width > print_width_px:
-                ratio = print_width_px / float(img.width)
-                new_height = max(1, int(img.height * ratio))
-                img = img.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
-            final_images.append(img)
-
         default_density = int(self.hardware_info.get("default_energy", 3) or 3)
         max_allowed = max(1, int(self.hardware_info.get("max_density", 5) or 5))
         raw_density = (
@@ -96,30 +208,33 @@ class NiimbotClient(BasePrinterClient):
             else default_density
         )
         density = max(1, min(int(raw_density), max_allowed))
+        print_width_px = max(1, int(self.hardware_info.get("width_px", 120) or 120))
 
-        for img in final_images:
-            await self._print_image(img, density=density, quantity=1, dither=dither)
-            await asyncio.sleep(1.0)
+        for image in images:
+            prepared = self._prepare_print_image(image, print_width_px)
 
-    async def _print_image(self, image: Image, density: int = 3, quantity: int = 1, dither: bool = True):
-        await self._send(RequestCodeEnum.SET_LABEL_DENSITY, bytes((density,)))
-        await self._send(RequestCodeEnum.SET_LABEL_TYPE, bytes((1,)))
-        await self._send(RequestCodeEnum.START_PRINT, b"\x01")
-        await self._send(RequestCodeEnum.START_PAGE_PRINT, b"\x01")
-        await self._send(RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", image.height, image.width))
-        await self._send(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", quantity))
+            raster = image_to_raster(prepared, PixelFormat.BW1, dither=dither)
+            packed_bytes = pack_line(raster.pixels, lsb_first=False)
+            width_bytes = (raster.width + 7) // 8
 
-        img = image.convert("RGB")
-        raster = image_to_raster(img, PixelFormat.BW1, dither=dither)
-        packed_bytes = pack_line(raster.pixels, lsb_first=False)
-        
-        width_bytes = (image.width + 7) // 8
-        for y in range(image.height):
-            line_data = packed_bytes[y*width_bytes : (y+1)*width_bytes]
-            counts = (0, 0, 0)
-            header = struct.pack(">H3BB", y, *counts, 1)
-            await self._send(0x85, header + line_data)
+            await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes([density]))
+            await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes([1]))
+            await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
+            await self.send_command(RequestCodeEnum.START_PAGE_PRINT, b"\x01")
+            await self.send_command(
+                RequestCodeEnum.SET_DIMENSION,
+                struct.pack(">HH", raster.height, raster.width),
+            )
+            await self.send_command(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", 1))
 
-        await self._send(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
-        await asyncio.sleep(0.5)
-        await self._send(RequestCodeEnum.END_PRINT, b"\x01")
+            for y in range(raster.height):
+                line_data = packed_bytes[y * width_bytes : (y + 1) * width_bytes]
+                header = struct.pack(">HBBBB", y, 0, 0, 0, 1)
+                packet = NiimbotPacket(0x85, header + line_data)
+                await self.write_raw(packet.to_bytes())
+                await asyncio.sleep(0.01)
+
+            await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
+            await self._wait_for_page_completion()
+            await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
+            await asyncio.sleep(0.5)

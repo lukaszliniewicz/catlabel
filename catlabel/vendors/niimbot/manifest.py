@@ -32,7 +32,8 @@ class NiimbotManifest(VendorManifest):
             "max_density": 5,
         }
         return [
-            {**base, "name": "D11/D110/D101", "model_id": "D110", "width_px": 96, "width_mm": 12, "dpi": 203, "max_density": 3},
+            {**base, "name": "D11/D110/D101", "model_id": "D110", "width_px": 120, "width_mm": 15, "dpi": 203, "max_density": 3},
+            {**base, "name": "B18", "model_id": "B18", "width_px": 112, "width_mm": 14, "dpi": 203, "max_density": 3},
             {**base, "name": "B1", "model_id": "B1", "width_px": 384, "width_mm": 48, "dpi": 203},
             {**base, "name": "B21", "model_id": "B21", "width_px": 384, "width_mm": 48, "dpi": 203},
         ]
@@ -50,6 +51,8 @@ class NiimbotManifest(VendorManifest):
     def _model_prefixes(self, model_id: str) -> tuple[str, ...]:
         if model_id == "D110":
             return ("D11", "D110", "D101")
+        if model_id == "B18":
+            return ("B18",)
         return (model_id,)
 
     def identify_device(self, name: str, device=None, mac: Optional[str] = None) -> Optional[Dict]:

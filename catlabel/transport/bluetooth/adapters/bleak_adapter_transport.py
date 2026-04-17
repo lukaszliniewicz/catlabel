@@ -138,6 +138,7 @@ class _BleakTransportSession:
         self._pending_status_poll: Optional[asyncio.Task[None]] = None
         self._v5x_state = _V5XSessionState()
         self._v5c_state = _V5CSessionState()
+        self.vendor_notify_callback = None
 
     def apply_write_selection(self, selection: _WriteSelection) -> None:
         self.bindings.write_char = selection.char
@@ -486,6 +487,12 @@ class _BleakTransportSession:
                 self._connect_info_event = None
 
     def handle_notification(self, payload: bytes) -> None:
+        if getattr(self, "vendor_notify_callback", None):
+            try:
+                self.vendor_notify_callback(payload)
+            except Exception as exc:
+                self._reporter.debug(short="BLE", detail=f"Vendor notify callback error: {exc}")
+
         flow_control = self._transport_profile.flow_control
         if flow_control is not None:
             # Pause/resume packets gate writes for families that require
