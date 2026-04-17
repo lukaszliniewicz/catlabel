@@ -66,9 +66,9 @@ class NiimbotClient(BasePrinterClient):
         self._events: Dict[int, Tuple[asyncio.Event, asyncio.AbstractEventLoop]] = {}
         self._responses: Dict[int, NiimbotPacket] = {}
 
-    def _publish_response(self, packet: NiimbotPacket) -> None:
-        self._responses[packet.type] = packet
-        event_data = self._events.get(packet.type)
+    def _publish_response(self, req_code: int, packet: NiimbotPacket) -> None:
+        self._responses[req_code] = packet
+        event_data = self._events.get(req_code)
         if event_data is None:
             return
         event, _loop = event_data
@@ -105,17 +105,32 @@ class NiimbotClient(BasePrinterClient):
             if packet is None:
                 continue
 
-            event_data = self._events.get(packet.type)
-            if event_data is None:
+            # --- NEW SMART RESPONSE ROUTING ---
+            matched_req_code = None
+            if packet.type in self._events:
+                matched_req_code = packet.type
+            elif (packet.type - 1) in self._events:
+                # Catch the +1 response offset (e.g. sent 33, received 34)
+                matched_req_code = packet.type - 1
+            elif len(self._events) == 1:
+                # NiimPrintX fallback: if exactly 1 command is waiting, assume this is its response
+                matched_req_code = list(self._events.keys())[0]
+
+            if matched_req_code is None:
                 self._responses[packet.type] = packet
+                continue
+
+            event_data = self._events.get(matched_req_code)
+            if event_data is None:
+                self._responses[matched_req_code] = packet
                 continue
 
             _event, loop = event_data
             if loop.is_closed():
-                self._responses[packet.type] = packet
+                self._responses[matched_req_code] = packet
                 continue
 
-            loop.call_soon_threadsafe(self._publish_response, packet)
+            loop.call_soon_threadsafe(self._publish_response, matched_req_code, packet)
 
     async def connect(self) -> bool:
         self._buffer.clear()
@@ -208,7 +223,7 @@ class NiimbotClient(BasePrinterClient):
                 raise RuntimeError("Timed out waiting for Niimbot END_PAGE_PRINT acknowledgement")
             await asyncio.sleep(0.1)
 
-    async def _wait_for_page_complete(self, timeout: float = 10.0) -> None:
+    async def _wait_for_page_complete(self, expected_page: int, timeout: float = 10.0) -> None:
         deadline = asyncio.get_running_loop().time() + timeout
         while True:
             status_pkt = await self.send_command(
@@ -218,7 +233,7 @@ class NiimbotClient(BasePrinterClient):
             )
             if status_pkt and len(status_pkt.data) >= 2:
                 page = struct.unpack(">H", status_pkt.data[:2])[0]
-                if page >= 1:
+                if page >= expected_page:
                     return
             if asyncio.get_running_loop().time() >= deadline:
                 raise RuntimeError("Timed out waiting for Niimbot page completion")
@@ -235,15 +250,19 @@ class NiimbotClient(BasePrinterClient):
         density = max(1, min(int(raw_density), max_allowed))
         print_width_px = max(1, int(self.hardware_info.get("width_px", 120) or 120))
 
+        # --- Session Setup (Outside Loop) ---
+        await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes([density]))
+        await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes([1]))
+        await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
+
+        expected_page = 1
+
         for image in images:
             prepared = self._prepare_print_image(image, print_width_px)
             raster = image_to_raster(prepared, PixelFormat.BW1, dither=dither)
             packed_bytes = pack_line(raster.pixels, lsb_first=False)
             width_bytes = (raster.width + 7) // 8
 
-            await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes([density]))
-            await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes([1]))
-            await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
             await self.send_command(RequestCodeEnum.START_PAGE_PRINT, b"\x01")
             await self.send_command(
                 RequestCodeEnum.SET_DIMENSION,
@@ -259,7 +278,10 @@ class NiimbotClient(BasePrinterClient):
                 await asyncio.sleep(0.01)
 
             await self._wait_for_end_page_ack()
-            await self._wait_for_page_complete()
+            await self._wait_for_page_complete(expected_page=expected_page)
 
-            await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
-            await asyncio.sleep(0.5)
+            expected_page += 1
+
+        # --- Session Teardown (Outside Loop) ---
+        await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
+        await asyncio.sleep(0.5)
