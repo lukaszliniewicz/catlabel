@@ -18,6 +18,7 @@ class RequestCodeEnum(enum.IntEnum):
     HEARTBEAT = 220
     SET_LABEL_TYPE = 35
     SET_LABEL_DENSITY = 33
+    SET_PRINT_SPEED = 2
     START_PRINT = 1
     END_PRINT = 243
     START_PAGE_PRINT = 3
@@ -105,15 +106,16 @@ class NiimbotClient(BasePrinterClient):
             if packet is None:
                 continue
 
-            # --- NEW SMART RESPONSE ROUTING ---
+            # --- FIXED SMART RESPONSE ROUTING ---
             matched_req_code = None
             if packet.type in self._events:
                 matched_req_code = packet.type
             elif (packet.type - 1) in self._events:
                 # Catch the +1 response offset (e.g. sent 33, received 34)
                 matched_req_code = packet.type - 1
-            elif len(self._events) == 1:
-                # NiimPrintX fallback: if exactly 1 command is waiting, assume this is its response
+            elif len(self._events) == 1 and packet.type not in (220, 163):
+                # Fallback: if exactly 1 command is waiting, assume this is its response.
+                # Explicitly ignore unsolicited Heartbeats (220) and Status polls (163).
                 matched_req_code = list(self._events.keys())[0]
 
             if matched_req_code is None:
@@ -157,6 +159,11 @@ class NiimbotClient(BasePrinterClient):
                 await self.transport.connect_attempts(attempts)
                 if hasattr(self.transport, "register_notify_callback"):
                     self.transport.register_notify_callback(self._on_notify)
+
+                # --- WAKE UP / RFID HANDSHAKE ---
+                # Forces the printer to wake up the RFID reader and respond, preventing blank prints
+                await self.send_command(RequestCodeEnum.GET_INFO, bytes([1]), timeout=1.0)
+
                 return True
             except Exception as exc:
                 self.last_error = exc
@@ -194,20 +201,22 @@ class NiimbotClient(BasePrinterClient):
         await self.transport.write(data, chunk_size=128, interval_ms=0)
 
     def _prepare_print_image(self, image: Image.Image, print_width_px: int) -> Image.Image:
-        rotated = image.rotate(-90, expand=True)
+        # Note: CatLabel's core WYSIWYG already rotates landscape labels appropriately.
+        # Do not forcefully rotate -90 here, otherwise landscape labels will print squished!
+        working = image.copy()
 
-        if rotated.width > print_width_px:
-            ratio = print_width_px / float(rotated.width)
-            new_height = max(1, int(rotated.height * ratio))
-            rotated = rotated.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
+        if working.width > print_width_px:
+            ratio = print_width_px / float(working.width)
+            new_height = max(1, int(working.height * ratio))
+            working = working.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
 
-        if rotated.width < print_width_px:
-            padded = Image.new("RGB", (print_width_px, rotated.height), "white")
-            offset = (print_width_px - rotated.width) // 2
-            padded.paste(rotated, (offset, 0))
-            rotated = padded
+        if working.width < print_width_px:
+            padded = Image.new("RGB", (print_width_px, working.height), "white")
+            offset = (print_width_px - working.width) // 2
+            padded.paste(working, (offset, 0))
+            working = padded
 
-        return rotated.convert("RGB")
+        return working.convert("RGB")
 
     async def _wait_for_end_page_ack(self, timeout: float = 10.0) -> None:
         deadline = asyncio.get_running_loop().time() + timeout
@@ -248,14 +257,27 @@ class NiimbotClient(BasePrinterClient):
             else default_density
         )
         density = max(1, min(int(raw_density), max_allowed))
+
+        default_speed = int(self.hardware_info.get("default_speed", 3) or 3)
+        max_speed = max(1, int(self.hardware_info.get("max_speed", 5) or 5))
+        raw_speed = (
+            self.printer_profile.speed
+            if self.printer_profile and self.printer_profile.speed not in (None, 0)
+            else default_speed
+        )
+        speed = max(1, min(int(raw_speed), max_speed))
+
         print_width_px = max(1, int(self.hardware_info.get("width_px", 120) or 120))
 
-        # --- Session Setup (Outside Loop) ---
-        await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes([density]))
-        await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes([1]))
-        await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
+        # Media Type: 1 = Gap/Pre-cut, 2 = Continuous, 3 = Black Mark
+        media_type_str = self.hardware_info.get("media_type", "pre-cut")
+        label_type = 2 if media_type_str == "continuous" else 1
 
-        expected_page = 1
+        # --- Session Setup ---
+        await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes([density]))
+        await self.send_command(RequestCodeEnum.SET_PRINT_SPEED, bytes([speed]))
+        await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes([label_type]))
+        await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
 
         for image in images:
             prepared = self._prepare_print_image(image, print_width_px)
@@ -275,13 +297,13 @@ class NiimbotClient(BasePrinterClient):
                 header = struct.pack(">HBBBB", y, 0, 0, 0, 1)
                 packet = NiimbotPacket(0x85, header + line_data)
                 await self.write_raw(packet.to_bytes())
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.005)  # Tiny sleep avoids Bluetooth buffer underruns
 
             await self._wait_for_end_page_ack()
-            await self._wait_for_page_complete(expected_page=expected_page)
 
-            expected_page += 1
+        # --- Wait for physical completion of ALL pages ---
+        await self._wait_for_page_complete(expected_page=len(images))
 
-        # --- Session Teardown (Outside Loop) ---
+        # --- Session Teardown ---
         await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
         await asyncio.sleep(0.5)
