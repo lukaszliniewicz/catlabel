@@ -63,7 +63,7 @@ class SppBackend:
         return self._connected
 
     def register_notify_callback(self, callback) -> None:
-        """Allow a vendor client to intercept raw incoming packets."""
+        """Allows a vendor client to intercept raw incoming packets."""
         if hasattr(self._sock, "register_notify_callback"):
             self._sock.register_notify_callback(callback)
 

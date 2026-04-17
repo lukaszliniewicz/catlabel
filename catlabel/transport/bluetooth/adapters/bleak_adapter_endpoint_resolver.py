@@ -40,8 +40,9 @@ class _BleWriteEndpointResolver:
         "0000ab00-0000-1000-8000-00805f9b34fb",
         "49535343-fe7d-4ae5-8fa9-9fafd205e455",
         "0000fee7-0000-1000-8000-00805f9b34fb",
+        "0000ffe0-0000-1000-8000-00805f9b34fb",
     }
-    _PREFERRED_SERVICE_SHORT = {"ae30", "ae3a", "ae00", "ae80", "ff00", "ab00", "fee7"}
+    _PREFERRED_SERVICE_SHORT = {"ae30", "ae3a", "ae00", "ae80", "ff00", "ab00", "fee7", "ffe0"}
     _PREFERRED_WRITE_UUIDS = {
         "0000ae01-0000-1000-8000-00805f9b34fb",
         "0000ae3b-0000-1000-8000-00805f9b34fb",
@@ -51,16 +52,18 @@ class _BleWriteEndpointResolver:
         "49535343-8841-43f4-a8d4-ecbe34729bb3",
         "0000fec7-0000-1000-8000-00805f9b34fb",
         "0000fec8-0000-1000-8000-00805f9b34fb",
+        "0000ffe1-0000-1000-8000-00805f9b34fb",
     }
-    _PREFERRED_WRITE_SHORT = {"ae01", "ae3b", "ae81", "ff02", "ab01", "fec7", "fec8"}
+    _PREFERRED_WRITE_SHORT = {"ae01", "ae3b", "ae81", "ff02", "ab01", "fec7", "fec8", "ffe1"}
     _PREFERRED_NOTIFY_UUIDS = {
         "0000ae02-0000-1000-8000-00805f9b34fb",
         "0000ae04-0000-1000-8000-00805f9b34fb",
         "0000ae3c-0000-1000-8000-00805f9b34fb",
         "0000ab03-0000-1000-8000-00805f9b34fb",
         "0000fec8-0000-1000-8000-00805f9b34fb",
+        "0000ffe1-0000-1000-8000-00805f9b34fb",
     }
-    _PREFERRED_NOTIFY_SHORT = {"ae02", "ae04", "ae3c", "ab03", "fec8"}
+    _PREFERRED_NOTIFY_SHORT = {"ae02", "ae04", "ae3c", "ab03", "fec8", "ffe1"}
 
     def __init__(self, reporter: reporting.Reporter = reporting.DUMMY_REPORTER) -> None:
         self._reporter = reporter

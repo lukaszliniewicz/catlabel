@@ -183,9 +183,8 @@ class _BleakTransportSession:
                 transport.notify_char_uuid,
                 preferred_service_uuid=transport.preferred_service_uuid,
             )
-        elif transport.prefer_generic_notify or transport.flow_control is not None:
-            # Some families only expose a generic notifier, so fall back to any
-            # notify/indicate characteristic when the profile asks for it.
+        else:
+            # Force fallback to any generic notify endpoint so vendor callbacks work.
             self.bindings.notify_char = self._find_notify_characteristic(services)
 
         self.bindings.notify_char_uuid = _BleWriteEndpointResolver._normalize_uuid(

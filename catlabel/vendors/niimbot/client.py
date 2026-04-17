@@ -6,10 +6,10 @@ from typing import Dict, List, Optional
 from PIL import Image
 
 from ..base import BasePrinterClient
-from ...rendering.renderer import image_to_raster
 from ...protocol.encoding import pack_line
-from ...transport.bluetooth import DeviceInfo, DeviceTransport, SppBackend
 from ...protocol.types import PixelFormat
+from ...rendering.renderer import image_to_raster
+from ...transport.bluetooth import DeviceInfo, DeviceTransport, SppBackend
 
 
 class RequestCodeEnum(enum.IntEnum):
@@ -105,6 +105,8 @@ class NiimbotClient(BasePrinterClient):
 
             if self._event_loop is not None and not self._event_loop.is_closed():
                 self._event_loop.call_soon_threadsafe(self._publish_response, packet)
+            else:
+                self._publish_response(packet)
 
     async def connect(self) -> bool:
         self._event_loop = asyncio.get_running_loop()
@@ -145,8 +147,9 @@ class NiimbotClient(BasePrinterClient):
             self._buffer.clear()
             self._events.clear()
             self._responses.clear()
+            self._event_loop = None
 
-    async def send_command(self, req_code, data=b"", timeout=5.0):
+    async def send_command(self, req_code, data=b"", timeout=2.0):
         request_code = int(req_code)
         packet = NiimbotPacket(request_code, data)
         event = asyncio.Event()
@@ -183,22 +186,6 @@ class NiimbotClient(BasePrinterClient):
 
         return rotated.convert("RGB")
 
-    async def _wait_for_page_completion(self, timeout: float = 30.0) -> None:
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + timeout
-
-        while True:
-            status_pkt = await self.send_command(RequestCodeEnum.GET_PRINT_STATUS, b"\x01")
-            if status_pkt and len(status_pkt.data) >= 2:
-                page = struct.unpack(">H", status_pkt.data[:2])[0]
-                if page >= 1:
-                    return
-
-            if loop.time() >= deadline:
-                raise RuntimeError("Timed out waiting for Niimbot print completion")
-
-            await asyncio.sleep(0.2)
-
     async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
         default_density = int(self.hardware_info.get("default_energy", 3) or 3)
         max_allowed = max(1, int(self.hardware_info.get("max_density", 5) or 5))
@@ -212,7 +199,6 @@ class NiimbotClient(BasePrinterClient):
 
         for image in images:
             prepared = self._prepare_print_image(image, print_width_px)
-
             raster = image_to_raster(prepared, PixelFormat.BW1, dither=dither)
             packed_bytes = pack_line(raster.pixels, lsb_first=False)
             width_bytes = (raster.width + 7) // 8
@@ -235,6 +221,23 @@ class NiimbotClient(BasePrinterClient):
                 await asyncio.sleep(0.01)
 
             await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
-            await self._wait_for_page_completion()
+
+            page_complete = False
+            for _ in range(25):
+                status_pkt = await self.send_command(
+                    RequestCodeEnum.GET_PRINT_STATUS,
+                    b"\x01",
+                    timeout=0.5,
+                )
+                if status_pkt and len(status_pkt.data) >= 2:
+                    page = struct.unpack(">H", status_pkt.data[:2])[0]
+                    if page >= 1:
+                        page_complete = True
+                        break
+                await asyncio.sleep(0.2)
+
+            if not page_complete:
+                raise RuntimeError("Timed out waiting for Niimbot page completion")
+
             await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
             await asyncio.sleep(0.5)
