@@ -499,6 +499,37 @@ class _BleakTransportSession:
                 self._report_debug(f"flow resume: {payload.hex()}")
                 return
 
+        if len(payload) >= 3 and payload[0] == 0x1A:
+            notif_type = payload[1]
+            value = payload[2]
+
+            if notif_type == 0x04:
+                if value == 0xA4:
+                    battery = 0
+                elif value == 0xA3:
+                    battery = 30
+                elif value == 0xA2:
+                    battery = 50
+                elif value == 0xA1:
+                    battery = 100
+                else:
+                    battery = value
+                self._report_debug(f"Phomemo Battery: {battery}%")
+            elif notif_type == 0x06:
+                paper_ok = value != 0x88
+                if not paper_ok:
+                    self._reporter.warning(
+                        short="Phomemo out of paper",
+                        detail="Please load a new roll.",
+                    )
+                self._report_debug(
+                    f"Phomemo Paper Status: {'OK' if paper_ok else 'Out of paper'}"
+                )
+            elif notif_type == 0x08:
+                serial = payload[2:].decode("ascii", errors="ignore")
+                self._report_debug(f"Phomemo Serial: {serial}")
+            return
+
         if self._protocol_family is ProtocolFamily.V5X:
             opcode = self._extract_prefixed_opcode(payload)
             if opcode == 0xA7:

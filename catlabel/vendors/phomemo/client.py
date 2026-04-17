@@ -71,20 +71,31 @@ class PhomemoClient(BasePrinterClient):
         )
 
         print_width_px = int(self.hardware_info.get("width_px", 384) or 384)
+        dpi = int(self.hardware_info.get("dpi", 203) or 203)
         width_bytes = max(1, print_width_px // 8)
 
         for img in images:
-            working_image = img
+            working_image = img.copy()
+
+            if dpi > 203:
+                scale_factor = dpi / 203.0
+                scaled_width = max(1, int(round(working_image.width * scale_factor)))
+                scaled_height = max(1, int(round(working_image.height * scale_factor)))
+                working_image = working_image.resize(
+                    (scaled_width, scaled_height),
+                    Image.Resampling.LANCZOS,
+                )
+
             if working_image.width > print_width_px and not split_mode:
                 ratio = print_width_px / float(working_image.width)
-                new_height = max(1, int(working_image.height * ratio))
+                new_height = max(1, int(round(working_image.height * ratio)))
                 working_image = working_image.resize(
                     (print_width_px, new_height),
                     Image.Resampling.LANCZOS,
                 )
 
             if "tspl" in protocol:
-                await self._print_tspl(working_image, width_bytes, density, dither=dither)
+                await self._print_tspl(working_image, width_bytes, density, dither=False)
             elif "p12" in protocol:
                 await self._print_p12(working_image, dither=dither)
             elif protocol.split("_")[-1] == "d":
