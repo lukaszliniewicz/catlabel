@@ -1,7 +1,7 @@
 import asyncio
 import enum
 import struct
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from PIL import Image
 
@@ -63,17 +63,19 @@ class NiimbotClient(BasePrinterClient):
         super().__init__(device, hardware_info, printer_profile, settings)
         self.transport = SppBackend()
         self._buffer = bytearray()
-        self._events: Dict[int, asyncio.Event] = {}
+        self._events: Dict[int, Tuple[asyncio.Event, asyncio.AbstractEventLoop]] = {}
         self._responses: Dict[int, NiimbotPacket] = {}
-        self._event_loop: Optional[asyncio.AbstractEventLoop] = None
 
     def _publish_response(self, packet: NiimbotPacket) -> None:
         self._responses[packet.type] = packet
-        event = self._events.get(packet.type)
-        if event is not None:
-            event.set()
+        event_data = self._events.get(packet.type)
+        if event_data is None:
+            return
+        event, _loop = event_data
+        event.set()
 
     def _on_notify(self, payload: bytes) -> None:
+        """Route Bleak notification packets back onto the waiting asyncio loop safely."""
         self._buffer.extend(payload)
 
         while True:
@@ -103,13 +105,19 @@ class NiimbotClient(BasePrinterClient):
             if packet is None:
                 continue
 
-            if self._event_loop is not None and not self._event_loop.is_closed():
-                self._event_loop.call_soon_threadsafe(self._publish_response, packet)
-            else:
-                self._publish_response(packet)
+            event_data = self._events.get(packet.type)
+            if event_data is None:
+                self._responses[packet.type] = packet
+                continue
+
+            _event, loop = event_data
+            if loop.is_closed():
+                self._responses[packet.type] = packet
+                continue
+
+            loop.call_soon_threadsafe(self._publish_response, packet)
 
     async def connect(self) -> bool:
-        self._event_loop = asyncio.get_running_loop()
         self._buffer.clear()
         self._events.clear()
         self._responses.clear()
@@ -147,14 +155,14 @@ class NiimbotClient(BasePrinterClient):
             self._buffer.clear()
             self._events.clear()
             self._responses.clear()
-            self._event_loop = None
 
-    async def send_command(self, req_code, data=b"", timeout=2.0):
+    async def send_command(self, req_code, data=b"", timeout=5.0):
         request_code = int(req_code)
         packet = NiimbotPacket(request_code, data)
+        loop = asyncio.get_running_loop()
         event = asyncio.Event()
         self._responses.pop(request_code, None)
-        self._events[request_code] = event
+        self._events[request_code] = (event, loop)
 
         await self.transport.write(packet.to_bytes(), chunk_size=128, interval_ms=0)
         try:
@@ -164,7 +172,7 @@ class NiimbotClient(BasePrinterClient):
             return None
         finally:
             current = self._events.get(request_code)
-            if current is event:
+            if current is not None and current[0] is event:
                 self._events.pop(request_code, None)
 
     async def write_raw(self, data: bytes) -> None:
@@ -185,6 +193,36 @@ class NiimbotClient(BasePrinterClient):
             rotated = padded
 
         return rotated.convert("RGB")
+
+    async def _wait_for_end_page_ack(self, timeout: float = 10.0) -> None:
+        deadline = asyncio.get_running_loop().time() + timeout
+        while True:
+            packet = await self.send_command(
+                RequestCodeEnum.END_PAGE_PRINT,
+                b"\x01",
+                timeout=1.0,
+            )
+            if packet and packet.data[:1] == b"\x01":
+                return
+            if asyncio.get_running_loop().time() >= deadline:
+                raise RuntimeError("Timed out waiting for Niimbot END_PAGE_PRINT acknowledgement")
+            await asyncio.sleep(0.1)
+
+    async def _wait_for_page_complete(self, timeout: float = 10.0) -> None:
+        deadline = asyncio.get_running_loop().time() + timeout
+        while True:
+            status_pkt = await self.send_command(
+                RequestCodeEnum.GET_PRINT_STATUS,
+                b"\x01",
+                timeout=1.0,
+            )
+            if status_pkt and len(status_pkt.data) >= 2:
+                page = struct.unpack(">H", status_pkt.data[:2])[0]
+                if page >= 1:
+                    return
+            if asyncio.get_running_loop().time() >= deadline:
+                raise RuntimeError("Timed out waiting for Niimbot page completion")
+            await asyncio.sleep(0.2)
 
     async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
         default_density = int(self.hardware_info.get("default_energy", 3) or 3)
@@ -220,24 +258,8 @@ class NiimbotClient(BasePrinterClient):
                 await self.write_raw(packet.to_bytes())
                 await asyncio.sleep(0.01)
 
-            await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
-
-            page_complete = False
-            for _ in range(25):
-                status_pkt = await self.send_command(
-                    RequestCodeEnum.GET_PRINT_STATUS,
-                    b"\x01",
-                    timeout=0.5,
-                )
-                if status_pkt and len(status_pkt.data) >= 2:
-                    page = struct.unpack(">H", status_pkt.data[:2])[0]
-                    if page >= 1:
-                        page_complete = True
-                        break
-                await asyncio.sleep(0.2)
-
-            if not page_complete:
-                raise RuntimeError("Timed out waiting for Niimbot page completion")
+            await self._wait_for_end_page_ack()
+            await self._wait_for_page_complete()
 
             await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
             await asyncio.sleep(0.5)
