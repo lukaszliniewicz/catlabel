@@ -24,6 +24,23 @@ def clone_repo():
         input("Press Enter to exit...")
         sys.exit(1)
 
+def update_repo():
+    print(f"[*] Checking for updates in {TARGET_DIR}...")
+    try:
+        repo = porcelain.open_repo(TARGET_DIR)
+        # Getting current commit
+        current_commit = repo.head()
+        porcelain.pull(repo, REPO_URL)
+        new_commit = repo.head()
+        if current_commit != new_commit:
+            print("[*] Updates pulled successfully! Marking for rebuild.")
+            with open(os.path.join(TARGET_DIR, ".update_needed"), "w") as f:
+                f.write("1")
+        else:
+            print("[*] CatLabel is up to date.")
+    except Exception as e:
+        print(f"[!] Error updating repository: {e}. Skipping update.")
+
 def run_app():
     print("[*] Handing over to the CatLabel Bootstrapper...\n")
     os.chdir(TARGET_DIR)
@@ -32,7 +49,7 @@ def run_app():
     
     if "windows" in system:
         script = "run.bat"
-        cmd = [script]
+        cmd = ["cmd.exe", "/c", script]
     else:
         script = "./run.sh"
         cmd = [script]
@@ -69,6 +86,8 @@ def main():
             print("[!] Please delete or rename the folder and try again.")
             input("Press Enter to exit...")
             sys.exit(1)
+        
+        update_repo()
         
         if os.path.exists(os.path.join(TARGET_DIR, "env")):
             print("[*] Existing setup detected. Launching CatLabel...")

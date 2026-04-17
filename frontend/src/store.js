@@ -19,7 +19,103 @@ const recalcAutoFit = (items, batchRecords, cw, ch) => {
   return changed ? nextItems : items;
 };
 
-export const useStore = create((set, get) => ({
+const withHistory = (config) => (set, get, api) => {
+  const historySet = (args, replace) => {
+    const prevState = get();
+    set(args, replace);
+    const nextState = get();
+
+    if (nextState._isUndoRedo) {
+      set({ _isUndoRedo: false });
+      return;
+    }
+
+    if (nextState.historyIndex === -1 && nextState.history && nextState.history.length === 0) {
+      return;
+    }
+
+    const relevantKeys = ['items', 'canvasWidth', 'canvasHeight', 'isRotated', 'splitMode', 'canvasBorder', 'canvasBorderThickness', 'designMode', 'htmlContent'];
+    let changed = false;
+    for (const key of relevantKeys) {
+      if (prevState[key] !== nextState[key]) {
+        changed = true;
+        break;
+      }
+    }
+
+    if (changed) {
+      const snap = {};
+      for (const key of relevantKeys) {
+        snap[key] = nextState[key];
+      }
+      
+      const currentHistory = nextState.history || [];
+      const currentIndex = nextState.historyIndex !== undefined ? nextState.historyIndex : -1;
+      
+      let newHistory = currentHistory.slice(0, currentIndex + 1);
+      
+      if (newHistory.length === 0) {
+        const prevSnap = {};
+        for (const key of relevantKeys) {
+          prevSnap[key] = prevState[key];
+        }
+        newHistory.push(prevSnap);
+      }
+      
+      newHistory.push(snap);
+      if (newHistory.length > 50) newHistory.shift();
+      
+      set({
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+        canUndo: newHistory.length > 1,
+        canRedo: false
+      });
+    }
+  };
+
+  return config(historySet, get, api);
+};
+
+export const useStore = create(withHistory((set, get) => ({
+  history: [],
+  historyIndex: -1,
+  canUndo: false,
+  canRedo: false,
+  
+  undo: () => set((state) => {
+    if (state.historyIndex > 0) {
+      const newIndex = state.historyIndex - 1;
+      const snap = state.history[newIndex];
+      return {
+        ...snap,
+        historyIndex: newIndex,
+        selectedId: null,
+        selectedIds: [],
+        _isUndoRedo: true,
+        canUndo: newIndex > 0,
+        canRedo: true
+      };
+    }
+    return state;
+  }),
+
+  redo: () => set((state) => {
+    if (state.history && state.historyIndex < state.history.length - 1) {
+      const newIndex = state.historyIndex + 1;
+      const snap = state.history[newIndex];
+      return {
+        ...snap,
+        historyIndex: newIndex,
+        selectedId: null,
+        selectedIds: [],
+        _isUndoRedo: true,
+        canUndo: true,
+        canRedo: newIndex < state.history.length - 1
+      };
+    }
+    return state;
+  }),
   items: [],
   selectedId: null,
   selectedIds: [],
@@ -35,39 +131,14 @@ export const useStore = create((set, get) => ({
   designMode: 'canvas',
   htmlContent: '',
   showAiConfig: false,
-  stageRef: null,
-  previewElementRef: null,
   setShowAiConfig: (val) => set({ showAiConfig: val }),
   setDesignMode: (val) => set({ designMode: val }),
   setHtmlContent: (val) => set({ htmlContent: val }),
-  setStageRef: (ref) => {
-    if (get().stageRef === ref) return;
-    set({ stageRef: ref });
-  },
-  setPreviewElementRef: (ref) => {
-    if (get().previewElementRef === ref) return;
-    set({ previewElementRef: ref });
-  },
   getStageB64: async () => {
-    const state = get();
-
-    if (state.designMode === 'html' && state.previewElementRef) {
-      try {
-        return await toPng(state.previewElementRef, {
-          pixelRatio: 1,
-          backgroundColor: 'white'
-        });
-      } catch (e) {
-        console.error('Failed to capture HTML preview', e);
-        return null;
-      }
+    if (typeof window !== 'undefined' && window.__getStageB64) {
+      return await window.__getStageB64();
     }
-
-    const stage = state.stageRef;
-    const zoomScale = state.zoomScale || 1;
-    return stage
-      ? stage.toDataURL({ pixelRatio: 1 / Math.max(zoomScale, 0.1) })
-      : null;
+    return null;
   },
   setZoomScale: (scale) => set({ zoomScale: Math.max(0.1, Math.min(5, scale)) }),
   manualPrinters: (() => {
@@ -96,6 +167,8 @@ export const useStore = create((set, get) => ({
   batchRecords: [{}],
   printCopies: 1,
   theme: 'auto',
+  dither: true,
+  setDither: (val) => set({ dither: val }),
   snapLines: [],
   fonts: [],
   labelPresets: [],
@@ -214,6 +287,7 @@ export const useStore = create((set, get) => ({
         pageIndices: normalizedPageIndices,
         copies: state.printCopies || 1,
         batchRecords: state.batchRecords || [{}],
+        dither: state.dither,
         canvasState: {
           width: state.canvasWidth,
           height: state.canvasHeight,
@@ -254,7 +328,8 @@ export const useStore = create((set, get) => ({
           mac_address: pendingPrintJob.macAddress,
           images,
           split_mode: pendingPrintJob.splitMode,
-          is_rotated: pendingPrintJob.canvasState.isRotated || false
+          is_rotated: pendingPrintJob.canvasState.isRotated || false,
+          dither: pendingPrintJob.dither
         })
       });
 
@@ -562,7 +637,7 @@ export const useStore = create((set, get) => ({
     set({ currentProjectId: proj.id });
     const s = proj.canvas_state;
     const batchRecords = s.batchRecords || [{}];
-    useStore.setState({
+    set({
       canvasWidth: s.width || 384,
       canvasHeight: s.height || 384,
       canvasBorder: s.canvasBorder || 'none',
@@ -577,7 +652,11 @@ export const useStore = create((set, get) => ({
       items: recalcAutoFit(s.items || [], batchRecords, s.width || 384, s.height || 384),
       selectedId: null,
       selectedIds: [],
-      selectedPagesForPrint: []
+      selectedPagesForPrint: [],
+      history: [],
+      historyIndex: -1,
+      canUndo: false,
+      canRedo: false
     });
   },
 
@@ -684,6 +763,22 @@ export const useStore = create((set, get) => ({
       document.head.appendChild(style);
     } catch (e) {
       console.error("Failed to fetch fonts", e);
+    }
+  },
+
+  uploadFont: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch('/api/fonts', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error("Failed to upload font");
+      await get().fetchFonts();
+    } catch (e) {
+      console.error("Failed to upload font", e);
+      alert("Failed to upload font file.");
     }
   },
 
@@ -832,7 +927,7 @@ export const useStore = create((set, get) => ({
       console.error("Failed to fetch printer profile", e);
       set({ printerProfile: { speed: 0, energy: 0, feed_lines: 50 } });
     }
-  }, // <-- The syntax error is fixed right here
+  },
   
   setItems: (items) => set((state) => ({
     items: recalcAutoFit(items, state.batchRecords, state.canvasWidth, state.canvasHeight),
@@ -840,7 +935,7 @@ export const useStore = create((set, get) => ({
     selectedIds: [],
     selectedPagesForPrint: []
   })),
-  clearCanvas: () => set({ items: [], selectedId: null, selectedIds: [], currentPage: 0, selectedPagesForPrint: [], currentProjectId: null, designMode: 'canvas', htmlContent: '' }),
+  clearCanvas: () => set({ items: [], selectedId: null, selectedIds: [], currentPage: 0, selectedPagesForPrint: [], currentProjectId: null, designMode: 'canvas', htmlContent: '', history: [], historyIndex: -1, canUndo: false, canRedo: false }),
   
   addItem: (item) => set((state) => ({
     items: [
@@ -866,7 +961,7 @@ export const useStore = create((set, get) => ({
       currentY += approxHeight + gapPx;
       newItems.push({
         ...itemToClone,
-        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substr(2, 5),
+        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substring(2, 7),
         y: currentY
       });
     }
@@ -888,7 +983,7 @@ export const useStore = create((set, get) => ({
       const targetPage = maxPage + i;
       const clones = currentItems.map((item) => ({
         ...item,
-        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substr(2, 5),
+        id: Date.now().toString() + '-' + i + '-' + Math.random().toString(36).substring(2, 7),
         pageIndex: targetPage
       }));
       newItems.push(...clones);
@@ -1027,7 +1122,7 @@ export const useStore = create((set, get) => ({
     const ungroupedIds = [];
 
     group.children.forEach((child) => {
-      const newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+      const newId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
       ungroupedIds.push(newId);
       newItems.push({
         ...child,
@@ -1132,4 +1227,4 @@ export const useStore = create((set, get) => ({
     canvasHeight: height,
     items: recalcAutoFit(state.items, state.batchRecords, width, height)
   })),
-}));
+})));

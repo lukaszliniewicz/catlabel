@@ -13,8 +13,8 @@ import litellm
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] AI_AGENT: %(message)s")
 
-from .models import AIConfig, AIConversation, AIProvider, AIModelConfig
-from .ai_tools import TOOLS_SCHEMA, execute_tool
+from ..core.models import AIConfig, AIConversation, AIProvider, AIModelConfig
+from ..services.ai_tools import TOOLS_SCHEMA, execute_tool
 
 router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
 
@@ -94,7 +94,7 @@ def sanitize_trace_data(data: Any) -> Any:
 
 @router.get("/config")
 def get_providers():
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         providers = session.exec(select(AIProvider)).all()
         if not providers:
@@ -137,7 +137,7 @@ def get_providers():
 
 @router.post("/config")
 def save_provider(payload: ProviderDTO):
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         if any(model.is_active for model in payload.models):
             all_models = session.exec(select(AIModelConfig)).all()
@@ -207,7 +207,7 @@ def save_provider(payload: ProviderDTO):
 
 @router.delete("/config/{provider_id}")
 def delete_provider(provider_id: int):
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         provider = session.get(AIProvider, provider_id)
         if provider:
@@ -221,7 +221,7 @@ def delete_provider(provider_id: int):
 
 @router.get("/history")
 def get_histories():
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         convos = session.exec(select(AIConversation).order_by(AIConversation.updated_at.desc())).all()
         return [{"id": c.id, "title": c.title, "updated_at": c.updated_at} for c in convos]
@@ -229,7 +229,7 @@ def get_histories():
 
 @router.get("/history/{conv_id}")
 def get_history(conv_id: int):
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         c = session.get(AIConversation, conv_id)
         if not c: raise HTTPException(status_code=404)
@@ -238,7 +238,7 @@ def get_history(conv_id: int):
 
 @router.get("/history/{conv_id}/trace")
 def get_history_trace(conv_id: int):
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         traces = session.exec(
             select(AITraceLog)
@@ -262,7 +262,7 @@ def get_history_trace(conv_id: int):
 
 @router.post("/history")
 def create_history(data: dict):
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         title = data.get("title", "New Conversation")
         messages = data.get("messages", [])
@@ -275,7 +275,7 @@ def create_history(data: dict):
 
 @router.put("/history/{conv_id}")
 def update_history(conv_id: int, data: dict):
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         c = session.get(AIConversation, conv_id)
         if not c: raise HTTPException(status_code=404)
@@ -289,7 +289,7 @@ def update_history(conv_id: int, data: dict):
 
 @router.delete("/history/{conv_id}")
 def delete_history(conv_id: int):
-    from .server import engine
+    from ..core.database import engine
     with Session(engine) as session:
         c = session.get(AIConversation, conv_id)
         if c:
@@ -307,7 +307,8 @@ def delete_history(conv_id: int):
 
 @router.post("/chat")
 def chat_with_agent(req: ChatRequest):
-    from .server import engine, get_agent_context
+    from ..core.database import engine
+    from .main import get_agent_context
     with Session(engine) as session:
         active_model = session.exec(select(AIModelConfig).where(AIModelConfig.is_active == True)).first()
         if not active_model:
@@ -345,7 +346,7 @@ def chat_with_agent(req: ChatRequest):
 
     context = get_agent_context()
 
-    from .prompts import build_system_prompt
+    from ..services.prompts import build_system_prompt
 
     media_pref = context.get('intended_media_type', 'unknown')
 
@@ -428,7 +429,7 @@ def chat_with_agent(req: ChatRequest):
 
             # Save the exact trace to the database for observability
             if req.conv_id is not None:
-                from .server import engine
+                from ..core.database import engine
                 with Session(engine) as session:
                     # Sanitize to prevent massive DB bloat from base64 images
                     safe_messages = sanitize_trace_data(messages)

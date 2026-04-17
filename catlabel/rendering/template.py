@@ -1,4 +1,5 @@
 import base64
+import os
 from io import BytesIO
 from typing import List
 
@@ -6,8 +7,9 @@ from PIL import Image
 
 
 def _headless_url_candidates() -> List[str]:
+    port = os.environ.get("CATLABEL_PORT", "8000")
     return [
-        "http://127.0.0.1:8000/index.html?mode=headless",
+        f"http://127.0.0.1:{port}/index.html?mode=headless",
         "http://127.0.0.1:5173/index.html?mode=headless",
     ]
 

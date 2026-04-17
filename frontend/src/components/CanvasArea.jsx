@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Group, Layer, Line, Path, Rect, Stage, Transformer } from 'react-konva';
 import { useStore } from '../store';
 import CanvasItemNode from './CanvasItemNode';
@@ -6,6 +6,7 @@ import FloatingToolbar from './FloatingToolbar';
 import HtmlLabel from './HtmlLabel';
 
 const WORKSPACE_PAD = 40;
+const SNAP_T = 10;
 
 export default function CanvasArea() {
   const {
@@ -37,9 +38,33 @@ export default function CanvasArea() {
   } = useStore();
 
   const { splitMode } = useStore();
-  const [selectionBox, setSelectionBox] = React.useState(null);
-  const trRef = React.useRef(null);
+  const [selectionBox, setSelectionBox] = useState(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
+  const trRef = useRef(null);
+  const containerRef = useRef(null);
+  const localStageRef = useRef(null);
+  const localPreviewRef = useRef(null);
   const cvThick = canvasBorderThickness || 4;
+
+  useEffect(() => {
+    window.__getStageB64 = async () => {
+      if (designMode === 'html' && localPreviewRef.current) {
+        try {
+          return await import('html-to-image').then(m => m.toPng(localPreviewRef.current, {
+            pixelRatio: 1,
+            backgroundColor: 'white'
+          }));
+        } catch (e) {
+          console.error('Failed to capture HTML preview', e);
+          return null;
+        }
+      }
+      const stage = localStageRef.current;
+      return stage ? stage.toDataURL({ pixelRatio: 1 / Math.max(zoomScale, 0.1) }) : null;
+    };
+    return () => { delete window.__getStageB64; };
+  }, [designMode, zoomScale]);
   const dotsPerMm = (currentDpi || settings.default_dpi || 203) / 25.4;
   const printPx = selectedPrinterInfo?.width_px || Math.round((settings.print_width_mm || 48) * dotsPerMm);
   const batchRecords = useStore((state) => state.batchRecords) || [{}];
@@ -49,7 +74,7 @@ export default function CanvasArea() {
   const pages = designMode === 'html' ? [0] : Array.from({ length: maxDisplayedPage + 1 }, (_, index) => index);
   const selectedItem = designMode === 'html' ? null : items.find((item) => item.id === selectedId);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!trRef.current) return;
     const stage = trRef.current.getStage();
     if (!stage) return;
@@ -59,11 +84,32 @@ export default function CanvasArea() {
     trRef.current.getLayer()?.batchDraw();
   }, [selectedIds, currentPage, items]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
-      const { selectedIds, deleteSelectedItems, moveSelectedItems } = useStore.getState();
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!isPanning) setIsPanning(true);
+      }
+
+      const { selectedIds, deleteSelectedItems, moveSelectedItems, undo, redo } = useStore.getState();
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+      }
+
       if (selectedIds.length === 0) return;
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -78,25 +124,40 @@ export default function CanvasArea() {
       if (e.key === 'ArrowRight') { e.preventDefault(); moveSelectedItems(step, 0); }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    const handleKeyUp = (e) => {
+      if (e.code === 'Space') {
+        setIsPanning(false);
+      }
+    };
 
-  const handleDragMove = (e, item) => {
-    const node = e.target;
-    const x = node.x();
-    const y = node.y();
-    const w = node.getClientRect().width || item.width || 100;
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isPanning]);
+
+  const getBoundingBox = useCallback((item) => {
+    const w = item.width || 100;
     const lineCount = item.text ? String(item.text).split('\n').length : 1;
     const pad = item.padding !== undefined ? Number(item.padding) : 0;
     const actualLineHeight = item.lineHeight ?? (lineCount > 1 ? 1.15 : 1);
-    const h = node.getClientRect().height || item.height || (item.type === 'text' ? (item.size * actualLineHeight * lineCount) + (pad * 2) : 50);
+    const h = item.height || (item.type === 'text' ? (item.size * actualLineHeight * lineCount) + (pad * 2) : 50);
+    return { x: item.x, y: item.y, width: w, height: h };
+  }, []);
 
-    const SNAP_T = 10;
+  const handleDragMove = (e, draggedItem) => {
+    const node = e.target;
+    const x = node.x();
+    const y = node.y();
+    const { width: w, height: h } = getBoundingBox(draggedItem);
+    
     let newX = x;
     let newY = y;
     const lines = [];
 
+    // Canvas Edge Snapping
     const centerX = canvasWidth / 2;
     if (Math.abs(x + w / 2 - centerX) < SNAP_T) {
       newX = centerX - w / 2;
@@ -125,6 +186,29 @@ export default function CanvasArea() {
       lines.push({ points: [-9999, canvasHeight, 9999, canvasHeight], stroke: '#ec4899' });
     }
 
+    // Element-to-Element Snapping
+    const otherItems = items.filter(i => i.id !== draggedItem.id && i.pageIndex === currentPage);
+    for (const item of otherItems) {
+      const box = getBoundingBox(item);
+      
+      // Snap Left to Left
+      if (Math.abs(x - box.x) < SNAP_T) { newX = box.x; lines.push({ points: [box.x, -9999, box.x, 9999], stroke: '#f59e0b' }); }
+      // Snap Left to Right
+      if (Math.abs(x - (box.x + box.width)) < SNAP_T) { newX = box.x + box.width; lines.push({ points: [box.x + box.width, -9999, box.x + box.width, 9999], stroke: '#f59e0b' }); }
+      // Snap Right to Right
+      if (Math.abs((x + w) - (box.x + box.width)) < SNAP_T) { newX = box.x + box.width - w; lines.push({ points: [box.x + box.width, -9999, box.x + box.width, 9999], stroke: '#f59e0b' }); }
+      // Snap Right to Left
+      if (Math.abs((x + w) - box.x) < SNAP_T) { newX = box.x - w; lines.push({ points: [box.x, -9999, box.x, 9999], stroke: '#f59e0b' }); }
+      // Snap Top to Top
+      if (Math.abs(y - box.y) < SNAP_T) { newY = box.y; lines.push({ points: [-9999, box.y, 9999, box.y], stroke: '#f59e0b' }); }
+      // Snap Top to Bottom
+      if (Math.abs(y - (box.y + box.height)) < SNAP_T) { newY = box.y + box.height; lines.push({ points: [-9999, box.y + box.height, 9999, box.y + box.height], stroke: '#f59e0b' }); }
+      // Snap Bottom to Bottom
+      if (Math.abs((y + h) - (box.y + box.height)) < SNAP_T) { newY = box.y + box.height - h; lines.push({ points: [-9999, box.y + box.height, 9999, box.y + box.height], stroke: '#f59e0b' }); }
+      // Snap Bottom to Top
+      if (Math.abs((y + h) - box.y) < SNAP_T) { newY = box.y - h; lines.push({ points: [-9999, box.y, 9999, box.y], stroke: '#f59e0b' }); }
+    }
+
     node.position({ x: newX, y: newY });
     setSnapLines(lines);
   };
@@ -146,12 +230,15 @@ export default function CanvasArea() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center overflow-auto p-8 bg-neutral-100 dark:bg-neutral-900 transition-colors duration-300 gap-8">
-      <div className="text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold">
+    <div 
+      ref={containerRef}
+      className={`flex-1 flex flex-col items-center p-8 bg-neutral-100 dark:bg-neutral-900 transition-colors duration-300 gap-8 ${isPanning ? 'cursor-grab active:cursor-grabbing overflow-hidden' : 'overflow-auto'}`}
+    >
+      <div className="text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold sticky top-0 bg-neutral-100 dark:bg-neutral-900/90 z-10 py-1">
         Canvas Feed Engine: {isRotated ? 'Landscape' : 'Portrait'}
       </div>
 
-      <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-10 min-h-max min-w-max pb-16">
         {visibleRecords.map((record, rIdx) => (
           <div key={rIdx} className="flex flex-col items-center gap-4">
             {batchRecords.length > 1 && (
@@ -242,7 +329,7 @@ export default function CanvasArea() {
                           <div
                             ref={(node) => {
                               if (node && isActive && rIdx === 0) {
-                                useStore.getState().setPreviewElementRef(node);
+                                localPreviewRef.current = node;
                               }
                             }}
                             style={{ width: canvasWidth, height: canvasHeight }}
@@ -262,23 +349,30 @@ export default function CanvasArea() {
                       <Stage
                         ref={(node) => {
                           if (node && isActive && rIdx === 0) {
-                            if (useStore.getState().stageRef !== node) {
-                              useStore.getState().setStageRef(node);
-                            }
+                            localStageRef.current = node;
+                          }
+                        }}
+                        draggable={isPanning}
+                        x={stagePos.x}
+                        y={stagePos.y}
+                        onDragEnd={(e) => {
+                          if (isPanning && e.target === e.target.getStage()) {
+                            setStagePos({ x: e.target.x(), y: e.target.y() });
                           }
                         }}
                         width={(canvasWidth + WORKSPACE_PAD * 2) * zoomScale}
                         height={(canvasHeight + WORKSPACE_PAD * 2) * zoomScale}
                         scale={{ x: zoomScale, y: zoomScale }}
                         onMouseDown={(e) => {
+                          if (isPanning) return;
                           const clickedOnEmpty = e.target === e.target.getStage() || e.target.hasName('bg-rect');
                           if (!clickedOnEmpty) return;
 
                           setCurrentPage(pageIndex);
 
                           const pos = e.target.getStage().getPointerPosition();
-                          const stageX = (pos.x / zoomScale) - WORKSPACE_PAD;
-                          const stageY = (pos.y / zoomScale) - WORKSPACE_PAD;
+                          const stageX = (pos.x - stagePos.x) / zoomScale - WORKSPACE_PAD;
+                          const stageY = (pos.y - stagePos.y) / zoomScale - WORKSPACE_PAD;
 
                           setSelectionBox({
                             pageIndex,
@@ -296,11 +390,12 @@ export default function CanvasArea() {
                           }
                         }}
                         onMouseMove={(e) => {
+                          if (isPanning) return;
                           if (!selectionBox || !selectionBox.active || selectionBox.pageIndex !== pageIndex) return;
 
                           const pos = e.target.getStage().getPointerPosition();
-                          const currentX = (pos.x / zoomScale) - WORKSPACE_PAD;
-                          const currentY = (pos.y / zoomScale) - WORKSPACE_PAD;
+                          const currentX = (pos.x - stagePos.x) / zoomScale - WORKSPACE_PAD;
+                          const currentY = (pos.y - stagePos.y) / zoomScale - WORKSPACE_PAD;
 
                           setSelectionBox((prev) => ({
                             ...prev,
@@ -311,6 +406,7 @@ export default function CanvasArea() {
                           }));
                         }}
                         onMouseUp={(e) => {
+                          if (isPanning) return;
                           if (!selectionBox || !selectionBox.active || selectionBox.pageIndex !== pageIndex) return;
 
                           if (selectionBox.width > 2 && selectionBox.height > 2) {
@@ -416,14 +512,16 @@ export default function CanvasArea() {
                                 canvasWidth={canvasWidth}
                                 canvasHeight={canvasHeight}
                                 isSelected={selectedIds.includes(item.id)}
-                                interactive
+                                interactive={!isPanning}
                                 onMouseDown={(e) => {
+                                  if (isPanning) return;
                                   e.cancelBubble = true;
                                   setCurrentPage(pageIndex);
                                   const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
                                   selectItem(item.id, isMulti);
                                 }}
                                 onTouchStart={(e) => {
+                                  if (isPanning) return;
                                   e.cancelBubble = true;
                                   setCurrentPage(pageIndex);
                                   const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
@@ -463,7 +561,7 @@ export default function CanvasArea() {
                               />
                             )}
 
-                            {isActive && (
+                            {isActive && !isPanning && (
                               <Transformer
                                 ref={trRef}
                                 borderStroke="#2563eb"
@@ -485,7 +583,7 @@ export default function CanvasArea() {
                       </Stage>
                     )}
 
-                    {isActive && selectedItem && selectedIds.length === 1 && (
+                    {isActive && selectedItem && selectedIds.length === 1 && !isPanning && (
                       <FloatingToolbar
                         item={selectedItem}
                         zoomScale={zoomScale}
@@ -509,8 +607,8 @@ export default function CanvasArea() {
         + Add New Label
       </button>
 
-      <div className="text-neutral-400 dark:text-neutral-600 text-[10px] uppercase tracking-widest">
-        Drag items to move. Click empty space to deselect.
+      <div className="text-neutral-400 dark:text-neutral-600 text-[10px] uppercase tracking-widest sticky bottom-0 bg-neutral-100 dark:bg-neutral-900/90 py-1 z-10">
+        Drag items to move. Click empty space to deselect. Hold Space to Pan.
       </div>
     </div>
   );

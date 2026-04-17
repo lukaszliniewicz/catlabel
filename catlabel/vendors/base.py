@@ -23,6 +23,6 @@ class BasePrinterClient(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def print_images(self, images: List[Image.Image], split_mode: bool = False) -> None:
+    async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
         """Slices/pads the images based on hardware constraints and sends them."""
         raise NotImplementedError

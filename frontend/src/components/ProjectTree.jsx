@@ -175,7 +175,7 @@ const TreeNode = ({ node, level, onImport }) => {
                     </button>
                     <label className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer dark:text-white">
                       <Upload size={12} /> Import Package Here
-                      <input type="file" accept=".json" className="hidden" onChange={(e) => { setMenuOpen(false); setIsOpen(true); onImport(e, node.id); }} />
+                      <input type="file" accept=".json" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { setMenuOpen(false); setIsOpen(true); onImport(e, node.id); }} />
                     </label>
                     <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
                   </>
@@ -310,7 +310,7 @@ export default function ProjectTree() {
         </button>
         <label className="flex-1 flex items-center justify-center gap-1 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-[10px] uppercase font-bold tracking-wider cursor-pointer">
           <Upload size={12} /> Import
-          <input type="file" accept=".json" className="hidden" onChange={(e) => handleImport(e, null)} />
+          <input type="file" accept=".json" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => handleImport(e, null)} />
         </label>
       </div>
 

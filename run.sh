@@ -18,6 +18,7 @@ if [ ! -d "env" ]; then
     if [ ! -f "bin/micromamba" ]; then
         echo "      Downloading standalone Micromamba..."
         OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        if [ "$OS" = "darwin" ]; then OS="osx"; fi
         ARCH="$(uname -m)"
         if [ "$ARCH" = "x86_64" ]; then ARCH="64"; fi
         if [ "$ARCH" = "aarch64" ]; then ARCH="aarch64"; fi
@@ -30,9 +31,9 @@ if [ ! -d "env" ]; then
         chmod +x bin/micromamba
     fi
 
-    # 2. Update Python to 3.12 and add python-lzo to Conda packages
-    echo "[2/4] Creating isolated environment (Python 3.12, Node.js, Git, python-lzo)..."
-    ./bin/micromamba create -p ./env -c conda-forge python=3.12 pip nodejs git python-lzo -y
+    # 2. Update Python to 3.11 and add python-lzo to Conda packages
+    echo "[2/4] Creating isolated environment (Python 3.11, Node.js, Git, python-lzo)..."
+    ./bin/micromamba create -p ./env -c conda-forge python=3.11 pip nodejs git python-lzo -y
 
     echo "[3/4] Installing backend dependencies..."
     ./bin/micromamba run -p ./env python -m pip install -r requirements.txt
@@ -65,6 +66,19 @@ if [ ! -d "env" ]; then
 
     echo "Installation complete!"
     echo "-----------------------------------"
+else
+    if [ -f ".update_needed" ]; then
+        echo "[*] Update detected. Refreshing dependencies and rebuilding UI..."
+        ./bin/micromamba run -p ./env python -m pip install -r requirements.txt
+        pushd frontend > /dev/null
+        ../bin/micromamba run -p ../env npm install
+        ../bin/micromamba run -p ../env npm run build
+        popd > /dev/null
+        rm -f .update_needed
+    else
+        echo "[*] Fast booting. Validating requirements..."
+        ./bin/micromamba run -p ./env python -m pip install -r requirements.txt > /dev/null 2>&1 || true
+    fi
 fi
 
 echo "Starting CatLabel Server (http://localhost:8000)..."

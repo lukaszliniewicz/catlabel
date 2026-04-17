@@ -128,7 +128,7 @@ const ToggleBtn = ({ icon: Icon, active, onClick, label }) => (
 );
 
 export default function PropertiesPanel() {
-  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, getMmToPx, getPxToMm, settings, updateSettingsAPI, fonts, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence, designMode, setDesignMode, htmlContent, setHtmlContent } = useStore();
+  const { items, selectedId, updateItem, deleteItem, canvasWidth, canvasHeight, canvasBorder, setCanvasBorder, canvasBorderThickness, setCanvasBorderThickness, setCanvasSize, getMmToPx, getPxToMm, settings, updateSettingsAPI, fonts, uploadFont, isRotated, setIsRotated, splitMode, setSplitMode, printerProfile, selectedPrinter, selectedPrinterInfo, batchRecords, setBatchRecords, updateBatchRecord, addBatchRecord, removeBatchRecord, generateBatchMatrix, generateBatchSequence, designMode, setDesignMode, htmlContent, setHtmlContent } = useStore();
   const selectedItem = items.find(i => i.id === selectedId);
   const isPreCut = selectedPrinterInfo?.media_type === 'pre-cut';
   const pInfo = selectedPrinterInfo || {};
@@ -527,6 +527,13 @@ export default function PropertiesPanel() {
                   : 'Select a printer to configure device-specific overrides.'}
               </div>
 
+              <div>
+                <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 dark:text-neutral-400 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full mb-4">
+                  <input type="checkbox" checked={useStore.getState().dither} onChange={(e) => useStore.getState().setDither(e.target.checked)} />
+                  Enable Dithering (Best for Photos)
+                </label>
+              </div>
+
               {pInfo.media_type === 'continuous' && pInfo.protocol_family?.includes('p12') && (
                 <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded">
                   <label className={labelClass}>Adjust Tape Length</label>
@@ -649,12 +656,18 @@ export default function PropertiesPanel() {
               </div>
               <div className="pt-2">
                 <label className={labelClass}>Global Default Font</label>
-                <select name="default_font" value={localSettings.default_font || 'RobotoCondensed.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
-                  <option value="arial.ttf">System Arial</option>
-                  {fonts.map(f => (
-                    <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select name="default_font" value={localSettings.default_font || 'RobotoCondensed.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
+                    <option value="arial.ttf">System Arial</option>
+                    {fonts.map(f => (
+                      <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                    ))}
+                  </select>
+                  <label className="flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 px-3 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors" title="Upload Custom Font">
+                    <Plus size={16} className="text-neutral-500 dark:text-neutral-400" />
+                    <input type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
+                  </label>
+                </div>
                 <p className="text-[9px] text-neutral-400 mt-1">Applies to all newly created text items.</p>
               </div>
               <button 
@@ -723,12 +736,18 @@ export default function PropertiesPanel() {
 
                   <div className="mt-3">
                     <label className={labelClass}>Font Family</label>
-                    <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
-                      <option value="arial.ttf">System Arial</option>
-                      {fonts.map(f => (
-                        <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2">
+                      <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                        <option value="arial.ttf">System Arial</option>
+                        {fonts.map(f => (
+                          <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                        ))}
+                      </select>
+                      <label className="flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 px-3 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors" title="Upload Custom Font">
+                        <Plus size={16} className="text-neutral-500 dark:text-neutral-400" />
+                        <input type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
+                      </label>
+                    </div>
                   </div>
 
                   <div className="flex gap-2 mt-3">
@@ -814,12 +833,18 @@ export default function PropertiesPanel() {
                   </div>
                   <div>
                     <label className={labelClass}>Font Family</label>
-                    <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
-                      <option value="arial.ttf">System Arial</option>
-                      {fonts.map(f => (
-                        <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2">
+                      <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                        <option value="arial.ttf">System Arial</option>
+                        {fonts.map(f => (
+                          <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                        ))}
+                      </select>
+                      <label className="flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 px-3 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors" title="Upload Custom Font">
+                        <Plus size={16} className="text-neutral-500 dark:text-neutral-400" />
+                        <input type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
+                      </label>
+                    </div>
                   </div>
 
                   {['title_subtitle', 'price_tag'].includes(selectedItem.template_id) ? (
@@ -899,12 +924,18 @@ export default function PropertiesPanel() {
                 <>
                   <div>
                     <label className={labelClass}>Font Family</label>
-                    <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
-                      <option value="arial.ttf">System Arial</option>
-                      {fonts.map(f => (
-                        <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2">
+                      <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                        <option value="arial.ttf">System Arial</option>
+                        {fonts.map(f => (
+                          <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
+                        ))}
+                      </select>
+                      <label className="flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 px-3 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors" title="Upload Custom Font">
+                        <Plus size={16} className="text-neutral-500 dark:text-neutral-400" />
+                        <input type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
+                      </label>
+                    </div>
                   </div>
                   <div>
                     <label className={labelClass}>HTML Content</label>

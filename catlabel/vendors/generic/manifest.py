@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from ..manifest import VendorManifest
 from .client import GenericClient
 from .models import PrinterModelRegistry
-from .utils import _registry_models, extract_raw_hardware_info, find_model_in_registry
+from .utils import _registry_models, extract_raw_hardware_info
 
 
 class GenericManifest(VendorManifest):
@@ -135,7 +135,7 @@ class GenericManifest(VendorManifest):
         if device and hasattr(device, "model") and device.model:
             model = device.model
         else:
-            model = find_model_in_registry(registry, name)
+            model = registry.detect_from_device_name(name, mac)
 
         if model:
             raw = extract_raw_hardware_info(model)

@@ -3,7 +3,8 @@ import { useStore } from '../store';
 import {
   Type, Calendar, Smile, Image as ImageIcon,
   Barcode, QrCode, Code, FileText, Wand2, ChevronDown, Package, Trash2,
-  ZoomIn, ZoomOut, MoveUp, MoveDown, Combine, Ungroup, Shapes, Square, Circle, Minus
+  ZoomIn, ZoomOut, MoveUp, MoveDown, Combine, Ungroup, Shapes, Square, Circle, Minus,
+  Undo2, Redo2
 } from 'lucide-react';
 
 import IconPicker from './IconPicker';
@@ -11,13 +12,15 @@ import HtmlPickerModal from './HtmlPickerModal';
 import DateToolModal from './DateToolModal';
 import TemplateWizardModal from './TemplateWizardModal';
 
-const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button', active = false, children }) => (
+const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button', active = false, children, disabled = false, className = '' }) => (
   <Component
-    onClick={onClick}
-    className={`relative group p-2.5 rounded transition-colors cursor-pointer flex items-center justify-center ${
-      active
-        ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-        : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white'
+    onClick={disabled ? undefined : onClick}
+    className={`relative group p-2.5 rounded transition-colors flex items-center justify-center ${className} ${
+      disabled
+        ? 'opacity-40 cursor-not-allowed text-neutral-400 dark:text-neutral-600'
+        : active
+          ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white cursor-pointer'
+          : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white cursor-pointer'
     }`}
   >
     <Icon size={18} strokeWidth={2} />
@@ -41,11 +44,14 @@ export default function Toolbar() {
     moveItemZ,
     groupSelected,
     ungroupSelected,
-    items
+    items,
+    undo,
+    redo,
+    canUndo,
+    canRedo
   } = useStore();
 
   const [showIconPicker, setShowIconPicker] = useState(false);
-  const [iconPickerMode, setIconPickerMode] = useState('icon');
   const [showHtmlPicker, setShowHtmlPicker] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showGenDropdown, setShowGenDropdown] = useState(false);
@@ -113,46 +119,17 @@ export default function Toolbar() {
     setShowHtmlPicker(false);
   };
 
-  const handleAddIconText = (base64Png) => {
-    const defaultFont = useStore.getState().settings.default_font || 'RobotoCondensed.ttf';
+  const handleAddIcon = (base64Png) => {
     addItem({
       id: Date.now().toString(),
-      type: 'icon_text',
-      x: 10,
-      y: 10,
-      icon_src: base64Png,
-      icon_x: 0,
-      icon_y: 0,
-      icon_size: 40,
-      text: 'Icon + Text',
-      text_x: 46,
-      text_y: 10,
-      size: 24,
-      weight: 700,
-      font: defaultFont,
-      text_width: 150,
-      align: 'left',
-      width: 196,
-      height: 40
+      type: 'image',
+      src: base64Png,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100
     });
     setShowIconPicker(false);
-  };
-
-  const handleAddIcon = (base64Png) => {
-    if (iconPickerMode === 'icon_text') {
-      handleAddIconText(base64Png);
-    } else {
-      addItem({
-        id: Date.now().toString(),
-        type: 'image',
-        src: base64Png,
-        x: 0,
-        y: 0,
-        width: 100,
-        height: 100
-      });
-      setShowIconPicker(false);
-    }
   };
 
   const handleAddBarcode = () => {
@@ -263,6 +240,9 @@ export default function Toolbar() {
 
       {/* Group: Basic Tools */}
       <div className="flex items-center gap-1">
+        <ToolButton icon={Undo2} label="Undo (Ctrl+Z)" onClick={undo} active={false} component="button" disabled={!canUndo} />
+        <ToolButton icon={Redo2} label="Redo (Ctrl+Y)" onClick={redo} active={false} component="button" disabled={!canRedo} />
+        <div className="hidden sm:block w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-1" />
         <ToolButton icon={Type} label="Add Text" onClick={handleAddText} />
         <ToolButton icon={Calendar} label="Add Date" onClick={() => setShowDateModal(true)} />
       </div>
@@ -271,9 +251,9 @@ export default function Toolbar() {
 
       {/* Group: Visuals */}
       <div className="flex items-center gap-1">
-        <ToolButton icon={Smile} label="Icon Only" onClick={() => { setIconPickerMode('icon'); setShowIconPicker(true); }} />
+        <ToolButton icon={Smile} label="Icon Only" onClick={() => setShowIconPicker(true)} />
         <ToolButton component="label" icon={ImageIcon} label="Upload Image">
-          <input type="file" accept="image/*" className="hidden" onChange={handleAddImage} />
+          <input type="file" accept="image/*" className="hidden" onClick={(e) => e.target.value = null} onChange={handleAddImage} />
         </ToolButton>
 
         <div className="relative flex items-center" ref={shapeDropdownRef}>
@@ -336,7 +316,7 @@ export default function Toolbar() {
         <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
         <ToolButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
         <ToolButton component="label" icon={FileText} label="Import PDF">
-          <input type="file" accept="application/pdf" className="hidden" onChange={handleAddPdf} />
+          <input type="file" accept="application/pdf" className="hidden" onClick={(e) => e.target.value = null} onChange={handleAddPdf} />
         </ToolButton>
 
         {/* Generate / Smart Wizards Button - Now integrated smoothly */}

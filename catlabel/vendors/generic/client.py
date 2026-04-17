@@ -61,7 +61,7 @@ class GenericClient(BasePrinterClient):
     async def disconnect(self) -> None:
         await self.backend.disconnect()
 
-    async def print_images(self, images: List[Image.Image], split_mode: bool = False) -> None:
+    async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
         if not self.model:
             raise HTTPException(
                 status_code=500,
@@ -143,7 +143,7 @@ class GenericClient(BasePrinterClient):
             is_last = index == total_images - 1
             current_feed = use_feed if is_last else 0
 
-            raster = image_to_raster(img, pipeline_config.default_format, dither=True)
+            raster = image_to_raster(img, pipeline_config.default_format, dither=dither)
             job = build_job_from_raster(
                 raster=raster,
                 is_text=False,

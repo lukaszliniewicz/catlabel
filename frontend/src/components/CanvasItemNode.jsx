@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from 'react-konva';
+import Konva from 'konva';
 import { toPng } from 'html-to-image';
 import { applyVars, calculateAutoFitItem, computeOptimalTextSize, resolveDim, useCodeGenerator } from '../utils/rendering';
 import { useStore } from '../store';
@@ -7,32 +8,48 @@ import { LABEL_TEMPLATE_STYLES, buildLabelTemplateMarkup } from './templateStyle
 
 const useHtmlRasterizer = (htmlString, width, height, isTemplate = false, font = 'Arial') => {
   const [img, setImg] = useState(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!htmlString || width <= 0 || height <= 0) {
+    if (!containerRef.current) {
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.overflow = 'hidden';
+      container.style.boxSizing = 'border-box';
+      container.style.pointerEvents = 'none';
+      container.style.backgroundColor = 'transparent';
+      container.style.color = 'black';
+      document.body.appendChild(container);
+      containerRef.current = container;
+    }
+
+    return () => {
+      if (containerRef.current && document.body.contains(containerRef.current)) {
+        document.body.removeChild(containerRef.current);
+        containerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!htmlString || width <= 0 || height <= 0 || !containerRef.current) {
       setImg(null);
       return undefined;
     }
 
     let cancelled = false;
     const fontFamily = font.split('.')[0];
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.style.top = '0';
+    const container = containerRef.current;
+    
     container.style.width = `${width}px`;
     container.style.height = `${height}px`;
-    container.style.overflow = 'hidden';
-    container.style.boxSizing = 'border-box';
-    container.style.pointerEvents = 'none';
-    container.style.backgroundColor = 'transparent';
-    container.style.color = 'black';
     container.style.fontFamily = `'${fontFamily}', sans-serif`;
+    
     container.innerHTML = isTemplate
       ? `<style>${LABEL_TEMPLATE_STYLES}</style>${htmlString}`
       : htmlString;
-
-    document.body.appendChild(container);
 
     const rasterize = async () => {
       const autoTexts = container.querySelectorAll('.auto-text');
@@ -97,10 +114,6 @@ const useHtmlRasterizer = (htmlString, width, height, isTemplate = false, font =
             if (!cancelled) {
               setImg(null);
             }
-          } finally {
-            if (document.body.contains(container)) {
-              document.body.removeChild(container);
-            }
           }
         });
       });
@@ -110,11 +123,8 @@ const useHtmlRasterizer = (htmlString, width, height, isTemplate = false, font =
 
     return () => {
       cancelled = true;
-      if (document.body.contains(container)) {
-        document.body.removeChild(container);
-      }
     };
-  }, [htmlString, width, height, isTemplate]);
+  }, [htmlString, width, height, isTemplate, font]);
 
   return img;
 };
@@ -166,7 +176,27 @@ const useImageLoader = (url) => {
 
 const URLImage = ({ src, width, height }) => {
   const image = useImageLoader(src);
-  return <KonvaImage image={image} width={width} height={height} />;
+  const dither = useStore((state) => state.dither);
+  const imageRef = useRef(null);
+
+  useEffect(() => {
+    if (image && imageRef.current && !dither) {
+      imageRef.current.cache();
+    }
+  }, [image, dither, width, height]);
+
+  if (!image) return null;
+
+  return (
+    <KonvaImage 
+      ref={imageRef}
+      image={image} 
+      width={width} 
+      height={height}
+      filters={dither ? [] : [Konva.Filters.Threshold]}
+      threshold={128}
+    />
+  );
 };
 
 const CodeImage = ({ type, data, barcodeType, width, height }) => {

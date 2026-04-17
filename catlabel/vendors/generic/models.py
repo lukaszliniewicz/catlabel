@@ -317,9 +317,7 @@ class PrinterModelAliasRegistry:
         return _merge_image_pipeline_entry(entry, family)
 
     def resolve(self, name: str, address: Optional[str]) -> Optional[PrinterModelAliasMatch]:
-        if not name or not self._head_aliases:
-            return None
-        normalized_name = PrinterModelAliasNormalizer.normalize_alias_name(name)
+        normalized_name = PrinterModelAliasNormalizer.normalize_alias_name(name) if name else ""
         match = None
         match_prefix_len = 0
         for alias in self._head_aliases:
@@ -327,23 +325,28 @@ class PrinterModelAliasRegistry:
             if prefix_len > match_prefix_len:
                 match = alias
                 match_prefix_len = prefix_len
-        if not match:
-            return None
-        target = match.map_model_head_name
-        match_kind = PrinterModelAliasKind.HEAD_NAME
-        protocol_family = match.protocol_family
-        image_pipeline = match.image_pipeline
-        testing = match.testing
-        testing_note = match.testing_note
+        
+        target = match.map_model_head_name if match else None
+        match_kind = PrinterModelAliasKind.HEAD_NAME if match else None
+        protocol_family = match.protocol_family if match else None
+        image_pipeline = match.image_pipeline if match else None
+        testing = match.testing if match else False
+        testing_note = match.testing_note if match else None
+
         for mac_alias in self._mac_aliases:
-            if mac_alias.matches(address) and mac_alias.applies_to(target):
-                target = mac_alias.map_model_head_name
-                match_kind = PrinterModelAliasKind.MAC
-                protocol_family = mac_alias.protocol_family or protocol_family
-                image_pipeline = mac_alias.image_pipeline or image_pipeline
-                testing = mac_alias.testing
-                testing_note = mac_alias.testing_note
-                break
+            if mac_alias.matches(address):
+                if target is None or mac_alias.applies_to(target):
+                    target = mac_alias.map_model_head_name
+                    match_kind = PrinterModelAliasKind.MAC
+                    protocol_family = mac_alias.protocol_family or protocol_family
+                    image_pipeline = mac_alias.image_pipeline or image_pipeline
+                    testing = mac_alias.testing
+                    testing_note = mac_alias.testing_note
+                    break
+
+        if not target:
+            return None
+
         return PrinterModelAliasMatch(
             target_head_name=target,
             kind=match_kind,
@@ -354,29 +357,47 @@ class PrinterModelAliasRegistry:
         )
 
     def resolve_all(self, name: str, address: Optional[str]) -> List[PrinterModelAliasMatch]:
-        if not name or not self._head_aliases:
-            return []
-        normalized_name = PrinterModelAliasNormalizer.normalize_alias_name(name)
         matches: List[PrinterModelAliasMatch] = []
         seen: Set[Tuple[str, PrinterModelAliasKind]] = set()
-        for alias in self._head_aliases:
-            if alias.match_length(normalized_name) <= 0:
-                continue
-            head_match = PrinterModelAliasMatch(
-                target_head_name=alias.map_model_head_name,
-                kind=PrinterModelAliasKind.HEAD_NAME,
-                protocol_family=alias.protocol_family,
-                image_pipeline=alias.image_pipeline,
-                testing=alias.testing,
-                testing_note=alias.testing_note,
-            )
-            key = (head_match.target_head_name, head_match.kind)
-            if key not in seen:
-                matches.append(head_match)
-                seen.add(key)
-            for mac_alias in self._mac_aliases:
-                if not mac_alias.matches(address) or not mac_alias.applies_to(alias.map_model_head_name):
+
+        if name:
+            normalized_name = PrinterModelAliasNormalizer.normalize_alias_name(name)
+            for alias in self._head_aliases:
+                if alias.match_length(normalized_name) <= 0:
                     continue
+                head_match = PrinterModelAliasMatch(
+                    target_head_name=alias.map_model_head_name,
+                    kind=PrinterModelAliasKind.HEAD_NAME,
+                    protocol_family=alias.protocol_family,
+                    image_pipeline=alias.image_pipeline,
+                    testing=alias.testing,
+                    testing_note=alias.testing_note,
+                )
+                key = (head_match.target_head_name, head_match.kind)
+                if key not in seen:
+                    matches.append(head_match)
+                    seen.add(key)
+                
+                for mac_alias in self._mac_aliases:
+                    if not mac_alias.matches(address) or not mac_alias.applies_to(alias.map_model_head_name):
+                        continue
+                    mac_match = PrinterModelAliasMatch(
+                        target_head_name=mac_alias.map_model_head_name,
+                        kind=PrinterModelAliasKind.MAC,
+                        protocol_family=mac_alias.protocol_family,
+                        image_pipeline=mac_alias.image_pipeline,
+                        testing=mac_alias.testing,
+                        testing_note=mac_alias.testing_note,
+                    )
+                    key = (mac_match.target_head_name, mac_match.kind)
+                    if key not in seen:
+                        matches.append(mac_match)
+                        seen.add(key)
+        
+        for mac_alias in self._mac_aliases:
+            if not mac_alias.matches(address):
+                continue
+            if not mac_alias._normalized_targets:
                 mac_match = PrinterModelAliasMatch(
                     target_head_name=mac_alias.map_model_head_name,
                     kind=PrinterModelAliasKind.MAC,
@@ -389,6 +410,7 @@ class PrinterModelAliasRegistry:
                 if key not in seen:
                     matches.append(mac_match)
                     seen.add(key)
+
         return matches
 
 

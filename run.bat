@@ -33,7 +33,7 @@ if not exist "env\" (
     )
 
     echo [2/4] Creating isolated environment ^(Python ^& Node.js^)...
-    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs -y
+    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs git -y
     if errorlevel 1 goto error
 
     echo [3/4] Installing backend dependencies...
@@ -81,6 +81,19 @@ if not exist "env\" (
 
     echo Installation complete!
     echo -----------------------------------
+) else (
+    if exist ".update_needed" (
+        echo [*] Update detected. Refreshing dependencies and rebuilding UI...
+        bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt
+        pushd frontend
+        ..\bin\micromamba.exe run -p ..\env npm.cmd install
+        ..\bin\micromamba.exe run -p ..\env npm.cmd run build
+        popd
+        del /Q .update_needed 2>nul
+    ) else (
+        echo [*] Fast booting. Validating requirements...
+        bin\micromamba.exe run -p .\env python -m pip install -r requirements.txt >nul 2>&1
+    )
 )
 
 echo Starting CatLabel Server (http://localhost:8000)...
