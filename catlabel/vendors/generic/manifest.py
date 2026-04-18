@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from ..manifest import VendorManifest
 from .client import GenericClient
 from .models import PrinterModelRegistry
-from .utils import _registry_models, extract_raw_hardware_info
+from ..utils import _registry_models, extract_raw_hardware_info
 
 
 class GenericManifest(VendorManifest):

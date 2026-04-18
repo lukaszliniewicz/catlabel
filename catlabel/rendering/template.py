@@ -1,9 +1,32 @@
 import base64
 import os
+import threading
 from io import BytesIO
 from typing import List
 
 from PIL import Image
+
+_browser_lock = threading.Lock()
+_playwright_context = None
+_browser_instance = None
+
+
+def _get_browser():
+    """Maintains a persistent, thread-safe headless browser instance."""
+    global _playwright_context, _browser_instance
+    with _browser_lock:
+        if _browser_instance is None:
+            try:
+                from playwright.sync_api import sync_playwright
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Playwright is not installed. Headless API printing is disabled to save space. "
+                    "To enable it, please activate the environment and run: "
+                    "pip install playwright && playwright install chromium"
+                ) from exc
+            _playwright_context = sync_playwright().start()
+            _browser_instance = _playwright_context.chromium.launch(headless=True)
+        return _browser_instance
 
 
 def _headless_url_candidates() -> List[str]:
@@ -24,19 +47,8 @@ def _decode_browser_image(data_url_or_b64: str) -> Image.Image:
 
 def render_via_browser(canvas_state: dict, variables_collection: list, copies: int = 1) -> List[Image.Image]:
     """
-    Uses the browser renderer as the source of truth for final print images.
-    The React/Konva frontend renders the exact WYSIWYG output, which is then
-    returned to Python as Base64 screenshots for the printer pipeline.
+    Uses a persistent browser renderer as the source of truth for final print images.
     """
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError as exc:
-        raise RuntimeError(
-            "Playwright is not installed. Headless API printing is disabled to save space. "
-            "To enable it, please activate the environment and run: "
-            "pip install playwright && playwright install chromium"
-        ) from exc
-
     payload = {
         "canvas_state": canvas_state or {},
         "variables_collection": variables_collection or [{}],
@@ -44,31 +56,32 @@ def render_via_browser(canvas_state: dict, variables_collection: list, copies: i
     }
 
     try:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
-            try:
-                page = browser.new_page()
+        browser = _get_browser()
+        context = browser.new_context()
+        page = context.new_page()
 
-                last_error = None
-                for url in _headless_url_candidates():
-                    try:
-                        page.goto(url, wait_until="networkidle")
-                        last_error = None
-                        break
-                    except Exception as exc:
-                        last_error = exc
+        try:
+            last_error = None
+            for url in _headless_url_candidates():
+                try:
+                    page.goto(url, wait_until="networkidle")
+                    last_error = None
+                    break
+                except Exception as exc:
+                    last_error = exc
 
-                if last_error is not None:
-                    raise RuntimeError("Unable to load the headless frontend renderer.") from last_error
+            if last_error is not None:
+                raise RuntimeError("Unable to load the headless frontend renderer.") from last_error
 
-                page.evaluate(
-                    "(payload) => { window.__INJECTED_PAYLOAD__ = payload; }",
-                    payload,
-                )
-                page.wait_for_selector("#render-done", timeout=30000, state="attached")
-                rendered_images = page.evaluate("window.__RENDERED_IMAGES__ || []")
-            finally:
-                browser.close()
+            page.evaluate(
+                "(payload) => { window.__INJECTED_PAYLOAD__ = payload; }",
+                payload,
+            )
+            page.wait_for_selector("#render-done", timeout=30000, state="attached")
+            rendered_images = page.evaluate("window.__RENDERED_IMAGES__ || []")
+        finally:
+            page.close()
+            context.close()
     except Exception as exc:
         error_text = str(exc).lower()
         if "executable doesn't exist" in error_text or "playwright install" in error_text:

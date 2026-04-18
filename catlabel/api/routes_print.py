@@ -143,11 +143,20 @@ def update_printer_profile(mac_address: str, update: PrinterProfileUpdate):
 async def execute_print_jobs(mac_address: str, images: List[Any], split_mode: bool = False, dither: bool = True):
     global _scanned_devices_cache
 
-    with Session(engine) as session:
-        settings = session.get(Settings, 1) or Settings()
-        printer_profile = session.exec(
-            select(PrinterProfile).where(PrinterProfile.mac_address == mac_address)
-        ).first()
+    def _get_db_settings(mac):
+        with Session(engine) as session:
+            settings = session.get(Settings, 1) or Settings()
+            printer_profile = session.exec(
+                select(PrinterProfile).where(PrinterProfile.mac_address == mac)
+            ).first()
+            return {
+                "settings": settings,
+                "profile": printer_profile,
+            }
+
+    db_data = await asyncio.to_thread(_get_db_settings, mac_address)
+    settings = db_data["settings"]
+    printer_profile = db_data["profile"]
 
     target_device = next((d for d in _scanned_devices_cache if d.address == mac_address), None)
 

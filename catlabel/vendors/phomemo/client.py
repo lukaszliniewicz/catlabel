@@ -39,6 +39,7 @@ class PhomemoClient(BasePrinterClient):
                 return True
             except Exception as exc:
                 self.last_error = exc
+                await self.transport.disconnect()
                 await asyncio.sleep(1.5)
         return False
 
@@ -46,7 +47,7 @@ class PhomemoClient(BasePrinterClient):
         await self.transport.disconnect()
 
     async def _send(self, data: bytes) -> None:
-        await self.transport.write(data, chunk_size=128, delay_ms=20)
+        await self.transport.write(data, chunk_size=128, interval_ms=20)
 
     def _render_to_raster(self, img, rotate_cw=False, invert=False, dither=True):
         if rotate_cw:
@@ -59,16 +60,31 @@ class PhomemoClient(BasePrinterClient):
 
     async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
         protocol = str(self.hardware_info.get("protocol_family", "legacy")).lower()
-        density = int(
+
+        hardware_default_energy = int(self.hardware_info.get("default_energy", 6) or 6)
+        resolved_energy = (
             self.printer_profile.energy
             if self.printer_profile and self.printer_profile.energy not in (None, 0)
-            else 6
+            else (
+                self.settings.energy
+                if getattr(self.settings, "energy", 0) > 0
+                else hardware_default_energy
+            )
         )
-        feed = int(
+
+        hardware_default_feed = int(self.hardware_info.get("default_feed", 32) or 32)
+        resolved_feed = (
             self.printer_profile.feed_lines
             if self.printer_profile and self.printer_profile.feed_lines is not None
-            else 32
+            else (
+                self.settings.feed_lines
+                if getattr(self.settings, "feed_lines", None) is not None
+                else hardware_default_feed
+            )
         )
+
+        density = max(1, min(int(resolved_energy or hardware_default_energy), 8))
+        feed = max(0, int(resolved_feed or hardware_default_feed))
 
         print_width_px = int(self.hardware_info.get("width_px", 384) or 384)
         dpi = int(self.hardware_info.get("dpi", 203) or 203)

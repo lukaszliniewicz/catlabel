@@ -19,62 +19,78 @@ const recalcAutoFit = (items, batchRecords, cw, ch) => {
   return changed ? nextItems : items;
 };
 
-const withHistory = (config) => (set, get, api) => {
-  const historySet = (args, replace) => {
-    const prevState = get();
-    set(args, replace);
-    const nextState = get();
+const withHistory = (config) => {
+  let historyTimeout;
+  let storedPrevState = null;
 
-    if (nextState._isUndoRedo) {
-      set({ _isUndoRedo: false });
-      return;
-    }
-
-    if (nextState.historyIndex === -1 && nextState.history && nextState.history.length === 0) {
-      return;
-    }
-
-    const relevantKeys = ['items', 'canvasWidth', 'canvasHeight', 'isRotated', 'splitMode', 'canvasBorder', 'canvasBorderThickness', 'designMode', 'htmlContent'];
-    let changed = false;
-    for (const key of relevantKeys) {
-      if (prevState[key] !== nextState[key]) {
-        changed = true;
-        break;
+  return (set, get, api) => {
+    const historySet = (args, replace) => {
+      if (!storedPrevState) {
+        storedPrevState = get();
       }
-    }
 
-    if (changed) {
-      const snap = {};
-      for (const key of relevantKeys) {
-        snap[key] = nextState[key];
+      set(args, replace);
+      const nextState = get();
+
+      if (nextState._isUndoRedo) {
+        set({ _isUndoRedo: false });
+        storedPrevState = null;
+        return;
       }
-      
-      const currentHistory = nextState.history || [];
-      const currentIndex = nextState.historyIndex !== undefined ? nextState.historyIndex : -1;
-      
-      let newHistory = currentHistory.slice(0, currentIndex + 1);
-      
-      if (newHistory.length === 0) {
-        const prevSnap = {};
+
+      if (nextState.historyIndex === -1 && nextState.history && nextState.history.length === 0) {
+        return;
+      }
+
+      clearTimeout(historyTimeout);
+      historyTimeout = setTimeout(() => {
+        const finalState = get();
+        const relevantKeys = ['items', 'canvasWidth', 'canvasHeight', 'isRotated', 'splitMode', 'canvasBorder', 'canvasBorderThickness', 'designMode', 'htmlContent'];
+        let changed = false;
+
         for (const key of relevantKeys) {
-          prevSnap[key] = prevState[key];
+          if (storedPrevState[key] !== finalState[key]) {
+            changed = true;
+            break;
+          }
         }
-        newHistory.push(prevSnap);
-      }
-      
-      newHistory.push(snap);
-      if (newHistory.length > 50) newHistory.shift();
-      
-      set({
-        history: newHistory,
-        historyIndex: newHistory.length - 1,
-        canUndo: newHistory.length > 1,
-        canRedo: false
-      });
-    }
-  };
 
-  return config(historySet, get, api);
+        if (changed) {
+          const snap = {};
+          for (const key of relevantKeys) {
+            snap[key] = finalState[key];
+          }
+
+          const currentHistory = finalState.history || [];
+          const currentIndex = finalState.historyIndex !== undefined ? finalState.historyIndex : -1;
+
+          let newHistory = currentHistory.slice(0, currentIndex + 1);
+
+          if (newHistory.length === 0) {
+            const prevSnap = {};
+            for (const key of relevantKeys) {
+              prevSnap[key] = storedPrevState[key];
+            }
+            newHistory.push(prevSnap);
+          }
+
+          newHistory.push(snap);
+          if (newHistory.length > 50) newHistory.shift();
+
+          set({
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+            canUndo: newHistory.length > 1,
+            canRedo: false
+          });
+        }
+
+        storedPrevState = null;
+      }, 400);
+    };
+
+    return config(historySet, get, api);
+  };
 };
 
 export const useStore = create(withHistory((set, get) => ({

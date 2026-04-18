@@ -226,6 +226,9 @@ class NiimbotClient(BasePrinterClient):
                         await self.client.disconnect()
                     except:
                         pass
+                self.client = None
+                self.notify_uuid = None
+                self.write_uuid = None
                 await asyncio.sleep(1.5)
         
         logger.error("All connection attempts failed.")

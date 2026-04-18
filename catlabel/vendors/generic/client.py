@@ -56,6 +56,7 @@ class GenericClient(BasePrinterClient):
                 return True
             except Exception as exc:
                 self.last_error = exc
+                await self.backend.disconnect()
                 await asyncio.sleep(1.5)
 
         return False
@@ -153,7 +154,7 @@ class GenericClient(BasePrinterClient):
 
         delay_ms = getattr(self.model, "interval_ms", getattr(self.model, "delay_ms", 0))
         for index, job_bytes in enumerate(jobs):
-            await self.backend.write(job_bytes, chunk_size=128, delay_ms=delay_ms, runtime_controller=runtime_controller)
-            
+            await self.backend.write(job_bytes, chunk_size=128, interval_ms=delay_ms)
+
             if index < len(jobs) - 1:
-                await asyncio.sleep(2.0 if (index + 1) % 3 == 0 else 0.3)
+                await asyncio.sleep(0.05)
