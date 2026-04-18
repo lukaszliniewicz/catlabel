@@ -15,7 +15,7 @@ class NiimbotManifest(VendorManifest):
 
     def _build_capabilities(self) -> dict:
         return {
-            "speed": {"available": False}, # Hidden to prevent freezing incompatible firmwares
+            "speed": {"available": False}, 
             "energy": {"available": False},
             "density": {"available": True, "min": 1, "max": 5, "default": 3},
             "feed": {"available": False},
@@ -32,8 +32,8 @@ class NiimbotManifest(VendorManifest):
             "max_density": 5,
         }
         return [
-            {**base, "name": "D11/D110", "model_id": "D110", "width_px": 120, "width_mm": 15, "dpi": 203},
-            {**base, "name": "D101", "model_id": "D101", "width_px": 200, "width_mm": 25, "dpi": 203},
+            {**base, "name": "D11/D110 (15mm)", "model_id": "D110", "width_px": 120, "width_mm": 15, "dpi": 203},
+            {**base, "name": "D101 (25mm)", "model_id": "D101", "width_px": 200, "width_mm": 25, "dpi": 203},
             {**base, "name": "B18", "model_id": "B18", "width_px": 112, "width_mm": 14, "dpi": 203},
             {**base, "name": "B1/B21", "model_id": "B1", "width_px": 384, "width_mm": 48, "dpi": 203},
             {**base, "name": "B3S/B24", "model_id": "B3S", "width_px": 576, "width_mm": 72, "dpi": 203},

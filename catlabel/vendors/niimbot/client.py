@@ -1,15 +1,26 @@
 import asyncio
 import enum
 import struct
+import logging
 from typing import Dict, List, Optional, Tuple
 
 from PIL import Image
+from bleak import BleakClient, BleakError
 
 from ..base import BasePrinterClient
 from ...protocol.encoding import pack_line
 from ...protocol.types import PixelFormat
 from ...rendering.renderer import image_to_raster
-from ...transport.bluetooth import DeviceInfo, DeviceTransport, SppBackend
+
+# --- Configure robust logging for Niimbot ---
+logger = logging.getLogger("NiimbotClient")
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - [Niimbot] %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
 
 class RequestCodeEnum(enum.IntEnum):
@@ -18,6 +29,7 @@ class RequestCodeEnum(enum.IntEnum):
     HEARTBEAT = 220
     SET_LABEL_TYPE = 35
     SET_LABEL_DENSITY = 33
+    SET_PRINT_SPEED = 2
     START_PRINT = 1
     END_PRINT = 243
     START_PAGE_PRINT = 3
@@ -26,6 +38,16 @@ class RequestCodeEnum(enum.IntEnum):
     SET_DIMENSION = 19
     SET_QUANTITY = 21
     GET_PRINT_STATUS = 163
+
+
+class InfoEnum(enum.IntEnum):
+    DENSITY = 1
+    PRINTSPEED = 2
+    LABELTYPE = 3
+    SOFTVERSION = 9
+    BATTERY = 10
+    DEVICESERIAL = 11
+    HARDVERSION = 12
 
 
 class NiimbotPacket:
@@ -48,6 +70,7 @@ class NiimbotPacket:
             checksum ^= value
 
         if checksum != pkt[-3]:
+            logger.warning(f"Packet checksum mismatch! Expected {pkt[-3]}, got {checksum}")
             return None
         return cls(type_, data)
 
@@ -61,7 +84,9 @@ class NiimbotPacket:
 class NiimbotClient(BasePrinterClient):
     def __init__(self, device, hardware_info, printer_profile, settings):
         super().__init__(device, hardware_info, printer_profile, settings)
-        self.transport = SppBackend()
+        self.client: Optional[BleakClient] = None
+        self.notify_uuid: Optional[str] = None
+        self.write_uuid: Optional[str] = None
         self._buffer = bytearray()
         self._events: Dict[int, Tuple[asyncio.Event, asyncio.AbstractEventLoop]] = {}
         self._responses: Dict[int, NiimbotPacket] = {}
@@ -74,8 +99,8 @@ class NiimbotClient(BasePrinterClient):
         event, _loop = event_data
         event.set()
 
-    def _on_notify(self, payload: bytes) -> None:
-        """Route Bleak notification packets back onto the waiting asyncio loop safely."""
+    def _on_notify(self, sender, payload: bytearray) -> None:
+        """Route raw Bleak notification packets back onto the waiting asyncio loop safely."""
         self._buffer.extend(payload)
 
         while True:
@@ -105,18 +130,17 @@ class NiimbotClient(BasePrinterClient):
             if packet is None:
                 continue
 
-            # SMART RESPONSE ROUTING (Safely ignore unsolicited status/heartbeats)
             matched_req_code = None
             if packet.type in self._events:
                 matched_req_code = packet.type
             elif (packet.type - 1) in self._events:
-                # Catch the +1 response offset (e.g. sent 33, received 34)
                 matched_req_code = packet.type - 1
             elif len(self._events) == 1 and packet.type not in (220, 163):
-                # Fallback: if exactly 1 command is waiting, assume this is its response.
                 matched_req_code = list(self._events.keys())[0]
 
             if matched_req_code is None:
+                if packet.type not in (220, 163):
+                    logger.debug(f"Unsolicited packet received: type={packet.type}, data={packet.data.hex()}")
                 self._responses[packet.type] = packet
                 continue
 
@@ -141,35 +165,85 @@ class NiimbotClient(BasePrinterClient):
         if hasattr(self.device, "ble_endpoint") and self.device.ble_endpoint:
             address = self.device.ble_endpoint.address
 
-        attempts = [
-            DeviceInfo(
-                name=getattr(self.device, "name", "Niimbot Printer"),
-                address=address,
-                paired=getattr(self.device, "paired", None),
-                transport=DeviceTransport.BLE,
-                protocol_family=None,
-            )
-        ]
-
+        logger.info(f"Attempting native BLE connection to {address}...")
+        
         max_retries = 3
-        for _ in range(max_retries):
+        for attempt in range(max_retries):
             try:
-                await self.transport.connect_attempts(attempts)
-                if hasattr(self.transport, "register_notify_callback"):
-                    self.transport.register_notify_callback(self._on_notify)
+                self.client = BleakClient(address)
+                await self.client.connect(timeout=10.0)
                 
-                # HANDSHAKE: Wake up the printer/RFID scanner immediately
-                await self.send_command(RequestCodeEnum.GET_INFO, bytes([1]), timeout=2.0)
+                self.notify_uuid = None
+                self.write_uuid = None
+
+                PREFERRED_COMBINED =["bef8d6c9-9c21-4c9e-b632-bd58c1009f9f"]
+                PREFERRED_WRITE =["49535343-8841-43f4-a8d4-ecbe34729bb3"]
+                PREFERRED_NOTIFY =["49535343-1e4d-4bd9-ba61-23c647249616"]
+                
+                for service in self.client.services:
+                    for char in service.characteristics:
+                        uuid_str = str(char.uuid).lower()
+                        if uuid_str in PREFERRED_COMBINED:
+                            self.write_uuid = char.uuid
+                            self.notify_uuid = char.uuid
+                        elif uuid_str in PREFERRED_WRITE:
+                            self.write_uuid = char.uuid
+                        elif uuid_str in PREFERRED_NOTIFY:
+                            self.notify_uuid = char.uuid
+
+                if not self.write_uuid or not self.notify_uuid:
+                    for service in self.client.services:
+                        for char in service.characteristics:
+                            uuid_str = str(char.uuid).lower()
+                            props = char.properties
+                            
+                            # Skip the Air Patch which breaks normal communication
+                            if "aca3-481c-91ec-d85e28a60318" in uuid_str:
+                                continue
+                                
+                            if not self.write_uuid and ('write' in props or 'write-without-response' in props):
+                                self.write_uuid = char.uuid
+                            if not self.notify_uuid and ('notify' in props or 'indicate' in props):
+                                self.notify_uuid = char.uuid
+
+                if not self.write_uuid or not self.notify_uuid:
+                    raise RuntimeError("Could not find valid TX/RX characteristics for Niimbot.")
+
+                logger.debug(f"Bound to RX (notify): {self.notify_uuid} | TX (write): {self.write_uuid}")
+                await self.client.start_notify(self.notify_uuid, self._on_notify)
+                
+                logger.info("Executing initial hardware handshake...")
+                await self.send_command(RequestCodeEnum.HEARTBEAT, b"\x01", timeout=1.0)
+                await self.send_command(RequestCodeEnum.GET_INFO, bytes([InfoEnum.DEVICESERIAL.value]), timeout=1.0)
+                
+                logger.info("Connected successfully.")
                 return True
             except Exception as exc:
+                logger.warning(f"Connection attempt {attempt + 1} failed: {exc}")
                 self.last_error = exc
+                if self.client and self.client.is_connected:
+                    try:
+                        await self.client.disconnect()
+                    except:
+                        pass
                 await asyncio.sleep(1.5)
+        
+        logger.error("All connection attempts failed.")
         return False
 
     async def disconnect(self) -> None:
         try:
-            await self.transport.disconnect()
+            logger.info("Disconnecting...")
+            if self.client and self.client.is_connected:
+                try:
+                    await self.client.stop_notify(self.notify_uuid)
+                except:
+                    pass
+                await self.client.disconnect()
         finally:
+            self.client = None
+            self.notify_uuid = None
+            self.write_uuid = None
             self._buffer.clear()
             self._events.clear()
             self._responses.clear()
@@ -182,11 +256,18 @@ class NiimbotClient(BasePrinterClient):
         self._responses.pop(request_code, None)
         self._events[request_code] = (event, loop)
 
+        logger.debug(f"Sending cmd {request_code} (payload: {data.hex()})")
         try:
-            await self.transport.write(packet.to_bytes(), chunk_size=128, interval_ms=0)
+            await self.write_raw(packet.to_bytes())
             await asyncio.wait_for(event.wait(), timeout)
-            return self._responses.pop(request_code, None)
-        except (asyncio.TimeoutError, Exception):
+            res = self._responses.pop(request_code, None)
+            logger.debug(f"Cmd {request_code} ACK'd. Response: {res.data.hex() if res else 'None'}")
+            return res
+        except asyncio.TimeoutError:
+            logger.warning(f"Cmd {request_code} TIMED OUT after {timeout}s.")
+            return None
+        except Exception as e:
+            logger.error(f"Cmd {request_code} Error: {e}")
             return None
         finally:
             current = self._events.get(request_code)
@@ -194,10 +275,19 @@ class NiimbotClient(BasePrinterClient):
                 self._events.pop(request_code, None)
 
     async def write_raw(self, data: bytes) -> None:
-        await self.transport.write(data, chunk_size=128, interval_ms=0)
+        if not self.client or not self.client.is_connected:
+            raise RuntimeError("BLE client disconnected during write.")
+        
+        # Stream out at max MTU
+        for i in range(0, len(data), 128):
+            chunk = data[i:i+128]
+            try:
+                await self.client.write_gatt_char(self.write_uuid, chunk, response=False)
+            except BleakError:
+                # Flow control fallback for overloaded buffer
+                await self.client.write_gatt_char(self.write_uuid, chunk, response=True)
 
     def _prepare_print_image(self, image: Image.Image, print_width_px: int) -> Image.Image:
-        # Prevent 90 degree rotation squash: CatLabel's frontend natively rotates landscapes to portrait for the print head.
         working = image.copy()
 
         if working.width > print_width_px:
@@ -215,28 +305,24 @@ class NiimbotClient(BasePrinterClient):
 
     async def _wait_for_end_page_ack(self, timeout: float = 15.0) -> None:
         deadline = asyncio.get_running_loop().time() + timeout
+        logger.debug("Waiting for END_PAGE_PRINT acknowledgment...")
         while True:
-            packet = await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01", timeout=2.0)
-            if packet and len(packet.data) > 0 and packet.data[0] == 1:
-                return
-            if asyncio.get_running_loop().time() >= deadline:
-                raise RuntimeError("Timed out waiting for Niimbot END_PAGE_PRINT acknowledgement")
-            await asyncio.sleep(0.1)
-
-    async def _wait_for_page_complete(self, expected_page: int, timeout: float = 60.0) -> None:
-        deadline = asyncio.get_running_loop().time() + timeout
-        while True:
-            status_pkt = await self.send_command(RequestCodeEnum.GET_PRINT_STATUS, b"\x01", timeout=2.0)
-            if status_pkt and len(status_pkt.data) >= 2:
-                page = struct.unpack(">H", status_pkt.data[:2])[0]
-                if page >= expected_page:
+            packet = await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01", timeout=1.0)
+            if packet and len(packet.data) > 0:
+                if packet.data[0] == 1:
+                    logger.debug("END_PAGE_PRINT acknowledged.")
                     return
+                else:
+                    logger.debug(f"Printer busy ({packet.data.hex()}), retrying END_PAGE_PRINT...")
+            
             if asyncio.get_running_loop().time() >= deadline:
-                raise RuntimeError("Timed out waiting for Niimbot physical print completion.")
-            await asyncio.sleep(0.5)
+                logger.warning("Timed out waiting for END_PAGE_PRINT ack. Proceeding to prevent lockup.")
+                return
+            await asyncio.sleep(0.2)
 
     async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
-        # Density calculations
+        logger.info(f"Starting batch print job for {len(images)} image(s) using independent jobs...")
+        
         default_density = int(self.hardware_info.get("default_energy", 3) or 3)
         max_allowed = max(1, int(self.hardware_info.get("max_density", 5) or 5))
         raw_density = (
@@ -251,18 +337,31 @@ class NiimbotClient(BasePrinterClient):
         label_type = 2 if media_type_str == "continuous" else 1
 
         try:
-            # Session Setup
-            await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes([density]), timeout=1.0)
-            await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes([label_type]), timeout=1.0)
-            await self.send_command(RequestCodeEnum.START_PRINT, b"\x01", timeout=2.0)
+            for i, image in enumerate(images):
+                logger.info(f"--- Printing label {i + 1} of {len(images)} ---")
+                
+                # FORCE STATE CLEAR before each label to avoid "Job Full" (Error 06) firmware issues
+                await self.send_command(RequestCodeEnum.END_PRINT, b"\x01", timeout=1.0)
+                await self.send_command(RequestCodeEnum.ALLOW_PRINT_CLEAR, b"\x01", timeout=1.0)
 
-            for image in images:
+                # Session Setup
+                await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes([density]), timeout=1.0)
+                await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes([label_type]), timeout=1.0)
+                
+                # Start 1-page Job explicitly
+                start_pkt = await self.send_command(RequestCodeEnum.START_PRINT, b"\x01", timeout=2.0)
+                if not start_pkt or not start_pkt.data or start_pkt.data[0] == 0:
+                    logger.warning("Printer returned 0x00 for START_PRINT. State might be dirty. Forcing anyway...")
+
                 prepared = self._prepare_print_image(image, print_width_px)
                 raster = image_to_raster(prepared, PixelFormat.BW1, dither=dither)
                 packed_bytes = pack_line(raster.pixels, lsb_first=False)
                 width_bytes = (raster.width + 7) // 8
 
-                await self.send_command(RequestCodeEnum.START_PAGE_PRINT, b"\x01", timeout=2.0)
+                page_pkt = await self.send_command(RequestCodeEnum.START_PAGE_PRINT, b"\x01", timeout=2.0)
+                if not page_pkt or not page_pkt.data or page_pkt.data[0] == 0:
+                    logger.warning(f"Printer rejected START_PAGE_PRINT. Forcing transmission...")
+
                 await self.send_command(
                     RequestCodeEnum.SET_DIMENSION,
                     struct.pack(">HH", raster.height, raster.width),
@@ -270,22 +369,35 @@ class NiimbotClient(BasePrinterClient):
                 )
                 await self.send_command(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", 1), timeout=2.0)
 
+                logger.debug(f"Streaming {raster.height} rows of raster data...")
                 for y in range(raster.height):
                     line_data = packed_bytes[y * width_bytes : (y + 1) * width_bytes]
                     header = struct.pack(">HBBBB", y, 0, 0, 0, 1)
                     packet = NiimbotPacket(0x85, header + line_data)
                     await self.write_raw(packet.to_bytes())
-                    await asyncio.sleep(0.01) # Yield to event loop slightly to prevent BLE underruns
+                    
+                    if y % 32 == 0:
+                        await asyncio.sleep(0.01)
 
+                logger.debug("Row streaming complete. Waiting for ACK...")
                 await self._wait_for_end_page_ack(timeout=15.0)
 
-            # Wait for physical completion (Dynamically scaled based on pages)
-            await self._wait_for_page_complete(expected_page=len(images), timeout=max(30.0, len(images) * 15.0))
+                logger.info(f"Tearing down print session for label {i + 1}...")
+                await self.send_command(RequestCodeEnum.END_PRINT, b"\x01", timeout=3.0)
+
+                if i < len(images) - 1:
+                    logger.debug("Waiting for physical printer to finish feeding paper before next label...")
+                    # This physically acts as a throttle between single-page jobs so the hardware
+                    # doesn't immediately abort the second job with "06" while the print-head is still engaged.
+                    await asyncio.sleep(2.5)
 
         except Exception as e:
-            print(f"Niimbot Print Pipeline Error: {e}")
-            raise
+            logger.error(f"Print job FAILED: {e}")
+            raise RuntimeError(f"Print failed: {e}")
         finally:
-            # ALWAYS gracefully close the print pipeline even on error so printer doesn't freeze
-            await self.send_command(RequestCodeEnum.END_PRINT, b"\x01", timeout=2.0)
+            logger.info("Cleaning up printer state...")
+            try:
+                await self.send_command(RequestCodeEnum.END_PRINT, b"\x01", timeout=1.0)
+            except:
+                pass
             await asyncio.sleep(0.5)
