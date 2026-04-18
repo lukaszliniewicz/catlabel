@@ -46,7 +46,7 @@ class PhomemoClient(BasePrinterClient):
         await self.transport.disconnect()
 
     async def _send(self, data: bytes) -> None:
-        await self.transport.write(data, chunk_size=128, interval_ms=20)
+        await self.transport.write(data, chunk_size=128, delay_ms=20)
 
     def _render_to_raster(self, img, rotate_cw=False, invert=False, dither=True):
         if rotate_cw:

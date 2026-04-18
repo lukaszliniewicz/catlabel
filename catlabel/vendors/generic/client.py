@@ -6,10 +6,98 @@ from PIL import Image
 
 from ..base import BasePrinterClient
 from .models import PrinterModelRegistry
-from ...protocol.job import build_job_from_raster
 from ...rendering.renderer import image_to_raster
 from ...transport.bluetooth import DeviceInfo, SppBackend
 from ...transport.bluetooth.types import DeviceTransport
+
+try:
+    from ...protocol._builders import _build_job_from_raster_set
+except Exception:  # pragma: no cover
+    _build_job_from_raster_set = None
+
+try:
+    from ...protocol.types import RasterSet
+except Exception:  # pragma: no cover
+    RasterSet = None
+
+try:
+    from ...protocol.job import build_job_from_raster
+except Exception:  # pragma: no cover
+    build_job_from_raster = None
+
+
+def _resolve_runtime_controller(model):
+    protocol_family = getattr(model, "protocol_family", None)
+    if protocol_family is None:
+        return None
+
+    family_val = protocol_family.value if hasattr(protocol_family, "value") else str(protocol_family)
+    try:
+        if family_val == "v5g":
+            from ...printing.runtime.v5g import V5GRuntimeController
+
+            return V5GRuntimeController(
+                helper_kind=getattr(model, "runtime_variant", None),
+                density_profile_key=getattr(model, "runtime_density_profile_key", None),
+                density_profile=None,
+            )
+        if family_val == "v5x":
+            from ...printing.runtime.v5x import V5XRuntimeController
+
+            return V5XRuntimeController()
+        if family_val == "v5c":
+            from ...printing.runtime.v5c import V5CRuntimeController
+
+            return V5CRuntimeController()
+    except Exception:
+        return None
+
+    return None
+
+
+def _build_job_bytes(model, raster, feed_padding: int, image_pipeline, speed: int, energy: int) -> bytes:
+    common_kwargs = dict(
+        is_text=False,
+        speed=speed,
+        energy=energy,
+        blackening=3,
+        lsb_first=not model.a4xii,
+        protocol_family=model.protocol_family,
+        feed_padding=feed_padding,
+        dev_dpi=model.dev_dpi,
+        can_print_label=model.can_print_label,
+        image_pipeline=image_pipeline,
+    )
+
+    if _build_job_from_raster_set is not None and RasterSet is not None and hasattr(RasterSet, "from_single"):
+        raster_set = RasterSet.from_single(raster)
+        try:
+            return _build_job_from_raster_set(
+                raster_set=raster_set,
+                density=None,
+                post_print_feed_count=2,
+                **common_kwargs,
+            )
+        except TypeError:
+            try:
+                return _build_job_from_raster_set(
+                    raster_set=raster_set,
+                    density=None,
+                    **common_kwargs,
+                )
+            except TypeError:
+                return _build_job_from_raster_set(
+                    raster_set=raster_set,
+                    **common_kwargs,
+                )
+
+    if build_job_from_raster is None:
+        raise RuntimeError("Generic print job builder is unavailable")
+
+    return build_job_from_raster(
+        raster=raster,
+        **common_kwargs,
+    )
 
 
 class GenericClient(BasePrinterClient):
@@ -25,6 +113,9 @@ class GenericClient(BasePrinterClient):
             )
             or self.registry.get(str(hardware_info.get("model_id") or ""))
         )
+
+        if not self.model:
+            self.model = self.registry.get("GT01")
 
     async def connect(self) -> bool:
         attempts = []
@@ -136,6 +227,7 @@ class GenericClient(BasePrinterClient):
             if self.printer_profile and self.printer_profile.feed_lines is not None
             else self.settings.feed_lines
         )
+        runtime_controller = _resolve_runtime_controller(self.model)
 
         jobs = []
         total_images = len(final_images)
@@ -144,24 +236,24 @@ class GenericClient(BasePrinterClient):
             current_feed = use_feed if is_last else 0
 
             raster = image_to_raster(img, pipeline_config.default_format, dither=dither)
-            job = build_job_from_raster(
-                raster=raster,
-                is_text=False,
+            job_bytes = _build_job_bytes(
+                self.model,
+                raster,
+                feed_padding=current_feed,
+                image_pipeline=pipeline_config,
                 speed=use_speed,
                 energy=use_energy,
-                blackening=3,
-                lsb_first=not self.model.a4xii,
-                protocol_family=self.model.protocol_family,
-                feed_padding=current_feed,
-                dev_dpi=self.model.dev_dpi,
-                can_print_label=self.model.can_print_label,
-                image_pipeline=pipeline_config,
             )
-            jobs.append(job)
+            jobs.append(job_bytes)
 
-        interval = getattr(self.model, "interval_ms", 0)
-        for index, job in enumerate(jobs):
-            await self.backend.write(job, chunk_size=128, interval_ms=interval)
+        delay_ms = getattr(self.model, "delay_ms", getattr(self.model, "interval_ms", 0))
+        for index, job_bytes in enumerate(jobs):
+            await self.backend.write(
+                job_bytes,
+                chunk_size=128,
+                delay_ms=delay_ms,
+                runtime_controller=runtime_controller,
+            )
             if index < len(jobs) - 1:
                 if (index + 1) % 3 == 0:
                     await asyncio.sleep(2.0)
