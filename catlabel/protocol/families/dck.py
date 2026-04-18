@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ..types import ImageEncoding, ImagePipelineConfig, PixelFormat
+from ...raster import PixelFormat
+from ..types import ImageEncoding, ImagePipelineConfig
 from .base import PrintJobRequest, ProtocolBehavior
 
 

@@ -3,7 +3,8 @@ from __future__ import annotations
 from ..encoding import pack_line
 from ..packet import crc8_value, make_packet
 from ..family import ProtocolFamily
-from ..types import ImageEncoding, ImagePipelineConfig, PixelFormat
+from ...raster import PixelFormat
+from ..types import ImageEncoding, ImagePipelineConfig
 from .base import BleTransportProfile, FlowControlProfile, PrintJobRequest, ProtocolBehavior
 
 def _hex_bytes(value: str) -> bytes:
@@ -14,6 +15,7 @@ V5X_SERVICE_UUID = "0000ae30-0000-1000-8000-00805f9b34fb"
 V5X_BULK_DATA_UUID = "0000ae03-0000-1000-8000-00805f9b34fb"
 V5X_NOTIFY_UUID = "0000ae02-0000-1000-8000-00805f9b34fb"
 
+# Fixed packets and notify markers used by the V5X BLE workflow.
 V5X_GET_SERIAL_PACKET = _hex_bytes("2221A70000000000")
 V5X_CONNECT_INIT_PACKET = _hex_bytes("2221B10001000000FF")
 V5X_STATUS_POLL_PACKET = _hex_bytes("2221A300020000000000")
@@ -28,8 +30,12 @@ _MANUAL_MOTION_PAYLOAD = bytes([0x05, 0x00])
 V5X_LABEL_MODE_SUFFIX = _hex_bytes("30010000")
 V5X_GRAY_MODE_SUFFIX = _hex_bytes("30020000")
 V5X_STANDARD_MODE_SUFFIX = _hex_bytes("30000000")
+# Firmware blackening 1-5 maps to different density bytes for dot and gray
+# jobs; the values are not linear.
 _DOT_DENSITY_BY_LEVEL = (0x58, 0x5A, 0x5D, 0x5F, 0x62)
 _GRAY_DENSITY_BY_LEVEL = (0x4B, 0x50, 0x55, 0x5A, 0x62)
+# Pause/resume packets were captured as a finite set of flow-control markers
+# across the known V5X-compatible firmwares.
 _FLOW_PAUSE_HEX = (
     "AA01",
     "5178AE0101001070FF",
@@ -59,7 +65,9 @@ TRANSPORT = BleTransportProfile(
     bulk_char_uuid=V5X_BULK_DATA_UUID,
     notify_char_uuid=V5X_NOTIFY_UUID,
     flow_control=_FLOW_CONTROL,
-    bulk_chunk_size=180,
+    # V5X bulk writes stay stable at 180-byte chunks even when the negotiated
+    # MTU is larger.
+    bulk_chunk_cap=180,
     split_tail_packets=(V5X_FINALIZE_PACKET,),
 )
 

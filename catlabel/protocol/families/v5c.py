@@ -3,7 +3,8 @@ from __future__ import annotations
 from ..compression import compress_lzo1x_1
 from ..encoding import pack_line
 from ..packet import make_packet
-from ..types import ImageEncoding, ImagePipelineConfig, PixelFormat
+from ...raster import PixelFormat
+from ..types import ImageEncoding, ImagePipelineConfig
 from .base import BleTransportProfile, FlowControlProfile, PrintJobRequest, ProtocolBehavior
 
 
@@ -15,6 +16,7 @@ V5C_CONNECT_INIT_PACKET = _hex_bytes("5688AA0001000000FF")
 V5C_QUERY_STATUS_PACKET = _hex_bytes("5688A10001000000FF")
 V5C_NOTIFY_PAUSE = _hex_bytes("5688A70101000107FF")
 V5C_NOTIFY_RESUME = _hex_bytes("5688A70101000000FF")
+# Compressed V5C jobs are emitted in 20-row bands.
 _V5C_BAND_ROWS = 20
 
 _FLOW_CONTROL = FlowControlProfile(
@@ -25,6 +27,7 @@ _FLOW_CONTROL = FlowControlProfile(
 
 TRANSPORT = BleTransportProfile(
     connect_packets=(V5C_CONNECT_INIT_PACKET,),
+    # V5C devices need a longer settle window after the connect init packet.
     connect_delay_ms=600,
     prefer_generic_notify=True,
     flow_control=_FLOW_CONTROL,
@@ -34,6 +37,8 @@ TRANSPORT = BleTransportProfile(
 
 def _settings_payload(blackening: int, is_text: bool) -> bytes:
     level = max(1, min(5, blackening))
+    # The protocol exposes only three density states even though the user-level
+    # blackening setting has five steps.
     if level <= 2:
         density = 0x01
     elif level >= 4:

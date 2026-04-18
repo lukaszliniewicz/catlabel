@@ -9,7 +9,7 @@ from .protocol import CMD, D_CMD, M02_CMD, M04_CMD, M110_CMD, P12_CMD, TSPL, den
 from ...rendering.renderer import image_to_raster
 from ...protocol.encoding import pack_line
 from ...transport.bluetooth import SppBackend, DeviceInfo, DeviceTransport
-from ...protocol.types import PixelFormat
+from ...raster import PixelFormat
 
 
 class PhomemoClient(BasePrinterClient):

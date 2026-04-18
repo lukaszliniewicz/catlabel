@@ -12,6 +12,7 @@ from .base import (
 )
 from .dck import BEHAVIOR as DCK_BEHAVIOR
 from .legacy import BEHAVIOR as LEGACY_BEHAVIOR
+from .v5g import BEHAVIOR as V5G_BEHAVIOR
 from .v5c import BEHAVIOR as V5C_BEHAVIOR
 from .v5x import BEHAVIOR as V5X_BEHAVIOR
 
@@ -31,6 +32,14 @@ _DEFINITIONS = {
             transport_style=ProtocolTransportStyle.STANDARD,
         ),
         behavior=LEGACY_BEHAVIOR,
+    ),
+    ProtocolFamily.V5G: ProtocolDefinition(
+        spec=ProtocolSpec(
+            packet_prefix=bytes([0x51, 0x78]),
+            command_set=ProtocolCommandSet.V5G,
+            transport_style=ProtocolTransportStyle.STANDARD,
+        ),
+        behavior=V5G_BEHAVIOR,
     ),
     ProtocolFamily.V5X: ProtocolDefinition(
         spec=ProtocolSpec(

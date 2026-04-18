@@ -6,6 +6,7 @@ from enum import Enum
 
 class ProtocolCommandSet(str, Enum):
     LEGACY = "legacy"
+    V5G = "v5g"
     V5X = "v5x"
     V5C = "v5c"
     DCK = "dck"
@@ -27,6 +28,7 @@ class ProtocolSpec:
 class ProtocolFamily(str, Enum):
     LEGACY = "legacy"
     LEGACY_PREFIXED = "legacy_prefixed"
+    V5G = "v5g"
     V5X = "v5x"
     V5C = "v5c"
     DCK = "dck"

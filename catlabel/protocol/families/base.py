@@ -3,9 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Mapping
 
+from ...raster import PixelFormat, RasterSet
 from ..family import ProtocolFamily
 from ..packet import prefixed_packet_length
-from ..types import ImageEncoding, ImagePipelineConfig, PixelFormat, RasterSet
+from ..types import ImageEncoding, ImagePipelineConfig
 
 ManualMotionBuilder = Callable[[int, ProtocolFamily], bytes]
 FamilyJobBuilder = Callable[["PrintJobRequest"], bytes]
@@ -23,13 +24,16 @@ class BleTransportProfile:
     split_bulk_writes: bool = False
     connect_packets: tuple[bytes, ...] = ()
     connect_delay_ms: int = 0
+    standard_chunk_cap: int = 20
+    standard_write_delay_ms: int = 50
     preferred_service_uuid: str = ""
     bulk_char_uuid: str = ""
     notify_char_uuid: str = ""
     prefer_generic_notify: bool = False
     flow_control: FlowControlProfile | None = None
     wait_for_flow_on_standard_write: bool = False
-    bulk_chunk_size: int = 180
+    bulk_chunk_cap: int = 180
+    bulk_write_delay_ms: int = 10
     split_tail_packets: tuple[bytes, ...] = ()
 
 
@@ -63,6 +67,8 @@ class PrintJobRequest:
     feed_padding: int
     dev_dpi: int
     can_print_label: bool = False
+    density: int | None = None
+    post_print_feed_count: int = 2
 
     def require_raster(self, pixel_format: PixelFormat) -> "RasterBuffer":
         return self.raster_set.require(pixel_format)
