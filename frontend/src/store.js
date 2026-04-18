@@ -381,14 +381,25 @@ export const useStore = create(withHistory((set, get) => ({
   mmToPx: (mm) => get().getMmToPx(mm),
   getActivePreset: () => {
     const state = get();
-    const { labelPresets, canvasWidth, canvasHeight, isRotated, getMmToPx } = state;
-    return labelPresets.find((p) => {
+    const { labelPresets, canvasWidth, canvasHeight, isRotated, getMmToPx, selectedPrinterInfo } = state;
+    const vendor = (selectedPrinterInfo?.vendor || '').toLowerCase();
+
+    const matches = labelPresets.filter((p) => {
       const presetWidthPx = getMmToPx(p.width_mm);
       const presetHeightPx = getMmToPx(p.height_mm);
-      const directMatch = presetWidthPx === canvasWidth && presetHeightPx === canvasHeight;
-      const swappedMatch = presetWidthPx === canvasHeight && presetHeightPx === canvasWidth;
+      const directMatch = Math.abs(presetWidthPx - canvasWidth) <= 2 && Math.abs(presetHeightPx - canvasHeight) <= 2;
+      const swappedMatch = Math.abs(presetWidthPx - canvasHeight) <= 2 && Math.abs(presetHeightPx - canvasWidth) <= 2;
       return p.is_rotated === isRotated && (directMatch || swappedMatch);
     });
+
+    if (matches.length === 0) return null;
+
+    if (vendor) {
+      const vendorMatch = matches.find((p) => p.name.toLowerCase().includes(vendor));
+      if (vendorMatch) return vendorMatch;
+    }
+
+    return matches[0];
   },
 
   // --- AI CHAT STATE ---
@@ -851,7 +862,7 @@ export const useStore = create(withHistory((set, get) => ({
 
           if (model === 'd11' || model === 'd110' || model === 'd101') {
             newW = calcMmToPx(40);
-            newH = calcMmToPx(12);
+            newH = calcMmToPx(15);
             rot = true;
           } else if (model === 'b1' || model === 'b21' || model === 'b18') {
             newW = calcMmToPx(50);

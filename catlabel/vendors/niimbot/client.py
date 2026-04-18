@@ -293,15 +293,21 @@ class NiimbotClient(BasePrinterClient):
     def _prepare_print_image(self, image: Image.Image, print_width_px: int) -> Image.Image:
         working = image.copy()
 
+        # Only scale down if the user somehow generated a label wider than the absolute
+        # physical maximum of the printhead (e.g., > 120px for D11).
         if working.width > print_width_px:
             ratio = print_width_px / float(working.width)
             new_height = max(1, int(working.height * ratio))
             working = working.resize((print_width_px, new_height), Image.Resampling.LANCZOS)
 
-        if working.width < print_width_px:
-            padded = Image.new("RGB", (print_width_px, working.height), "white")
-            offset = (print_width_px - working.width) // 2
-            padded.paste(working, (offset, 0))
+        # CRITICAL FIX: Do NOT pad to print_width_px to center it.
+        # Niimbot firmware auto-centers based on the RFID tape width and SET_DIMENSION.
+        # We only need to pad slightly to ensure the width is a multiple of 8 for byte packing.
+        remainder = working.width % 8
+        if remainder != 0:
+            new_width = working.width + (8 - remainder)
+            padded = Image.new("RGB", (new_width, working.height), "white")
+            padded.paste(working, (0, 0))
             working = padded
 
         return working.convert("RGB")
