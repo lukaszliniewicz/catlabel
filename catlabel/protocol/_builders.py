@@ -5,7 +5,8 @@ from .commands import (
     blackening_cmd,
     dev_state_cmd,
     energy_cmd,
-    feed_paper_cmd,
+    feed_cmd,
+    motor_speed_cmd,
     paper_cmd,
     print_mode_cmd,
 )
@@ -175,7 +176,7 @@ def _build_print_payload_from_raster_set(
     payload = bytearray()
     payload += energy_cmd(energy, request.protocol_family)
     payload += print_mode_cmd(is_text, request.protocol_family)
-    payload += feed_paper_cmd(speed, request.protocol_family)
+    payload += motor_speed_cmd(speed, request.protocol_family)
     payload += build_line_packets(
         list(raster.pixels),
         raster.width,
@@ -300,9 +301,10 @@ def _build_job_from_raster_set(
         can_print_label=can_print_label,
         image_pipeline=request.image_pipeline,
     )
-    job += feed_paper_cmd(feed_padding, request.protocol_family)
-    for _ in range(max(0, request.post_print_feed_count)):
-        job += paper_cmd(dev_dpi, request.protocol_family)
-    job += feed_paper_cmd(feed_padding, request.protocol_family)
+    if request.feed_padding > 0:
+        job += feed_cmd(request.feed_padding, request.protocol_family)
+    elif request.post_print_feed_count > 0:
+        for _ in range(max(0, request.post_print_feed_count)):
+            job += paper_cmd(request.dev_dpi, request.protocol_family)
     job += dev_state_cmd(request.protocol_family)
     return bytes(job)

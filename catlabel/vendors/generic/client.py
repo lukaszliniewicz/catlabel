@@ -147,7 +147,7 @@ class GenericClient(BasePrinterClient):
                 feed_padding=current_feed,
                 dev_dpi=self.model.dev_dpi,
                 can_print_label=self.model.can_print_label,
-                post_print_feed_count=2,
+                post_print_feed_count=0,
                 image_pipeline=pipeline_config,
             )
             jobs.append(job_bytes)

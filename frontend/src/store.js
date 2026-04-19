@@ -877,8 +877,11 @@ export const useStore = create(withHistory((set, get) => ({
           border = 'none';
         } else {
           const hardwareWidth = info.width_px || 384;
+          const currentPrintHeadDimension = currentState.isRotated ? currentState.canvasHeight : currentState.canvasWidth;
 
-          if (hardwareWidth === 384) {
+          if (currentPrintHeadDimension <= hardwareWidth) {
+            console.log("Canvas is safe for this printer. Preserving user's preset.");
+          } else if (hardwareWidth === 384) {
             newW = hardwareWidth;
             newH = hardwareWidth;
             rot = false;

@@ -26,10 +26,22 @@ def print_mode_cmd(is_text: bool, protocol_family: ProtocolFamily | str) -> byte
     return make_packet(0xBE, payload, protocol_family)
 
 
-def feed_paper_cmd(speed: int, protocol_family: ProtocolFamily | str) -> bytes:
-    """Build the feed paper command packet."""
+def motor_speed_cmd(speed: int, protocol_family: ProtocolFamily | str) -> bytes:
+    """Build the motor speed command packet."""
     payload = bytes([speed & 0xFF])
     return make_packet(0xBD, payload, protocol_family)
+
+
+def feed_cmd(dots: int, protocol_family: ProtocolFamily | str) -> bytes:
+    """Feed paper by a specific number of dots."""
+    if dots <= 0:
+        return b""
+    return make_packet(0xA1, dots.to_bytes(2, "little", signed=False), protocol_family)
+
+
+def feed_paper_cmd(speed: int, protocol_family: ProtocolFamily | str) -> bytes:
+    """Backward-compatible alias for the motor speed command packet."""
+    return motor_speed_cmd(speed, protocol_family)
 
 
 def _paper_payload(dpi: int) -> bytes:
