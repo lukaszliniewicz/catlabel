@@ -32,13 +32,10 @@ const withHistory = (config) => {
       set(args, replace);
       const nextState = get();
 
+      // If this change was triggered by undo/redo, strip the flag, reset the baseline, and exit.
       if (nextState._isUndoRedo) {
         set({ _isUndoRedo: false });
         storedPrevState = null;
-        return;
-      }
-
-      if (nextState.historyIndex === -1 && nextState.history && nextState.history.length === 0) {
         return;
       }
 
@@ -64,8 +61,10 @@ const withHistory = (config) => {
           const currentHistory = finalState.history || [];
           const currentIndex = finalState.historyIndex !== undefined ? finalState.historyIndex : -1;
 
+          // Truncate future history if the user makes a new change after undoing
           let newHistory = currentHistory.slice(0, currentIndex + 1);
 
+          // If this is the very first change, push the original baseline state first
           if (newHistory.length === 0) {
             const prevSnap = {};
             for (const key of relevantKeys) {
@@ -75,6 +74,8 @@ const withHistory = (config) => {
           }
 
           newHistory.push(snap);
+          
+          // Limit stack to 50 items to prevent memory bloat
           if (newHistory.length > 50) newHistory.shift();
 
           set({
@@ -1041,7 +1042,17 @@ export const useStore = create(withHistory((set, get) => ({
     selectedIds: [],
     selectedPagesForPrint: []
   })),
-  clearCanvas: () => set({ items: [], selectedId: null, selectedIds: [], currentPage: 0, selectedPagesForPrint: [], currentProjectId: null, designMode: 'canvas', htmlContent: '', history: [], historyIndex: -1, canUndo: false, canRedo: false }),
+  clearCanvas: () => set({ 
+    items: [], 
+    selectedId: null, 
+    selectedIds: [], 
+    currentPage: 0, 
+    selectedPagesForPrint: [], 
+    currentProjectId: null, 
+    designMode: 'canvas', 
+    htmlContent: '' 
+    // We specifically omitted history wipes here so the user can Undo a canvas clear!
+  }),
   
   addItem: (item) => set((state) => ({
     items: [
