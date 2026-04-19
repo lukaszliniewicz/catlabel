@@ -300,14 +300,26 @@ class SppBackend:
             return
 
         delay = max(0.0, delay_ms / 1000.0)
+
+        # Windows timer resolution is typically ~15.6ms, so very small sleeps
+        # like 4ms can oversleep badly and starve the printer buffer. Group
+        # writes together so any intentional pacing stays above that floor.
+        if delay > 0 and delay < 0.02:
+            group_factor = int(0.02 / delay) + 1
+            effective_chunk_size = chunk_size * group_factor
+            effective_delay = delay * group_factor
+        else:
+            effective_chunk_size = chunk_size
+            effective_delay = delay
+
         offset = 0
         while offset < len(data):
-            chunk = data[offset : offset + chunk_size]
+            chunk = data[offset : offset + effective_chunk_size]
             with self._lock:
                 _send_all(self._sock, chunk)
             offset += len(chunk)
-            if delay:
-                time.sleep(delay)
+            if effective_delay:
+                time.sleep(effective_delay)
 
 
 def _scan_blocking(
