@@ -152,9 +152,21 @@ class GenericClient(BasePrinterClient):
             )
             jobs.append(job_bytes)
 
-        delay_ms = getattr(self.model, "interval_ms", getattr(self.model, "delay_ms", 0))
+        delay_ms = getattr(self.model, "interval_ms", getattr(self.model, "delay_ms", 4))
+        try:
+            delay_ms = int(delay_ms or 4)
+        except (TypeError, ValueError):
+            delay_ms = 4
+
+        try:
+            mtu = int(getattr(self.model, "img_mtu", 128) or 128)
+        except (TypeError, ValueError):
+            mtu = 128
+        if mtu <= 0:
+            mtu = 128
+
         for index, job_bytes in enumerate(jobs):
-            await self.backend.write(job_bytes, chunk_size=128, interval_ms=delay_ms)
+            await self.backend.write(job_bytes, chunk_size=mtu, interval_ms=delay_ms)
 
             if index < len(jobs) - 1:
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(1.5)
