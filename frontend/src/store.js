@@ -912,9 +912,88 @@ export const useStore = create(withHistory((set, get) => ({
 
     try {
       const res = await fetch(`/api/printers/${mac}/profile`);
-      const profile = await res.json();
-      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch printer profile (${res.status})`);
+      }
+
+      let profile = (await res.json()) || {};
       const caps = info?.capabilities || {};
+
+      // =========================================================================
+      // INTELLIGENT OFFLINE-TO-PHYSICAL PROFILE MIGRATION
+      // =========================================================================
+      if (info && info.transport !== 'offline') {
+        const isVirginProfile =
+          (profile?.speed ?? 0) <= 0 &&
+          (profile?.energy ?? 0) <= 0 &&
+          (profile?.feed_lines ?? 50) === 50;
+
+        if (isVirginProfile) {
+          const manualPrinters = (get().manualPrinters || []).filter(
+            (printer) => printer && printer.address && printer.address !== mac
+          );
+
+          const infoModelId = String(info.model_id || '').trim().toLowerCase();
+          const infoVendor = String(info.vendor || '').trim().toLowerCase();
+          const infoProtocolFamily = String(info.protocol_family || '').trim().toLowerCase();
+          const infoMediaType = String(info.media_type || '').trim().toLowerCase();
+
+          let bestMatch = infoModelId
+            ? manualPrinters.find(
+                (printer) => String(printer.model_id || '').trim().toLowerCase() === infoModelId
+              )
+            : null;
+
+          if (!bestMatch && infoVendor && infoProtocolFamily && infoMediaType) {
+            bestMatch = manualPrinters.find((printer) =>
+              String(printer.vendor || '').trim().toLowerCase() === infoVendor &&
+              String(printer.protocol_family || '').trim().toLowerCase() === infoProtocolFamily &&
+              String(printer.media_type || '').trim().toLowerCase() === infoMediaType
+            );
+          }
+
+          if (bestMatch) {
+            try {
+              const manRes = await fetch(`/api/printers/${bestMatch.address}/profile`);
+              if (manRes.ok) {
+                const manProfile = (await manRes.json()) || {};
+                const migratedSpeed = Number(manProfile?.speed ?? 0);
+                const migratedEnergy = Number(manProfile?.energy ?? 0);
+                const migratedFeedLines = Number(manProfile?.feed_lines ?? 50);
+
+                const hasCustomSettings =
+                  migratedSpeed > 0 ||
+                  migratedEnergy > 0 ||
+                  migratedFeedLines !== 50;
+
+                if (hasCustomSettings) {
+                  profile = {
+                    ...profile,
+                    speed: migratedSpeed > 0 ? migratedSpeed : profile?.speed,
+                    energy: migratedEnergy > 0 ? migratedEnergy : profile?.energy,
+                    feed_lines: migratedFeedLines !== 50 ? migratedFeedLines : profile?.feed_lines
+                  };
+
+                  await fetch(`/api/printers/${mac}/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profile)
+                  });
+
+                  console.log(
+                    `[Profile Sync] Safely migrated settings from compatible offline profile (${bestMatch.name}) to physical device ${mac}.`
+                  );
+                }
+              }
+            } catch (mergeError) {
+              console.error("Failed to migrate offline profile settings", mergeError);
+            }
+          }
+        }
+      }
+      // =========================================================================
+
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
       const normalizedEnergy = caps.density?.available
         ? clamp(
@@ -951,7 +1030,7 @@ export const useStore = create(withHistory((set, get) => ({
         }
       });
     } catch (e) {
-      console.error("Failed to fetch printer profile", e);
+      console.error("Failed to fetch or merge printer profile", e);
       set({ printerProfile: { speed: 0, energy: 0, feed_lines: 50 } });
     }
   },
