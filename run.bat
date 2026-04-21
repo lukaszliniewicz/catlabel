@@ -45,8 +45,12 @@ if not exist "env\" (
     echo OPTIONAL: Headless Browser ^(Third-Party API Integrations^)
     echo If you plan to send print jobs to CatLabel from external scripts via 
     echo the API, you need Playwright ^(~150MB download^). Normal UI usage does NOT.
-    set /p INSTALL_PLAYWRIGHT="Install Headless API support? [y/N]: "
-    if /i "%INSTALL_PLAYWRIGHT%"=="y" (
+    
+    choice /C YN /T 15 /D N /M "Install Headless API support? (Auto-skipping in 15s)"
+    
+    if errorlevel 2 (
+        echo       Skipping Playwright installation.
+    ) else if errorlevel 1 (
         echo       Installing Playwright and Headless Chromium...
         bin\micromamba.exe run -p .\env python -m pip install playwright^>=1.40.0
         if errorlevel 1 goto error
@@ -55,8 +59,6 @@ if not exist "env\" (
         set PLAYWRIGHT_BROWSERS_PATH=0
         bin\micromamba.exe run -p .\env python -m playwright install chromium
         if errorlevel 1 goto error
-    ) else (
-        echo       Skipping Playwright installation.
     )
     echo ----------------------------------------------------------------------
     echo.

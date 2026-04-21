@@ -43,13 +43,19 @@ if [ ! -d "env" ]; then
     echo "OPTIONAL: Headless Browser (Third-Party API Integrations)"
     echo "If you plan to send print jobs to CatLabel from external scripts via"
     echo "the API, you need Playwright (~150MB download). Normal UI usage does NOT."
-    read -p "Install Headless API support? [y/N]: " INSTALL_PLAYWRIGHT
+    echo "Auto-skipping in 15 seconds if no input is provided."
+    
+    # || true prevents set -e from killing the script if read times out
+    read -t 15 -p "Install Headless API support? [y/N]: " INSTALL_PLAYWRIGHT || true
+    
     if [[ "$INSTALL_PLAYWRIGHT" =~ ^[Yy]$ ]]; then
+        echo ""
         echo "      Installing Playwright and Headless Chromium..."
         ./bin/micromamba run -p ./env python -m pip install 'playwright>=1.40.0'
         export PLAYWRIGHT_BROWSERS_PATH=0
         ./bin/micromamba run -p ./env python -m playwright install chromium
     else
+        echo ""
         echo "      Skipping Playwright installation."
     fi
     echo "----------------------------------------------------------------------"
