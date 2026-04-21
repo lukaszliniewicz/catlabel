@@ -2,7 +2,6 @@
 setlocal
 title CatLabel Bootstrapper
 
-:: 1. Micromamba REQUIRES a root prefix to be set
 set "MAMBA_ROOT_PREFIX=%cd%\data\mamba_root"
 
 echo === CatLabel Bootstrapper ===
@@ -33,7 +32,7 @@ if not exist "env\" (
     )
 
     echo [2/4] Creating isolated environment ^(Python ^& Node.js^)...
-    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs git -y
+    bin\micromamba.exe create -p .\env -c conda-forge python=3.11 pip nodejs -y
     if errorlevel 1 goto error
 
     echo [3/4] Installing backend dependencies...

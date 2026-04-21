@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Exit immediately if a command fails
 set -e
 
-# Catch errors and print a clear, visible message instead of silently failing
 trap 'echo -e "\n=======================================================\nERROR: A critical error occurred during the setup on line $LINENO.\nPlease review the output above to see what went wrong.\n======================================================="; exit 1' ERR
 
 # 1. Explicitly set the root prefix to keep the installation portable
@@ -31,8 +29,7 @@ if [ ! -d "env" ]; then
         chmod +x bin/micromamba
     fi
 
-    # 2. Update Python to 3.11 and add python-lzo to Conda packages
-    echo "[2/4] Creating isolated environment (Python 3.11, Node.js, Git, python-lzo)..."
+    echo "[2/4] Creating isolated environment (Python 3.11, Node.js, python-lzo)..."
     ./bin/micromamba create -p ./env -c conda-forge python=3.11 pip nodejs git python-lzo -y
 
     echo "[3/4] Installing backend dependencies..."
@@ -45,7 +42,6 @@ if [ ! -d "env" ]; then
     echo "the API, you need Playwright (~150MB download). Normal UI usage does NOT."
     echo "Auto-skipping in 15 seconds if no input is provided."
     
-    # || true prevents set -e from killing the script if read times out
     read -t 15 -p "Install Headless API support? [y/N]: " INSTALL_PLAYWRIGHT || true
     
     if [[ "$INSTALL_PLAYWRIGHT" =~ ^[Yy]$ ]]; then
