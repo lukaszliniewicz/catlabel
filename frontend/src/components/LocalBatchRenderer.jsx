@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
 import HeadlessPage from './HeadlessPage';
 
 export default function LocalBatchRenderer({ onComplete }) {
   const pendingPrintJob = useStore((state) => state.pendingPrintJob);
   const [results, setResults] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const jobs = useMemo(() => {
     if (!pendingPrintJob) return [];
@@ -34,8 +35,9 @@ export default function LocalBatchRenderer({ onComplete }) {
   }, [pendingPrintJob]);
 
   useEffect(() => {
-    setResults(Array(jobs.length).fill(null));
-  }, [jobs.length]);
+    setResults([]);
+    setCurrentIndex(0);
+  }, [jobs, pendingPrintJob]);
 
   useEffect(() => {
     if (pendingPrintJob && jobs.length === 0) {
@@ -43,30 +45,31 @@ export default function LocalBatchRenderer({ onComplete }) {
     }
   }, [jobs.length, onComplete, pendingPrintJob]);
 
-  const handlePageReady = (captureIndex, b64) => {
+  const handlePageReady = useCallback((b64) => {
     setResults((prev) => {
-      const next = prev.length === jobs.length
-        ? [...prev]
-        : Array(jobs.length).fill(null);
+      const next = [...prev, b64];
 
-      next[captureIndex] = b64;
-
-      if (jobs.length > 0 && next.every(Boolean)) {
+      if (next.length === jobs.length) {
         onComplete(next);
+      } else {
+        window.setTimeout(() => {
+          setCurrentIndex((idx) => idx + 1);
+        }, 50);
       }
 
       return next;
     });
-  };
+  }, [jobs.length, onComplete]);
 
-  if (!pendingPrintJob) {
+  if (!pendingPrintJob || jobs.length === 0) {
     return null;
   }
 
-  const completedCount = results.filter(Boolean).length;
+  const completedCount = results.length;
   const progressPercent = jobs.length
     ? Math.round((completedCount / jobs.length) * 100)
     : 0;
+  const activeJob = jobs[currentIndex];
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[200] flex flex-col items-center justify-center backdrop-blur-md">
@@ -85,15 +88,15 @@ export default function LocalBatchRenderer({ onComplete }) {
       </div>
 
       <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
-        {jobs.map((job, index) => (
+        {activeJob && (
           <HeadlessPage
-            key={job.id}
+            key={activeJob.id}
             state={pendingPrintJob.canvasState}
-            record={job.record}
-            pageIndex={job.pageIndex}
-            onReady={(b64) => handlePageReady(index, b64)}
+            record={activeJob.record}
+            pageIndex={activeJob.pageIndex}
+            onReady={handlePageReady}
           />
-        ))}
+        )}
       </div>
     </div>
   );

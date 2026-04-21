@@ -4,7 +4,8 @@ import HeadlessPage from './components/HeadlessPage';
 
 export default function HeadlessRenderer() {
   const [payload, setPayload] = useState(() => window.__INJECTED_PAYLOAD__ || null);
-  const [results, setResults] = useState([]);
+  const [, setResults] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     if (payload) return undefined;
@@ -48,55 +49,68 @@ export default function HeadlessRenderer() {
   }, [payload]);
 
   useEffect(() => {
-    setResults(Array(renderJobs.length).fill(null));
+    setResults([]);
+    setCurrentIndex(0);
     window.__RENDERED_IMAGES__ = [];
 
     const doneMarker = document.getElementById('render-done');
     if (doneMarker) {
       doneMarker.remove();
     }
-  }, [renderJobs.length]);
+  }, [payload, renderJobs]);
 
-  const handlePageReady = useCallback((captureIndex, b64) => {
+  useEffect(() => {
+    if (payload && renderJobs.length === 0) {
+      window.__RENDERED_IMAGES__ = [];
+      if (!document.getElementById('render-done')) {
+        const doneMarker = document.createElement('div');
+        doneMarker.id = 'render-done';
+        doneMarker.style.opacity = '0';
+        document.body.appendChild(doneMarker);
+      }
+    }
+  }, [renderJobs.length, payload]);
+
+  const handlePageReady = useCallback((b64) => {
     setResults((prev) => {
-      const next = prev.length === renderJobs.length
-        ? [...prev]
-        : Array(renderJobs.length).fill(null);
+      const next = [...prev, b64];
 
-      next[captureIndex] = b64;
-
-      if (renderJobs.length > 0 && next.every(Boolean)) {
+      if (next.length === renderJobs.length) {
         window.__RENDERED_IMAGES__ = next;
-
         if (!document.getElementById('render-done')) {
           const doneMarker = document.createElement('div');
           doneMarker.id = 'render-done';
           doneMarker.style.opacity = '0';
           document.body.appendChild(doneMarker);
         }
+      } else {
+        window.setTimeout(() => {
+          setCurrentIndex((idx) => idx + 1);
+        }, 50);
       }
 
       return next;
     });
   }, [renderJobs.length]);
 
-  if (!payload) {
+  if (!payload || renderJobs.length === 0) {
     return null;
   }
 
   const canvasState = payload.canvas_state || {};
+  const activeJob = renderJobs[currentIndex];
 
   return (
     <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
-      {renderJobs.map((job, index) => (
+      {activeJob && (
         <HeadlessPage
-          key={job.id}
+          key={activeJob.id}
           state={canvasState}
-          record={job.record}
-          pageIndex={job.pageIndex}
-          onReady={(b64) => handlePageReady(index, b64)}
+          record={activeJob.record}
+          pageIndex={activeJob.pageIndex}
+          onReady={handlePageReady}
         />
-      ))}
+      )}
     </div>
   );
 }
