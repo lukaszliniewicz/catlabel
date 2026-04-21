@@ -46,7 +46,7 @@ CatLabel supports a flexible variable system using the `{{ variable_name }}` syn
       <p>SKU: {{ sku_code }}</p>
     </div>
     ```
-*   **Variable Combinations:** Use multiple variables in a single string, like `Model: {{ model }} / S/N: {{ serial }}`.
+*   **Variable Combinations:** Use multiple variables in a single string, like `Model: {{ model }} / ID: {{ id }}`.
 
 ### Data Management:
 *   **Manual Entry:** Edit batch records directly in a spreadsheet-like table within the UI.
@@ -100,7 +100,7 @@ CatLabel is a local web application:
 
 *   **Backend:** A FastAPI server that manages the SQLite database, handles image processing (rasterization), and executes printer protocols.
 *   **Frontend:** A React application for the user interface.
-*   **Communication:** Uses the `bleak` library for Bluetooth and `pyserial` for serial connections.
+*   **Communication:** Uses the `bleak` library for Bluetooth connections.
 *   **Rendering:** Designs are converted to 1-bit PNGs/bitmaps before being sent to the printer.
 
 ---
