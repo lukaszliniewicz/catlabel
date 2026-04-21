@@ -1,4 +1,7 @@
-# CatLabel
+<div align="center">
+  <img src="logo.webp" width="160" alt="CatLabel Logo">
+  <h1>CatLabel</h1>
+</div>
 
 CatLabel is a web-based design and printing application for thermal label printers. It is a fork of [TiMini Print](https://github.com/Dejniel/TiMini-Print), moving the original CLI and Tkinter-based logic into a web interface built with **FastAPI** and **React**.
 
