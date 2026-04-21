@@ -52,7 +52,7 @@ export default function AIAssistant() {
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState([]);
 
-  const { items, canvasWidth, canvasHeight, isRotated, splitMode, canvasBorder, canvasBorderThickness, selectedPrinter, selectedPrinterInfo, batchRecords, printCopies, currentPage, currentDpi, designMode, htmlContent, setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCanvasBorderThickness, setCurrentPage, setDesignMode, setHtmlContent } = useStore();
+  const { setItems, setCanvasSize, setIsRotated, setSplitMode, setCanvasBorder, setCanvasBorderThickness, setCurrentPage, setDesignMode, setHtmlContent } = useStore();
   const setShowAiConfig = useStore((state) => state.setShowAiConfig);
 
   useEffect(() => {
@@ -172,20 +172,25 @@ export default function AIAssistant() {
     fetchHistories();
   };
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (overrideText = null) => {
+    const storeState = useStore.getState();
+    const isAutoReply = typeof overrideText === 'string';
+    const textToSend = isAutoReply ? overrideText : (storeState.aiInput ?? input);
+    const baseMessages = storeState.aiMessages ?? messages;
+
+    if (!textToSend.trim()) return;
     
     setLoading(true);
 
     // Eagerly create the conversation in the DB so we have a conv_id for the backend trace logger
-    let activeConvId = currentConvId;
+    let activeConvId = storeState.aiConvId ?? currentConvId;
     if (!activeConvId) {
         try {
-            const title = input.substring(0, 30) + '...';
+            const title = textToSend.substring(0, 30) + '...';
             const res = await fetch('/api/ai/history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, messages: messages })
+                body: JSON.stringify({ title, messages: baseMessages })
             });
             const data = await res.json();
             activeConvId = data.id;
@@ -196,28 +201,28 @@ export default function AIAssistant() {
         }
     }
 
-    const newMessages = [...messages, { role: 'user', content: input }];
+    const newMessages = [...baseMessages, { role: 'user', content: textToSend }];
     setMessages(newMessages);
-    setInput('');
+    if (!isAutoReply) setInput('');
 
     const currentState = {
-      width: canvasWidth,
-      height: canvasHeight,
-      isRotated,
-      splitMode,
-      canvasBorder,
-      canvasBorderThickness,
-      designMode,
-      htmlContent,
-      items,
-      currentPage,
-      batchRecords,
-      printCopies,
-      __dpi__: currentDpi || selectedPrinterInfo?.dpi || 203
+      width: storeState.canvasWidth,
+      height: storeState.canvasHeight,
+      isRotated: storeState.isRotated,
+      splitMode: storeState.splitMode,
+      canvasBorder: storeState.canvasBorder,
+      canvasBorderThickness: storeState.canvasBorderThickness,
+      designMode: storeState.designMode,
+      htmlContent: storeState.htmlContent,
+      items: storeState.items,
+      currentPage: storeState.currentPage,
+      batchRecords: storeState.batchRecords,
+      printCopies: storeState.printCopies,
+      __dpi__: storeState.currentDpi || storeState.selectedPrinterInfo?.dpi || 203
     };
 
     try {
-      const b64Image = await useStore.getState().getStageB64();
+      const b64Image = await storeState.getStageB64();
 
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -225,8 +230,8 @@ export default function AIAssistant() {
         body: JSON.stringify({ 
            messages: newMessages, 
            canvas_state: currentState,
-           mac_address: selectedPrinter || null,
-           printer_info: selectedPrinterInfo || null,
+           mac_address: storeState.selectedPrinter || null,
+           printer_info: storeState.selectedPrinterInfo || null,
            current_canvas_b64: b64Image ? b64Image.split(',')[1] : null,
            conv_id: activeConvId
         })
@@ -282,6 +287,11 @@ export default function AIAssistant() {
                     } 
                     else if (action.action === 'loaded_project_id') {
                         useStore.getState().setCurrentProjectId(action.project_id);
+                    }
+                    else if (action.action === 'frontend_visual_preview') {
+                        setTimeout(() => {
+                            handleSend("[SYSTEM AUTO-INJECT] Here is the visual preview of the canvas you requested. Evaluate it. If elements overlap, are out of bounds, or look bad, use tools to fix them. Otherwise, reply to the user.");
+                        }, 600);
                     }
                 });
             }

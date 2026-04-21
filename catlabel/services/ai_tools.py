@@ -488,7 +488,7 @@ def tool_set_html_design(args, canvas_state, cw, ch):
 
 @ToolRegistry.register("request_visual_preview")
 def tool_request_visual_preview(args, canvas_state, cw, ch):
-    return "Visual preview generated and will be provided in the next message."
+    return "Visual preview requested. The system will pause and the UI will provide the image in the next turn."
 
 @ToolRegistry.register("get_element_bounds")
 def tool_get_element_bounds(args, canvas_state, cw, ch):

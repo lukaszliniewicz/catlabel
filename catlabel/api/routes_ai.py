@@ -375,6 +375,17 @@ def chat_with_agent(req: ChatRequest):
     sys_prompt = build_system_prompt(context, printer_status)
 
     messages = [{"role": "system", "content": sys_prompt}] + req.messages
+
+    # +++ NEW: Inject frontend base64 image into the last user message +++
+    if active_model.vision_capable and req.current_canvas_b64:
+        if messages and messages[-1].get("role") == "user":
+            original_text = messages[-1].get("content", "")
+            if isinstance(original_text, str):
+                messages[-1]["content"] = [
+                    {"type": "text", "text": original_text},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{req.current_canvas_b64}"}}
+                ]
+
     canvas_state_copy = copy.deepcopy(req.canvas_state)
 
     try:
@@ -487,76 +498,10 @@ def chat_with_agent(req: ChatRequest):
                     for tc in resp_msg.tool_calls
                 )
 
-                # Execute the preview generation and append it sequentially as a user message
-                if requested_preview and active_model.vision_capable:
-                    design_mode = canvas_state_copy.get("designMode", "canvas")
-                    canvas_items = canvas_state_copy.get("items", [])
-                    html_content = str(canvas_state_copy.get("htmlContent", "")).strip()
-
-                    # FAST-FAIL: Check if canvas is completely empty to save rendering time and tokens
-                    is_blank = (design_mode == "canvas" and not canvas_items) or (design_mode == "html" and not html_content)
-
-                    if is_blank:
-                        feedback_msg_for_llm = {
-                            "role": "user",
-                            "content": "[SYSTEM] The canvas is currently completely blank. Please add elements or HTML content before requesting a visual preview."
-                        }
-                        feedback_msg_for_ui = {
-                            "role": "user",
-                            "content": "[SYSTEM] Intercepted visual preview request (canvas is blank).",
-                        }
-                        messages.append(feedback_msg_for_llm)
-                        new_messages.append(feedback_msg_for_ui)
-                        logger.info("🛑 Intercepted preview request for blank canvas.")
-                    else:
-                        try:
-                            import base64
-                            from io import BytesIO
-                            from ..rendering.template import render_template
-
-                            batch_records = canvas_state_copy.get("batchRecords", [{}])
-                            preview_record = batch_records[0] if (isinstance(batch_records, list) and batch_records) else {}
-                            if not isinstance(preview_record, dict):
-                                preview_record = {}
-
-                            image = render_template(
-                                canvas_state_copy,
-                                preview_record,
-                                default_font=context["global_default_font"],
-                            )
-                            buffered = BytesIO()
-                            image.save(buffered, format="PNG")
-                            img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-                            feedback_msg_for_llm = {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": "[SYSTEM] Visual render complete. Evaluate your layout. If elements are severely overlapping, out of bounds, or cut off, use tools to fix them. Otherwise, reply to the user.",
-                                    },
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {"url": f"data:image/png;base64,{img_b64}"},
-                                    },
-                                ],
-                            }
-
-                            feedback_msg_for_ui = {
-                                "role": "user",
-                                "content": "[SYSTEM] Provided visual preview to AI.",
-                            }
-                            messages.append(feedback_msg_for_llm)
-                            new_messages.append(feedback_msg_for_ui)
-                            logger.info("📸 Provided requested visual feedback to agent.")
-                        except Exception as render_err:
-                            logger.warning("Visual feedback skipped: %s", render_err)
-                            fallback_msg = {
-                                "role": "user",
-                                "content": "[SYSTEM] Tool execution complete. Visual feedback is unavailable (Playwright might be missing on server). Proceed based on layout logic."
-                            }
-                            messages.append(fallback_msg)
-                            new_messages.append(fallback_msg)
+                if requested_preview:
+                    logger.info("🛑 Pausing backend agent loop to request visual preview from frontend.")
+                    canvas_state_copy.setdefault("__actions__", []).append({"action": "frontend_visual_preview"})
+                    break
             else:
                 logger.info("Agent finished turn. Total Cost so far: $%.4f", total_cost)
                 break
