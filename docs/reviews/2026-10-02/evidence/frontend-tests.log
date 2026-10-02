@@ -1,0 +1,19 @@
+
+> catlabel-studio@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.6 /tmp/catlabel-review-20261002/frontend
+
+ ✓ src/utils/htmlSecurity.test.js (2 tests) 76ms
+ ✓ src/utils/canvasPages.test.js (3 tests) 7ms
+ ✓ src/utils/apiErrors.test.js (3 tests) 6ms
+ ✓ src/utils/apiClient.test.js (3 tests) 21ms
+ ✓ src/utils/batchData.test.js (5 tests) 135ms
+ ✓ src/store.test.js (5 tests) 21ms
+
+ Test Files  6 passed (6)
+      Tests  21 passed (21)
+   Start at  16:23:38
+   Duration  2.33s (transform 604ms, setup 0ms, collect 1.11s, tests 265ms, environment 5.61s, prepare 1.51s)
+

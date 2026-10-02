@@ -1,0 +1,739 @@
+{
+  "observed_at": "2026-10-02",
+  "repository": {
+    "root": "/home/lliniewicz/Projects/catlabel",
+    "commit": "c193e93d82b13724196aa29b22d52055fd112406",
+    "working_tree_before_and_after": "clean"
+  },
+  "registry_method": {
+    "pypi": "Read-only GET https://pypi.org/pypi/{project}/json; stable version, requires_python, latest release upload time; separately sorted prerelease versions using PEP 440.",
+    "npm": "Read-only GET https://registry.npmjs.org/{package}/latest and https://registry.npmjs.org/-/package/{package}/dist-tags; latest tag is used as stable and engines/peerDependencies come from package metadata.",
+    "date_scope": "All version observations recorded on 2026-10-02; latest versions can change after this date."
+  },
+  "python": {
+    "pixi_lock_version": 7,
+    "locked_platforms": [
+      "win-64"
+    ],
+    "locked_python": "3.11.15",
+    "direct_dependencies": [
+      {
+        "name": "fastapi",
+        "declarations": [
+          "requirements.txt: fastapi>=0.115.6",
+          "pixi.toml: fastapi >=0.115.6"
+        ],
+        "resolved_pixilock": "0.139.0",
+        "latest_stable": "0.142.2",
+        "latest_upload_utc": "2026-09-30T09:51:11.277181Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/fastapi/json"
+      },
+      {
+        "name": "python-multipart",
+        "declarations": [
+          "requirements.txt: python-multipart>=0.0.20",
+          "pixi.toml: python-multipart >=0.0.20"
+        ],
+        "resolved_pixilock": "0.0.32",
+        "latest_stable": "0.0.32",
+        "latest_upload_utc": "2026-06-04T16:18:58.647906Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/python-multipart/json"
+      },
+      {
+        "name": "uvicorn",
+        "declarations": [
+          "requirements.txt: uvicorn>=0.34.0",
+          "pixi.toml: uvicorn >=0.34.0"
+        ],
+        "resolved_pixilock": "0.51.0",
+        "latest_stable": "0.54.0",
+        "latest_upload_utc": "2026-09-25T06:52:37.601479Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/uvicorn/json"
+      },
+      {
+        "name": "sqlmodel",
+        "declarations": [
+          "requirements.txt: sqlmodel>=0.0.22",
+          "pixi.toml: sqlmodel >=0.0.22"
+        ],
+        "resolved_pixilock": "0.0.39",
+        "latest_stable": "0.0.47",
+        "latest_upload_utc": "2026-09-23T17:31:07.921816Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/sqlmodel/json"
+      },
+      {
+        "name": "Pillow",
+        "declarations": [
+          "requirements.txt: Pillow>=11.1.0",
+          "pixi.toml: pillow >=11.1.0"
+        ],
+        "resolved_pixilock": "12.3.0",
+        "latest_stable": "12.3.0",
+        "latest_upload_utc": "2026-07-01T11:56:38.965595Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/Pillow/json"
+      },
+      {
+        "name": "pypdfium2",
+        "declarations": [
+          "requirements.txt: pypdfium2>=4.30.1",
+          "pixi.toml: pypdfium2 >=4.30.1"
+        ],
+        "resolved_pixilock": "5.11.0",
+        "latest_stable": "5.13.0",
+        "latest_prerelease_newer_than_stable": "5.14.0b1",
+        "latest_upload_utc": "2026-08-13T10:58:15.837944Z",
+        "requires_python": ">=3.6",
+        "latest_stable_release_yanked": false,
+        "registry": "https://pypi.org/pypi/pypdfium2/json"
+      },
+      {
+        "name": "bleak",
+        "declarations": [
+          "requirements.txt: bleak>=0.22.3",
+          "pixi.toml: bleak >=0.22.3"
+        ],
+        "resolved_pixilock": "3.0.2",
+        "latest_stable": "3.0.2",
+        "latest_upload_utc": "2026-05-02T23:01:04.066517Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/bleak/json"
+      },
+      {
+        "name": "crc8",
+        "declarations": [
+          "requirements.txt: crc8>=0.2.1",
+          "pixi.toml: crc8 >=0.2.1"
+        ],
+        "resolved_pixilock": "0.2.1",
+        "latest_stable": "0.2.1",
+        "latest_upload_utc": "2024-08-07T20:46:49.448537Z",
+        "requires_python": null,
+        "registry": "https://pypi.org/pypi/crc8/json"
+      },
+      {
+        "name": "pyserial",
+        "declarations": [
+          "requirements.txt: pyserial>=3.5",
+          "pixi.toml: pyserial >=3.5"
+        ],
+        "resolved_pixilock": "3.5",
+        "latest_stable": "3.5",
+        "latest_upload_utc": "2020-11-23T03:59:15.045513Z",
+        "requires_python": null,
+        "registry": "https://pypi.org/pypi/pyserial/json"
+      },
+      {
+        "name": "pyobjc-framework-IOBluetooth",
+        "declarations": [
+          "requirements.txt: pyobjc-framework-IOBluetooth>=11.0; sys_platform == \"darwin\""
+        ],
+        "resolved_pixilock": null,
+        "latest_stable": "12.2.2",
+        "latest_upload_utc": "2026-08-11T19:44:41.511772Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/pyobjc-framework-IOBluetooth/json",
+        "note": "Requirements-only; absent from Pixi because pixi.toml locks win-64 only."
+      },
+      {
+        "name": "winsdk",
+        "declarations": [
+          "requirements.txt: winsdk>=1.0.0b10; sys_platform == \"win32\"",
+          "pixi.toml: winsdk >=1.0.0b10"
+        ],
+        "resolved_pixilock": "1.0.0b10",
+        "latest_stable": null,
+        "latest_published_prerelease": "1.0.0b10",
+        "latest_upload_utc": "2023-08-11T19:47:58.008206Z",
+        "requires_python": ">=3.8",
+        "registry": "https://pypi.org/pypi/winsdk/json",
+        "note": "PyPI info.version is beta 1.0.0b10; no non-prerelease release found."
+      },
+      {
+        "name": "google-cloud-aiplatform",
+        "declarations": [
+          "requirements.txt: google-cloud-aiplatform (unbounded)",
+          "pixi.toml: google-cloud-aiplatform = \"*\""
+        ],
+        "resolved_pixilock": "1.160.0",
+        "latest_stable": "2.3.0",
+        "latest_upload_utc": "2026-09-30T17:11:20.351419Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/google-cloud-aiplatform/json"
+      },
+      {
+        "name": "litellm",
+        "declarations": [
+          "requirements.txt: litellm>=1.59.3,<1.92.0",
+          "pixi.toml: litellm >=1.59.3,<1.92.0"
+        ],
+        "resolved_pixilock": "1.91.3",
+        "latest_stable": "1.103.2",
+        "latest_prerelease_newer_than_stable": "1.105.0.dev2",
+        "latest_upload_utc": "2026-10-01T06:21:17.081512Z",
+        "requires_python": "<3.15,>=3.10",
+        "registry": "https://pypi.org/pypi/litellm/json",
+        "note": "Current upper bound blocks all releases >=1.92.0."
+      },
+      {
+        "name": "playwright",
+        "declarations": [
+          "pixi.toml [feature.headless]: playwright >=1.40.0"
+        ],
+        "resolved_pixilock": "1.61.0",
+        "latest_stable": "1.63.0",
+        "latest_upload_utc": "2026-09-15T16:49:36.455342Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/playwright/json",
+        "note": "Optional headless environment only."
+      },
+      {
+        "name": "dulwich",
+        "declarations": [
+          "launcher-requirements.txt: dulwich==1.2.10"
+        ],
+        "resolved_pixilock": null,
+        "declared_pin": "1.2.10",
+        "latest_stable": "1.2.15",
+        "latest_upload_utc": "2026-09-14T21:20:24.556588Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/dulwich/json",
+        "note": "Launcher direct pin; no full launcher resolver lock or hashes."
+      },
+      {
+        "name": "pyinstaller",
+        "declarations": [
+          "launcher-requirements.txt: pyinstaller==6.21.0"
+        ],
+        "resolved_pixilock": null,
+        "declared_pin": "6.21.0",
+        "latest_stable": "6.22.3",
+        "latest_upload_utc": "2026-09-12T21:54:09.669439Z",
+        "requires_python": "<3.16,>=3.8",
+        "registry": "https://pypi.org/pypi/pyinstaller/json",
+        "note": "Launcher direct pin; no full launcher resolver lock or hashes."
+      },
+      {
+        "name": "urllib3",
+        "declarations": [
+          "launcher-requirements.txt: urllib3==2.7.0"
+        ],
+        "resolved_pixilock": "2.7.0",
+        "declared_pin": "2.7.0",
+        "latest_stable": "2.8.0",
+        "latest_upload_utc": "2026-09-15T19:29:36.253420Z",
+        "requires_python": ">=3.10",
+        "registry": "https://pypi.org/pypi/urllib3/json",
+        "note": "Pixi lock includes 2.7.0 transitively; it is direct only in launcher requirements."
+      }
+    ],
+    "declaration_relationships": [
+      "requirements.txt and pixi.toml share 12 Windows backend dependency constraints (FastAPI, python-multipart, Uvicorn, SQLModel, Pillow, pypdfium2, Bleak, crc8, pyserial, winsdk, google-cloud-aiplatform, LiteLLM). PyObjC is requirements-only and Darwin-marked; Pixi is win-64 only.",
+      "Playwright is only the optional Pixi headless feature and resolves to 1.61.0 in the headless environment.",
+      "requirements.txt is a broad pip input without a repository lock; pixi.lock pins the Windows resolver artifacts. The separate launcher requirements pin Dulwich, PyInstaller, and urllib3 directly, but build_launcher.ps1 installs without a full transitive lock or hashes.",
+      "Launcher dependencies are not duplicated in requirements.txt. urllib3 2.7.0 also appears transitively in pixi.lock."
+    ],
+    "prereleases_ahead_of_latest_stable": [
+      "pypdfium2 5.14.0b1",
+      "litellm 1.105.0.dev2"
+    ],
+    "beta_only_latest_project": "winsdk 1.0.0b10"
+  },
+  "npm": {
+    "package_lock_direct_dependencies": [
+      {
+        "name": "bwip-js",
+        "declared_in_package_json": "^4.5.1",
+        "resolved_package_lock": "4.9.0",
+        "latest_stable_latest_tag": "4.11.4",
+        "engines": {},
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/bwip-js/latest"
+      },
+      {
+        "name": "dompurify",
+        "declared_in_package_json": "^3.4.12",
+        "resolved_package_lock": "3.4.12",
+        "latest_stable_latest_tag": "3.4.16",
+        "engines": {},
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/dompurify/latest"
+      },
+      {
+        "name": "html-to-image",
+        "declared_in_package_json": "^1.11.11",
+        "resolved_package_lock": "1.11.13",
+        "latest_stable_latest_tag": "1.11.13",
+        "engines": {},
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/html-to-image/latest"
+      },
+      {
+        "name": "js-beautify",
+        "declared_in_package_json": "^1.15.1",
+        "resolved_package_lock": "1.15.4",
+        "latest_stable_latest_tag": "2.0.3",
+        "engines": {
+          "node": ">=14"
+        },
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/js-beautify/latest"
+      },
+      {
+        "name": "konva",
+        "declared_in_package_json": "^10.0.0",
+        "resolved_package_lock": "10.2.5",
+        "latest_stable_latest_tag": "10.7.0",
+        "engines": {},
+        "peer_dependencies": {
+          "canvas": "^3.0.0",
+          "skia-canvas": "^3.0.0"
+        },
+        "registry": "https://registry.npmjs.org/konva/latest"
+      },
+      {
+        "name": "lucide-react",
+        "declared_in_package_json": "^0.474.0",
+        "resolved_package_lock": "0.474.0",
+        "latest_stable_latest_tag": "1.50.0",
+        "engines": {},
+        "peer_dependencies": {
+          "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+          "@types/react": "*"
+        },
+        "registry": "https://registry.npmjs.org/lucide-react/latest"
+      },
+      {
+        "name": "qrcode",
+        "declared_in_package_json": "^1.5.4",
+        "resolved_package_lock": "1.5.4",
+        "latest_stable_latest_tag": "1.5.4",
+        "engines": {
+          "node": ">=10.13.0"
+        },
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/qrcode/latest"
+      },
+      {
+        "name": "react",
+        "declared_in_package_json": "^19.0.0",
+        "resolved_package_lock": "19.2.5",
+        "latest_stable_latest_tag": "19.3.0",
+        "engines": {
+          "node": ">=0.10.0"
+        },
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/react/latest"
+      },
+      {
+        "name": "react-dom",
+        "declared_in_package_json": "^19.0.0",
+        "resolved_package_lock": "19.2.5",
+        "latest_stable_latest_tag": "19.3.0",
+        "engines": {},
+        "peer_dependencies": {
+          "react": "^19.3.0"
+        },
+        "registry": "https://registry.npmjs.org/react-dom/latest"
+      },
+      {
+        "name": "react-konva",
+        "declared_in_package_json": "^19.0.2",
+        "resolved_package_lock": "19.2.3",
+        "latest_stable_latest_tag": "19.3.0",
+        "engines": {},
+        "peer_dependencies": {
+          "konva": "^8.0.1 || ^7.2.5 || ^9.0.0 || ^10.0.0",
+          "react": "^19.3.0",
+          "react-dom": "^19.3.0"
+        },
+        "registry": "https://registry.npmjs.org/react-konva/latest"
+      },
+      {
+        "name": "react-markdown",
+        "declared_in_package_json": "^9.0.1",
+        "resolved_package_lock": "9.1.0",
+        "latest_stable_latest_tag": "10.1.0",
+        "engines": {},
+        "peer_dependencies": {
+          "@types/react": ">=18",
+          "react": ">=18"
+        },
+        "registry": "https://registry.npmjs.org/react-markdown/latest"
+      },
+      {
+        "name": "remark-gfm",
+        "declared_in_package_json": "^4.0.0",
+        "resolved_package_lock": "4.0.1",
+        "latest_stable_latest_tag": "4.0.1",
+        "engines": {},
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/remark-gfm/latest"
+      },
+      {
+        "name": "zustand",
+        "declared_in_package_json": "^5.0.3",
+        "resolved_package_lock": "5.0.12",
+        "latest_stable_latest_tag": "5.0.15",
+        "engines": {
+          "node": ">=12.20.0"
+        },
+        "peer_dependencies": {
+          "@types/react": ">=18.0.0",
+          "immer": ">=9.0.6",
+          "react": ">=18.0.0",
+          "use-sync-external-store": ">=1.2.0"
+        },
+        "registry": "https://registry.npmjs.org/zustand/latest"
+      },
+      {
+        "name": "@eslint/js",
+        "declared_in_package_json": "^9.39.5",
+        "resolved_package_lock": "9.39.5",
+        "latest_stable_latest_tag": "10.0.1",
+        "engines": {
+          "node": "^20.19.0 || ^22.13.0 || >=24"
+        },
+        "peer_dependencies": {
+          "eslint": "^10.0.0"
+        },
+        "registry": "https://registry.npmjs.org/@eslint%2Fjs/latest"
+      },
+      {
+        "name": "@vitejs/plugin-react",
+        "declared_in_package_json": "^4.3.4",
+        "resolved_package_lock": "4.7.0",
+        "latest_stable_latest_tag": "6.1.1",
+        "engines": {
+          "node": "^20.19.0 || >=22.12.0"
+        },
+        "peer_dependencies": {
+          "vite": "^8.0.0",
+          "oxc-transform-react": "^0.145.0",
+          "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",
+          "babel-plugin-react-compiler": "^1.0.0"
+        },
+        "registry": "https://registry.npmjs.org/@vitejs%2Fplugin-react/latest"
+      },
+      {
+        "name": "autoprefixer",
+        "declared_in_package_json": "^10.4.20",
+        "resolved_package_lock": "10.4.27",
+        "latest_stable_latest_tag": "10.6.1",
+        "engines": {
+          "node": "^10 || ^12 || >=14"
+        },
+        "peer_dependencies": {
+          "postcss": "^8.1.0"
+        },
+        "registry": "https://registry.npmjs.org/autoprefixer/latest"
+      },
+      {
+        "name": "eslint",
+        "declared_in_package_json": "^9.39.5",
+        "resolved_package_lock": "9.39.5",
+        "latest_stable_latest_tag": "10.11.0",
+        "engines": {
+          "node": "^20.19.0 || ^22.13.0 || >=24"
+        },
+        "peer_dependencies": {
+          "jiti": "*"
+        },
+        "registry": "https://registry.npmjs.org/eslint/latest"
+      },
+      {
+        "name": "eslint-plugin-react",
+        "declared_in_package_json": "^7.37.5",
+        "resolved_package_lock": "7.37.5",
+        "latest_stable_latest_tag": "7.37.5",
+        "engines": {
+          "node": ">=4"
+        },
+        "peer_dependencies": {
+          "eslint": "^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9.7"
+        },
+        "registry": "https://registry.npmjs.org/eslint-plugin-react/latest"
+      },
+      {
+        "name": "eslint-plugin-react-hooks",
+        "declared_in_package_json": "^7.1.1",
+        "resolved_package_lock": "7.1.1",
+        "latest_stable_latest_tag": "7.1.1",
+        "engines": {
+          "node": ">=18"
+        },
+        "peer_dependencies": {
+          "eslint": "^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0 || ^10.0.0"
+        },
+        "registry": "https://registry.npmjs.org/eslint-plugin-react-hooks/latest"
+      },
+      {
+        "name": "eslint-plugin-react-refresh",
+        "declared_in_package_json": "^0.4.24",
+        "resolved_package_lock": "0.4.24",
+        "latest_stable_latest_tag": "0.5.7",
+        "engines": {},
+        "peer_dependencies": {
+          "eslint": "^9 || ^10"
+        },
+        "registry": "https://registry.npmjs.org/eslint-plugin-react-refresh/latest"
+      },
+      {
+        "name": "globals",
+        "declared_in_package_json": "^16.4.0",
+        "resolved_package_lock": "16.4.0",
+        "latest_stable_latest_tag": "17.13.0",
+        "engines": {
+          "node": ">=18"
+        },
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/globals/latest"
+      },
+      {
+        "name": "jsdom",
+        "declared_in_package_json": "^26.1.0",
+        "resolved_package_lock": "26.1.0",
+        "latest_stable_latest_tag": "30.1.1",
+        "engines": {
+          "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+        },
+        "peer_dependencies": {
+          "canvas": "^3.2.3"
+        },
+        "registry": "https://registry.npmjs.org/jsdom/latest"
+      },
+      {
+        "name": "postcss",
+        "declared_in_package_json": "^8.5.1",
+        "resolved_package_lock": "8.5.19",
+        "latest_stable_latest_tag": "8.5.28",
+        "engines": {
+          "node": "^10 || ^12 || >=14"
+        },
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/postcss/latest"
+      },
+      {
+        "name": "tailwindcss",
+        "declared_in_package_json": "^3.4.17",
+        "resolved_package_lock": "3.4.19",
+        "latest_stable_latest_tag": "4.3.3",
+        "engines": {},
+        "peer_dependencies": {},
+        "registry": "https://registry.npmjs.org/tailwindcss/latest"
+      },
+      {
+        "name": "vite",
+        "declared_in_package_json": "^6.0.7",
+        "resolved_package_lock": "6.4.3",
+        "latest_stable_latest_tag": "8.3.2",
+        "engines": {
+          "node": "^20.19.0 || >=22.12.0"
+        },
+        "peer_dependencies": {
+          "tsx": "^4.8.1",
+          "jiti": ">=1.21.0",
+          "less": "^4.0.0",
+          "sass": "^1.70.0",
+          "yaml": "^2.4.2",
+          "stylus": ">=0.54.8",
+          "terser": "^5.16.0",
+          "esbuild": "^0.27.0 || ^0.28.0",
+          "sugarss": "^5.0.0",
+          "@types/node": "^20.19.0 || >=22.12.0",
+          "sass-embedded": "^1.70.0",
+          "@vitejs/devtools": "^0.7.1"
+        },
+        "registry": "https://registry.npmjs.org/vite/latest"
+      },
+      {
+        "name": "vitest",
+        "declared_in_package_json": "^3.2.6",
+        "resolved_package_lock": "3.2.6",
+        "latest_stable_latest_tag": "5.0.3",
+        "engines": {
+          "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+        },
+        "peer_dependencies": {
+          "vite": "^6.4.0 || ^7.0.0 || ^8.0.0",
+          "jsdom": "*",
+          "happy-dom": "*",
+          "@vitest/ui": "5.0.3",
+          "@types/node": "^22.0.0 || >=24.0.0",
+          "@edge-runtime/vm": "*",
+          "@opentelemetry/api": "^1.9.0",
+          "@vitest/coverage-v8": "5.0.3",
+          "@vitest/browser-preview": "5.0.3",
+          "@vitest/coverage-istanbul": "5.0.3",
+          "@vitest/browser-playwright": "5.0.3",
+          "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0"
+        },
+        "registry": "https://registry.npmjs.org/vitest/latest"
+      }
+    ],
+    "prerelease_dist_tags_observed": {
+      "react and react-dom": {
+        "canary": "19.3.0-canary-7c6ac13e-20260929",
+        "experimental": "0.0.0-experimental-7c6ac13e-20260929"
+      },
+      "@eslint/js": {
+        "next": "10.0.0-rc.0"
+      },
+      "@vitejs/plugin-react": {
+        "beta": "6.0.0-beta.0",
+        "alpha": "3.0.0-alpha.2"
+      },
+      "eslint": {
+        "next": "10.0.0-rc.2"
+      },
+      "vite": {
+        "beta": "8.3.0-beta.1",
+        "alpha": "6.0.0-alpha.24"
+      },
+      "vitest": {
+        "rc": "5.0.0-rc.4",
+        "beta": "5.0.0-beta.7"
+      }
+    },
+    "note": "Non-latest tags are reported separately and were not treated as stable upgrades."
+  },
+  "manual_advisory_evidence": [
+    {
+      "package": "dompurify",
+      "locked": "3.4.12",
+      "advisory": "GHSA-55q2-fjhq-7xh7",
+      "affected": "<=3.4.12",
+      "patched": "3.4.13",
+      "severity_in_npm_audit": "moderate",
+      "url": "https://github.com/advisories/GHSA-55q2-fjhq-7xh7"
+    },
+    {
+      "package": "dompurify",
+      "locked": "3.4.12",
+      "advisory": "GHSA-6688-9rhm-gjv2",
+      "affected": "<=3.4.15",
+      "patched": "3.4.16",
+      "vendor_severity": "low",
+      "url": "https://github.com/cure53/DOMPurify/security/advisories/GHSA-6688-9rhm-gjv2",
+      "scope": "IN_PLACE sanitizer mode; the advisory states the reparse path is relevant when sanitized output is serialized and re-parsed. Parent-owned usage review is still required."
+    },
+    {
+      "package": "postcss",
+      "locked": "8.5.19",
+      "advisory": "GHSA-fxqj-rqcc-2cmp",
+      "affected": "<=8.5.22",
+      "patched": "8.5.23",
+      "severity_in_npm_audit": "moderate",
+      "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp"
+    },
+    {
+      "package": "vitest",
+      "locked": "3.2.6",
+      "advisory": "GHSA-82fw-gwwq-j7x9",
+      "affected": ">=2.1.0 and <4.1.11; 5.0.0 prereleases before rc.2",
+      "patched": "4.1.11 or 5.0.0-rc.2",
+      "severity_in_npm_audit": "moderate",
+      "url": "https://github.com/advisories/GHSA-82fw-gwwq-j7x9"
+    },
+    {
+      "package": "litellm",
+      "locked": "1.91.3",
+      "advisory_or_incident": "Official LiteLLM supply-chain incident",
+      "affected": "1.82.7 and 1.82.8; both removed from PyPI",
+      "current_lock_relation": "1.91.3 is outside the named affected versions; requirement range <1.92.0 spans them, though they were removed from PyPI.",
+      "url": "https://docs.litellm.ai/blog/security-update-march-2026"
+    }
+  ],
+  "npm_audit_artifact": {
+    "path": "/tmp/catlabel-review-20261002/dependencies/npm-audit.json",
+    "command": "npm audit --package-lock-only --json --cache /tmp/catlabel-review-20261002/dependencies/npm-cache --loglevel=error",
+    "exit_code": 1,
+    "result": "Findings reported; not a test failure. 10 affected package entries: 4 high, 5 moderate, 1 low, 0 critical. Three direct affected packages are DOMPurify, PostCSS, and Vitest. Seven other entries are transitive. The audit report omitted the later GHSA-6688 DOMPurify advisory, added above from vendor primary source."
+  },
+  "migration_and_release_sources": [
+    {
+      "topic": "Vite 6 to 7 migration and Node/browser target",
+      "url": "https://v7.vite.dev/guide/migration"
+    },
+    {
+      "topic": "Vite 7 to 8 migration; dependency optimizer moves from esbuild to Rolldown",
+      "url": "https://vite.dev/guide/migration.html"
+    },
+    {
+      "topic": "Vite 8 announcement and Node support",
+      "url": "https://v8.vite.dev/blog/announcing-vite8"
+    },
+    {
+      "topic": "Vitest 5 requires Vite >=6.4 and Node >=22.12; clearMocks defaults true",
+      "url": "https://vitest.dev/guide/migration/"
+    },
+    {
+      "topic": "ESLint 10 Node support, config lookup, old config removal and rule changes",
+      "url": "https://eslint.org/docs/latest/use/migrate-to-10.0.0"
+    },
+    {
+      "topic": "Tailwind 3 to 4 PostCSS/Vite plugin changes and browser baseline",
+      "url": "https://tailwindcss.com/docs/upgrade-guide"
+    },
+    {
+      "topic": "React-Konva 19.3 peer requirement React and React DOM ^19.3",
+      "url": "https://github.com/konvajs/react-konva/blob/master/README.md"
+    },
+    {
+      "topic": "react-markdown 10 removes className prop",
+      "url": "https://github.com/remarkjs/react-markdown/blob/main/changelog.md"
+    },
+    {
+      "topic": "js-beautify changelog says v2.0.1 minimum Node 22",
+      "url": "https://github.com/beautifier/js-beautify/blob/main/CHANGELOG.md"
+    },
+    {
+      "topic": "Bleak changelog",
+      "url": "https://bleak.readthedocs.io/en/stable/history.html"
+    },
+    {
+      "topic": "pypdfium2 v5 removes PdfDocument.render and related APIs",
+      "url": "https://pypdfium2-team.github.io/pypdfium2/changelog.html"
+    },
+    {
+      "topic": "Google Cloud aiplatform 2.0.1 migration boundary and moved generative modules",
+      "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/machine-learning/python-sdk/sdk-migration"
+    },
+    {
+      "topic": "LiteLLM 1.92.0 release notes include permissions becoming admin-gated",
+      "url": "https://docs.litellm.ai/release_notes/v1.92.0/v1-92-0"
+    },
+    {
+      "topic": "LiteLLM March 2026 supply-chain incident",
+      "url": "https://docs.litellm.ai/blog/security-update-march-2026"
+    }
+  ],
+  "contradictions_and_uncertainty": [
+    "js-beautify 2.0.3 npm registry metadata reports engines.node >=14, while its official changelog says v2.0.1 moved the minimum to Node 22.x. The registry lookup for js-beautify@2.0.1 returned HTTP 404, so this mismatch was not reconciled; treat Node compatibility as unresolved.",
+    "The official DOMPurify vendor advisory GHSA-6688 reports low severity; npm audit reports the separate GHSA-55q2 as moderate. These are distinct findings and should not be collapsed into a single severity.",
+    "No repository source usage review was done for library APIs or vulnerability trigger conditions; parent owns that assessment."
+  ],
+  "checks": {
+    "passed": [
+      "Repository identity confirmed; `git status --short` and targeted `git diff` were empty before and after the audit. Manifest/lock reads and official registry GETs completed.",
+      "NPM direct versions, engine/peer metadata and current dist-tags were queried from registry.npmjs.org.",
+      "PyPI version, requires_python, upload date and release data were queried from pypi.org."
+    ],
+    "failed_or_findings": [
+      "`npm audit --package-lock-only ...` exit 1 because audit findings were reported; see exact JSON artifact.",
+      "An attempted `.github` workflow discovery returned missing-path error; no `.github` directory was present."
+    ],
+    "not_run": [
+      "Python advisory audit",
+      "install",
+      "build",
+      "tests",
+      "runtime node-version check"
+    ],
+    "scope_note": "An initial broad rg dependency-text search did not exclude frontend/dist and emitted a truncated minified built frontend asset snippet. No conclusion was derived from it; source inspection stopped. Subsequent frontend reads were limited to package manifests/lock and PostCSS config."
+  }
+}

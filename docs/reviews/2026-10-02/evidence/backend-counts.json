@@ -1,0 +1,1451 @@
+{
+  "schema_version": 1,
+  "generated_for": "bounded non-UI static and unittest baseline",
+  "repository": {
+    "root": "/home/lliniewicz/Projects/catlabel",
+    "commit": "c193e93d82b13724196aa29b22d52055fd112406",
+    "working_tree_before": "clean",
+    "working_tree_after": {
+      "tracked_changes": "none",
+      "untracked_paths": [
+        "docs/reviews/"
+      ],
+      "note": "The path was absent from initial Git status, was not created by this run, and was left unread and untouched."
+    },
+    "product_source_changes": 0
+  },
+  "environment": {
+    "host": "Linux-7.2.8-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "project_configuration": {
+      "pixi": "0.80.0",
+      "python_constraint": "3.11.*",
+      "pixi_platforms": [
+        "win-64"
+      ]
+    },
+    "python_interpreters": {
+      "system": "3.14.7",
+      "uv_installed": [
+        "3.14.7",
+        "3.13.14",
+        "3.12.13",
+        "3.11.15",
+        "3.10.20"
+      ],
+      "scratch_venv_for_tests_and_static_analysis": "3.11.15",
+      "scratch_venv_path": "/tmp/catlabel-review-20261002/baseline/venv"
+    },
+    "system_tools": {
+      "uv": "0.11.29",
+      "ruff": "0.15.22",
+      "pixi": "0.80.0",
+      "node": "v24.18.0",
+      "npm": "11.16.0",
+      "networkx": "3.6.1",
+      "pytest": "8.4.2",
+      "ruff_executable": "/home/lliniewicz/.local/bin/ruff",
+      "ruff_distribution_location": "/home/lliniewicz/.local/lib/python3.14/site-packages",
+      "ruff_runner": "direct shell executable; uv tool list did not list ruff"
+    },
+    "system_backend_packages": {
+      "fastapi": "0.141.1",
+      "python-multipart": "0.0.32",
+      "uvicorn": "0.52.1",
+      "sqlmodel": null,
+      "Pillow": "12.3.0",
+      "pypdfium2": "5.13.0",
+      "bleak": null,
+      "crc8": null,
+      "pyserial": "3.5",
+      "google-cloud-aiplatform": null,
+      "litellm": null
+    },
+    "scratch_venv_final_packages": {
+      "fastapi": "0.142.2",
+      "python-multipart": "0.0.32",
+      "uvicorn": "0.54.0",
+      "sqlmodel": "0.0.47",
+      "Pillow": "12.3.0",
+      "pypdfium2": "5.13.0",
+      "bleak": "3.0.2",
+      "crc8": "0.2.1",
+      "pyserial": "3.5",
+      "google-cloud-aiplatform": "2.3.0",
+      "litellm": "1.91.5",
+      "basedpyright": "1.40.1",
+      "pyright": "1.1.414",
+      "vulture": "2.16",
+      "playwright": "1.63.0",
+      "dulwich": "1.2.10",
+      "pyinstaller": "6.21.0",
+      "urllib3": "2.7.0",
+      "pyee": "13.0.1"
+    },
+    "test_environment_note": "The unit suite ran after requirements.txt resolved, before launcher-requirements and optional headless dependencies were installed. Its urllib3 was 2.8.0; the later launcher-requirements install pinned the retained scratch venv to 2.7.0. Tests made no observed network calls."
+  },
+  "criteria": {
+    "backend_unittest_suite_initial_clean_scratch_db": {
+      "status": "failed",
+      "command_exit_code": 1,
+      "tests_run": 67,
+      "passed": 64,
+      "failures": 1,
+      "errors": 2,
+      "warnings_in_log": 0,
+      "elapsed": "0.591s",
+      "failure_or_error_tests": [
+        "tests.test_launcher.LauncherTests.test_clone_repo_closes_the_repository",
+        "tests.test_print_error_reporting.PrintErrorReportingTests.test_connection_failure_includes_the_underlying_error",
+        "tests.test_print_error_reporting.PrintErrorReportingTests.test_print_failure_is_structured_and_disconnects"
+      ],
+      "log": "unittest.log",
+      "command": "PYTHONPATH=/home/lliniewicz/Projects/catlabel PYTHONDONTWRITEBYTECODE=1 TMPDIR=/tmp/catlabel-review-20261002/baseline/tmp timeout 600s /tmp/catlabel-review-20261002/baseline/venv/bin/python -m unittest discover -s /home/lliniewicz/Projects/catlabel/tests -t /home/lliniewicz/Projects/catlabel -v > /tmp/catlabel-review-20261002/baseline/unittest.log 2>&1",
+      "result": "Two routes_print tests errored on missing scratch SQLite settings table; launcher test expected Windows path normalization but host Path emitted forward slashes."
+    },
+    "backend_unittest_suite_after_scratch_schema_init": {
+      "status": "failed",
+      "command_exit_code": 1,
+      "tests_run": 67,
+      "passed": 66,
+      "failures": 1,
+      "errors": 0,
+      "warnings_in_log": 0,
+      "elapsed": "1.007s",
+      "failure_or_error_tests": [
+        "tests.test_launcher.LauncherTests.test_clone_repo_closes_the_repository"
+      ],
+      "log": "unittest-with-scratch-schema.log",
+      "schema_initialization_command": "PYTHONPATH=/home/lliniewicz/Projects/catlabel PYTHONDONTWRITEBYTECODE=1 TMPDIR=/tmp/catlabel-review-20261002/baseline/tmp /tmp/catlabel-review-20261002/baseline/venv/bin/python -c \"import catlabel.api.routes_print; from catlabel.core.database import create_db_and_tables; create_db_and_tables()\" > /tmp/catlabel-review-20261002/baseline/scratch-db-init.log 2>&1",
+      "command": "PYTHONPATH=/home/lliniewicz/Projects/catlabel PYTHONDONTWRITEBYTECODE=1 TMPDIR=/tmp/catlabel-review-20261002/baseline/tmp timeout 600s /tmp/catlabel-review-20261002/baseline/venv/bin/python -m unittest discover -s /home/lliniewicz/Projects/catlabel/tests -t /home/lliniewicz/Projects/catlabel -v > /tmp/catlabel-review-20261002/baseline/unittest-with-scratch-schema.log 2>&1",
+      "result": "Scratch schema initialization resolved the two missing-table errors; the remaining failure is the Windows-path assertion under Linux."
+    },
+    "ruff_default": {
+      "status": "failed",
+      "command_exit_code": 1,
+      "command": "RUFF_CACHE_DIR=/tmp/catlabel-review-20261002/baseline/ruff-default-cache ruff check --output-format json catlabel launcher.py tools tests > /tmp/catlabel-review-20261002/baseline/ruff-default.json",
+      "version": "0.15.22",
+      "scope": [
+        "catlabel",
+        "launcher.py",
+        "tools",
+        "tests"
+      ],
+      "diagnostics": {
+        "total": 36,
+        "rule_count": 11,
+        "file_count": 14,
+        "by_rule": {
+          "E402": 2,
+          "E701": 8,
+          "E702": 2,
+          "E711": 2,
+          "E712": 1,
+          "E722": 3,
+          "E731": 2,
+          "E741": 1,
+          "F401": 10,
+          "F541": 1,
+          "F821": 4
+        },
+        "by_file": {
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py": 4,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py": 11,
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/diagnostics.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/funny_lx.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/commands.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/compression.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/funny_lx.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py": 4,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py": 1,
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py": 1,
+          "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py": 5,
+          "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py": 1
+        },
+        "by_file_by_rule": {
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py": {
+            "E711": 2,
+            "F401": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py": {
+            "E402": 2,
+            "E701": 7,
+            "E712": 1,
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/diagnostics.py": {
+            "E741": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py": {
+            "F821": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/funny_lx.py": {
+            "E731": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/commands.py": {
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/compression.py": {
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py": {
+            "F821": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/funny_lx.py": {
+            "E731": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py": {
+            "E722": 3,
+            "F541": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py": {
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py": {
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py": {
+            "E701": 1,
+            "E702": 2,
+            "F401": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py": {
+            "F401": 1
+          }
+        },
+        "severity_model": "Ruff JSON has no severity field; findings are counted by rule code and file."
+      },
+      "artifact": "ruff-default.json"
+    },
+    "ruff_explicit_rules": {
+      "status": "failed",
+      "command_exit_code": 1,
+      "command": "RUFF_CACHE_DIR=/tmp/catlabel-review-20261002/baseline/ruff-expanded-cache ruff check --select E,F,I,UP,B,SIM,C4 --output-format json catlabel launcher.py tools tests > /tmp/catlabel-review-20261002/baseline/ruff-expanded.json",
+      "version": "0.15.22",
+      "selected_rules": [
+        "E",
+        "F",
+        "I",
+        "UP",
+        "B",
+        "SIM",
+        "C4"
+      ],
+      "scope": [
+        "catlabel",
+        "launcher.py",
+        "tools",
+        "tests"
+      ],
+      "diagnostics": {
+        "total": 1271,
+        "rule_count": 30,
+        "file_count": 98,
+        "by_rule": {
+          "B006": 1,
+          "B008": 5,
+          "B009": 1,
+          "B904": 5,
+          "B905": 2,
+          "C420": 1,
+          "E402": 2,
+          "E501": 652,
+          "E701": 8,
+          "E702": 2,
+          "E711": 2,
+          "E712": 1,
+          "E722": 3,
+          "E731": 2,
+          "E741": 1,
+          "F401": 10,
+          "F541": 1,
+          "F821": 4,
+          "I001": 63,
+          "SIM102": 5,
+          "SIM103": 1,
+          "SIM105": 18,
+          "SIM117": 1,
+          "UP006": 184,
+          "UP007": 2,
+          "UP015": 1,
+          "UP022": 2,
+          "UP035": 75,
+          "UP037": 27,
+          "UP045": 189
+        },
+        "by_file": {
+          "/home/lliniewicz/Projects/catlabel/catlabel/__main__.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py": 25,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py": 85,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_print.py": 49,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_project.py": 25,
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/database.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/diagnostics.py": 11,
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/models.py": 20,
+          "/home/lliniewicz/Projects/catlabel/catlabel/devices/__init__.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/raster_job.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py": 10,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/factory.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/funny_lx.py": 14,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/luck_normal.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/session.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5c.py": 8,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5g.py": 40,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5x.py": 44,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/send.py": 5,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/step_execution.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/__init__.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_builders.py": 4,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_lzo.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/commands.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/compression.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/encoding.py": 9,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/__init__.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py": 8,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/dck.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/eleph_hprt_esc.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/eleph_tspl.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/funny_lx.py": 5,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/legacy.py": 4,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/luck_normal_core.py": 21,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5c.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5g.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5x.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/family.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/job.py": 4,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/packet.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/plan.py": 5,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/steps.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/types.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/raster.py": 7,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/__init__.py": 13,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/base.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/image.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/pdf.py": 9,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/text.py": 14,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/fonts.py": 5,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/renderer.py": 15,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/template.py": 8,
+          "/home/lliniewicz/Projects/catlabel/catlabel/reporting.py": 38,
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/ai_tools.py": 64,
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/label_templates.py": 16,
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/layout_engine.py": 34,
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/prompts.py": 20,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/__init__.py": 4,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/base.py": 8,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter.py": 26,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_endpoint_resolver.py": 20,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": 30,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/linux_adapter.py": 9,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/linux_cmd.py": 17,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/macos_adapter.py": 7,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/macos_iobluetooth.py": 29,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_adapter.py": 10,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_win32.py": 15,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_winrt.py": 25,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/backend.py": 56,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/types.py": 15,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/serial.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/__init__.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/base.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/client.py": 30,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/manifest.py": 15,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/models.py": 40,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/manifest.py": 10,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py": 51,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/manifest.py": 26,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py": 24,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/manifest.py": 32,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/registry.py": 12,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/utils.py": 6,
+          "/home/lliniewicz/Projects/catlabel/launcher.py": 5,
+          "/home/lliniewicz/Projects/catlabel/tests/test_backend_architecture.py": 2,
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_catalog.py": 1,
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_client.py": 10,
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py": 4,
+          "/home/lliniewicz/Projects/catlabel/tests/test_launcher.py": 8,
+          "/home/lliniewicz/Projects/catlabel/tests/test_luck_protocol.py": 4,
+          "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py": 13,
+          "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py": 2,
+          "/home/lliniewicz/Projects/catlabel/tests/test_printing_paper.py": 2,
+          "/home/lliniewicz/Projects/catlabel/tests/test_protocol_compression.py": 3,
+          "/home/lliniewicz/Projects/catlabel/tests/test_protocol_upstream_regressions.py": 4,
+          "/home/lliniewicz/Projects/catlabel/tests/test_runtime_ownership.py": 1,
+          "/home/lliniewicz/Projects/catlabel/tools/sync_timiniprint_catalog.py": 1
+        },
+        "by_file_by_rule": {
+          "/home/lliniewicz/Projects/catlabel/catlabel/__main__.py": {
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py": {
+            "B008": 2,
+            "B904": 1,
+            "E501": 12,
+            "E711": 2,
+            "F401": 2,
+            "I001": 2,
+            "UP006": 1,
+            "UP035": 2,
+            "UP045": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py": {
+            "E402": 2,
+            "E501": 39,
+            "E701": 7,
+            "E712": 1,
+            "F401": 1,
+            "I001": 3,
+            "SIM102": 1,
+            "UP006": 15,
+            "UP007": 2,
+            "UP035": 2,
+            "UP045": 12
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_print.py": {
+            "B905": 1,
+            "E501": 26,
+            "I001": 1,
+            "UP006": 14,
+            "UP035": 2,
+            "UP045": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_project.py": {
+            "B008": 1,
+            "B904": 1,
+            "E501": 8,
+            "I001": 1,
+            "UP006": 2,
+            "UP035": 1,
+            "UP045": 11
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/database.py": {
+            "E501": 2,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/diagnostics.py": {
+            "E501": 5,
+            "E741": 1,
+            "I001": 1,
+            "UP006": 2,
+            "UP035": 1,
+            "UP045": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/core/models.py": {
+            "I001": 1,
+            "UP045": 19
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/devices/__init__.py": {
+            "E501": 1,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/raster_job.py": {
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py": {
+            "E501": 6,
+            "F821": 1,
+            "UP037": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/factory.py": {
+            "B009": 1,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/funny_lx.py": {
+            "E501": 12,
+            "E731": 1,
+            "SIM105": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/luck_normal.py": {
+            "E501": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/session.py": {
+            "E501": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5c.py": {
+            "E501": 3,
+            "I001": 1,
+            "UP045": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5g.py": {
+            "C420": 1,
+            "E501": 28,
+            "I001": 1,
+            "UP035": 1,
+            "UP045": 9
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5x.py": {
+            "E501": 32,
+            "I001": 1,
+            "UP045": 11
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/send.py": {
+            "B008": 1,
+            "E501": 2,
+            "SIM102": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/step_execution.py": {
+            "E501": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/__init__.py": {
+            "E501": 1,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_builders.py": {
+            "E501": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_lzo.py": {
+            "E501": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/commands.py": {
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/compression.py": {
+            "E501": 1,
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/encoding.py": {
+            "E501": 1,
+            "I001": 1,
+            "UP006": 6,
+            "UP035": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/__init__.py": {
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py": {
+            "F821": 3,
+            "UP035": 1,
+            "UP037": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/dck.py": {
+            "E501": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/eleph_hprt_esc.py": {
+            "E501": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/eleph_tspl.py": {
+            "E501": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/funny_lx.py": {
+            "E501": 4,
+            "E731": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/legacy.py": {
+            "E501": 3,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/luck_normal_core.py": {
+            "E501": 18,
+            "UP035": 1,
+            "UP037": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5c.py": {
+            "E501": 1,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5g.py": {
+            "E501": 2,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5x.py": {
+            "E501": 1,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/family.py": {
+            "UP037": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/job.py": {
+            "E501": 3,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/packet.py": {
+            "E501": 1,
+            "UP045": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/plan.py": {
+            "E501": 3,
+            "UP037": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/steps.py": {
+            "UP037": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/types.py": {
+            "I001": 1,
+            "UP037": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/raster.py": {
+            "E501": 4,
+            "UP035": 1,
+            "UP037": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/__init__.py": {
+            "E501": 1,
+            "UP006": 5,
+            "UP035": 3,
+            "UP045": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/base.py": {
+            "E501": 1,
+            "UP006": 1,
+            "UP035": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/image.py": {
+            "UP006": 1,
+            "UP035": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/pdf.py": {
+            "UP006": 6,
+            "UP035": 2,
+            "UP045": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/text.py": {
+            "E501": 3,
+            "I001": 1,
+            "UP006": 5,
+            "UP015": 1,
+            "UP035": 1,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/fonts.py": {
+            "UP022": 1,
+            "UP045": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/renderer.py": {
+            "E501": 7,
+            "I001": 1,
+            "UP006": 5,
+            "UP035": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/template.py": {
+            "E501": 5,
+            "UP006": 2,
+            "UP035": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/reporting.py": {
+            "B008": 1,
+            "E501": 2,
+            "I001": 1,
+            "SIM102": 1,
+            "UP006": 4,
+            "UP035": 3,
+            "UP045": 26
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/ai_tools.py": {
+            "B905": 1,
+            "E501": 55,
+            "I001": 8
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/label_templates.py": {
+            "E501": 15,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/layout_engine.py": {
+            "E501": 34
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/services/prompts.py": {
+            "E501": 20
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/__init__.py": {
+            "UP045": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/base.py": {
+            "I001": 1,
+            "UP006": 3,
+            "UP035": 1,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter.py": {
+            "E501": 4,
+            "I001": 1,
+            "SIM105": 4,
+            "UP006": 5,
+            "UP035": 3,
+            "UP045": 9
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_endpoint_resolver.py": {
+            "E501": 6,
+            "SIM103": 1,
+            "UP006": 6,
+            "UP035": 4,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": {
+            "B904": 2,
+            "E501": 14,
+            "I001": 1,
+            "SIM105": 2,
+            "UP006": 4,
+            "UP035": 3,
+            "UP045": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/linux_adapter.py": {
+            "E501": 2,
+            "I001": 1,
+            "UP006": 2,
+            "UP035": 1,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/linux_cmd.py": {
+            "E501": 3,
+            "UP006": 7,
+            "UP022": 1,
+            "UP035": 3,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/macos_adapter.py": {
+            "I001": 1,
+            "UP006": 2,
+            "UP035": 1,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/macos_iobluetooth.py": {
+            "E501": 7,
+            "SIM105": 3,
+            "UP006": 11,
+            "UP035": 3,
+            "UP037": 1,
+            "UP045": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_adapter.py": {
+            "E501": 1,
+            "I001": 1,
+            "SIM105": 2,
+            "UP006": 2,
+            "UP035": 1,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_win32.py": {
+            "E501": 12,
+            "UP006": 2,
+            "UP035": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_winrt.py": {
+            "E501": 7,
+            "I001": 1,
+            "UP006": 8,
+            "UP035": 4,
+            "UP037": 1,
+            "UP045": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/backend.py": {
+            "E501": 20,
+            "I001": 1,
+            "SIM105": 2,
+            "UP006": 19,
+            "UP035": 2,
+            "UP045": 12
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/types.py": {
+            "E501": 2,
+            "UP006": 4,
+            "UP035": 3,
+            "UP037": 4,
+            "UP045": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/serial.py": {
+            "E501": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/__init__.py": {
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/base.py": {
+            "E501": 1,
+            "UP006": 1,
+            "UP035": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/client.py": {
+            "E501": 26,
+            "I001": 1,
+            "UP006": 1,
+            "UP035": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/manifest.py": {
+            "E501": 2,
+            "I001": 1,
+            "UP006": 8,
+            "UP035": 2,
+            "UP045": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/models.py": {
+            "E501": 27,
+            "I001": 1,
+            "UP035": 1,
+            "UP037": 2,
+            "UP045": 9
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/manifest.py": {
+            "E501": 1,
+            "UP006": 5,
+            "UP035": 2,
+            "UP045": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py": {
+            "B904": 1,
+            "E501": 32,
+            "E722": 3,
+            "F541": 1,
+            "I001": 1,
+            "SIM105": 3,
+            "UP006": 4,
+            "UP035": 3,
+            "UP045": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/manifest.py": {
+            "E501": 17,
+            "UP006": 5,
+            "UP035": 2,
+            "UP045": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py": {
+            "E501": 20,
+            "F401": 1,
+            "I001": 1,
+            "UP006": 1,
+            "UP035": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/manifest.py": {
+            "E501": 23,
+            "UP006": 5,
+            "UP035": 2,
+            "UP045": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/registry.py": {
+            "UP006": 10,
+            "UP035": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/utils.py": {
+            "E501": 5,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/launcher.py": {
+            "E501": 3,
+            "I001": 1,
+            "SIM105": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_backend_architecture.py": {
+            "E501": 1,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_catalog.py": {
+            "E501": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_client.py": {
+            "E501": 9,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py": {
+            "E501": 3,
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_launcher.py": {
+            "E501": 6,
+            "I001": 1,
+            "SIM117": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_luck_protocol.py": {
+            "E501": 3,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py": {
+            "B006": 1,
+            "E501": 5,
+            "E701": 1,
+            "E702": 2,
+            "F401": 2,
+            "I001": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py": {
+            "E501": 1,
+            "F401": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_printing_paper.py": {
+            "E501": 1,
+            "SIM102": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_protocol_compression.py": {
+            "E501": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_protocol_upstream_regressions.py": {
+            "E501": 3,
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_runtime_ownership.py": {
+            "I001": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tools/sync_timiniprint_catalog.py": {
+            "I001": 1
+          }
+        },
+        "severity_model": "Ruff JSON has no severity field; findings are counted by rule code and file."
+      },
+      "artifact": "ruff-expanded.json"
+    },
+    "ruff_format_check": {
+      "status": "failed",
+      "command_exit_code": 1,
+      "command": "RUFF_CACHE_DIR=/tmp/catlabel-review-20261002/baseline/ruff-format-cache ruff format --check catlabel launcher.py tools tests > /tmp/catlabel-review-20261002/baseline/ruff-format.log",
+      "version": "0.15.22",
+      "scope": [
+        "catlabel",
+        "launcher.py",
+        "tools",
+        "tests"
+      ],
+      "would_reformat_count": 83,
+      "already_formatted_count": 37,
+      "would_reformat_files": [
+        "catlabel/api/main.py",
+        "catlabel/api/routes_ai.py",
+        "catlabel/api/routes_print.py",
+        "catlabel/api/routes_project.py",
+        "catlabel/core/database.py",
+        "catlabel/core/diagnostics.py",
+        "catlabel/core/models.py",
+        "catlabel/devices/__init__.py",
+        "catlabel/printing/runtime/base.py",
+        "catlabel/printing/runtime/factory.py",
+        "catlabel/printing/runtime/funny_lx.py",
+        "catlabel/printing/runtime/luck_normal.py",
+        "catlabel/printing/runtime/session.py",
+        "catlabel/printing/runtime/v5c.py",
+        "catlabel/printing/runtime/v5g.py",
+        "catlabel/printing/runtime/v5x.py",
+        "catlabel/printing/send.py",
+        "catlabel/printing/step_execution.py",
+        "catlabel/protocol/__init__.py",
+        "catlabel/protocol/_builders.py",
+        "catlabel/protocol/_lzo.py",
+        "catlabel/protocol/compression.py",
+        "catlabel/protocol/encoding.py",
+        "catlabel/protocol/families/base.py",
+        "catlabel/protocol/families/dck.py",
+        "catlabel/protocol/families/funny_lx.py",
+        "catlabel/protocol/families/legacy.py",
+        "catlabel/protocol/families/luck_normal_core.py",
+        "catlabel/protocol/families/v5c.py",
+        "catlabel/protocol/families/v5g.py",
+        "catlabel/protocol/families/v5x.py",
+        "catlabel/protocol/job.py",
+        "catlabel/protocol/packet.py",
+        "catlabel/protocol/plan.py",
+        "catlabel/protocol/steps.py",
+        "catlabel/protocol/types.py",
+        "catlabel/raster.py",
+        "catlabel/rendering/converters/__init__.py",
+        "catlabel/rendering/converters/base.py",
+        "catlabel/rendering/converters/text.py",
+        "catlabel/rendering/renderer.py",
+        "catlabel/rendering/template.py",
+        "catlabel/reporting.py",
+        "catlabel/services/ai_tools.py",
+        "catlabel/services/label_templates.py",
+        "catlabel/services/layout_engine.py",
+        "catlabel/services/prompts.py",
+        "catlabel/transport/bluetooth/adapters/base.py",
+        "catlabel/transport/bluetooth/adapters/bleak_adapter.py",
+        "catlabel/transport/bluetooth/adapters/bleak_adapter_endpoint_resolver.py",
+        "catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py",
+        "catlabel/transport/bluetooth/adapters/linux_adapter.py",
+        "catlabel/transport/bluetooth/adapters/linux_cmd.py",
+        "catlabel/transport/bluetooth/adapters/macos_adapter.py",
+        "catlabel/transport/bluetooth/adapters/macos_iobluetooth.py",
+        "catlabel/transport/bluetooth/adapters/windows_adapter.py",
+        "catlabel/transport/bluetooth/adapters/windows_win32.py",
+        "catlabel/transport/bluetooth/adapters/windows_winrt.py",
+        "catlabel/transport/bluetooth/backend.py",
+        "catlabel/transport/bluetooth/types.py",
+        "catlabel/transport/serial.py",
+        "catlabel/vendors/base.py",
+        "catlabel/vendors/generic/client.py",
+        "catlabel/vendors/generic/manifest.py",
+        "catlabel/vendors/generic/models.py",
+        "catlabel/vendors/manifest.py",
+        "catlabel/vendors/niimbot/client.py",
+        "catlabel/vendors/niimbot/manifest.py",
+        "catlabel/vendors/phomemo/client.py",
+        "catlabel/vendors/phomemo/manifest.py",
+        "catlabel/vendors/utils.py",
+        "launcher.py",
+        "tests/test_backend_architecture.py",
+        "tests/test_generic_catalog.py",
+        "tests/test_generic_client.py",
+        "tests/test_generic_luck_models.py",
+        "tests/test_launcher.py",
+        "tests/test_luck_protocol.py",
+        "tests/test_new_protocol_families.py",
+        "tests/test_print_error_reporting.py",
+        "tests/test_printing_paper.py",
+        "tests/test_protocol_compression.py",
+        "tests/test_protocol_upstream_regressions.py"
+      ],
+      "log": "ruff-format.log"
+    },
+    "basedpyright_standard": {
+      "status": "failed",
+      "command_exit_code": 1,
+      "command": "PYTHONDONTWRITEBYTECODE=1 timeout 600s /tmp/catlabel-review-20261002/baseline/venv/bin/basedpyright --project /tmp/catlabel-review-20261002/baseline/basedpyrightconfig.json --outputjson > /tmp/catlabel-review-20261002/baseline/basedpyright.json",
+      "version": "1.40.1",
+      "basedpyright_version": "1.40.1",
+      "scope": [
+        "catlabel",
+        "launcher.py",
+        "tools",
+        "tests"
+      ],
+      "python_version": "3.11",
+      "python_platform": "Linux",
+      "type_checking_mode": "standard",
+      "diagnostics": {
+        "total": 199,
+        "rule_count": 12,
+        "file_count": 37,
+        "by_rule": {
+          "reportArgumentType": 84,
+          "reportAttributeAccessIssue": 28,
+          "reportCallIssue": 2,
+          "reportGeneralTypeIssues": 18,
+          "reportMissingImports": 7,
+          "reportOperatorIssue": 2,
+          "reportOptionalIterable": 2,
+          "reportOptionalMemberAccess": 35,
+          "reportOptionalSubscript": 6,
+          "reportPrivateImportUsage": 1,
+          "reportReturnType": 10,
+          "reportUndefinedVariable": 4
+        },
+        "by_file": {
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py": 10,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_print.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_project.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/session.py": 8,
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/send.py": 4,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_builders.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5x.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/base.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/pdf.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/text.py": 5,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/fonts.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/renderer.py": 3,
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/template.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_win32.py": 5,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_winrt.py": 8,
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/backend.py": 9,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/client.py": 9,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/models.py": 42,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py": 5,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py": 1,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/registry.py": 2,
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/utils.py": 2,
+          "/home/lliniewicz/Projects/catlabel/launcher.py": 3,
+          "/home/lliniewicz/Projects/catlabel/tests/test_backend_architecture.py": 3,
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_catalog.py": 14,
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_client.py": 13,
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py": 7,
+          "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py": 7,
+          "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py": 6,
+          "/home/lliniewicz/Projects/catlabel/tests/test_printing_paper.py": 5,
+          "/home/lliniewicz/Projects/catlabel/tests/test_runtime_ownership.py": 4,
+          "/home/lliniewicz/Projects/catlabel/tests/test_v5x_completion.py": 3
+        },
+        "by_file_by_rule": {
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py": {
+            "reportArgumentType": 2,
+            "reportCallIssue": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py": {
+            "reportArgumentType": 5,
+            "reportAttributeAccessIssue": 4,
+            "reportOptionalMemberAccess": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_print.py": {
+            "reportOptionalMemberAccess": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_project.py": {
+            "reportArgumentType": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py": {
+            "reportUndefinedVariable": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/session.py": {
+            "reportGeneralTypeIssues": 8
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/send.py": {
+            "reportArgumentType": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_builders.py": {
+            "reportReturnType": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py": {
+            "reportUndefinedVariable": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5x.py": {
+            "reportArgumentType": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/base.py": {
+            "reportOperatorIssue": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/pdf.py": {
+            "reportReturnType": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/text.py": {
+            "reportAttributeAccessIssue": 2,
+            "reportReturnType": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/fonts.py": {
+            "reportReturnType": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/renderer.py": {
+            "reportArgumentType": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/template.py": {
+            "reportMissingImports": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter.py": {
+            "reportGeneralTypeIssues": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": {
+            "reportGeneralTypeIssues": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_win32.py": {
+            "reportAttributeAccessIssue": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_winrt.py": {
+            "reportMissingImports": 6,
+            "reportOptionalMemberAccess": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/backend.py": {
+            "reportArgumentType": 3,
+            "reportOperatorIssue": 1,
+            "reportOptionalMemberAccess": 1,
+            "reportReturnType": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/client.py": {
+            "reportArgumentType": 7,
+            "reportGeneralTypeIssues": 1,
+            "reportOptionalMemberAccess": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/models.py": {
+            "reportArgumentType": 27,
+            "reportAttributeAccessIssue": 10,
+            "reportGeneralTypeIssues": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py": {
+            "reportArgumentType": 4,
+            "reportPrivateImportUsage": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py": {
+            "reportArgumentType": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/registry.py": {
+            "reportArgumentType": 1,
+            "reportAttributeAccessIssue": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/utils.py": {
+            "reportArgumentType": 1,
+            "reportAttributeAccessIssue": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/launcher.py": {
+            "reportOptionalMemberAccess": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_backend_architecture.py": {
+            "reportOptionalMemberAccess": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_catalog.py": {
+            "reportArgumentType": 1,
+            "reportCallIssue": 1,
+            "reportOptionalMemberAccess": 12
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_client.py": {
+            "reportArgumentType": 4,
+            "reportAttributeAccessIssue": 4,
+            "reportOptionalIterable": 2,
+            "reportOptionalSubscript": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py": {
+            "reportOptionalMemberAccess": 4,
+            "reportOptionalSubscript": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py": {
+            "reportArgumentType": 5,
+            "reportAttributeAccessIssue": 1,
+            "reportOptionalMemberAccess": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py": {
+            "reportArgumentType": 6
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_printing_paper.py": {
+            "reportOptionalMemberAccess": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_runtime_ownership.py": {
+            "reportArgumentType": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_v5x_completion.py": {
+            "reportArgumentType": 3
+          }
+        },
+        "by_severity": {
+          "error": 199
+        },
+        "by_file_by_severity": {
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py": {
+            "error": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py": {
+            "error": 10
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_print.py": {
+            "error": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_project.py": {
+            "error": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/session.py": {
+            "error": 8
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/printing/send.py": {
+            "error": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_builders.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py": {
+            "error": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5x.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/base.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/pdf.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/text.py": {
+            "error": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/fonts.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/renderer.py": {
+            "error": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/rendering/template.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter.py": {
+            "error": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": {
+            "error": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_win32.py": {
+            "error": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_winrt.py": {
+            "error": 8
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/backend.py": {
+            "error": 9
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/client.py": {
+            "error": 9
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/models.py": {
+            "error": 42
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py": {
+            "error": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py": {
+            "error": 1
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/registry.py": {
+            "error": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/catlabel/vendors/utils.py": {
+            "error": 2
+          },
+          "/home/lliniewicz/Projects/catlabel/launcher.py": {
+            "error": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_backend_architecture.py": {
+            "error": 3
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_catalog.py": {
+            "error": 14
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_client.py": {
+            "error": 13
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py": {
+            "error": 7
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py": {
+            "error": 7
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py": {
+            "error": 6
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_printing_paper.py": {
+            "error": 5
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_runtime_ownership.py": {
+            "error": 4
+          },
+          "/home/lliniewicz/Projects/catlabel/tests/test_v5x_completion.py": {
+            "error": 3
+          }
+        }
+      },
+      "missing_imports": {
+        "total": 7,
+        "winsdk_windows_conditional": 6,
+        "optional_headless_playwright": 1,
+        "other": 0,
+        "remaining_non_missing_import_diagnostics": 192,
+        "detail": "The six winsdk imports are conditional Windows-only dependencies. The one Playwright import is in the optional headless feature; playwright==1.63.0 was installed into the retained scratch venv after this typecheck, but the typecheck was not rerun. These missing-import diagnostics are environment gaps, not demonstrated product bugs."
+      },
+      "artifact": "basedpyright.json",
+      "configuration": "basedpyrightconfig.json"
+    },
+    "vulture": {
+      "status": "passed",
+      "command_exit_code": 0,
+      "command": "/tmp/catlabel-review-20261002/baseline/venv/bin/vulture catlabel launcher.py tools tests --min-confidence 80 > /tmp/catlabel-review-20261002/baseline/vulture.txt 2>&1",
+      "version": "2.16",
+      "scope": [
+        "catlabel",
+        "launcher.py",
+        "tools",
+        "tests"
+      ],
+      "minimum_confidence": 80,
+      "findings": 0,
+      "artifact": "vulture.txt"
+    },
+    "python_import_cycle_analysis": {
+      "status": "passed",
+      "command_exit_code": 0,
+      "commands": [
+        "/tmp/catlabel-review-20261002/baseline/venv/bin/python /tmp/catlabel-review-20261002/baseline/import_cycles.py",
+        "/tmp/catlabel-review-20261002/baseline/venv/bin/python /tmp/catlabel-review-20261002/baseline/classify_imports.py"
+      ],
+      "scope": [
+        "catlabel",
+        "launcher.py",
+        "tools",
+        "tests"
+      ],
+      "module_count": 120,
+      "edge_count": 430,
+      "full_ast_scc_count": 2,
+      "full_ast_scc_sizes": [
+        2,
+        18
+      ],
+      "import_time_scc_count": 0,
+      "classification": "Both full-AST SCCs include deferred function-local imports; filtering deferred and TYPE_CHECKING imports leaves zero import-time SCCs. One is the route-module reference back to catlabel.api.main. The other is the lazy ProtocolFamily.spec lookup into the protocol family registry. Intent is inferred from local-import placement; no explicit compatibility comment was found in inspected anchors.",
+      "limitations": [
+        "Dynamic imports, runtime plugin discovery, and imports from external packages are not resolved.",
+        "Conditional platform imports are included when they resolve to an in-scope module.",
+        "TYPE_CHECKING branches are marked as type_only but remain in the graph."
+      ],
+      "artifacts": [
+        "import-graph.json",
+        "import-graph.dot",
+        "import-cycle-classification.json"
+      ]
+    }
+  },
+  "source_evidence": [
+    {
+      "anchor": "pixi.toml:4-7",
+      "fact": "Pixi declares only win-64 and Python 3.11.*."
+    },
+    {
+      "anchor": "requirements.txt:10-11",
+      "fact": "PyObjC and winsdk dependencies are platform-marker guarded; the captured Linux typecheck lacks Windows SDK modules."
+    },
+    {
+      "anchor": "pixi.toml:23-24",
+      "fact": "Playwright is declared in the optional headless environment; it was installed after the captured typecheck."
+    },
+    {
+      "anchor": "catlabel/core/database.py:4-7",
+      "fact": "SQLite database path is relative to current working directory; tests ran with CWD in the scratch directory."
+    },
+    {
+      "anchor": "catlabel/api/routes_print.py:213-224",
+      "fact": "execute_print_jobs queries Settings before the fake client failure path."
+    },
+    {
+      "anchor": "tests/test_print_error_reporting.py:82-85",
+      "fact": "The test calls execute_print_jobs directly; it does not run app lifespan schema initialization."
+    },
+    {
+      "anchor": "catlabel/api/main.py:75-80",
+      "fact": "Normal app lifespan calls create_db_and_tables before other startup work; full app startup was not run because its font downloader accesses external hosts."
+    },
+    {
+      "anchor": "tests/test_launcher.py:64-66; launcher.py:37",
+      "fact": "The failing test passes a pathlib.Path with Windows-looking text and compares str(target_dir) to a hard-coded backslash path; Linux pathlib emits forward slashes."
+    },
+    {
+      "anchor": "catlabel/transport/bluetooth/adapters/windows_winrt.py:21-29",
+      "fact": "winsdk imports are inside a guarded Windows adapter loader."
+    },
+    {
+      "anchor": "catlabel/api/main.py:18-20; catlabel/api/routes_ai.py:396,471; catlabel/protocol/family.py:48-52",
+      "fact": "The apparent import cycles have function-local reverse imports; ProtocolFamily.spec lazily imports the family registry."
+    }
+  ],
+  "safety_and_artifacts": {
+    "printer_or_live_service_access": "none observed; tests use fake clients/backends and the suite did not invoke the server or app lifespan",
+    "repository_changes": "No product source changes from this run. Initial status was clean; final status shows untracked docs/reviews/, absent initially and preserved without inspection or modification.",
+    "scratch_database": "data/catlabel.db under the designated scratch directory; schema initialized; all 11 tables had zero rows at inspection",
+    "retained_artifacts": [
+      "venv/",
+      "uv-cache/",
+      "ruff-default-cache/",
+      "ruff-expanded-cache/",
+      "ruff-format-cache/",
+      "data/catlabel.db",
+      "tmp/",
+      "unittest.log",
+      "unittest-with-scratch-schema.log",
+      "scratch-db-init.log",
+      "deps-install.log",
+      "launcher-deps-install.log",
+      "static-tools-install.log",
+      "headless-dep-install.log",
+      "ruff-default.json",
+      "ruff-expanded.json",
+      "ruff-format.log",
+      "basedpyright.json",
+      "basedpyright-before-headless-dep.json",
+      "basedpyrightconfig.json",
+      "vulture.txt",
+      "import_cycles.py",
+      "classify_imports.py",
+      "import-graph.json",
+      "import-graph.dot",
+      "import-cycle-classification.json",
+      "make_summary.py",
+      "counts-summary.json",
+      "baseline.md"
+    ],
+    "cleanup_status": "No cleanup from this run remains outside the designated scratch directory. The unrelated untracked docs/reviews/ path was preserved. Keep the scratch venv until parent finishes separate-copy runtime inspection; scratch cache and report tree may then be removed."
+  },
+  "runtime_metadata": {
+    "model_and_effort": "not exposed by the collaboration harness; not inferred"
+  }
+}

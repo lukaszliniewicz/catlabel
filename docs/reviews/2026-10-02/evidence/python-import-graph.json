@@ -1,0 +1,5343 @@
+{
+  "repository_root": "/home/lliniewicz/Projects/catlabel",
+  "commit": "c193e93d82b13724196aa29b22d52055fd112406",
+  "scope": [
+    "catlabel",
+    "tools",
+    "tests",
+    "launcher.py"
+  ],
+  "method": "AST imports resolved against in-scope Python modules; Tarjan strongly-connected components; deferred function-body imports are marked by classify_imports.py",
+  "limitations": [
+    "Dynamic imports, runtime plugin discovery, and imports from external packages are not resolved.",
+    "Conditional platform imports are included when they resolve to an in-scope module.",
+    "TYPE_CHECKING branches are marked as type_only but remain in the graph."
+  ],
+  "module_count": 120,
+  "edge_count": 430,
+  "cycles": [
+    {
+      "modules": [
+        "catlabel.api.main",
+        "catlabel.api.routes_ai"
+      ],
+      "edges": [
+        {
+          "source": "catlabel.api.main",
+          "target": "catlabel.api.routes_ai",
+          "line": 20,
+          "import": "from catlabel.api.routes_ai import router",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.api.routes_ai",
+          "target": "catlabel.api.main",
+          "line": 396,
+          "import": "from catlabel.api.main import get_agent_context",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.api.routes_ai",
+          "target": "catlabel.api.main",
+          "line": 471,
+          "import": "from catlabel.api.main import get_agent_context",
+          "type_only": false
+        }
+      ],
+      "all_type_only": false
+    },
+    {
+      "modules": [
+        "catlabel.protocol.encoding",
+        "catlabel.protocol.families",
+        "catlabel.protocol.families.base",
+        "catlabel.protocol.families.bitmap",
+        "catlabel.protocol.families.dck",
+        "catlabel.protocol.families.eleph_hprt_esc",
+        "catlabel.protocol.families.eleph_tspl",
+        "catlabel.protocol.families.funny_lx",
+        "catlabel.protocol.families.instaprint_core",
+        "catlabel.protocol.families.legacy",
+        "catlabel.protocol.families.luck_normal",
+        "catlabel.protocol.families.luck_normal_a4",
+        "catlabel.protocol.families.luck_normal_core",
+        "catlabel.protocol.families.v5c",
+        "catlabel.protocol.families.v5g",
+        "catlabel.protocol.families.v5x",
+        "catlabel.protocol.family",
+        "catlabel.protocol.packet"
+      ],
+      "edges": [
+        {
+          "source": "catlabel.protocol.encoding",
+          "target": "catlabel.protocol.packet",
+          "line": 5,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.encoding",
+          "target": "catlabel.protocol.family",
+          "line": 6,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.family",
+          "line": 3,
+          "import": "from catlabel.protocol.family import ProtocolCommandSet, ProtocolFamily, ProtocolSpec",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.base",
+          "line": 4,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior, ProtocolDefinition, SplitWritePlan, split_prefixed_bulk_stream",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.dck",
+          "line": 11,
+          "import": "from catlabel.protocol.families.dck import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.eleph_hprt_esc",
+          "line": 12,
+          "import": "from catlabel.protocol.families.eleph_hprt_esc import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.eleph_tspl",
+          "line": 13,
+          "import": "from catlabel.protocol.families.eleph_tspl import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.instaprint_core",
+          "line": 14,
+          "import": "from catlabel.protocol.families.instaprint_core import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.funny_lx",
+          "line": 15,
+          "import": "from catlabel.protocol.families.funny_lx import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.legacy",
+          "line": 16,
+          "import": "from catlabel.protocol.families.legacy import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.luck_normal",
+          "line": 17,
+          "import": "from catlabel.protocol.families.luck_normal import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.luck_normal_a4",
+          "line": 18,
+          "import": "from catlabel.protocol.families.luck_normal_a4 import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.v5c",
+          "line": 19,
+          "import": "from catlabel.protocol.families.v5c import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.v5g",
+          "line": 20,
+          "import": "from catlabel.protocol.families.v5g import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.v5x",
+          "line": 21,
+          "import": "from catlabel.protocol.families.v5x import BEHAVIOR",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.base",
+          "target": "catlabel.protocol.family",
+          "line": 7,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.base",
+          "target": "catlabel.protocol.packet",
+          "line": 8,
+          "import": "from catlabel.protocol.packet import prefixed_packet_length",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.bitmap",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.dck",
+          "target": "catlabel.protocol.families.base",
+          "line": 5,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_hprt_esc",
+          "target": "catlabel.protocol.families.base",
+          "line": 11,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_hprt_esc",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 12,
+          "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows, packed_row_width_bytes",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_tspl",
+          "target": "catlabel.protocol.families.base",
+          "line": 10,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_tspl",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 11,
+          "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows, packed_row_width_bytes",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.funny_lx",
+          "target": "catlabel.protocol.families.base",
+          "line": 11,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.funny_lx",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 12,
+          "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.instaprint_core",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.instaprint_core",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 9,
+          "import": "from catlabel.protocol.families.bitmap import build_gs_v0_blocks",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line, rle_encode_line",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.family",
+          "line": 5,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.packet",
+          "line": 6,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal",
+          "target": "catlabel.protocol.family",
+          "line": 4,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal",
+          "target": "catlabel.protocol.families.base",
+          "line": 6,
+          "import": "from catlabel.protocol.families.base import ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal",
+          "target": "catlabel.protocol.families.luck_normal_core",
+          "line": 7,
+          "import": "from catlabel.protocol.families.luck_normal_core import LUCK_NORMAL_IMAGE_SUPPORT, LUCK_NORMAL_MODE2_DIALECT, LuckNormalFamilyRecipe, LuckNormalModeRecipe, LuckNormalPaperMode, LuckNormalVariantRecipe",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_a4",
+          "target": "catlabel.protocol.family",
+          "line": 4,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_a4",
+          "target": "catlabel.protocol.families.base",
+          "line": 6,
+          "import": "from catlabel.protocol.families.base import ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_a4",
+          "target": "catlabel.protocol.families.luck_normal_core",
+          "line": 7,
+          "import": "from catlabel.protocol.families.luck_normal_core import LUCK_NORMAL_IMAGE_SUPPORT, LuckNormalFamilyRecipe, LuckNormalModeRecipe, LuckNormalPaperMode, LuckNormalVariantRecipe",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_core",
+          "target": "catlabel.protocol.encoding",
+          "line": 9,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_core",
+          "target": "catlabel.protocol.family",
+          "line": 10,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_core",
+          "target": "catlabel.protocol.families.base",
+          "line": 14,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5c",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5c",
+          "target": "catlabel.protocol.packet",
+          "line": 5,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5c",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.family",
+          "line": 5,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.packet",
+          "line": 6,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.families.base",
+          "line": 9,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.encoding",
+          "line": 3,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.packet",
+          "line": 4,
+          "import": "from catlabel.protocol.packet import crc8_value, make_packet",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.family",
+          "line": 5,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.family",
+          "target": "catlabel.protocol.families",
+          "line": 50,
+          "import": "from catlabel.protocol.families import get_protocol_definition",
+          "type_only": false
+        },
+        {
+          "source": "catlabel.protocol.packet",
+          "target": "catlabel.protocol.family",
+          "line": 7,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false
+        }
+      ],
+      "all_type_only": false
+    }
+  ],
+  "modules": [
+    {
+      "name": "catlabel",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/__init__.py"
+    },
+    {
+      "name": "catlabel.__main__",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/__main__.py"
+    },
+    {
+      "name": "catlabel.api.main",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/api/main.py"
+    },
+    {
+      "name": "catlabel.api.routes_ai",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_ai.py"
+    },
+    {
+      "name": "catlabel.api.routes_print",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_print.py"
+    },
+    {
+      "name": "catlabel.api.routes_project",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/api/routes_project.py"
+    },
+    {
+      "name": "catlabel.core.database",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/core/database.py"
+    },
+    {
+      "name": "catlabel.core.diagnostics",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/core/diagnostics.py"
+    },
+    {
+      "name": "catlabel.core.models",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/core/models.py"
+    },
+    {
+      "name": "catlabel.devices",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/devices/__init__.py"
+    },
+    {
+      "name": "catlabel.devices.bluetooth_profiles",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/devices/bluetooth_profiles.py"
+    },
+    {
+      "name": "catlabel.printing",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/__init__.py"
+    },
+    {
+      "name": "catlabel.printing.paper",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/paper.py"
+    },
+    {
+      "name": "catlabel.printing.raster_job",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/raster_job.py"
+    },
+    {
+      "name": "catlabel.printing.runtime",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/__init__.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.base",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/base.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.factory",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/factory.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.funny_lx",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/funny_lx.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.luck_normal",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/luck_normal.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.session",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/session.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.v5c",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5c.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.v5g",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5g.py"
+    },
+    {
+      "name": "catlabel.printing.runtime.v5x",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/runtime/v5x.py"
+    },
+    {
+      "name": "catlabel.printing.send",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/send.py"
+    },
+    {
+      "name": "catlabel.printing.step_execution",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/printing/step_execution.py"
+    },
+    {
+      "name": "catlabel.protocol",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/__init__.py"
+    },
+    {
+      "name": "catlabel.protocol._builders",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_builders.py"
+    },
+    {
+      "name": "catlabel.protocol._lzo",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/_lzo.py"
+    },
+    {
+      "name": "catlabel.protocol.commands",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/commands.py"
+    },
+    {
+      "name": "catlabel.protocol.compression",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/compression.py"
+    },
+    {
+      "name": "catlabel.protocol.encoding",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/encoding.py"
+    },
+    {
+      "name": "catlabel.protocol.families",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/__init__.py"
+    },
+    {
+      "name": "catlabel.protocol.families.base",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/base.py"
+    },
+    {
+      "name": "catlabel.protocol.families.bitmap",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/bitmap.py"
+    },
+    {
+      "name": "catlabel.protocol.families.dck",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/dck.py"
+    },
+    {
+      "name": "catlabel.protocol.families.eleph_hprt_esc",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/eleph_hprt_esc.py"
+    },
+    {
+      "name": "catlabel.protocol.families.eleph_tspl",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/eleph_tspl.py"
+    },
+    {
+      "name": "catlabel.protocol.families.funny_lx",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/funny_lx.py"
+    },
+    {
+      "name": "catlabel.protocol.families.instaprint_core",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/instaprint_core.py"
+    },
+    {
+      "name": "catlabel.protocol.families.legacy",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/legacy.py"
+    },
+    {
+      "name": "catlabel.protocol.families.luck_normal",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/luck_normal.py"
+    },
+    {
+      "name": "catlabel.protocol.families.luck_normal_a4",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/luck_normal_a4.py"
+    },
+    {
+      "name": "catlabel.protocol.families.luck_normal_core",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/luck_normal_core.py"
+    },
+    {
+      "name": "catlabel.protocol.families.v5c",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5c.py"
+    },
+    {
+      "name": "catlabel.protocol.families.v5g",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5g.py"
+    },
+    {
+      "name": "catlabel.protocol.families.v5x",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/families/v5x.py"
+    },
+    {
+      "name": "catlabel.protocol.family",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/family.py"
+    },
+    {
+      "name": "catlabel.protocol.job",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/job.py"
+    },
+    {
+      "name": "catlabel.protocol.packet",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/packet.py"
+    },
+    {
+      "name": "catlabel.protocol.plan",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/plan.py"
+    },
+    {
+      "name": "catlabel.protocol.runtime",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/runtime.py"
+    },
+    {
+      "name": "catlabel.protocol.steps",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/steps.py"
+    },
+    {
+      "name": "catlabel.protocol.types",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/protocol/types.py"
+    },
+    {
+      "name": "catlabel.raster",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/raster.py"
+    },
+    {
+      "name": "catlabel.rendering",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/__init__.py"
+    },
+    {
+      "name": "catlabel.rendering.converters",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/__init__.py"
+    },
+    {
+      "name": "catlabel.rendering.converters.base",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/base.py"
+    },
+    {
+      "name": "catlabel.rendering.converters.image",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/image.py"
+    },
+    {
+      "name": "catlabel.rendering.converters.pdf",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/pdf.py"
+    },
+    {
+      "name": "catlabel.rendering.converters.text",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/converters/text.py"
+    },
+    {
+      "name": "catlabel.rendering.fonts",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/fonts.py"
+    },
+    {
+      "name": "catlabel.rendering.renderer",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/renderer.py"
+    },
+    {
+      "name": "catlabel.rendering.template",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/rendering/template.py"
+    },
+    {
+      "name": "catlabel.reporting",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/reporting.py"
+    },
+    {
+      "name": "catlabel.services.ai_tools",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/services/ai_tools.py"
+    },
+    {
+      "name": "catlabel.services.label_templates",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/services/label_templates.py"
+    },
+    {
+      "name": "catlabel.services.layout_engine",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/services/layout_engine.py"
+    },
+    {
+      "name": "catlabel.services.prompts",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/services/prompts.py"
+    },
+    {
+      "name": "catlabel.transport",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/__init__.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/__init__.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/__init__.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.base",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/base.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_endpoint_resolver.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.bleak_adapter_transport",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.linux_adapter",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/linux_adapter.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.linux_cmd",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/linux_cmd.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.macos_adapter",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/macos_adapter.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.macos_iobluetooth",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/macos_iobluetooth.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_adapter.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.windows_win32",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_win32.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.adapters.windows_winrt",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/adapters/windows_winrt.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.backend",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/backend.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.constants",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/constants.py"
+    },
+    {
+      "name": "catlabel.transport.bluetooth.types",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/bluetooth/types.py"
+    },
+    {
+      "name": "catlabel.transport.serial",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/transport/serial.py"
+    },
+    {
+      "name": "catlabel.vendors",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/__init__.py"
+    },
+    {
+      "name": "catlabel.vendors.base",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/base.py"
+    },
+    {
+      "name": "catlabel.vendors.generic",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/__init__.py"
+    },
+    {
+      "name": "catlabel.vendors.generic.client",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/client.py"
+    },
+    {
+      "name": "catlabel.vendors.generic.manifest",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/manifest.py"
+    },
+    {
+      "name": "catlabel.vendors.generic.models",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/generic/models.py"
+    },
+    {
+      "name": "catlabel.vendors.manifest",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/manifest.py"
+    },
+    {
+      "name": "catlabel.vendors.niimbot",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/__init__.py"
+    },
+    {
+      "name": "catlabel.vendors.niimbot.client",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/client.py"
+    },
+    {
+      "name": "catlabel.vendors.niimbot.manifest",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/niimbot/manifest.py"
+    },
+    {
+      "name": "catlabel.vendors.phomemo",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/__init__.py"
+    },
+    {
+      "name": "catlabel.vendors.phomemo.client",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/client.py"
+    },
+    {
+      "name": "catlabel.vendors.phomemo.manifest",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/manifest.py"
+    },
+    {
+      "name": "catlabel.vendors.phomemo.protocol",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/phomemo/protocol.py"
+    },
+    {
+      "name": "catlabel.vendors.registry",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/registry.py"
+    },
+    {
+      "name": "catlabel.vendors.utils",
+      "path": "/home/lliniewicz/Projects/catlabel/catlabel/vendors/utils.py"
+    },
+    {
+      "name": "launcher",
+      "path": "/home/lliniewicz/Projects/catlabel/launcher.py"
+    },
+    {
+      "name": "tests",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/__init__.py"
+    },
+    {
+      "name": "tests.test_backend_architecture",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_backend_architecture.py"
+    },
+    {
+      "name": "tests.test_ble_transport_session",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_ble_transport_session.py"
+    },
+    {
+      "name": "tests.test_generic_catalog",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_generic_catalog.py"
+    },
+    {
+      "name": "tests.test_generic_client",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_generic_client.py"
+    },
+    {
+      "name": "tests.test_generic_luck_models",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_generic_luck_models.py"
+    },
+    {
+      "name": "tests.test_launcher",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_launcher.py"
+    },
+    {
+      "name": "tests.test_luck_protocol",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_luck_protocol.py"
+    },
+    {
+      "name": "tests.test_new_protocol_families",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_new_protocol_families.py"
+    },
+    {
+      "name": "tests.test_print_error_reporting",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_print_error_reporting.py"
+    },
+    {
+      "name": "tests.test_printing_paper",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_printing_paper.py"
+    },
+    {
+      "name": "tests.test_protocol_compression",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_protocol_compression.py"
+    },
+    {
+      "name": "tests.test_protocol_upstream_regressions",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_protocol_upstream_regressions.py"
+    },
+    {
+      "name": "tests.test_runtime_ownership",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_runtime_ownership.py"
+    },
+    {
+      "name": "tests.test_server_startup",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_server_startup.py"
+    },
+    {
+      "name": "tests.test_v5x_completion",
+      "path": "/home/lliniewicz/Projects/catlabel/tests/test_v5x_completion.py"
+    },
+    {
+      "name": "tools.sync_timiniprint_catalog",
+      "path": "/home/lliniewicz/Projects/catlabel/tools/sync_timiniprint_catalog.py"
+    }
+  ],
+  "edges": [
+    {
+      "source": "catlabel.api.main",
+      "target": "catlabel.core.database",
+      "line": 14,
+      "import": "from catlabel.core.database import create_db_and_tables, engine",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.main",
+      "target": "catlabel.core.models",
+      "line": 15,
+      "import": "from catlabel.core.models import Font, Settings, Address, LabelPreset, Project, Category",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.main",
+      "target": "catlabel.services.layout_engine",
+      "line": 16,
+      "import": "from catlabel.services.layout_engine import TEMPLATE_METADATA",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.main",
+      "target": "catlabel.api.routes_print",
+      "line": 18,
+      "import": "from catlabel.api.routes_print import router",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.main",
+      "target": "catlabel.api.routes_project",
+      "line": 19,
+      "import": "from catlabel.api.routes_project import router",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.main",
+      "target": "catlabel.api.routes_ai",
+      "line": 20,
+      "import": "from catlabel.api.routes_ai import router",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.main",
+      "target": "catlabel.vendors",
+      "line": 23,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.models",
+      "line": 16,
+      "import": "from catlabel.core.models import AIConfig, AIConversation, AIProvider, AIModelConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.services.ai_tools",
+      "line": 17,
+      "import": "from catlabel.services.ai_tools import TOOLS_SCHEMA, execute_tool",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 182,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 225,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 295,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 309,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 317,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 326,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 350,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 363,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 377,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.api.main",
+      "line": 396,
+      "import": "from catlabel.api.main import get_agent_context",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.services.prompts",
+      "line": 397,
+      "import": "from catlabel.services.prompts import build_system_prompt",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 470,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.api.main",
+      "line": 471,
+      "import": "from catlabel.api.main import get_agent_context",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.services.prompts",
+      "line": 509,
+      "import": "from catlabel.services.prompts import build_system_prompt",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_ai",
+      "target": "catlabel.core.database",
+      "line": 585,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.core.database",
+      "line": 13,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.core.models",
+      "line": 14,
+      "import": "from catlabel.core.models import PrinterProfile, Settings",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.transport.bluetooth",
+      "line": 15,
+      "import": "from catlabel.transport.bluetooth import SppBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.rendering.template",
+      "line": 16,
+      "import": "from catlabel.rendering.template import render_via_browser",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.vendors",
+      "line": 110,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.vendors",
+      "line": 130,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.vendors",
+      "line": 148,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.vendors",
+      "line": 153,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.protocol.types",
+      "line": 183,
+      "import": "from catlabel.protocol.types import PaperMode",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_print",
+      "target": "catlabel.vendors",
+      "line": 266,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.api.routes_project",
+      "target": "catlabel.core.database",
+      "line": 7,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.api.routes_project",
+      "target": "catlabel.core.models",
+      "line": 8,
+      "import": "from catlabel.core.models import Category, Project",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.core.diagnostics",
+      "target": "catlabel.transport.bluetooth.constants",
+      "line": 8,
+      "import": "from catlabel.transport.bluetooth.constants import IS_MACOS, IS_WINDOWS",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.core.diagnostics",
+      "target": "catlabel.reporting",
+      "line": 9,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.devices",
+      "target": "catlabel.devices.bluetooth_profiles",
+      "line": 3,
+      "import": "from catlabel.devices.bluetooth_profiles import BleBulkWriteProfile, BleTransportProfile, get_ble_transport_profile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.devices.bluetooth_profiles",
+      "target": "catlabel.protocol.family",
+      "line": 5,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing",
+      "target": "catlabel.printing.raster_job",
+      "line": 1,
+      "import": "from catlabel.printing.raster_job import build_raster_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing",
+      "target": "catlabel.printing.send",
+      "line": 2,
+      "import": "from catlabel.printing.send import send_prepared_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.paper",
+      "target": "catlabel.raster",
+      "line": 3,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.raster_job",
+      "target": "catlabel.protocol._builders",
+      "line": 5,
+      "import": "from catlabel.protocol._builders import _build_job_model_from_raster_set",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.raster_job",
+      "target": "catlabel.protocol.family",
+      "line": 6,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.raster_job",
+      "target": "catlabel.protocol.job",
+      "line": 7,
+      "import": "from catlabel.protocol.job import ProtocolJob",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.raster_job",
+      "target": "catlabel.protocol.types",
+      "line": 8,
+      "import": "from catlabel.protocol.types import ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.raster_job",
+      "target": "catlabel.protocol.runtime",
+      "line": 9,
+      "import": "from catlabel.protocol.runtime import RuntimePrintCapabilities",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.raster_job",
+      "target": "catlabel.raster",
+      "line": 10,
+      "import": "from catlabel.raster import RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.raster_job",
+      "target": "catlabel.printing.paper",
+      "line": 11,
+      "import": "from catlabel.printing.paper import apply_paper_layout_to_raster_set",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime",
+      "target": "catlabel.printing.runtime.base",
+      "line": 1,
+      "import": "from catlabel.printing.runtime.base import PreparedRuntimeContext, RuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.base",
+      "target": "catlabel.protocol.runtime",
+      "line": 7,
+      "import": "from catlabel.protocol.runtime import RuntimePrintCapabilities",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.factory",
+      "target": "catlabel.protocol.family",
+      "line": 5,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.factory",
+      "target": "catlabel.printing.runtime.base",
+      "line": 6,
+      "import": "from catlabel.printing.runtime.base import RuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.factory",
+      "target": "catlabel.printing.runtime.v5c",
+      "line": 7,
+      "import": "from catlabel.printing.runtime.v5c import V5CRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.factory",
+      "target": "catlabel.printing.runtime.v5g",
+      "line": 8,
+      "import": "from catlabel.printing.runtime.v5g import V5GRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.factory",
+      "target": "catlabel.printing.runtime.v5x",
+      "line": 9,
+      "import": "from catlabel.printing.runtime.v5x import V5XRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.factory",
+      "target": "catlabel.printing.runtime.luck_normal",
+      "line": 10,
+      "import": "from catlabel.printing.runtime.luck_normal import LuckNormalRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.factory",
+      "target": "catlabel.printing.runtime.funny_lx",
+      "line": 11,
+      "import": "from catlabel.printing.runtime.funny_lx import FunnyLxRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.funny_lx",
+      "target": "catlabel.protocol.families.funny_lx",
+      "line": 9,
+      "import": "from catlabel.protocol.families.funny_lx import challenge_crc",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.funny_lx",
+      "target": "catlabel.protocol.steps",
+      "line": 10,
+      "import": "from catlabel.protocol.steps import ProtocolStep, ProtocolStepOperation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.funny_lx",
+      "target": "catlabel.printing.step_execution",
+      "line": 11,
+      "import": "from catlabel.printing.step_execution import bytes_preview, execute_protocol_step, reply_complete_for, reply_matches_for",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.funny_lx",
+      "target": "catlabel.printing.runtime.base",
+      "line": 17,
+      "import": "from catlabel.printing.runtime.base import RuntimeController, RuntimeSessionApi",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.luck_normal",
+      "target": "catlabel.protocol.runtime",
+      "line": 5,
+      "import": "from catlabel.protocol.runtime import RuntimePrintCapabilities",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.luck_normal",
+      "target": "catlabel.printing.runtime.base",
+      "line": 6,
+      "import": "from catlabel.printing.runtime.base import RuntimeController, RuntimeSessionApi",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.session",
+      "target": "catlabel.reporting",
+      "line": 5,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5c",
+      "target": "catlabel.protocol.family",
+      "line": 7,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5c",
+      "target": "catlabel.protocol.families.v5c",
+      "line": 8,
+      "import": "from catlabel.protocol.families.v5c import V5C_CONNECT_INIT_PACKET, V5C_NOTIFY_PAUSE, V5C_NOTIFY_RESUME, V5C_QUERY_STATUS_PACKET",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5c",
+      "target": "catlabel.protocol.packet",
+      "line": 14,
+      "import": "from catlabel.protocol.packet import prefixed_packet_opcode, prefixed_packet_payload",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5c",
+      "target": "catlabel.printing.runtime.base",
+      "line": 15,
+      "import": "from catlabel.printing.runtime.base import RuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5g",
+      "target": "catlabel.protocol.families.v5g",
+      "line": 7,
+      "import": "from catlabel.protocol.families.v5g import V5G_CONNECT_QUERY_PACKET, V5G_TEMPERATURE_QUERY_PACKET, decode_density_payload, encode_density_payload",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5g",
+      "target": "catlabel.protocol.family",
+      "line": 13,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5g",
+      "target": "catlabel.protocol.packet",
+      "line": 14,
+      "import": "from catlabel.protocol.packet import make_packet, prefixed_packet_opcode, prefixed_packet_payload, split_prefixed_packets",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5g",
+      "target": "catlabel.printing.runtime.base",
+      "line": 20,
+      "import": "from catlabel.printing.runtime.base import RuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5x",
+      "target": "catlabel.protocol.family",
+      "line": 8,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5x",
+      "target": "catlabel.protocol.families",
+      "line": 9,
+      "import": "from catlabel.protocol.families import split_prefixed_bulk_stream",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5x",
+      "target": "catlabel.protocol.families.v5x",
+      "line": 10,
+      "import": "from catlabel.protocol.families.v5x import V5X_CONNECT_INIT_PACKET, V5X_FINALIZE_PACKET, V5X_GET_SERIAL_PACKET, V5X_GRAY_MODE_SUFFIX, V5X_NOTIFY_PAUSE_PACKETS, V5X_NOTIFY_RESUME_PACKETS, V5X_STATUS_POLL_PACKET",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5x",
+      "target": "catlabel.protocol.packet",
+      "line": 19,
+      "import": "from catlabel.protocol.packet import make_packet, prefixed_packet_opcode, prefixed_packet_payload",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.runtime.v5x",
+      "target": "catlabel.printing.runtime.base",
+      "line": 20,
+      "import": "from catlabel.printing.runtime.base import RuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.reporting",
+      "line": 3,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.protocol",
+      "line": 4,
+      "import": "from catlabel.protocol import ProtocolJob",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.protocol",
+      "line": 4,
+      "import": "from catlabel.protocol import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.protocol",
+      "line": 4,
+      "import": "from catlabel.protocol import ProtocolStepOperation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.printing.runtime.base",
+      "line": 5,
+      "import": "from catlabel.printing.runtime.base import PreparedRuntimeContext",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.printing.runtime.factory",
+      "line": 6,
+      "import": "from catlabel.printing.runtime.factory import runtime_controller_for_device",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.printing.runtime.session",
+      "line": 7,
+      "import": "from catlabel.printing.runtime.session import RuntimeConnectionSession",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.send",
+      "target": "catlabel.printing.step_execution",
+      "line": 8,
+      "import": "from catlabel.printing.step_execution import bytes_preview, execute_protocol_step, reply_matches_for",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.step_execution",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ProtocolReplyExpectation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.step_execution",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.step_execution",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ProtocolStepOperation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.step_execution",
+      "target": "catlabel.protocol.steps",
+      "line": 7,
+      "import": "from catlabel.protocol.steps import reply_matches_expectation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.printing.step_execution",
+      "target": "catlabel.printing.runtime.base",
+      "line": 8,
+      "import": "from catlabel.printing.runtime.base import RuntimeSessionApi",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol",
+      "target": "catlabel.protocol.family",
+      "line": 1,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol",
+      "target": "catlabel.protocol.job",
+      "line": 2,
+      "import": "from catlabel.protocol.job import PrinterProtocol, ProtocolJob",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol",
+      "target": "catlabel.protocol.runtime",
+      "line": 3,
+      "import": "from catlabel.protocol.runtime import RuntimePrintCapabilities",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol",
+      "target": "catlabel.protocol.steps",
+      "line": 4,
+      "import": "from catlabel.protocol.steps import ProtocolReplyExpectation, ProtocolReplyMatcher, ProtocolStep, ProtocolStepOperation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol",
+      "target": "catlabel.protocol.types",
+      "line": 5,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.raster",
+      "line": 3,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.commands",
+      "line": 4,
+      "import": "from catlabel.protocol.commands import blackening_cmd, dev_state_cmd, energy_cmd, feed_cmd, motor_speed_cmd, paper_cmd, print_mode_cmd",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.encoding",
+      "line": 13,
+      "import": "from catlabel.protocol.encoding import build_line_packets",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.families",
+      "line": 14,
+      "import": "from catlabel.protocol.families import PrintJobRequest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.families",
+      "line": 14,
+      "import": "from catlabel.protocol.families import get_protocol_behavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.family",
+      "line": 15,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.plan",
+      "line": 16,
+      "import": "from catlabel.protocol.plan import ProtocolPlan",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.runtime",
+      "line": 17,
+      "import": "from catlabel.protocol.runtime import RuntimePrintCapabilities",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.steps",
+      "line": 18,
+      "import": "from catlabel.protocol.steps import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol._builders",
+      "target": "catlabel.protocol.types",
+      "line": 19,
+      "import": "from catlabel.protocol.types import ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.commands",
+      "target": "catlabel.protocol.families",
+      "line": 3,
+      "import": "from catlabel.protocol.families import get_protocol_behavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.commands",
+      "target": "catlabel.protocol.family",
+      "line": 4,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.commands",
+      "target": "catlabel.protocol.packet",
+      "line": 5,
+      "import": "from catlabel.protocol.packet import crc8_value, make_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.compression",
+      "target": "catlabel.protocol._lzo",
+      "line": 5,
+      "import": "from catlabel.protocol._lzo import compress_lzo1x_1",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.encoding",
+      "target": "catlabel.protocol.packet",
+      "line": 5,
+      "import": "from catlabel.protocol.packet import make_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.encoding",
+      "target": "catlabel.protocol.family",
+      "line": 6,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.encoding",
+      "target": "catlabel.protocol.types",
+      "line": 7,
+      "import": "from catlabel.protocol.types import ImageEncoding",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.family",
+      "line": 3,
+      "import": "from catlabel.protocol.family import ProtocolCommandSet, ProtocolFamily, ProtocolSpec",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.base",
+      "line": 4,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior, ProtocolDefinition, SplitWritePlan, split_prefixed_bulk_stream",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.dck",
+      "line": 11,
+      "import": "from catlabel.protocol.families.dck import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.eleph_hprt_esc",
+      "line": 12,
+      "import": "from catlabel.protocol.families.eleph_hprt_esc import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.eleph_tspl",
+      "line": 13,
+      "import": "from catlabel.protocol.families.eleph_tspl import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.instaprint_core",
+      "line": 14,
+      "import": "from catlabel.protocol.families.instaprint_core import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.funny_lx",
+      "line": 15,
+      "import": "from catlabel.protocol.families.funny_lx import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.legacy",
+      "line": 16,
+      "import": "from catlabel.protocol.families.legacy import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.luck_normal",
+      "line": 17,
+      "import": "from catlabel.protocol.families.luck_normal import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.luck_normal_a4",
+      "line": 18,
+      "import": "from catlabel.protocol.families.luck_normal_a4 import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.v5c",
+      "line": 19,
+      "import": "from catlabel.protocol.families.v5c import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.v5g",
+      "line": 20,
+      "import": "from catlabel.protocol.families.v5g import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families",
+      "target": "catlabel.protocol.families.v5x",
+      "line": 21,
+      "import": "from catlabel.protocol.families.v5x import BEHAVIOR",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.base",
+      "target": "catlabel.raster",
+      "line": 6,
+      "import": "from catlabel.raster import PixelFormat, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.base",
+      "target": "catlabel.protocol.family",
+      "line": 7,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.base",
+      "target": "catlabel.protocol.packet",
+      "line": 8,
+      "import": "from catlabel.protocol.packet import prefixed_packet_length",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.base",
+      "target": "catlabel.protocol.types",
+      "line": 9,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.base",
+      "target": "catlabel.protocol.plan",
+      "line": 13,
+      "import": "from catlabel.protocol.plan import ProtocolPlan",
+      "type_only": true,
+      "deferred_import": false,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.protocol.families.base",
+      "target": "catlabel.protocol.runtime",
+      "line": 14,
+      "import": "from catlabel.protocol.runtime import RuntimePrintCapabilities",
+      "type_only": true,
+      "deferred_import": false,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.protocol.families.bitmap",
+      "target": "catlabel.raster",
+      "line": 3,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.bitmap",
+      "target": "catlabel.protocol.encoding",
+      "line": 4,
+      "import": "from catlabel.protocol.encoding import pack_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.dck",
+      "target": "catlabel.raster",
+      "line": 3,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.dck",
+      "target": "catlabel.protocol.types",
+      "line": 4,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.dck",
+      "target": "catlabel.protocol.families.base",
+      "line": 5,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_hprt_esc",
+      "target": "catlabel.raster",
+      "line": 7,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_hprt_esc",
+      "target": "catlabel.protocol.plan",
+      "line": 8,
+      "import": "from catlabel.protocol.plan import ProtocolPlan",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_hprt_esc",
+      "target": "catlabel.protocol.steps",
+      "line": 9,
+      "import": "from catlabel.protocol.steps import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_hprt_esc",
+      "target": "catlabel.protocol.types",
+      "line": 10,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_hprt_esc",
+      "target": "catlabel.protocol.families.base",
+      "line": 11,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_hprt_esc",
+      "target": "catlabel.protocol.families.bitmap",
+      "line": 12,
+      "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows, packed_row_width_bytes",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_tspl",
+      "target": "catlabel.raster",
+      "line": 7,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_tspl",
+      "target": "catlabel.protocol.plan",
+      "line": 8,
+      "import": "from catlabel.protocol.plan import ProtocolPlan",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_tspl",
+      "target": "catlabel.protocol.types",
+      "line": 9,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_tspl",
+      "target": "catlabel.protocol.families.base",
+      "line": 10,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.eleph_tspl",
+      "target": "catlabel.protocol.families.bitmap",
+      "line": 11,
+      "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows, packed_row_width_bytes",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.funny_lx",
+      "target": "catlabel.raster",
+      "line": 7,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.funny_lx",
+      "target": "catlabel.protocol.plan",
+      "line": 8,
+      "import": "from catlabel.protocol.plan import ProtocolPlan",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.funny_lx",
+      "target": "catlabel.protocol.steps",
+      "line": 9,
+      "import": "from catlabel.protocol.steps import ProtocolReplyExpectation, ProtocolReplyMatcher, ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.funny_lx",
+      "target": "catlabel.protocol.types",
+      "line": 10,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.funny_lx",
+      "target": "catlabel.protocol.families.base",
+      "line": 11,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.funny_lx",
+      "target": "catlabel.protocol.families.bitmap",
+      "line": 12,
+      "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.instaprint_core",
+      "target": "catlabel.raster",
+      "line": 5,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.instaprint_core",
+      "target": "catlabel.protocol.plan",
+      "line": 6,
+      "import": "from catlabel.protocol.plan import ProtocolPlan",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.instaprint_core",
+      "target": "catlabel.protocol.types",
+      "line": 7,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.instaprint_core",
+      "target": "catlabel.protocol.families.base",
+      "line": 8,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.instaprint_core",
+      "target": "catlabel.protocol.families.bitmap",
+      "line": 9,
+      "import": "from catlabel.protocol.families.bitmap import build_gs_v0_blocks",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.legacy",
+      "target": "catlabel.raster",
+      "line": 3,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.legacy",
+      "target": "catlabel.protocol.encoding",
+      "line": 4,
+      "import": "from catlabel.protocol.encoding import pack_line, rle_encode_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.legacy",
+      "target": "catlabel.protocol.family",
+      "line": 5,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.legacy",
+      "target": "catlabel.protocol.packet",
+      "line": 6,
+      "import": "from catlabel.protocol.packet import make_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.legacy",
+      "target": "catlabel.protocol.types",
+      "line": 7,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.legacy",
+      "target": "catlabel.protocol.families.base",
+      "line": 8,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal",
+      "target": "catlabel.raster",
+      "line": 3,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal",
+      "target": "catlabel.protocol.family",
+      "line": 4,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal",
+      "target": "catlabel.protocol.types",
+      "line": 5,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal",
+      "target": "catlabel.protocol.families.base",
+      "line": 6,
+      "import": "from catlabel.protocol.families.base import ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal",
+      "target": "catlabel.protocol.families.luck_normal_core",
+      "line": 7,
+      "import": "from catlabel.protocol.families.luck_normal_core import LUCK_NORMAL_IMAGE_SUPPORT, LUCK_NORMAL_MODE2_DIALECT, LuckNormalFamilyRecipe, LuckNormalModeRecipe, LuckNormalPaperMode, LuckNormalVariantRecipe",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_a4",
+      "target": "catlabel.raster",
+      "line": 3,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_a4",
+      "target": "catlabel.protocol.family",
+      "line": 4,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_a4",
+      "target": "catlabel.protocol.types",
+      "line": 5,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_a4",
+      "target": "catlabel.protocol.families.base",
+      "line": 6,
+      "import": "from catlabel.protocol.families.base import ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_a4",
+      "target": "catlabel.protocol.families.luck_normal_core",
+      "line": 7,
+      "import": "from catlabel.protocol.families.luck_normal_core import LUCK_NORMAL_IMAGE_SUPPORT, LuckNormalFamilyRecipe, LuckNormalModeRecipe, LuckNormalPaperMode, LuckNormalVariantRecipe",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.raster",
+      "line": 7,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.protocol.compression",
+      "line": 8,
+      "import": "from catlabel.protocol.compression import compress_zlib_wbits_10",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.protocol.encoding",
+      "line": 9,
+      "import": "from catlabel.protocol.encoding import pack_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.protocol.family",
+      "line": 10,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.protocol.plan",
+      "line": 11,
+      "import": "from catlabel.protocol.plan import ProtocolPlan",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.protocol.steps",
+      "line": 12,
+      "import": "from catlabel.protocol.steps import ProtocolReplyExpectation, ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.protocol.types",
+      "line": 13,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.luck_normal_core",
+      "target": "catlabel.protocol.families.base",
+      "line": 14,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5c",
+      "target": "catlabel.protocol.compression",
+      "line": 3,
+      "import": "from catlabel.protocol.compression import compress_lzo1x_1",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5c",
+      "target": "catlabel.protocol.encoding",
+      "line": 4,
+      "import": "from catlabel.protocol.encoding import pack_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5c",
+      "target": "catlabel.protocol.packet",
+      "line": 5,
+      "import": "from catlabel.protocol.packet import make_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5c",
+      "target": "catlabel.raster",
+      "line": 6,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5c",
+      "target": "catlabel.protocol.types",
+      "line": 7,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5c",
+      "target": "catlabel.protocol.families.base",
+      "line": 8,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5g",
+      "target": "catlabel.protocol.compression",
+      "line": 3,
+      "import": "from catlabel.protocol.compression import compress_lzo1x_1",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5g",
+      "target": "catlabel.protocol.encoding",
+      "line": 4,
+      "import": "from catlabel.protocol.encoding import pack_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5g",
+      "target": "catlabel.protocol.family",
+      "line": 5,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5g",
+      "target": "catlabel.protocol.packet",
+      "line": 6,
+      "import": "from catlabel.protocol.packet import make_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5g",
+      "target": "catlabel.raster",
+      "line": 7,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5g",
+      "target": "catlabel.protocol.types",
+      "line": 8,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5g",
+      "target": "catlabel.protocol.families.base",
+      "line": 9,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5x",
+      "target": "catlabel.protocol.encoding",
+      "line": 3,
+      "import": "from catlabel.protocol.encoding import pack_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5x",
+      "target": "catlabel.protocol.packet",
+      "line": 4,
+      "import": "from catlabel.protocol.packet import crc8_value, make_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5x",
+      "target": "catlabel.protocol.family",
+      "line": 5,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5x",
+      "target": "catlabel.raster",
+      "line": 6,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5x",
+      "target": "catlabel.protocol.types",
+      "line": 7,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.families.v5x",
+      "target": "catlabel.protocol.families.base",
+      "line": 8,
+      "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.family",
+      "target": "catlabel.protocol.families",
+      "line": 50,
+      "import": "from catlabel.protocol.families import get_protocol_definition",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.protocol.job",
+      "target": "catlabel.raster",
+      "line": 5,
+      "import": "from catlabel.raster import PixelFormat, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.job",
+      "target": "catlabel.protocol._builders",
+      "line": 6,
+      "import": "from catlabel.protocol._builders import _build_job_model_from_raster_set",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.job",
+      "target": "catlabel.protocol.commands",
+      "line": 7,
+      "import": "from catlabel.protocol.commands import advance_paper_cmd, retract_paper_cmd",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.job",
+      "target": "catlabel.protocol.families",
+      "line": 8,
+      "import": "from catlabel.protocol.families import get_protocol_behavior",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.job",
+      "target": "catlabel.protocol.steps",
+      "line": 9,
+      "import": "from catlabel.protocol.steps import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.job",
+      "target": "catlabel.protocol.runtime",
+      "line": 10,
+      "import": "from catlabel.protocol.runtime import RuntimePrintCapabilities",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.job",
+      "target": "catlabel.protocol.types",
+      "line": 11,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.packet",
+      "target": "catlabel.protocol.family",
+      "line": 7,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.plan",
+      "target": "catlabel.protocol.steps",
+      "line": 5,
+      "import": "from catlabel.protocol.steps import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.protocol.types",
+      "target": "catlabel.raster",
+      "line": 6,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters",
+      "target": "catlabel.rendering.converters.base",
+      "line": 6,
+      "import": "from catlabel.rendering.converters.base import Page, PageConverter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters",
+      "target": "catlabel.rendering.converters.image",
+      "line": 7,
+      "import": "from catlabel.rendering.converters.image import ImageConverter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters",
+      "target": "catlabel.rendering.converters.pdf",
+      "line": 8,
+      "import": "from catlabel.rendering.converters.pdf import PdfConverter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters",
+      "target": "catlabel.rendering.converters.text",
+      "line": 9,
+      "import": "from catlabel.rendering.converters.text import TextConverter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters.image",
+      "target": "catlabel.rendering.converters.base",
+      "line": 5,
+      "import": "from catlabel.rendering.converters.base import Page, RasterConverter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters.pdf",
+      "target": "catlabel.rendering.converters.base",
+      "line": 7,
+      "import": "from catlabel.rendering.converters.base import Page, RasterConverter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters.text",
+      "target": "catlabel.rendering.converters.base",
+      "line": 7,
+      "import": "from catlabel.rendering.converters.base import Page, PageConverter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.converters.text",
+      "target": "catlabel.rendering.fonts",
+      "line": 8,
+      "import": "from catlabel.rendering.fonts import find_monospace_bold_font, load_font",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.renderer",
+      "target": "catlabel.rendering.converters.base",
+      "line": 10,
+      "import": "from catlabel.rendering.converters.base import Page",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.rendering.renderer",
+      "target": "catlabel.raster",
+      "line": 11,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.services.layout_engine",
+      "line": 361,
+      "import": "from catlabel.services.layout_engine import TEMPLATE_METADATA",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 392,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 394,
+      "import": "from catlabel.core.models import LabelPreset",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 545,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 547,
+      "import": "from catlabel.core.models import Category, Project",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 560,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 562,
+      "import": "from catlabel.core.models import Category",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 578,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 580,
+      "import": "from catlabel.core.models import Project",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 598,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 600,
+      "import": "from catlabel.core.models import Project, Category",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 623,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 625,
+      "import": "from catlabel.core.models import Project",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 645,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 647,
+      "import": "from catlabel.core.models import Project",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.database",
+      "line": 661,
+      "import": "from catlabel.core.database import engine",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.api.routes_project",
+      "line": 662,
+      "import": "from catlabel.api.routes_project import _delete_category_recursive",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.services.ai_tools",
+      "target": "catlabel.core.models",
+      "line": 664,
+      "import": "from catlabel.core.models import Category",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.transport",
+      "target": "catlabel.transport.serial",
+      "line": 1,
+      "import": "from catlabel.transport.serial import SerialTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth",
+      "target": "catlabel.transport.bluetooth.backend",
+      "line": 1,
+      "import": "from catlabel.transport.bluetooth.backend import SppBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 2,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport, ScanFailure",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters",
+      "target": "catlabel.transport.bluetooth.constants",
+      "line": 5,
+      "import": "from catlabel.transport.bluetooth.constants import IS_LINUX, IS_MACOS, IS_WINDOWS",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters",
+      "target": "catlabel.transport.bluetooth.adapters.base",
+      "line": 6,
+      "import": "from catlabel.transport.bluetooth.adapters.base import _BleBluetoothAdapter, _ClassicBluetoothAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters",
+      "target": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "line": 7,
+      "import": "from catlabel.transport.bluetooth.adapters.bleak_adapter import _BleakBleAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters",
+      "target": "catlabel.transport.bluetooth.adapters.linux_adapter",
+      "line": 8,
+      "import": "from catlabel.transport.bluetooth.adapters.linux_adapter import _LinuxClassicAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters",
+      "target": "catlabel.transport.bluetooth.adapters.macos_adapter",
+      "line": 9,
+      "import": "from catlabel.transport.bluetooth.adapters.macos_adapter import _MacClassicAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters",
+      "target": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "line": 10,
+      "import": "from catlabel.transport.bluetooth.adapters.windows_adapter import _WindowsClassicAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.base",
+      "target": "catlabel.devices",
+      "line": 5,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.base",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 6,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport, SocketLike",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.base",
+      "target": "catlabel.reporting",
+      "line": 7,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.base",
+      "line": 12,
+      "import": "from catlabel.transport.bluetooth.adapters.base import _BleBluetoothAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver",
+      "line": 13,
+      "import": "from catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver import _BleWriteEndpointResolver, _WriteSelection",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.bleak_adapter_transport",
+      "line": 14,
+      "import": "from catlabel.transport.bluetooth.adapters.bleak_adapter_transport import _BleakTransportSession",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.transport.bluetooth.constants",
+      "line": 15,
+      "import": "from catlabel.transport.bluetooth.constants import IS_MACOS",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 16,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport, SocketLike",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.reporting",
+      "line": 17,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.devices",
+      "line": 18,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter",
+      "target": "catlabel.devices",
+      "line": 18,
+      "import": "from catlabel.devices import get_ble_transport_profile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver",
+      "target": "catlabel.reporting",
+      "line": 7,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter_transport",
+      "target": "catlabel.reporting",
+      "line": 9,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter_transport",
+      "target": "catlabel.devices",
+      "line": 10,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.bleak_adapter_transport",
+      "target": "catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver",
+      "line": 11,
+      "import": "from catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver import _BleWriteEndpointResolver, _WriteSelection",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.linux_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.base",
+      "line": 6,
+      "import": "from catlabel.transport.bluetooth.adapters.base import _ClassicBluetoothAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.linux_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.linux_cmd",
+      "line": 7,
+      "import": "from catlabel.transport.bluetooth.adapters.linux_cmd import LinuxCommandTools",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.linux_adapter",
+      "target": "catlabel.devices",
+      "line": 8,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.linux_adapter",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 9,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, SocketLike",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.linux_adapter",
+      "target": "catlabel.reporting",
+      "line": 10,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.linux_cmd",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 7,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.macos_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.base",
+      "line": 5,
+      "import": "from catlabel.transport.bluetooth.adapters.base import _ClassicBluetoothAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.macos_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.macos_iobluetooth",
+      "line": 6,
+      "import": "from catlabel.transport.bluetooth.adapters.macos_iobluetooth import _MacClassicBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.macos_adapter",
+      "target": "catlabel.devices",
+      "line": 7,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.macos_adapter",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 8,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, SocketLike",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.macos_adapter",
+      "target": "catlabel.reporting",
+      "line": 9,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.macos_iobluetooth",
+      "target": "catlabel.transport.bluetooth.constants",
+      "line": 7,
+      "import": "from catlabel.transport.bluetooth.constants import SPP_UUID",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.macos_iobluetooth",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 8,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.base",
+      "line": 5,
+      "import": "from catlabel.transport.bluetooth.adapters.base import _ClassicBluetoothAdapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "target": "catlabel.devices",
+      "line": 6,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "target": "catlabel.transport.bluetooth.constants",
+      "line": 7,
+      "import": "from catlabel.transport.bluetooth.constants import RFCOMM_CHANNELS",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 8,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, SocketLike",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.windows_win32",
+      "line": 9,
+      "import": "from catlabel.transport.bluetooth.adapters.windows_win32 import _Win32ClassicBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "target": "catlabel.transport.bluetooth.adapters.windows_winrt",
+      "line": 10,
+      "import": "from catlabel.transport.bluetooth.adapters.windows_winrt import _WinRtClassicBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_adapter",
+      "target": "catlabel.reporting",
+      "line": 11,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_win32",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 5,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_winrt",
+      "target": "catlabel.transport.bluetooth.constants",
+      "line": 7,
+      "import": "from catlabel.transport.bluetooth.constants import SPP_UUID",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.adapters.windows_winrt",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 8,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.backend",
+      "target": "catlabel.transport.bluetooth.adapters",
+      "line": 10,
+      "import": "from catlabel.transport.bluetooth.adapters import _get_ble_adapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.backend",
+      "target": "catlabel.transport.bluetooth.adapters",
+      "line": 10,
+      "import": "from catlabel.transport.bluetooth.adapters import _get_classic_adapter",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.backend",
+      "target": "catlabel.transport.bluetooth.constants",
+      "line": 11,
+      "import": "from catlabel.transport.bluetooth.constants import IS_MACOS, IS_WINDOWS, RFCOMM_CHANNELS",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.backend",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 12,
+      "import": "from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport, ScanFailure, SocketLike",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.backend",
+      "target": "catlabel.reporting",
+      "line": 13,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.transport.bluetooth.types",
+      "target": "catlabel.devices",
+      "line": 7,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors",
+      "target": "catlabel.vendors.base",
+      "line": 1,
+      "import": "from catlabel.vendors.base import BasePrinterClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors",
+      "target": "catlabel.vendors.manifest",
+      "line": 2,
+      "import": "from catlabel.vendors.manifest import VendorManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors",
+      "target": "catlabel.vendors.registry",
+      "line": 3,
+      "import": "from catlabel.vendors.registry import VendorRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors",
+      "target": "catlabel.vendors.generic.manifest",
+      "line": 5,
+      "import": "from catlabel.vendors.generic.manifest import GenericManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors",
+      "target": "catlabel.vendors.niimbot.manifest",
+      "line": 6,
+      "import": "from catlabel.vendors.niimbot.manifest import NiimbotManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors",
+      "target": "catlabel.vendors.phomemo.manifest",
+      "line": 7,
+      "import": "from catlabel.vendors.phomemo.manifest import PhomemoManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic",
+      "target": "catlabel.vendors.generic.client",
+      "line": 1,
+      "import": "from catlabel.vendors.generic.client import GenericClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.vendors.base",
+      "line": 6,
+      "import": "from catlabel.vendors.base import BasePrinterClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.vendors.generic.models",
+      "line": 7,
+      "import": "from catlabel.vendors.generic.models import PrinterModelRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.reporting",
+      "line": 9,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.devices",
+      "line": 10,
+      "import": "from catlabel.devices import get_ble_transport_profile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.printing",
+      "line": 11,
+      "import": "from catlabel.printing import build_raster_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.printing",
+      "line": 11,
+      "import": "from catlabel.printing import send_prepared_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.printing.runtime.base",
+      "line": 12,
+      "import": "from catlabel.printing.runtime.base import PreparedRuntimeContext",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.printing.runtime.factory",
+      "line": 13,
+      "import": "from catlabel.printing.runtime.factory import runtime_controller_for_device",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.printing.runtime.session",
+      "line": 14,
+      "import": "from catlabel.printing.runtime.session import RuntimeConnectionSession",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.protocol.family",
+      "line": 15,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.protocol.job",
+      "line": 16,
+      "import": "from catlabel.protocol.job import ProtocolJob",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.protocol.types",
+      "line": 17,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.rendering.renderer",
+      "line": 18,
+      "import": "from catlabel.rendering.renderer import image_to_raster",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.transport.bluetooth",
+      "line": 19,
+      "import": "from catlabel.transport.bluetooth import DeviceInfo",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.transport.bluetooth",
+      "line": 19,
+      "import": "from catlabel.transport.bluetooth import SppBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 20,
+      "import": "from catlabel.transport.bluetooth.types import DeviceTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.client",
+      "target": "catlabel.raster",
+      "line": 21,
+      "import": "from catlabel.raster import PixelFormat, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.manifest",
+      "target": "catlabel.vendors.manifest",
+      "line": 3,
+      "import": "from catlabel.vendors.manifest import VendorManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.manifest",
+      "target": "catlabel.vendors.generic.client",
+      "line": 4,
+      "import": "from catlabel.vendors.generic.client import GenericClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.manifest",
+      "target": "catlabel.vendors.generic.models",
+      "line": 5,
+      "import": "from catlabel.vendors.generic.models import PrinterModelRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.manifest",
+      "target": "catlabel.vendors.utils",
+      "line": 6,
+      "import": "from catlabel.vendors.utils import _registry_models, extract_raw_hardware_info",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.manifest",
+      "target": "catlabel.protocol.families.v5g",
+      "line": 7,
+      "import": "from catlabel.protocol.families.v5g import V5G_DENSITY_MAX, V5G_DENSITY_MIN",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.models",
+      "target": "catlabel.protocol.family",
+      "line": 10,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.models",
+      "target": "catlabel.protocol.families",
+      "line": 11,
+      "import": "from catlabel.protocol.families import get_protocol_definition",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.models",
+      "target": "catlabel.protocol.types",
+      "line": 12,
+      "import": "from catlabel.protocol.types import ImageEncoding, ImagePipelineConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.generic.models",
+      "target": "catlabel.raster",
+      "line": 13,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.manifest",
+      "target": "catlabel.vendors.base",
+      "line": 4,
+      "import": "from catlabel.vendors.base import BasePrinterClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot",
+      "target": "catlabel.vendors.niimbot.client",
+      "line": 1,
+      "import": "from catlabel.vendors.niimbot.client import NiimbotClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot.client",
+      "target": "catlabel.vendors.base",
+      "line": 10,
+      "import": "from catlabel.vendors.base import BasePrinterClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot.client",
+      "target": "catlabel.protocol.encoding",
+      "line": 11,
+      "import": "from catlabel.protocol.encoding import pack_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot.client",
+      "target": "catlabel.protocol.types",
+      "line": 12,
+      "import": "from catlabel.protocol.types import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot.client",
+      "target": "catlabel.rendering.renderer",
+      "line": 13,
+      "import": "from catlabel.rendering.renderer import image_to_raster",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot.client",
+      "target": "catlabel.devices",
+      "line": 14,
+      "import": "from catlabel.devices import get_ble_transport_profile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot.manifest",
+      "target": "catlabel.vendors.manifest",
+      "line": 3,
+      "import": "from catlabel.vendors.manifest import VendorManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.niimbot.manifest",
+      "target": "catlabel.vendors.niimbot.client",
+      "line": 4,
+      "import": "from catlabel.vendors.niimbot.client import NiimbotClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo",
+      "target": "catlabel.vendors.phomemo.client",
+      "line": 1,
+      "import": "from catlabel.vendors.phomemo.client import PhomemoClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.vendors.base",
+      "line": 7,
+      "import": "from catlabel.vendors.base import BasePrinterClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.vendors.phomemo.protocol",
+      "line": 8,
+      "import": "from catlabel.vendors.phomemo.protocol import CMD, D_CMD, M02_CMD, M04_CMD, M110_CMD, P12_CMD, TSPL, density_to_heat_time",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.rendering.renderer",
+      "line": 9,
+      "import": "from catlabel.rendering.renderer import image_to_raster",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.protocol.encoding",
+      "line": 10,
+      "import": "from catlabel.protocol.encoding import pack_line",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.transport.bluetooth",
+      "line": 11,
+      "import": "from catlabel.transport.bluetooth import SppBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.transport.bluetooth",
+      "line": 11,
+      "import": "from catlabel.transport.bluetooth import DeviceInfo",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.transport.bluetooth",
+      "line": 11,
+      "import": "from catlabel.transport.bluetooth import DeviceTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.raster",
+      "line": 12,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.client",
+      "target": "catlabel.devices",
+      "line": 13,
+      "import": "from catlabel.devices import get_ble_transport_profile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.manifest",
+      "target": "catlabel.vendors.manifest",
+      "line": 3,
+      "import": "from catlabel.vendors.manifest import VendorManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.phomemo.manifest",
+      "target": "catlabel.vendors.phomemo.client",
+      "line": 4,
+      "import": "from catlabel.vendors.phomemo.client import PhomemoClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.registry",
+      "target": "catlabel.vendors.manifest",
+      "line": 3,
+      "import": "from catlabel.vendors.manifest import VendorManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "catlabel.vendors.utils",
+      "target": "catlabel.protocol.family",
+      "line": 124,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.vendors.utils",
+      "target": "catlabel.protocol.families",
+      "line": 125,
+      "import": "from catlabel.protocol.families import get_protocol_behavior",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "catlabel.vendors.utils",
+      "target": "catlabel.protocol.types",
+      "line": 140,
+      "import": "from catlabel.protocol.types import PaperMode",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "tests.test_backend_architecture",
+      "target": "catlabel.devices",
+      "line": 7,
+      "import": "from catlabel.devices import get_ble_transport_profile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_backend_architecture",
+      "target": "catlabel.protocol",
+      "line": 8,
+      "import": "from catlabel.protocol import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_backend_architecture",
+      "target": "catlabel.protocol",
+      "line": 8,
+      "import": "from catlabel.protocol import ProtocolJob",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_backend_architecture",
+      "target": "catlabel.protocol",
+      "line": 8,
+      "import": "from catlabel.protocol import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_ble_transport_session",
+      "target": "catlabel.reporting",
+      "line": 5,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_ble_transport_session",
+      "target": "catlabel.devices",
+      "line": 6,
+      "import": "from catlabel.devices import BleTransportProfile",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_ble_transport_session",
+      "target": "catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver",
+      "line": 7,
+      "import": "from catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver import _BleWriteEndpointResolver",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_ble_transport_session",
+      "target": "catlabel.transport.bluetooth.adapters.bleak_adapter_transport",
+      "line": 10,
+      "import": "from catlabel.transport.bluetooth.adapters.bleak_adapter_transport import _BleakTransportSession",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_catalog",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_catalog",
+      "target": "catlabel.vendors.generic.manifest",
+      "line": 7,
+      "import": "from catlabel.vendors.generic.manifest import GenericManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_catalog",
+      "target": "catlabel.vendors.generic.models",
+      "line": 8,
+      "import": "from catlabel.vendors.generic.models import DetectionRule, PrinterModelRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_catalog",
+      "target": "catlabel.vendors.utils",
+      "line": 9,
+      "import": "from catlabel.vendors.utils import extract_raw_hardware_info",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_client",
+      "target": "catlabel.printing.runtime.v5g",
+      "line": 9,
+      "import": "from catlabel.printing.runtime.v5g import V5GRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_client",
+      "target": "catlabel.protocol.family",
+      "line": 10,
+      "import": "from catlabel.protocol.family import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_client",
+      "target": "catlabel.protocol.packet",
+      "line": 11,
+      "import": "from catlabel.protocol.packet import prefixed_packet_opcode, prefixed_packet_payload, split_prefixed_packets",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_client",
+      "target": "catlabel.vendors.generic.client",
+      "line": 12,
+      "import": "from catlabel.vendors.generic.client import GenericClient",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_client",
+      "target": "catlabel.vendors.generic.manifest",
+      "line": 13,
+      "import": "from catlabel.vendors.generic.manifest import GenericManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_client",
+      "target": "catlabel.transport.bluetooth.types",
+      "line": 14,
+      "import": "from catlabel.transport.bluetooth.types import DeviceTransport",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_luck_models",
+      "target": "catlabel.protocol",
+      "line": 5,
+      "import": "from catlabel.protocol import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_luck_models",
+      "target": "catlabel.vendors",
+      "line": 6,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_luck_models",
+      "target": "catlabel.vendors.generic.manifest",
+      "line": 7,
+      "import": "from catlabel.vendors.generic.manifest import GenericManifest",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_luck_models",
+      "target": "catlabel.vendors.generic.models",
+      "line": 8,
+      "import": "from catlabel.vendors.generic.models import PrinterModelRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_generic_luck_models",
+      "target": "catlabel.vendors.utils",
+      "line": 9,
+      "import": "from catlabel.vendors.utils import extract_raw_hardware_info",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_launcher",
+      "target": "launcher",
+      "line": 9,
+      "import": "import launcher",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_luck_protocol",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ImageEncoding",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_luck_protocol",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ImagePipelineConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_luck_protocol",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_luck_protocol",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_luck_protocol",
+      "target": "catlabel.protocol.commands",
+      "line": 7,
+      "import": "from catlabel.protocol import commands",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_luck_protocol",
+      "target": "catlabel.protocol._builders",
+      "line": 8,
+      "import": "from catlabel.protocol._builders import _build_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_luck_protocol",
+      "target": "catlabel.raster",
+      "line": 9,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.printing",
+      "line": 5,
+      "import": "from catlabel.printing import build_raster_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.printing",
+      "line": 5,
+      "import": "from catlabel.printing import send_prepared_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.printing.runtime.base",
+      "line": 6,
+      "import": "from catlabel.printing.runtime.base import PreparedRuntimeContext",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.printing.runtime.funny_lx",
+      "line": 7,
+      "import": "from catlabel.printing.runtime.funny_lx import FunnyLxRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.printing.runtime.luck_normal",
+      "line": 8,
+      "import": "from catlabel.printing.runtime.luck_normal import LUCK_MODEL_QUERY_PACKET, LUCK_VERSION_QUERY_PACKET, LuckNormalRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.protocol",
+      "line": 13,
+      "import": "from catlabel.protocol import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.protocol",
+      "line": 13,
+      "import": "from catlabel.protocol import ProtocolJob",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.protocol",
+      "line": 13,
+      "import": "from catlabel.protocol import ProtocolReplyExpectation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.protocol",
+      "line": 13,
+      "import": "from catlabel.protocol import ProtocolStep",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.protocol",
+      "line": 13,
+      "import": "from catlabel.protocol import ProtocolStepOperation",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.protocol.families.funny_lx",
+      "line": 20,
+      "import": "from catlabel.protocol.families.funny_lx import challenge_crc",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.protocol.types",
+      "line": 21,
+      "import": "from catlabel.protocol.types import PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.raster",
+      "line": 22,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.transport.bluetooth.backend",
+      "line": 23,
+      "import": "from catlabel.transport.bluetooth.backend import _query_control_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.transport.bluetooth.adapters.windows_winrt",
+      "line": 24,
+      "import": "from catlabel.transport.bluetooth.adapters.windows_winrt import _WinRtSocket",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.vendors.generic.models",
+      "line": 25,
+      "import": "from catlabel.vendors.generic.models import PrinterModelRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.printing.runtime.session",
+      "line": 173,
+      "import": "from catlabel.printing.runtime.session import RuntimeConnectionSession",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "tests.test_new_protocol_families",
+      "target": "catlabel.reporting",
+      "line": 174,
+      "import": "from catlabel import reporting",
+      "type_only": false,
+      "deferred_import": true,
+      "import_time_edge": false
+    },
+    {
+      "source": "tests.test_print_error_reporting",
+      "target": "catlabel.transport.bluetooth.backend",
+      "line": 12,
+      "import": "from catlabel.transport.bluetooth.backend import SppBackend",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_print_error_reporting",
+      "target": "catlabel.vendors",
+      "line": 13,
+      "import": "from catlabel.vendors import VendorRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_printing_paper",
+      "target": "catlabel.printing",
+      "line": 5,
+      "import": "from catlabel.printing import build_raster_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_printing_paper",
+      "target": "catlabel.printing.paper",
+      "line": 6,
+      "import": "from catlabel.printing.paper import apply_paper_layout_to_raster_set",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_printing_paper",
+      "target": "catlabel.protocol.types",
+      "line": 7,
+      "import": "from catlabel.protocol.types import PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_printing_paper",
+      "target": "catlabel.raster",
+      "line": 8,
+      "import": "from catlabel.raster import PixelFormat, RasterBuffer, RasterSet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_printing_paper",
+      "target": "catlabel.vendors.generic.models",
+      "line": 9,
+      "import": "from catlabel.vendors.generic.models import PrinterModelRegistry",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_compression",
+      "target": "catlabel.protocol.compression",
+      "line": 6,
+      "import": "from catlabel.protocol.compression import compress_lzo1x_1",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.protocol",
+      "line": 5,
+      "import": "from catlabel.protocol import ImageEncoding",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.protocol",
+      "line": 5,
+      "import": "from catlabel.protocol import ImagePipelineConfig",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.protocol",
+      "line": 5,
+      "import": "from catlabel.protocol import PaperMode",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.protocol",
+      "line": 5,
+      "import": "from catlabel.protocol import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.protocol._builders",
+      "line": 6,
+      "import": "from catlabel.protocol._builders import _build_job",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.protocol.families.v5g",
+      "line": 7,
+      "import": "from catlabel.protocol.families.v5g import decode_density_payload, encode_density_payload",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.protocol.packet",
+      "line": 8,
+      "import": "from catlabel.protocol.packet import prefixed_packet_length",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_protocol_upstream_regressions",
+      "target": "catlabel.raster",
+      "line": 9,
+      "import": "from catlabel.raster import PixelFormat",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_runtime_ownership",
+      "target": "catlabel.printing.runtime.v5c",
+      "line": 6,
+      "import": "from catlabel.printing.runtime.v5c import V5CRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_runtime_ownership",
+      "target": "catlabel.printing.runtime.v5g",
+      "line": 7,
+      "import": "from catlabel.printing.runtime.v5g import V5GRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_runtime_ownership",
+      "target": "catlabel.printing.runtime.v5x",
+      "line": 8,
+      "import": "from catlabel.printing.runtime.v5x import V5XRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_runtime_ownership",
+      "target": "catlabel.protocol.families.v5c",
+      "line": 9,
+      "import": "from catlabel.protocol.families.v5c import V5C_CONNECT_INIT_PACKET, V5C_NOTIFY_PAUSE, V5C_NOTIFY_RESUME",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_runtime_ownership",
+      "target": "catlabel.protocol.families.v5g",
+      "line": 14,
+      "import": "from catlabel.protocol.families.v5g import V5G_CONNECT_QUERY_PACKET",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_runtime_ownership",
+      "target": "catlabel.protocol.families.v5g",
+      "line": 15,
+      "import": "from catlabel.protocol.families.v5g import V5G_TEMPERATURE_QUERY_PACKET",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_runtime_ownership",
+      "target": "catlabel.protocol.families.v5x",
+      "line": 16,
+      "import": "from catlabel.protocol.families.v5x import V5X_CONNECT_INIT_PACKET, V5X_NOTIFY_PAUSE_PACKETS, V5X_NOTIFY_RESUME_PACKETS",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_server_startup",
+      "target": "catlabel.__main__",
+      "line": 6,
+      "import": "from catlabel.__main__ import open_browser_when_ready",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_v5x_completion",
+      "target": "catlabel.printing.runtime.v5x",
+      "line": 5,
+      "import": "from catlabel.printing.runtime.v5x import V5XRuntimeController",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_v5x_completion",
+      "target": "catlabel.protocol",
+      "line": 6,
+      "import": "from catlabel.protocol import ProtocolFamily",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_v5x_completion",
+      "target": "catlabel.protocol.families.v5x",
+      "line": 7,
+      "import": "from catlabel.protocol.families.v5x import V5X_FINALIZE_PACKET",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    },
+    {
+      "source": "tests.test_v5x_completion",
+      "target": "catlabel.protocol.packet",
+      "line": 8,
+      "import": "from catlabel.protocol.packet import make_packet",
+      "type_only": false,
+      "deferred_import": false,
+      "import_time_edge": true
+    }
+  ],
+  "import_time_cycles": [],
+  "full_ast_cycles_classified": [
+    {
+      "modules": [
+        "catlabel.api.main",
+        "catlabel.api.routes_ai"
+      ],
+      "internal_edge_count": 3,
+      "all_internal_edges_deferred_or_type_only": false,
+      "edges": [
+        {
+          "source": "catlabel.api.main",
+          "target": "catlabel.api.routes_ai",
+          "line": 20,
+          "import": "from catlabel.api.routes_ai import router",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.api.routes_ai",
+          "target": "catlabel.api.main",
+          "line": 396,
+          "import": "from catlabel.api.main import get_agent_context",
+          "type_only": false,
+          "deferred_import": true,
+          "import_time_edge": false
+        },
+        {
+          "source": "catlabel.api.routes_ai",
+          "target": "catlabel.api.main",
+          "line": 471,
+          "import": "from catlabel.api.main import get_agent_context",
+          "type_only": false,
+          "deferred_import": true,
+          "import_time_edge": false
+        }
+      ]
+    },
+    {
+      "modules": [
+        "catlabel.protocol.encoding",
+        "catlabel.protocol.families",
+        "catlabel.protocol.families.base",
+        "catlabel.protocol.families.bitmap",
+        "catlabel.protocol.families.dck",
+        "catlabel.protocol.families.eleph_hprt_esc",
+        "catlabel.protocol.families.eleph_tspl",
+        "catlabel.protocol.families.funny_lx",
+        "catlabel.protocol.families.instaprint_core",
+        "catlabel.protocol.families.legacy",
+        "catlabel.protocol.families.luck_normal",
+        "catlabel.protocol.families.luck_normal_a4",
+        "catlabel.protocol.families.luck_normal_core",
+        "catlabel.protocol.families.v5c",
+        "catlabel.protocol.families.v5g",
+        "catlabel.protocol.families.v5x",
+        "catlabel.protocol.family",
+        "catlabel.protocol.packet"
+      ],
+      "internal_edge_count": 53,
+      "all_internal_edges_deferred_or_type_only": false,
+      "edges": [
+        {
+          "source": "catlabel.protocol.encoding",
+          "target": "catlabel.protocol.packet",
+          "line": 5,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.encoding",
+          "target": "catlabel.protocol.family",
+          "line": 6,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.family",
+          "line": 3,
+          "import": "from catlabel.protocol.family import ProtocolCommandSet, ProtocolFamily, ProtocolSpec",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.base",
+          "line": 4,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior, ProtocolDefinition, SplitWritePlan, split_prefixed_bulk_stream",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.dck",
+          "line": 11,
+          "import": "from catlabel.protocol.families.dck import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.eleph_hprt_esc",
+          "line": 12,
+          "import": "from catlabel.protocol.families.eleph_hprt_esc import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.eleph_tspl",
+          "line": 13,
+          "import": "from catlabel.protocol.families.eleph_tspl import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.instaprint_core",
+          "line": 14,
+          "import": "from catlabel.protocol.families.instaprint_core import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.funny_lx",
+          "line": 15,
+          "import": "from catlabel.protocol.families.funny_lx import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.legacy",
+          "line": 16,
+          "import": "from catlabel.protocol.families.legacy import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.luck_normal",
+          "line": 17,
+          "import": "from catlabel.protocol.families.luck_normal import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.luck_normal_a4",
+          "line": 18,
+          "import": "from catlabel.protocol.families.luck_normal_a4 import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.v5c",
+          "line": 19,
+          "import": "from catlabel.protocol.families.v5c import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.v5g",
+          "line": 20,
+          "import": "from catlabel.protocol.families.v5g import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families",
+          "target": "catlabel.protocol.families.v5x",
+          "line": 21,
+          "import": "from catlabel.protocol.families.v5x import BEHAVIOR",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.base",
+          "target": "catlabel.protocol.family",
+          "line": 7,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.base",
+          "target": "catlabel.protocol.packet",
+          "line": 8,
+          "import": "from catlabel.protocol.packet import prefixed_packet_length",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.bitmap",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.dck",
+          "target": "catlabel.protocol.families.base",
+          "line": 5,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_hprt_esc",
+          "target": "catlabel.protocol.families.base",
+          "line": 11,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_hprt_esc",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 12,
+          "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows, packed_row_width_bytes",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_tspl",
+          "target": "catlabel.protocol.families.base",
+          "line": 10,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.eleph_tspl",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 11,
+          "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows, packed_row_width_bytes",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.funny_lx",
+          "target": "catlabel.protocol.families.base",
+          "line": 11,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.funny_lx",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 12,
+          "import": "from catlabel.protocol.families.bitmap import pack_bw1_rows",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.instaprint_core",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.instaprint_core",
+          "target": "catlabel.protocol.families.bitmap",
+          "line": 9,
+          "import": "from catlabel.protocol.families.bitmap import build_gs_v0_blocks",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line, rle_encode_line",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.family",
+          "line": 5,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.packet",
+          "line": 6,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.legacy",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal",
+          "target": "catlabel.protocol.family",
+          "line": 4,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal",
+          "target": "catlabel.protocol.families.base",
+          "line": 6,
+          "import": "from catlabel.protocol.families.base import ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal",
+          "target": "catlabel.protocol.families.luck_normal_core",
+          "line": 7,
+          "import": "from catlabel.protocol.families.luck_normal_core import LUCK_NORMAL_IMAGE_SUPPORT, LUCK_NORMAL_MODE2_DIALECT, LuckNormalFamilyRecipe, LuckNormalModeRecipe, LuckNormalPaperMode, LuckNormalVariantRecipe",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_a4",
+          "target": "catlabel.protocol.family",
+          "line": 4,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_a4",
+          "target": "catlabel.protocol.families.base",
+          "line": 6,
+          "import": "from catlabel.protocol.families.base import ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_a4",
+          "target": "catlabel.protocol.families.luck_normal_core",
+          "line": 7,
+          "import": "from catlabel.protocol.families.luck_normal_core import LUCK_NORMAL_IMAGE_SUPPORT, LuckNormalFamilyRecipe, LuckNormalModeRecipe, LuckNormalPaperMode, LuckNormalVariantRecipe",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_core",
+          "target": "catlabel.protocol.encoding",
+          "line": 9,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_core",
+          "target": "catlabel.protocol.family",
+          "line": 10,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.luck_normal_core",
+          "target": "catlabel.protocol.families.base",
+          "line": 14,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5c",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5c",
+          "target": "catlabel.protocol.packet",
+          "line": 5,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5c",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.encoding",
+          "line": 4,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.family",
+          "line": 5,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.packet",
+          "line": 6,
+          "import": "from catlabel.protocol.packet import make_packet",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5g",
+          "target": "catlabel.protocol.families.base",
+          "line": 9,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.encoding",
+          "line": 3,
+          "import": "from catlabel.protocol.encoding import pack_line",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.packet",
+          "line": 4,
+          "import": "from catlabel.protocol.packet import crc8_value, make_packet",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.family",
+          "line": 5,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.families.v5x",
+          "target": "catlabel.protocol.families.base",
+          "line": 8,
+          "import": "from catlabel.protocol.families.base import PrintJobRequest, ProtocolBehavior",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        },
+        {
+          "source": "catlabel.protocol.family",
+          "target": "catlabel.protocol.families",
+          "line": 50,
+          "import": "from catlabel.protocol.families import get_protocol_definition",
+          "type_only": false,
+          "deferred_import": true,
+          "import_time_edge": false
+        },
+        {
+          "source": "catlabel.protocol.packet",
+          "target": "catlabel.protocol.family",
+          "line": 7,
+          "import": "from catlabel.protocol.family import ProtocolFamily",
+          "type_only": false,
+          "deferred_import": false,
+          "import_time_edge": true
+        }
+      ]
+    }
+  ]
+}
