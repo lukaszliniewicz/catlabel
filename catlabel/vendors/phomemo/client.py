@@ -1,16 +1,23 @@
 import asyncio
-from typing import List
 
-from fastapi import HTTPException
 from PIL import Image, ImageOps
 
-from ..base import BasePrinterClient
-from .protocol import CMD, D_CMD, M02_CMD, M04_CMD, M110_CMD, P12_CMD, TSPL, density_to_heat_time
-from ...rendering.renderer import image_to_raster
-from ...protocol.encoding import pack_line
-from ...transport.bluetooth import SppBackend, DeviceInfo, DeviceTransport
-from ...raster import PixelFormat
 from ...devices import get_ble_transport_profile
+from ...protocol.encoding import pack_line
+from ...raster import PixelFormat
+from ...rendering.renderer import image_to_raster
+from ...transport.bluetooth import DeviceInfo, DeviceTransport, SppBackend
+from ..base import BasePrinterClient
+from .protocol import (
+    CMD,
+    D_CMD,
+    M02_CMD,
+    M04_CMD,
+    M110_CMD,
+    P12_CMD,
+    TSPL,
+    density_to_heat_time,
+)
 
 
 class PhomemoClient(BasePrinterClient):
@@ -22,7 +29,7 @@ class PhomemoClient(BasePrinterClient):
         address = self.device.address
         if hasattr(self.device, "ble_endpoint") and self.device.ble_endpoint:
             address = self.device.ble_endpoint.address
-            
+
         attempts = [
             DeviceInfo(
                 name=getattr(self.device, "name", "Phomemo Printer"),
@@ -32,7 +39,7 @@ class PhomemoClient(BasePrinterClient):
                 ble_profile=get_ble_transport_profile("phomemo_esc"),
             )
         ]
-        
+
         max_retries = 3
         for _ in range(max_retries):
             try:
@@ -50,16 +57,31 @@ class PhomemoClient(BasePrinterClient):
     async def _send(self, data: bytes) -> None:
         await self.transport.write(data, chunk_size=128, interval_ms=20)
 
-    def _render_to_raster(self, img, rotate_cw=False, invert=False, dither=True):
+    def _render_to_raster(
+        self,
+        img: Image.Image,
+        rotate_cw: bool = False,
+        invert: bool = False,
+        dither: bool = True,
+    ) -> tuple[bytes, int, int]:
         if rotate_cw:
             img = img.rotate(-90, expand=True)
         if invert:
             img = ImageOps.invert(img.convert("L"))
         raster = image_to_raster(img, PixelFormat.BW1, dither=dither)
-        packed_bytes = pack_line(raster.pixels, lsb_first=False)
-        return packed_bytes, (raster.width + 7) // 8, raster.height
+        width_bytes = (raster.width + 7) // 8
+        packed_rows = [
+            pack_line(
+                list(raster.pixels[row * raster.width : (row + 1) * raster.width]),
+                lsb_first=False,
+            )
+            for row in range(raster.height)
+        ]
+        return b"".join(packed_rows), width_bytes, raster.height
 
-    async def print_images(self, images: List[Image.Image], split_mode: bool = False, dither: bool = True) -> None:
+    async def print_images(
+        self, images: list[Image.Image], split_mode: bool = False, dither: bool = True
+    ) -> None:
         protocol = str(self.hardware_info.get("protocol_family", "legacy")).lower()
 
         hardware_default_energy = int(self.hardware_info.get("default_energy", 6) or 6)
@@ -112,22 +134,41 @@ class PhomemoClient(BasePrinterClient):
                 )
 
             if "tspl" in protocol:
-                await self._print_tspl(working_image, width_bytes, density, dither=False)
+                await self._print_tspl(
+                    working_image, width_bytes, density, dither=False
+                )
             elif "p12" in protocol:
                 await self._print_p12(working_image, dither=dither)
             elif protocol.split("_")[-1] == "d":
                 await self._print_d_series(working_image, density, dither=dither)
             elif "m02" in protocol:
-                await self._print_m02(working_image, width_bytes, density, dither=dither)
+                await self._print_m02(
+                    working_image, width_bytes, density, dither=dither
+                )
             elif "m04" in protocol:
-                await self._print_m04(working_image, width_bytes, density, feed, dither=dither)
+                await self._print_m04(
+                    working_image, width_bytes, density, feed, dither=dither
+                )
             elif "m110" in protocol:
-                await self._print_m110(working_image, width_bytes, density, dither=dither)
+                await self._print_m110(
+                    working_image, width_bytes, density, dither=dither
+                )
             else:
-                await self._print_m_series(working_image, width_bytes, density, feed, dither=dither)
+                await self._print_m_series(
+                    working_image, width_bytes, density, feed, dither=dither
+                )
 
-    async def _print_m_series(self, img: Image.Image, width_bytes: int, density: int, feed: int, dither: bool = True) -> None:
-        raster_data, packed_width_bytes, height_lines = self._render_to_raster(img, dither=dither)
+    async def _print_m_series(
+        self,
+        img: Image.Image,
+        width_bytes: int,
+        density: int,
+        feed: int,
+        dither: bool = True,
+    ) -> None:
+        raster_data, packed_width_bytes, height_lines = self._render_to_raster(
+            img, dither=dither
+        )
         await self._send(CMD.INIT)
         await asyncio.sleep(0.1)
         await self._send(CMD.HEAT_SETTINGS(7, density_to_heat_time(density), 2))
@@ -138,8 +179,12 @@ class PhomemoClient(BasePrinterClient):
         await self._send(CMD.FEED(feed))
         await asyncio.sleep(0.5)
 
-    async def _print_m02(self, img: Image.Image, width_bytes: int, density: int, dither: bool = True) -> None:
-        raster_data, packed_width_bytes, height_lines = self._render_to_raster(img, dither=dither)
+    async def _print_m02(
+        self, img: Image.Image, width_bytes: int, density: int, dither: bool = True
+    ) -> None:
+        raster_data, packed_width_bytes, height_lines = self._render_to_raster(
+            img, dither=dither
+        )
         await self._send(M02_CMD.PREFIX)
         await asyncio.sleep(0.05)
         await self._send(CMD.INIT)
@@ -152,8 +197,17 @@ class PhomemoClient(BasePrinterClient):
         await self._send(CMD.FEED(8))
         await asyncio.sleep(0.5)
 
-    async def _print_m04(self, img: Image.Image, width_bytes: int, density: int, feed: int, dither: bool = True) -> None:
-        raster_data, packed_width_bytes, height_lines = self._render_to_raster(img, dither=dither)
+    async def _print_m04(
+        self,
+        img: Image.Image,
+        width_bytes: int,
+        density: int,
+        feed: int,
+        dither: bool = True,
+    ) -> None:
+        raster_data, packed_width_bytes, height_lines = self._render_to_raster(
+            img, dither=dither
+        )
         m04_density = round((density / 8) * 15)
         m04_heat = round(100 + (density - 1) * 50 / 3)
 
@@ -176,8 +230,12 @@ class PhomemoClient(BasePrinterClient):
 
         await asyncio.sleep(0.5)
 
-    async def _print_m110(self, img: Image.Image, width_bytes: int, density: int, dither: bool = True) -> None:
-        raster_data, packed_width_bytes, height_lines = self._render_to_raster(img, dither=dither)
+    async def _print_m110(
+        self, img: Image.Image, width_bytes: int, density: int, dither: bool = True
+    ) -> None:
+        raster_data, packed_width_bytes, height_lines = self._render_to_raster(
+            img, dither=dither
+        )
         m110_density = round(5 + density * 1.25)
 
         await self._send(M110_CMD.SPEED(5))
@@ -192,8 +250,12 @@ class PhomemoClient(BasePrinterClient):
         await self._send(M110_CMD.FOOTER)
         await asyncio.sleep(0.5)
 
-    async def _print_d_series(self, img: Image.Image, density: int, dither: bool = True) -> None:
-        raster_data, packed_width_bytes, height_lines = self._render_to_raster(img, rotate_cw=True, dither=dither)
+    async def _print_d_series(
+        self, img: Image.Image, density: int, dither: bool = True
+    ) -> None:
+        raster_data, packed_width_bytes, height_lines = self._render_to_raster(
+            img, rotate_cw=True, dither=dither
+        )
 
         await self._send(CMD.HEAT_SETTINGS(7, density_to_heat_time(density), 2))
         await asyncio.sleep(0.05)
@@ -203,7 +265,9 @@ class PhomemoClient(BasePrinterClient):
         await self._send(D_CMD.END)
 
     async def _print_p12(self, img: Image.Image, dither: bool = True) -> None:
-        raster_data, packed_width_bytes, height_lines = self._render_to_raster(img, rotate_cw=True, dither=dither)
+        raster_data, packed_width_bytes, height_lines = self._render_to_raster(
+            img, rotate_cw=True, dither=dither
+        )
 
         for packet in P12_CMD.INIT_SEQUENCE:
             await self._send(packet)
@@ -216,8 +280,12 @@ class PhomemoClient(BasePrinterClient):
         await asyncio.sleep(0.05)
         await self._send(P12_CMD.FEED)
 
-    async def _print_tspl(self, img: Image.Image, width_bytes: int, density: int, dither: bool = True) -> None:
-        raster_data, packed_width_bytes, height_lines = self._render_to_raster(img, invert=True, dither=dither)
+    async def _print_tspl(
+        self, img: Image.Image, width_bytes: int, density: int, dither: bool = True
+    ) -> None:
+        raster_data, packed_width_bytes, height_lines = self._render_to_raster(
+            img, invert=True, dither=dither
+        )
 
         label_w_mm = round(packed_width_bytes * 8 / 8)
         label_h_mm = round(height_lines / 8)

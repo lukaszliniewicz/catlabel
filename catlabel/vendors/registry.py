@@ -1,18 +1,16 @@
-from typing import Dict, List
-
 from .manifest import VendorManifest
 
 
 class VendorRegistry:
-    _plugins: Dict[str, VendorManifest] = {}
+    _plugins: dict[str, VendorManifest] = {}
 
     @classmethod
     def register(cls, plugin: VendorManifest):
         cls._plugins[plugin.vendor_id] = plugin
 
     @classmethod
-    def get_all_models(cls) -> List[Dict]:
-        models: List[Dict] = []
+    def get_all_models(cls) -> list[dict]:
+        models: list[dict] = []
         for plugin in cls._plugins.values():
             models.extend(plugin.get_supported_models())
         models.sort(
@@ -25,30 +23,46 @@ class VendorRegistry:
         return models
 
     @classmethod
-    def get_all_presets(cls) -> List[Dict]:
-        presets: List[Dict] = []
+    def get_all_presets(cls) -> list[dict]:
+        presets: list[dict] = []
         for plugin in cls._plugins.values():
             presets.extend(plugin.get_presets())
         return presets
 
     @classmethod
-    def identify_device(cls, name: str, device=None, mac: str = None) -> Dict:
+    def identify_device(cls, name: str, device=None, mac: str | None = None) -> dict:
         generic_plugin = cls._plugins.get("generic")
+        if generic_plugin is None:
+            raise KeyError("Generic vendor manifest is not registered")
 
+        matches: list[dict] = []
         for vendor_id, plugin in cls._plugins.items():
             if vendor_id == "generic":
                 continue
             info = plugin.identify_device(name, device, mac)
             if info:
-                return info
+                matches.append(info)
 
-        if generic_plugin is not None:
-            info = generic_plugin.identify_device(name, device, mac)
-            if info:
-                return info
-            return generic_plugin.get_fallback_info()
+        info = generic_plugin.identify_device(name, device, mac)
+        if info:
+            matches.append(info)
 
-        raise KeyError("Generic vendor manifest is not registered")
+        identities = {
+            (match["vendor"], match["model_id"], match.get("protocol_family"))
+            for match in matches
+        }
+        if len(identities) == 1:
+            return {**matches[0], "detection_status": "recognized"}
+        fallback = generic_plugin.get_fallback_info()
+        if identities:
+            return {
+                **fallback,
+                "detection_status": "ambiguous",
+                "detection_candidates": sorted(
+                    {f"{vendor}:{model}" for vendor, model, _family in identities}
+                ),
+            }
+        return {**fallback, "detection_status": "unknown"}
 
     @classmethod
     def get_manifest(cls, vendor_id: str) -> VendorManifest:
