@@ -2,6 +2,7 @@ import asyncio
 
 from PIL import Image, ImageOps
 
+from ...core.resource_limits import validate_image_budget
 from ...devices import get_ble_transport_profile
 from ...protocol.encoding import pack_line
 from ...raster import PixelFormat
@@ -18,6 +19,8 @@ from .protocol import (
     TSPL,
     density_to_heat_time,
 )
+
+_BASE_DPI = 203
 
 
 class PhomemoClient(BasePrinterClient):
@@ -57,6 +60,75 @@ class PhomemoClient(BasePrinterClient):
     async def _send(self, data: bytes) -> None:
         await self.transport.write(data, chunk_size=128, interval_ms=20)
 
+    @staticmethod
+    def _dpi_scaled_size(width: int, height: int, dpi: int) -> tuple[int, int]:
+        if dpi <= _BASE_DPI:
+            return width, height
+        scale_factor = dpi / float(_BASE_DPI)
+        return (
+            max(1, int(round(width * scale_factor))),
+            max(1, int(round(height * scale_factor))),
+        )
+
+    @staticmethod
+    def _head_scaled_size(
+        width: int,
+        height: int,
+        print_width_px: int,
+    ) -> tuple[int, int]:
+        ratio = print_width_px / float(width)
+        return print_width_px, max(1, int(round(height * ratio)))
+
+    @staticmethod
+    def _rotates_for_protocol(protocol: str) -> bool:
+        return "tspl" not in protocol and (
+            "p12" in protocol or protocol.split("_")[-1] == "d"
+        )
+
+    def validate_images(
+        self,
+        images: list[Image.Image],
+        split_mode: bool = False,
+    ) -> int:
+        planned_labels = super().validate_images(images, split_mode)
+        protocol = str(self.hardware_info.get("protocol_family", "legacy")).lower()
+        print_width_px = int(self.hardware_info.get("width_px", 384) or 384)
+        dpi = int(self.hardware_info.get("dpi", _BASE_DPI) or _BASE_DPI)
+        rotates = self._rotates_for_protocol(protocol)
+
+        dpi_pixels = 0
+        output_pixels = 0
+        rotated_pixels = 0
+        for image in images:
+            dpi_width, dpi_height = self._dpi_scaled_size(
+                image.width,
+                image.height,
+                dpi,
+            )
+            dpi_pixels = validate_image_budget(dpi_width, dpi_height, dpi_pixels)
+
+            output_width = dpi_width
+            output_height = dpi_height
+            if output_width > print_width_px and not split_mode:
+                output_width, output_height = self._head_scaled_size(
+                    output_width,
+                    output_height,
+                    print_width_px,
+                )
+            output_pixels = validate_image_budget(
+                output_width,
+                output_height,
+                output_pixels,
+            )
+            if rotates:
+                rotated_pixels = validate_image_budget(
+                    output_height,
+                    output_width,
+                    rotated_pixels,
+                )
+
+        return planned_labels
+
     def _render_to_raster(
         self,
         img: Image.Image,
@@ -82,6 +154,7 @@ class PhomemoClient(BasePrinterClient):
     async def print_images(
         self, images: list[Image.Image], split_mode: bool = False, dither: bool = True
     ) -> None:
+        self.validate_images(images, split_mode)
         protocol = str(self.hardware_info.get("protocol_family", "legacy")).lower()
 
         hardware_default_energy = int(self.hardware_info.get("default_energy", 6) or 6)
@@ -110,26 +183,31 @@ class PhomemoClient(BasePrinterClient):
         feed = max(0, int(resolved_feed or hardware_default_feed))
 
         print_width_px = int(self.hardware_info.get("width_px", 384) or 384)
-        dpi = int(self.hardware_info.get("dpi", 203) or 203)
+        dpi = int(self.hardware_info.get("dpi", _BASE_DPI) or _BASE_DPI)
         width_bytes = max(1, print_width_px // 8)
 
         for img in images:
             working_image = img.copy()
 
-            if dpi > 203:
-                scale_factor = dpi / 203.0
-                scaled_width = max(1, int(round(working_image.width * scale_factor)))
-                scaled_height = max(1, int(round(working_image.height * scale_factor)))
+            if dpi > _BASE_DPI:
+                scaled_width, scaled_height = self._dpi_scaled_size(
+                    working_image.width,
+                    working_image.height,
+                    dpi,
+                )
                 working_image = working_image.resize(
                     (scaled_width, scaled_height),
                     Image.Resampling.LANCZOS,
                 )
 
             if working_image.width > print_width_px and not split_mode:
-                ratio = print_width_px / float(working_image.width)
-                new_height = max(1, int(round(working_image.height * ratio)))
+                scaled_width, scaled_height = self._head_scaled_size(
+                    working_image.width,
+                    working_image.height,
+                    print_width_px,
+                )
                 working_image = working_image.resize(
-                    (print_width_px, new_height),
+                    (scaled_width, scaled_height),
                     Image.Resampling.LANCZOS,
                 )
 

@@ -1,12 +1,10 @@
 import os
 import shutil
 import urllib.request
-from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Annotated, cast
+from typing import Annotated
 
-import pypdfium2 as pdfium
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -16,6 +14,8 @@ from ..core.database import create_db_and_tables, engine
 from ..core.models import Address, Category, Font, LabelPreset, Project, Settings
 from ..core.server_security import ServerSecurity
 from ..services.layout_engine import TEMPLATE_METADATA
+from ..services.uploads import convert_uploaded_pdf, store_uploaded_font
+from .request_limits import RequestLimitsMiddleware
 from .routes_ai import migrate_legacy_provider
 from .routes_ai import router as ai_router
 from .routes_print import router as print_router
@@ -95,6 +95,7 @@ app = FastAPI(title="CatLabel Server", lifespan=lifespan)
 os.makedirs("data/fonts", exist_ok=True)
 app.mount("/fonts", StaticFiles(directory="data/fonts"), name="fonts")
 
+app.add_middleware(RequestLimitsMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(security_settings.allowed_origins),
@@ -246,21 +247,8 @@ def update_settings(new_settings: Settings):
 
 
 @app.post("/api/fonts")
-def upload_font(file: Annotated[UploadFile, File()]):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="A font filename is required.")
-    os.makedirs("data/fonts", exist_ok=True)
-    safe_filename = os.path.basename(file.filename)
-    file_path = f"data/fonts/{safe_filename}"
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    with Session(engine) as session:
-        db_font = Font(name=safe_filename, file_path=f"fonts/{safe_filename}")
-        session.add(db_font)
-        session.commit()
-        session.refresh(db_font)
-        return db_font
+async def upload_font(file: Annotated[UploadFile, File()]):
+    return await store_uploaded_font(file, engine)
 
 
 @app.get("/api/fonts")
@@ -338,37 +326,7 @@ def generate_template(req: TemplateGenerateRequest):
 
 @app.post("/api/pdf/convert")
 async def convert_pdf(file: Annotated[UploadFile, File()]):
-    import asyncio
-    import base64
-    from io import BytesIO
-
-    from fastapi import HTTPException
-
-    try:
-        pdf_bytes = await file.read()
-
-        def _process_pdf(data_bytes):
-            doc = pdfium.PdfDocument(data_bytes)
-            images = []
-            scale = 203 / 72.0
-            for i in range(len(doc)):
-                page = doc[i]
-                # PDFium documents float scale; its untyped default of 1 is
-                # inferred as int. Keep the exact DPI with a narrow boundary cast.
-                render_page = cast(Callable[[float], pdfium.PdfBitmap], page.render)
-                pil_img = render_page(scale).to_pil()
-
-                buf = BytesIO()
-                pil_img.save(buf, format="PNG")
-                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-                images.append(f"data:image/png;base64,{b64}")
-            return images
-
-        images = await asyncio.to_thread(_process_pdf, pdf_bytes)
-
-        return {"images": images}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"images": await convert_uploaded_pdf(file)}
 
 
 if os.path.exists("frontend/dist"):

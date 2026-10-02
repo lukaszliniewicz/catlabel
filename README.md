@@ -50,6 +50,8 @@ CatLabel listens on this computer only by default. See [local operation and API 
 
 See [print jobs and hardware acceptance](docs/print-jobs.md) for busy-printer responses, uncertain delivery and physical acceptance status.
 
+API clients should also follow the [resource limits](docs/resource-limits.md) and [project revision/import contract](docs/project-persistence.md).
+
 ---
 
 ## Instruction Manual & Features

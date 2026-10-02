@@ -1,7 +1,9 @@
-export const MAX_BATCH_RECORDS = 1_000;
-export const MAX_PRINT_JOBS = 500;
-export const MAX_PRINT_COPIES = 100;
-export const MAX_RENDER_PIXELS = 50_000_000;
+import resourceLimits from '../../../catlabel/data/resource_limits.json';
+
+export const MAX_BATCH_RECORDS = resourceLimits.max_batch_records;
+export const MAX_PRINT_JOBS = resourceLimits.max_print_jobs;
+export const MAX_PRINT_COPIES = resourceLimits.max_print_copies;
+export const MAX_RENDER_PIXELS = resourceLimits.max_render_pixels;
 
 const limitError = (kind, count, limit) => new RangeError(
   `${kind} would create ${count.toLocaleString()} entries; the safety limit is ${limit.toLocaleString()}.`

@@ -8,6 +8,7 @@ from contextlib import suppress
 from bleak import BleakClient
 from PIL import Image
 
+from ...core.resource_limits import validate_image_budget
 from ...devices import get_ble_transport_profile
 from ...protocol.encoding import pack_line
 from ...protocol.types import PixelFormat
@@ -510,6 +511,34 @@ class NiimbotClient(BasePrinterClient):
 
         return working.convert("RGB")
 
+    def validate_images(
+        self,
+        images: list[Image.Image],
+        split_mode: bool = False,
+    ) -> int:
+        planned_labels = super().validate_images(images, split_mode)
+        print_width_px = max(1, int(self.hardware_info.get("width_px", 120) or 120))
+
+        output_pixels = 0
+        for image in images:
+            if image.width > print_width_px:
+                output_width = print_width_px
+                output_height = max(
+                    1,
+                    int(image.height * print_width_px / float(image.width)),
+                )
+            else:
+                output_width = image.width
+                output_height = image.height
+
+            padded_width = ((output_width + 7) // 8) * 8
+            output_pixels = validate_image_budget(
+                padded_width,
+                output_height,
+                output_pixels,
+            )
+        return planned_labels
+
     def _require_positive_ack(
         self,
         request_code: int,
@@ -588,6 +617,7 @@ class NiimbotClient(BasePrinterClient):
         split_mode: bool = False,
         dither: bool = True,
     ) -> None:
+        self.validate_images(images, split_mode)
         self._begin_print()
         raster_write_attempted = False
         current_stage = "print_setup"

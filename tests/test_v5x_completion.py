@@ -6,9 +6,10 @@ from catlabel.printing.runtime.v5x import V5XRuntimeController
 from catlabel.protocol import ProtocolFamily
 from catlabel.protocol.families.v5x import V5X_FINALIZE_PACKET
 from catlabel.protocol.packet import make_packet
+from tests.runtime_session_fake import RuntimeSessionFake
 
 
-class _FakeSession:
+class _FakeSession(RuntimeSessionFake):
     def __init__(self, frames: list[bytes | None]) -> None:
         self.frames = frames
         self.debug: list[str] = []
@@ -35,7 +36,7 @@ class _FakeSession:
         self.debug.append(message)
 
 
-class _FakeSendSession:
+class _FakeSendSession(RuntimeSessionFake):
     def __init__(self) -> None:
         self.control: list[bytes] = []
         self.bulk: list[bytes] = []

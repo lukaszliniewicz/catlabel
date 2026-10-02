@@ -11,16 +11,19 @@ from catlabel.protocol.families.v5c import (
     V5C_NOTIFY_PAUSE,
     V5C_NOTIFY_RESUME,
 )
-from catlabel.protocol.families.v5g import V5G_CONNECT_QUERY_PACKET
-from catlabel.protocol.families.v5g import V5G_TEMPERATURE_QUERY_PACKET
+from catlabel.protocol.families.v5g import (
+    V5G_CONNECT_QUERY_PACKET,
+    V5G_TEMPERATURE_QUERY_PACKET,
+)
 from catlabel.protocol.families.v5x import (
     V5X_CONNECT_INIT_PACKET,
     V5X_NOTIFY_PAUSE_PACKETS,
     V5X_NOTIFY_RESUME_PACKETS,
 )
+from tests.runtime_session_fake import RuntimeSessionFake
 
 
-class _FakeSession:
+class _FakeSession(RuntimeSessionFake):
     def __init__(self) -> None:
         self.control: list[bytes] = []
         self.flow: list[tuple[bool, bytes]] = []

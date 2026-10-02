@@ -708,8 +708,12 @@ export const useStore = create(withHistory((set, get) => ({
   projects: [],
   categories: [],
   currentProjectId: null,
+  currentProjectRevision: null,
   
-  setCurrentProjectId: (id) => set({ currentProjectId: id }),
+  setCurrentProjectId: (id, revision = null) => set({
+    currentProjectId: id,
+    currentProjectRevision: Number.isInteger(revision) && revision > 0 ? revision : null
+  }),
 
   setBatchRecords: (records) => set((state) => {
     const validRecords = Array.isArray(records) && records.length ? records : [{}];
@@ -876,7 +880,8 @@ export const useStore = create(withHistory((set, get) => ({
       });
       const data = await res.json();
       if (!isObjectPayload(data) || data.id === undefined) throw new Error('The saved project response is malformed.');
-      set({ currentProjectId: data.id });
+      if (!Number.isInteger(data.revision) || data.revision < 1) throw new Error('The saved project revision is missing.');
+      set({ currentProjectId: data.id, currentProjectRevision: data.revision });
       useStore.getState().fetchProjects();
     } catch (e) {
       console.error(e);
@@ -890,25 +895,37 @@ export const useStore = create(withHistory((set, get) => ({
     const batchRecords = state.batchRecords || [{}];
     const printCopies = state.printCopies || 1;
     
-    const payload = {
-      canvas_state: {
+    const writesCanvas = newName == null && newCategoryId === undefined;
+    const expectedRevision = state.currentProjectId === id
+      ? state.currentProjectRevision
+      : state.projects.find((project) => project.id === id)?.revision;
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
+      set({ apiError: 'Reload the saved project before updating it; its revision is unavailable.' });
+      return;
+    }
+    const payload = { expected_revision: expectedRevision };
+    if (writesCanvas) payload.canvas_state = {
         width: state.canvasWidth, height: state.canvasHeight,
         isRotated: state.isRotated, canvasBorder: state.canvasBorder,
         canvasBorderThickness: thickness, splitMode: state.splitMode,
         pageLayouts: state.pageLayouts,
         items: state.items, currentPage: state.currentPage,
         batchRecords, printCopies
-      }
     };
-    if (newName) payload.name = newName;
+    if (newName != null) payload.name = newName;
     if (newCategoryId !== undefined) payload.category_id = newCategoryId;
 
     try {
-      await apiFetch(`/api/projects/${id}`, {
+      const response = await apiFetch(`/api/projects/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const data = await response.json();
+      if (!isObjectPayload(data) || !Number.isInteger(data.revision) || data.revision < 1) {
+        throw new Error('The updated project response is malformed. Reload before saving again.');
+      }
+      if (get().currentProjectId === id) set({ currentProjectRevision: data.revision });
       useStore.getState().fetchProjects();
     } catch (e) {
       console.error(e);
@@ -922,7 +939,7 @@ export const useStore = create(withHistory((set, get) => ({
       await apiFetch(`/api/projects/${id}`, { method: 'DELETE' });
       useStore.getState().fetchProjects();
       if (useStore.getState().currentProjectId === id) {
-        set({ currentProjectId: null });
+        set({ currentProjectId: null, currentProjectRevision: null });
       }
     } catch (e) {
       console.error(e);
@@ -935,6 +952,9 @@ export const useStore = create(withHistory((set, get) => ({
       ...buildCanvasDocumentPatch(canvasState, state),
       ...(options.currentProjectId !== undefined
         ? { currentProjectId: options.currentProjectId }
+        : {}),
+      ...(options.currentProjectRevision !== undefined
+        ? { currentProjectRevision: options.currentProjectRevision }
         : {})
     }),
     false,
@@ -944,6 +964,7 @@ export const useStore = create(withHistory((set, get) => ({
   loadProject: (proj) => {
     get().hydrateCanvasState(proj.canvas_state || {}, {
       currentProjectId: proj.id,
+      currentProjectRevision: proj.revision ?? null,
       resetHistory: true
     });
   },
@@ -1392,6 +1413,7 @@ export const useStore = create(withHistory((set, get) => ({
     currentPage: 0, 
     selectedPagesForPrint: [], 
     currentProjectId: null, 
+    currentProjectRevision: null,
     pageLayouts: [{ pageIndex: 0, htmlContent: '', activeTemplate: null }]
     // We specifically omitted history wipes here so the user can Undo a canvas clear!
   }),

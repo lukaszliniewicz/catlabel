@@ -5,19 +5,18 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from ...protocol.runtime import RuntimePrintCapabilities
+from ...protocol.steps import ProtocolStep
 
 
 @dataclass(frozen=True)
 class PreparedRuntimeContext:
     """Live runtime state prepared before rendering and job construction."""
 
-    runtime_controller: "RuntimeController | None" = None
+    runtime_controller: RuntimeController | None = None
     capabilities: RuntimePrintCapabilities | None = None
 
 
 class RuntimeSessionApi(Protocol):
-    notify_started: bool
-
     def report_debug(self, message: str) -> None: ...
 
     def report_warning(self, *, short: str, detail: str) -> None: ...
@@ -36,7 +35,9 @@ class RuntimeSessionApi(Protocol):
 
     def set_flow_paused(self, paused: bool, *, payload: bytes = b"") -> None: ...
 
-    async def send_control_packet(self, packet: bytes, *, timeout: float = 1.0) -> bool: ...
+    async def send_control_packet(
+        self, packet: bytes, *, timeout: float = 1.0
+    ) -> bool: ...
 
     async def query_control_packet(
         self,
@@ -46,7 +47,9 @@ class RuntimeSessionApi(Protocol):
         reply_complete: Callable[[bytes], bool] | None = None,
     ) -> bytes | None: ...
 
-    async def send_standard_payload(self, data: bytes, *, timeout: float = 1.0) -> bool: ...
+    async def send_standard_payload(self, data: bytes) -> object:
+        """Payload sends have no common timeout or acknowledgment semantics."""
+        ...
 
     async def send_bulk_payload(self, data: bytes, *, timeout: float = 1.0) -> bool: ...
 
@@ -70,8 +73,14 @@ class RuntimeSessionApi(Protocol):
     ) -> bytes | None: ...
 
 
+class NotificationRuntimeSessionApi(RuntimeSessionApi, Protocol):
+    """Runtime methods that require a notification subscription."""
+
+    notify_started: bool
+
+
 class RuntimeController:
-    def adopt_previous(self, previous: "RuntimeController | None") -> None:
+    def adopt_previous(self, previous: RuntimeController | None) -> None:
         return None
 
     async def initialize_connection(
@@ -83,7 +92,9 @@ class RuntimeController:
     ) -> None:
         return None
 
-    async def after_initialize(self, session: RuntimeSessionApi, *, timeout: float) -> None:
+    async def after_initialize(
+        self, session: NotificationRuntimeSessionApi, *, timeout: float
+    ) -> None:
         return None
 
     async def stop(self, session: RuntimeSessionApi) -> None:
@@ -111,7 +122,7 @@ class RuntimeController:
     async def send_protocol_steps(
         self,
         session: RuntimeSessionApi,
-        steps: tuple["ProtocolStep", ...],
+        steps: tuple[ProtocolStep, ...],
         *,
         timeout: float,
     ) -> bool:
@@ -130,7 +141,9 @@ class RuntimeController:
     def runtime_capabilities(self) -> RuntimePrintCapabilities | None:
         return None
 
-    def prepare_standard_payload(self, session: RuntimeSessionApi, data: bytes) -> bytes:
+    def prepare_standard_payload(
+        self, session: RuntimeSessionApi, data: bytes
+    ) -> bytes:
         return data
 
     def on_standard_send_started(self, session: RuntimeSessionApi) -> None:
@@ -139,7 +152,9 @@ class RuntimeController:
     def on_standard_send_finished(self, session: RuntimeSessionApi) -> None:
         return None
 
-    def track_outgoing_query_status(self, session: RuntimeSessionApi, data: bytes) -> None:
+    def track_outgoing_query_status(
+        self, session: RuntimeSessionApi, data: bytes
+    ) -> None:
         return None
 
     def handle_notification(self, session: RuntimeSessionApi, payload: bytes) -> None:
@@ -151,4 +166,6 @@ class RuntimeController:
     def debug_update(self, **changes: Any) -> None:
         if changes:
             unknown = ", ".join(sorted(changes.keys()))
-            raise KeyError(f"Runtime controller does not support debug_update fields: {unknown}")
+            raise KeyError(
+                f"Runtime controller does not support debug_update fields: {unknown}"
+            )

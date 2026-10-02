@@ -3,6 +3,7 @@ from __future__ import annotations
 import threading
 import unittest
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
@@ -11,6 +12,7 @@ from sqlmodel import SQLModel, create_engine
 
 from catlabel.api import routes_print
 from catlabel.transport.bluetooth.backend import SppBackend
+from catlabel.transport.bluetooth.types import DeviceInfo
 from catlabel.vendors import VendorRegistry
 
 
@@ -33,11 +35,16 @@ class _ThreadRecordingBackend(SppBackend):
 
 
 class _FakeClient:
-    def __init__(self, *, connected=True, connection_error=None, print_error=None) -> None:
+    def __init__(
+        self, *, connected=True, connection_error=None, print_error=None
+    ) -> None:
         self.connected = connected
         self.last_error = connection_error
         self.print_error = print_error
         self.disconnect = AsyncMock()
+
+    def validate_images(self, images, split_mode=False) -> int:
+        return len(images)
 
     async def connect(self) -> bool:
         return self.connected
@@ -51,7 +58,9 @@ class BluetoothThreadAffinityTests(unittest.IsolatedAsyncioTestCase):
     async def test_connection_io_and_disconnect_stay_on_one_worker_thread(self) -> None:
         backend = _ThreadRecordingBackend()
         try:
-            await backend.connect_attempts([object()])
+            await backend.connect_attempts(
+                [DeviceInfo(name="Fixture", address="fixture", paired=True)]
+            )
             await backend.write(b"test", chunk_size=4)
             await backend.disconnect()
         finally:
@@ -110,17 +119,21 @@ class PrintErrorReportingTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(exc.status_code, 503)
-        self.assertEqual(exc.detail["stage"], "connect")
-        self.assertEqual(exc.detail["error"], "Access is denied")
-        self.assertRegex(exc.detail["error_id"], r"^[0-9a-f]{8}$")
+        assert isinstance(exc.detail, dict)
+        detail = cast(dict[str, Any], exc.detail)
+        self.assertEqual(detail["stage"], "connect")
+        self.assertEqual(detail["error"], "Access is denied")
+        self.assertRegex(detail["error_id"], r"^[0-9a-f]{8}$")
 
     async def test_print_failure_is_structured_and_disconnects(self) -> None:
         client = _FakeClient(print_error=RuntimeError("printer rejected start command"))
         exc = await self._execute_with_client(client)
 
         self.assertEqual(exc.status_code, 500)
-        self.assertEqual(exc.detail["stage"], "print")
-        self.assertEqual(exc.detail["error"], "printer rejected start command")
+        assert isinstance(exc.detail, dict)
+        detail = cast(dict[str, Any], exc.detail)
+        self.assertEqual(detail["stage"], "print")
+        self.assertEqual(detail["error"], "printer rejected start command")
         client.disconnect.assert_awaited_once()
 
 

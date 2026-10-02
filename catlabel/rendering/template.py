@@ -1,10 +1,10 @@
-import base64
 import os
 import threading
-from io import BytesIO
-from typing import List
 
 from PIL import Image
+
+from ..core.resource_limits import ResourceLimitError, validate_render_budget
+from .image_payload import decode_image_payloads
 
 _browser_lock = threading.Lock()
 _playwright_context = None
@@ -29,7 +29,7 @@ def _get_browser():
         return _browser_instance
 
 
-def _headless_url_candidates() -> List[str]:
+def _headless_url_candidates() -> list[str]:
     port = os.environ.get("CATLABEL_PORT", "8000")
     return [
         f"http://127.0.0.1:{port}/index.html?mode=headless",
@@ -38,17 +38,18 @@ def _headless_url_candidates() -> List[str]:
 
 
 def _decode_browser_image(data_url_or_b64: str) -> Image.Image:
-    image_data = data_url_or_b64 or ""
-    if "," in image_data:
-        image_data = image_data.split(",", 1)[1]
-    decoded = base64.b64decode(image_data)
-    return Image.open(BytesIO(decoded)).convert("RGB")
+    return decode_image_payloads([data_url_or_b64])[0]
 
 
-def render_via_browser(canvas_state: dict, variables_collection: list, copies: int = 1) -> List[Image.Image]:
+def render_via_browser(
+    canvas_state: dict, variables_collection: list, copies: int = 1
+) -> list[Image.Image]:
     """
     Uses a persistent browser renderer as the source of truth for final print images.
     """
+    expected_jobs, _ = validate_render_budget(
+        canvas_state or {}, records=len(variables_collection or [{}]), copies=copies
+    )
     payload = {
         "canvas_state": canvas_state or {},
         "variables_collection": variables_collection or [{}],
@@ -71,7 +72,9 @@ def render_via_browser(canvas_state: dict, variables_collection: list, copies: i
                     last_error = exc
 
             if last_error is not None:
-                raise RuntimeError("Unable to load the headless frontend renderer.") from last_error
+                raise RuntimeError(
+                    "Unable to load the headless frontend renderer."
+                ) from last_error
 
             page.evaluate(
                 "(payload) => { window.__INJECTED_PAYLOAD__ = payload; }",
@@ -87,24 +90,26 @@ def render_via_browser(canvas_state: dict, variables_collection: list, copies: i
             context.close()
     except Exception as exc:
         error_text = str(exc).lower()
-        if "executable doesn't exist" in error_text or "playwright install" in error_text:
+        if (
+            "executable doesn't exist" in error_text
+            or "playwright install" in error_text
+        ):
             raise RuntimeError(
                 "Chromium binaries are missing. To enable API printing, run: "
                 "playwright install chromium"
             ) from exc
         raise RuntimeError(f"Headless rendering failed: {exc}") from exc
 
-    images = []
-    for data in rendered_images:
-        image = _decode_browser_image(data)
-        if canvas_state.get("isRotated"):
-            image = image.rotate(90, expand=True)
-        images.append(image)
-
-    return images
+    if not isinstance(rendered_images, list) or len(rendered_images) != expected_jobs:
+        raise ResourceLimitError("The renderer returned an unexpected label count.")
+    return decode_image_payloads(
+        rendered_images, rotate=bool(canvas_state.get("isRotated"))
+    )
 
 
-def render_template(template_data: dict, variables: dict, default_font: str = "RobotoCondensed.ttf") -> Image.Image:
+def render_template(
+    template_data: dict, variables: dict, default_font: str = "RobotoCondensed.ttf"
+) -> Image.Image:
     """
     Backwards-compatible wrapper for any remaining code paths that still expect
     a single rendered PIL image from the old API.

@@ -1,132 +1,6 @@
 {
   "ruff": [
     {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP035",
-      "message": "`typing.Dict` is deprecated, use `dict` instead",
-      "line": 2,
-      "column": 1
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 14,
-      "column": 19
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 15,
-      "column": 18
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 18,
-      "column": 11
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 19,
-      "column": 19
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 19,
-      "column": 28
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 20,
-      "column": 18
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 24,
-      "column": 16
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 27,
-      "column": 11
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 28,
-      "column": 16
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 161,
-      "column": 31
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 194,
-      "column": 36
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 199,
-      "column": 41
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "B008",
-      "message": "Do not perform function call `File` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
-      "line": 222,
-      "column": 48
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 222,
-      "column": 79
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "B904",
-      "message": "Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling",
-      "line": 234,
-      "column": 9
-    },
-    {
-      "path": "catlabel/core/database.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
       "path": "catlabel/core/diagnostics.py",
       "rule": "I001",
       "message": "Import block is un-sorted or un-formatted",
@@ -181,34 +55,6 @@
       "message": "Import block is un-sorted or un-formatted",
       "line": 1,
       "column": 1
-    },
-    {
-      "path": "catlabel/printing/runtime/base.py",
-      "rule": "UP037",
-      "message": "Remove quotes from type annotation",
-      "line": 14,
-      "column": 25
-    },
-    {
-      "path": "catlabel/printing/runtime/base.py",
-      "rule": "UP037",
-      "message": "Remove quotes from type annotation",
-      "line": 74,
-      "column": 40
-    },
-    {
-      "path": "catlabel/printing/runtime/base.py",
-      "rule": "UP037",
-      "message": "Remove quotes from type annotation",
-      "line": 114,
-      "column": 22
-    },
-    {
-      "path": "catlabel/printing/runtime/base.py",
-      "rule": "F821",
-      "message": "Undefined name `ProtocolStep`",
-      "line": 114,
-      "column": 23
     },
     {
       "path": "catlabel/printing/runtime/factory.py",
@@ -1149,27 +995,6 @@
       "column": 18
     },
     {
-      "path": "catlabel/rendering/template.py",
-      "rule": "UP035",
-      "message": "`typing.List` is deprecated, use `list` instead",
-      "line": 5,
-      "column": 1
-    },
-    {
-      "path": "catlabel/rendering/template.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 32,
-      "column": 35
-    },
-    {
-      "path": "catlabel/rendering/template.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 48,
-      "column": 92
-    },
-    {
       "path": "catlabel/reporting.py",
       "rule": "I001",
       "message": "Import block is un-sorted or un-formatted",
@@ -1420,69 +1245,6 @@
       "message": "Use `dict` instead of `Dict` for type annotation",
       "line": 211,
       "column": 14
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 392,
-      "column": 5
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "B905",
-      "message": "`zip()` without an explicit `strict=` parameter",
-      "line": 535,
-      "column": 29
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 545,
-      "column": 5
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 560,
-      "column": 5
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 578,
-      "column": 5
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 598,
-      "column": 5
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 623,
-      "column": 5
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 645,
-      "column": 5
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 661,
-      "column": 5
     },
     {
       "path": "catlabel/services/label_templates.py",
@@ -2871,48 +2633,6 @@
       "column": 1
     },
     {
-      "path": "catlabel/vendors/base.py",
-      "rule": "UP035",
-      "message": "`typing.List` is deprecated, use `list` instead",
-      "line": 2,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/base.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 26,
-      "column": 42
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "UP035",
-      "message": "Import from `collections.abc` instead: `Mapping`",
-      "line": 2,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "UP035",
-      "message": "`typing.List` is deprecated, use `list` instead",
-      "line": 2,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 216,
-      "column": 42
-    },
-    {
       "path": "catlabel/vendors/generic/manifest.py",
       "rule": "UP035",
       "message": "`typing.Dict` is deprecated, use `dict` instead",
@@ -3004,97 +2724,6 @@
       "column": 36
     },
     {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP035",
-      "message": "Import from `collections.abc` instead: `Iterable`, `Mapping`",
-      "line": 8,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 241,
-      "column": 17
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 243,
-      "column": 23
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 248,
-      "column": 19
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP037",
-      "message": "Remove quotes from type annotation",
-      "line": 267,
-      "column": 49
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP037",
-      "message": "Remove quotes from type annotation",
-      "line": 290,
-      "column": 10
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 540,
-      "column": 37
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 547,
-      "column": 51
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 563,
-      "column": 18
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 564,
-      "column": 10
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 571,
-      "column": 18
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 572,
-      "column": 10
-    },
-    {
       "path": "catlabel/vendors/utils.py",
       "rule": "I001",
       "message": "Import block is un-sorted or un-formatted",
@@ -3158,62 +2787,6 @@
       "column": 1
     },
     {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "F401",
-      "message": "`catlabel.protocol.ProtocolFamily` imported but unused",
-      "line": 14,
-      "column": 5
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "F401",
-      "message": "`catlabel.protocol.ProtocolStep` imported but unused",
-      "line": 17,
-      "column": 5
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 173,
-      "column": 9
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "B006",
-      "message": "Do not use mutable data structures for argument defaults",
-      "line": 183,
-      "column": 82
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "E702",
-      "message": "Multiple statements on one line (semicolon)",
-      "line": 198,
-      "column": 43
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "E702",
-      "message": "Multiple statements on one line (semicolon)",
-      "line": 200,
-      "column": 43
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "E701",
-      "message": "Multiple statements on one line (colon)",
-      "line": 203,
-      "column": 28
-    },
-    {
       "path": "tests/test_printing_paper.py",
       "rule": "SIM102",
       "message": "Use a single `if` statement instead of nested `if` statements",
@@ -3226,31 +2799,9 @@
       "message": "Import block is un-sorted or un-formatted",
       "line": 1,
       "column": 1
-    },
-    {
-      "path": "tests/test_runtime_ownership.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
-      "path": "tools/sync_timiniprint_catalog.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 8,
-      "column": 1
     }
   ],
   "format": [
-    {
-      "path": "catlabel/api/routes_project.py",
-      "sha256": "98dbab9ceb23607c049a3f887001c2b4be16a96da393a55ff68c038856cf8111"
-    },
-    {
-      "path": "catlabel/core/database.py",
-      "sha256": "1d7a0b5041a03a854fcbc0f9858d03e6605e135ea00db204a948e10e892770a7"
-    },
     {
       "path": "catlabel/core/diagnostics.py",
       "sha256": "dc4db4a26197145db548da192790589ae028cec83bb56c5708122e5bc0491369"
@@ -3258,10 +2809,6 @@
     {
       "path": "catlabel/devices/__init__.py",
       "sha256": "0955192709a2b0e4f55c7f6fe85c8ec59895c3666caaa2740b21520664413597"
-    },
-    {
-      "path": "catlabel/printing/runtime/base.py",
-      "sha256": "75857b904dd6ae45b8ec858e847319a28012252e8f01396efb5142fcd91c3c73"
     },
     {
       "path": "catlabel/printing/runtime/factory.py",
@@ -3392,16 +2939,8 @@
       "sha256": "9d3722fa51b8bad7e69073551d370345162d6a37daff8fb412172b2d3ecba6a5"
     },
     {
-      "path": "catlabel/rendering/template.py",
-      "sha256": "13a70513cacd7f43a73557958a5c25f3924d4e7723cacf97805b2f2f082b8ed6"
-    },
-    {
       "path": "catlabel/reporting.py",
       "sha256": "14dcbe52e8b3feaa6ec1fc29aaf01a9012b5899759b96cb10d4242876298827b"
-    },
-    {
-      "path": "catlabel/services/ai_tools.py",
-      "sha256": "8f7f2bda7af578714e8adf81036ae1a83653e64ebc9d36d64113f7ae7662202a"
     },
     {
       "path": "catlabel/services/label_templates.py",
@@ -3472,20 +3011,8 @@
       "sha256": "d0fd80b8ac1c53b8a965bc0319b1e0a9a3e499d4f7c65a1959e202346c1b4e5e"
     },
     {
-      "path": "catlabel/vendors/base.py",
-      "sha256": "e71e603f7347ef89a209471bc012489eca8bbfb47e5b5b90f11a3d8c2900e7ce"
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "sha256": "43ece708112e5a6edd0936983a6f5d8aea8740daf599eee2297317cf95db092d"
-    },
-    {
       "path": "catlabel/vendors/generic/manifest.py",
       "sha256": "e340dc8a0588a0ace3739c8ff6d90c2aac99dc4d04bf58f4e8fa3919e2b29558"
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "sha256": "d50215a3d46ebaa8bf361dceecb8ca33380c4199d049bfce6dcf9e5da2e5be41"
     },
     {
       "path": "catlabel/vendors/utils.py",
@@ -3520,14 +3047,6 @@
       "sha256": "8a409871efd7e067b9eeb8831771b97da54106c825922f7d299f97d8d362ffcc"
     },
     {
-      "path": "tests/test_new_protocol_families.py",
-      "sha256": "fd4e4b852e612fadc986dc11f1208435f22e02cfc36225bfb85b4b2428723710"
-    },
-    {
-      "path": "tests/test_print_error_reporting.py",
-      "sha256": "fafc1f7d59cd8aca37300f514b0474df63d10b93c11082dbe7ad5ba145604cbd"
-    },
-    {
       "path": "tests/test_printing_paper.py",
       "sha256": "6ff1730b25ce567165557129f81c28399769f7396d9af9462085f680d82a2966"
     },
@@ -3541,30 +3060,6 @@
     }
   ],
   "typing": [
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"int | None\" cannot be assigned to parameter \"cat_id\" of type \"int\" in function \"_delete_category_recursive\"\n\u00a0\u00a0Type \"int | None\" is not assignable to type \"int\"\n\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"int\"",
-      "severity": "error",
-      "line": 144,
-      "column": 36
-    },
-    {
-      "path": "catlabel/api/routes_project.py",
-      "rule": "reportArgumentType",
-      "message": "Expression of type \"None\" cannot be assigned to parameter of type \"set[Unknown]\"\n\u00a0\u00a0\"None\" is not assignable to \"set[Unknown]\"",
-      "severity": "error",
-      "line": 161,
-      "column": 79
-    },
-    {
-      "path": "catlabel/printing/runtime/base.py",
-      "rule": "reportUndefinedVariable",
-      "message": "\"ProtocolStep\" is not defined",
-      "severity": "error",
-      "line": 114,
-      "column": 23
-    },
     {
       "path": "catlabel/printing/runtime/session.py",
       "rule": "reportGeneralTypeIssues",
@@ -3628,38 +3123,6 @@
       "severity": "error",
       "line": 129,
       "column": 27
-    },
-    {
-      "path": "catlabel/printing/send.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"RuntimeConnectionSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"send_protocol_steps\"\n\u00a0\u00a0\"RuntimeConnectionSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"send_standard_payload\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(data: bytes) -> CoroutineType[Any, Any, None]\" is not assignable to type \"(data: bytes, *, timeout: float = 1) -> CoroutineType[Any, Any, bool]\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Missing keyword parameter \"timeout\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Function return type \"CoroutineType[Any, Any, None]\" is incompatible with type \"CoroutineType[Any, Any, bool]\"",
-      "severity": "error",
-      "line": 32,
-      "column": 57
-    },
-    {
-      "path": "catlabel/printing/send.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"RuntimeConnectionSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"send_payload\"\n\u00a0\u00a0\"RuntimeConnectionSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"send_standard_payload\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(data: bytes) -> CoroutineType[Any, Any, None]\" is not assignable to type \"(data: bytes, *, timeout: float = 1) -> CoroutineType[Any, Any, bool]\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Missing keyword parameter \"timeout\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Function return type \"CoroutineType[Any, Any, None]\" is incompatible with type \"CoroutineType[Any, Any, bool]\"",
-      "severity": "error",
-      "line": 39,
-      "column": 46
-    },
-    {
-      "path": "catlabel/printing/send.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"RuntimeConnectionSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"wait_for_completion\"\n\u00a0\u00a0\"RuntimeConnectionSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"send_standard_payload\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(data: bytes) -> CoroutineType[Any, Any, None]\" is not assignable to type \"(data: bytes, *, timeout: float = 1) -> CoroutineType[Any, Any, bool]\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Missing keyword parameter \"timeout\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Function return type \"CoroutineType[Any, Any, None]\" is incompatible with type \"CoroutineType[Any, Any, bool]\"",
-      "severity": "error",
-      "line": 45,
-      "column": 46
-    },
-    {
-      "path": "catlabel/printing/send.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"RuntimeConnectionSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"execute_protocol_step\"\n\u00a0\u00a0\"RuntimeConnectionSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"send_standard_payload\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(data: bytes) -> CoroutineType[Any, Any, None]\" is not assignable to type \"(data: bytes, *, timeout: float = 1) -> CoroutineType[Any, Any, bool]\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Missing keyword parameter \"timeout\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Function return type \"CoroutineType[Any, Any, None]\" is incompatible with type \"CoroutineType[Any, Any, bool]\"",
-      "severity": "error",
-      "line": 65,
-      "column": 45
     },
     {
       "path": "catlabel/protocol/_builders.py",
@@ -3956,414 +3419,6 @@
       "severity": "error",
       "line": 721,
       "column": 27
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 44,
-      "column": 19
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 44,
-      "column": 19
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 45,
-      "column": 22
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 45,
-      "column": 22
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 46,
-      "column": 20
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 46,
-      "column": 20
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportGeneralTypeIssues",
-      "message": "\"object\" is not awaitable\n\u00a0\u00a0\"object\" is incompatible with protocol \"Awaitable[_T_co@Awaitable]\"\n\u00a0\u00a0\u00a0\u00a0\"__await__\" is not present",
-      "severity": "error",
-      "line": 75,
-      "column": 19
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportOptionalMemberAccess",
-      "message": "\"image_pipeline\" is not a known attribute of \"None\"",
-      "severity": "error",
-      "line": 163,
-      "column": 27
-    },
-    {
-      "path": "catlabel/vendors/generic/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"RuntimeConnectionSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"probe_capabilities\"\n\u00a0\u00a0\"RuntimeConnectionSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"send_standard_payload\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(data: bytes) -> CoroutineType[Any, Any, None]\" is not assignable to type \"(data: bytes, *, timeout: float = 1) -> CoroutineType[Any, Any, bool]\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Missing keyword parameter \"timeout\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Function return type \"CoroutineType[Any, Any, None]\" is incompatible with type \"CoroutineType[Any, Any, bool]\"",
-      "severity": "error",
-      "line": 337,
-      "column": 57
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportGeneralTypeIssues",
-      "message": "\"object\" is not iterable\n\u00a0\u00a0\"__iter__\" method not defined",
-      "severity": "error",
-      "line": 64,
-      "column": 56
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 78,
-      "column": 24
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 78,
-      "column": 24
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 86,
-      "column": 46
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 86,
-      "column": 46
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"tuple[Path, ...]\" cannot be assigned to parameter \"key\" of type \"tuple[Path, Path, Path, Path]\" in function \"get\"\n\u00a0\u00a0\"tuple[Path, ...]\" is not assignable to \"tuple[Path, Path, Path, Path]\"\n\u00a0\u00a0\u00a0\u00a0Tuple size mismatch; expected 4 but received indeterminate",
-      "severity": "error",
-      "line": 295,
-      "column": 33
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"tuple[Path, ...]\" cannot be assigned to parameter \"key\" of type \"tuple[Path, Path, Path, Path]\" in function \"__setitem__\"\n\u00a0\u00a0\"tuple[Path, ...]\" is not assignable to \"tuple[Path, Path, Path, Path]\"\n\u00a0\u00a0\u00a0\u00a0Tuple size mismatch; expected 4 but received indeterminate",
-      "severity": "error",
-      "line": 349,
-      "column": 9
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 357,
-      "column": 32
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 357,
-      "column": 32
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 358,
-      "column": 33
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 358,
-      "column": 33
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n  ...",
-      "severity": "error",
-      "line": 359,
-      "column": 33
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"",
-      "severity": "error",
-      "line": 359,
-      "column": 33
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 361,
-      "column": 83
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 361,
-      "column": 83
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportGeneralTypeIssues",
-      "message": "\"object\" is not iterable\n\u00a0\u00a0\"__iter__\" method not defined",
-      "severity": "error",
-      "line": 374,
-      "column": 22
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 403,
-      "column": 46
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 403,
-      "column": 87
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 405,
-      "column": 49
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 405,
-      "column": 89
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 408,
-      "column": 59
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | None\" cannot be assigned to parameter \"entry\" of type \"Mapping[str, object] | None\" in function \"_pipeline_from_entry\"\n\u00a0\u00a0Type \"object | None\" is not assignable to type \"Mapping[str, object] | None\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"Mapping[str, object] | None\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"Mapping[str, object]\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"None\"",
-      "severity": "error",
-      "line": 412,
-      "column": 51
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportGeneralTypeIssues",
-      "message": "\"object\" is not iterable\n\u00a0\u00a0\"__iter__\" method not defined",
-      "severity": "error",
-      "line": 416,
-      "column": 24
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 424,
-      "column": 27
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 425,
-      "column": 27
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportGeneralTypeIssues",
-      "message": "\"object\" is not iterable\n\u00a0\u00a0\"__iter__\" method not defined",
-      "severity": "error",
-      "line": 437,
-      "column": 38
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 457,
-      "column": 37
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportGeneralTypeIssues",
-      "message": "\"object\" is not iterable\n\u00a0\u00a0\"__iter__\" method not defined",
-      "severity": "error",
-      "line": 487,
-      "column": 63
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n  ...",
-      "severity": "error",
-      "line": 492,
-      "column": 22
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"",
-      "severity": "error",
-      "line": 492,
-      "column": 22
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n  ...",
-      "severity": "error",
-      "line": 495,
-      "column": 28
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"",
-      "severity": "error",
-      "line": 495,
-      "column": 28
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[203]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[203]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n  ...",
-      "severity": "error",
-      "line": 496,
-      "column": 25
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[203]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[203]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"",
-      "severity": "error",
-      "line": 496,
-      "column": 25
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 499,
-      "column": 55
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot access attribute \"get\" for class \"object\"\n\u00a0\u00a0Attribute \"get\" is unknown",
-      "severity": "error",
-      "line": 500,
-      "column": 59
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n  ...",
-      "severity": "error",
-      "line": 509,
-      "column": 32
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"",
-      "severity": "error",
-      "line": 509,
-      "column": 32
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n  ...",
-      "severity": "error",
-      "line": 510,
-      "column": 39
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object | Literal[0]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object | Literal[0]\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"",
-      "severity": "error",
-      "line": 510,
-      "column": 39
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n  ...",
-      "severity": "error",
-      "line": 512,
-      "column": 85
-    },
-    {
-      "path": "catlabel/vendors/generic/models.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n\u00a0\u00a0Type \"object\" is not assignable to type \"ConvertibleToInt\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"Buffer\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__buffer__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsInt\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__int__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"object\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present",
-      "severity": "error",
-      "line": 512,
-      "column": 85
     },
     {
       "path": "catlabel/vendors/utils.py",
@@ -4702,110 +3757,6 @@
       "column": 57
     },
     {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"RuntimeConnectionSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"probe_capabilities\"\n\u00a0\u00a0\"RuntimeConnectionSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"send_standard_payload\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(data: bytes) -> CoroutineType[Any, Any, None]\" is not assignable to type \"(data: bytes, *, timeout: float = 1) -> CoroutineType[Any, Any, bool]\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Missing keyword parameter \"timeout\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Function return type \"CoroutineType[Any, Any, None]\" is incompatible with type \"CoroutineType[Any, Any, bool]\"",
-      "severity": "error",
-      "line": 177,
-      "column": 45
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "reportOptionalMemberAccess",
-      "message": "\"supports_gray\" is not a known attribute of \"None\"",
-      "severity": "error",
-      "line": 179,
-      "column": 59
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FunnySession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"initialize_connection\"\n\u00a0\u00a0\"_FunnySession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"set_flow_paused\" is not present\n\u00a0\u00a0\u00a0\u00a0\"query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"send_bulk_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"report_debug\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(_message: Unknown) -> None\" is not assignable to type \"(message: str) -> None\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Parameter name mismatch: \"message\" versus \"_message\"\n  ...",
-      "severity": "error",
-      "line": 229,
-      "column": 48
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FunnySession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"handle_notification\"\n\u00a0\u00a0\"_FunnySession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"set_flow_paused\" is not present\n\u00a0\u00a0\u00a0\u00a0\"query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"send_bulk_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"report_debug\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(_message: Unknown) -> None\" is not assignable to type \"(message: str) -> None\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Parameter name mismatch: \"message\" versus \"_message\"\n  ...",
-      "severity": "error",
-      "line": 237,
-      "column": 48
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "reportAttributeAccessIssue",
-      "message": "Cannot assign to attribute \"on_standard\" for class \"_FunnySession\"\n\u00a0\u00a0Expression of type \"(payload: bytes) -> None\" cannot be assigned to attribute \"on_standard\" of class \"_FunnySession\"\n\u00a0\u00a0\u00a0\u00a0\"FunctionType\" is not assignable to \"None\"",
-      "severity": "error",
-      "line": 239,
-      "column": 17
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FunnySession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"send_protocol_steps\"\n\u00a0\u00a0\"_FunnySession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"set_flow_paused\" is not present\n\u00a0\u00a0\u00a0\u00a0\"query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"send_bulk_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"report_debug\" is an incompatible type\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Type \"(_message: Unknown) -> None\" is not assignable to type \"(message: str) -> None\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0Parameter name mismatch: \"message\" versus \"_message\"\n  ...",
-      "severity": "error",
-      "line": 240,
-      "column": 62
-    },
-    {
-      "path": "tests/test_new_protocol_families.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"None\" cannot be assigned to parameter \"backend\" of type \"_WinRtClassicBackend\" in function \"__init__\"\n\u00a0\u00a0\"None\" is not assignable to \"_WinRtClassicBackend\"",
-      "severity": "error",
-      "line": 285,
-      "column": 29
-    },
-    {
-      "path": "tests/test_print_error_reporting.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"list[object]\" cannot be assigned to parameter \"attempts\" of type \"List[DeviceInfo]\" in function \"connect_attempts\"\n\u00a0\u00a0\"object\" is not assignable to \"DeviceInfo\"",
-      "severity": "error",
-      "line": 54,
-      "column": 45
-    },
-    {
-      "path": "tests/test_print_error_reporting.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"Literal['stage']\" cannot be assigned to parameter \"key\" of type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\" in function \"__getitem__\"\n\u00a0\u00a0Type \"Literal['stage']\" is not assignable to type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"\n\u00a0\u00a0\u00a0\u00a0\"Literal['stage']\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"Literal['stage']\" is not assignable to \"slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"",
-      "severity": "error",
-      "line": 113,
-      "column": 26
-    },
-    {
-      "path": "tests/test_print_error_reporting.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"Literal['error']\" cannot be assigned to parameter \"key\" of type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\" in function \"__getitem__\"\n\u00a0\u00a0Type \"Literal['error']\" is not assignable to type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"\n\u00a0\u00a0\u00a0\u00a0\"Literal['error']\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"Literal['error']\" is not assignable to \"slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"",
-      "severity": "error",
-      "line": 114,
-      "column": 26
-    },
-    {
-      "path": "tests/test_print_error_reporting.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"Literal['error_id']\" cannot be assigned to parameter \"key\" of type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\" in function \"__getitem__\"\n\u00a0\u00a0Type \"Literal['error_id']\" is not assignable to type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"\n\u00a0\u00a0\u00a0\u00a0\"Literal['error_id']\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"Literal['error_id']\" is not assignable to \"slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"",
-      "severity": "error",
-      "line": 115,
-      "column": 26
-    },
-    {
-      "path": "tests/test_print_error_reporting.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"Literal['stage']\" cannot be assigned to parameter \"key\" of type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\" in function \"__getitem__\"\n\u00a0\u00a0Type \"Literal['stage']\" is not assignable to type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"\n\u00a0\u00a0\u00a0\u00a0\"Literal['stage']\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"Literal['stage']\" is not assignable to \"slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"",
-      "severity": "error",
-      "line": 122,
-      "column": 26
-    },
-    {
-      "path": "tests/test_print_error_reporting.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"Literal['error']\" cannot be assigned to parameter \"key\" of type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\" in function \"__getitem__\"\n\u00a0\u00a0Type \"Literal['error']\" is not assignable to type \"SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"\n\u00a0\u00a0\u00a0\u00a0\"Literal['error']\" is incompatible with protocol \"SupportsIndex\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"__index__\" is not present\n\u00a0\u00a0\u00a0\u00a0\"Literal['error']\" is not assignable to \"slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]\"",
-      "severity": "error",
-      "line": 123,
-      "column": 26
-    },
-    {
       "path": "tests/test_printing_paper.py",
       "rule": "reportOptionalMemberAccess",
       "message": "\"paper_preset\" is not a known attribute of \"None\"",
@@ -4844,62 +3795,6 @@
       "severity": "error",
       "line": 94,
       "column": 26
-    },
-    {
-      "path": "tests/test_runtime_ownership.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FakeSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"initialize_connection\"\n\u00a0\u00a0\"_FakeSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_debug\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_warning\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_standard_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_bulk_payload\" is not present\n  ...",
-      "severity": "error",
-      "line": 64,
-      "column": 25
-    },
-    {
-      "path": "tests/test_runtime_ownership.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FakeSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"after_initialize\"\n\u00a0\u00a0\"_FakeSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_debug\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_warning\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_standard_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_bulk_payload\" is not present\n  ...",
-      "severity": "error",
-      "line": 74,
-      "column": 43
-    },
-    {
-      "path": "tests/test_runtime_ownership.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FakeSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"handle_notification\"\n\u00a0\u00a0\"_FakeSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_debug\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_warning\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_standard_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_bulk_payload\" is not present\n  ...",
-      "severity": "error",
-      "line": 90,
-      "column": 48
-    },
-    {
-      "path": "tests/test_runtime_ownership.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FakeSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"handle_notification\"\n\u00a0\u00a0\"_FakeSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_debug\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_warning\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_standard_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_bulk_payload\" is not present\n  ...",
-      "severity": "error",
-      "line": 91,
-      "column": 48
-    },
-    {
-      "path": "tests/test_v5x_completion.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FakeSendSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"send_payload\"\n\u00a0\u00a0\"_FakeSendSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_warning\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_standard_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_wait_for_notification\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet_wait_notification\" is not present\n\u00a0\u00a0\u00a0\u00a0\"set_flow_paused\" is not present\n  ...",
-      "severity": "error",
-      "line": 70,
-      "column": 13
-    },
-    {
-      "path": "tests/test_v5x_completion.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FakeSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"wait_for_completion\"\n\u00a0\u00a0\"_FakeSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_warning\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_standard_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_bulk_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet_wait_notification\" is not present\n  ...",
-      "severity": "error",
-      "line": 84,
-      "column": 46
-    },
-    {
-      "path": "tests/test_v5x_completion.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"_FakeSession\" cannot be assigned to parameter \"session\" of type \"RuntimeSessionApi\" in function \"wait_for_completion\"\n\u00a0\u00a0\"_FakeSession\" is incompatible with protocol \"RuntimeSessionApi\"\n\u00a0\u00a0\u00a0\u00a0\"notify_started\" is not present\n\u00a0\u00a0\u00a0\u00a0\"report_warning\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_query_control_packet\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_standard_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_bulk_payload\" is not present\n\u00a0\u00a0\u00a0\u00a0\"can_send_control_packet_wait_notification\" is not present\n  ...",
-      "severity": "error",
-      "line": 95,
-      "column": 46
     }
   ],
   "react": [
@@ -4910,14 +3805,6 @@
       "severity": 2,
       "line": 92,
       "column": 5
-    },
-    {
-      "path": "frontend/src/components/AIAssistant.jsx",
-      "rule": "react-hooks/set-state-in-effect",
-      "message": "Error: Calling setState synchronously within an effect can trigger cascading renders\n\nEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:\n* Update external systems with the latest state from React.\n* Subscribe for updates from some external system, calling setState in a callback function when external state changes.\n\nCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).\n\n  141 |       fetchHistories();\n  142 |     } else {\n> 143 |       setShowHistory(false);\n      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect\n  144 |     }\n  145 |   }, [aiMode]);\n  146 |",
-      "severity": 2,
-      "line": 143,
-      "column": 7
     },
     {
       "path": "frontend/src/components/AIConfigModal.jsx",

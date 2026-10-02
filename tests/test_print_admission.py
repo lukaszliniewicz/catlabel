@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
 from catlabel.api import routes_print
+from catlabel.core.resource_limits import ResourceLimitError
 from catlabel.printing.admission import DeviceAdmission, canonical_device_address
 from catlabel.vendors import VendorRegistry
 
@@ -25,6 +26,13 @@ class _FakeClient:
         self.connect_hook: Callable[[], Awaitable[bool]] | None = None
         self.print_hook: Callable[[], Awaitable[None]] | None = None
         self.disconnect_hook: Callable[[], Awaitable[None]] | None = None
+        self.validation_error: ResourceLimitError | None = None
+        self.planned_labels: int | None = None
+
+    def validate_images(self, images: list[object], split_mode: bool = False) -> int:
+        if self.validation_error is not None:
+            raise self.validation_error
+        return self.planned_labels if self.planned_labels is not None else len(images)
 
     async def connect(self) -> bool:
         self.connect_calls += 1
@@ -358,6 +366,24 @@ class PrintAdmissionRouteTests(unittest.IsolatedAsyncioTestCase):
         write_detail = _error_detail(write_failure)
         self.assertEqual(write_detail["stage"], "print")
         self.assertTrue(write_detail["delivery_uncertain"])
+
+    async def test_validation_rejection_precedes_connect_and_releases_claim(self):
+        self.client.validation_error = ResourceLimitError("split job exceeds limit")
+        failure = await self._execute_error()
+        self.assertEqual(failure.status_code, 422)
+        self.assertEqual(_error_detail(failure)["stage"], "validation")
+        self.assertFalse(_error_detail(failure)["delivery_uncertain"])
+        self.assertEqual(self.client.connect_calls, 0)
+        self.assertEqual(self.client.print_calls, 0)
+        self.assertEqual(self.client.disconnect_calls, 0)
+        self.client.validation_error = None
+        self.assertEqual((await self._execute())["status"], "submitted")
+
+    async def test_receipt_uses_preflight_split_label_count(self):
+        self.client.planned_labels = 3
+        receipt = await self._execute(images=[object()])
+        self.assertEqual(receipt["submitted"], 3)
+        self.assertEqual(receipt["physical_completion"], "unverified")
 
     async def test_success_receipt_reports_submission_count_not_physical_printing(self):
         images = [object(), object(), object()]

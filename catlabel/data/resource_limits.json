@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "max_batch_records": 1000,
+  "max_print_copies": 100,
+  "max_print_jobs": 500,
+  "max_render_pixels": 50000000,
+  "max_dimension": 20000,
+  "max_canvas_entries": 10000,
+  "max_request_bytes": 67108864,
+  "max_upload_bytes": 16777216,
+  "max_image_bytes": 8388608
+}

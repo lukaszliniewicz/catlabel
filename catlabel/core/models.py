@@ -33,6 +33,7 @@ class Project(SQLModel, table=True):
     category_id: int | None = Field(default=None, foreign_key="category.id")
     name: str
     canvas_state_json: str
+    revision: int = Field(default=1, nullable=False)
 
 
 class LabelPreset(SQLModel, table=True):

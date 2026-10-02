@@ -8,15 +8,26 @@ Apache-2.0. The checked-in catalog snapshot is pinned to:
 - commit: `3373a037ccbaafc32cfafd5ed9ef496efd1efacd`
 - source date: 2026-07-14
 
-Run the following from a clone with a fetched `upstream` remote to refresh the
-normalized source files reproducibly:
+The publisher accepts a separate local upstream clone; its selected tag must
+already be fetched. Run from the CatLabel checkout, passing that clone's path:
 
 ```powershell
-bin\pixi.exe run --environment default --locked python tools\sync_timiniprint_catalog.py v0.7.3
+bin\pixi.exe run --environment default --locked python tools\sync_timiniprint_catalog.py v0.7.3 --repository-path C:\path\to\TiMini-Print
 ```
 
-The generated `catalog_source.json` records the exact repository, revision,
-commit, license, and source-to-destination file mapping.
+The generated `catalog_snapshot.json` contains all five catalogs and their exact
+repository, revision, peeled commit, license and source-file mapping. All sources
+are acquired and validated before one atomic replacement. Individual legacy
+files, including `catalog_source.json`, remain historical fallback data. Default
+registry loads prefer the bundle; invalid bundles fail closed. Explicit custom
+catalog paths retain the legacy loading API.
+
+The parser accepts both v0.7.3 and v0.8.1 detection schemas, origin IDs, marketing
+names, whitespace modes and ambiguity groups. Preset height and rotation metadata
+are retained. Applying new preset transforms and updating wire/runtime behavior
+remain in maintenance phase 3; parsing a new family does not enable its driver.
+The repository data above are still v0.7.3. Validation of v0.8.1 in a disposable
+directory is not catalog promotion or physical printer acceptance.
 
 ## Imported in this synchronization
 
@@ -66,7 +77,7 @@ than selecting an incorrect wire protocol.
 ## Future synchronization checklist
 
 1. Fetch the upstream tag and review commits since the revision recorded in
-   `catalog_source.json`.
+   the active bundle's `source` metadata, or `catalog_source.json` for legacy data.
 2. Regenerate the catalog and inspect the source commit recorded by the tool.
 3. Add protocol fixtures and runtime tests before enabling a new family or
    runtime-dependent variant.

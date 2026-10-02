@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from collections.abc import Callable
 
 from catlabel.printing import build_raster_job, send_prepared_job
 from catlabel.printing.runtime.base import PreparedRuntimeContext
@@ -11,18 +12,20 @@ from catlabel.printing.runtime.luck_normal import (
     LuckNormalRuntimeController,
 )
 from catlabel.protocol import (
-    ProtocolFamily,
     ProtocolJob,
     ProtocolReplyExpectation,
-    ProtocolStep,
     ProtocolStepOperation,
 )
 from catlabel.protocol.families.funny_lx import challenge_crc
 from catlabel.protocol.types import PaperMode
 from catlabel.raster import PixelFormat, RasterBuffer, RasterSet
+from catlabel.transport.bluetooth.adapters.windows_winrt import (
+    _WinRtClassicBackend,
+    _WinRtSocket,
+)
 from catlabel.transport.bluetooth.backend import _query_control_packet
-from catlabel.transport.bluetooth.adapters.windows_winrt import _WinRtSocket
 from catlabel.vendors.generic.models import PrinterModelRegistry
+from tests.runtime_session_fake import RuntimeSessionFake
 
 
 def _job(
@@ -156,7 +159,7 @@ class LuckPpa2Tests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(job.steps[1].include_in_payload)
         self.assertEqual(job.steps[-1].expect, ProtocolReplyExpectation.OK_OR_AA)
 
-        connection = _InteractiveConnection([b"OK", b"\x00", b"OK", b"\xAA"])
+        connection = _InteractiveConnection([b"OK", b"\x00", b"OK", b"\xaa"])
         controller = LuckNormalRuntimeController(protocol_variant="lujiang_normal")
         await send_prepared_job(
             model,
@@ -170,41 +173,88 @@ class LuckPpa2Tests(unittest.IsolatedAsyncioTestCase):
     async def test_capability_probe_enables_gray_only_for_gy_model(self) -> None:
         connection = _InteractiveConnection(["PPA2L_GY".encode("gb2312"), b"1.26"])
         controller = LuckNormalRuntimeController(protocol_variant="lujiang_normal")
-        from catlabel.printing.runtime.session import RuntimeConnectionSession
         from catlabel import reporting
+        from catlabel.printing.runtime.session import RuntimeConnectionSession
 
-        session = RuntimeConnectionSession(connection, reporter=reporting.DUMMY_REPORTER)
+        session = RuntimeConnectionSession(
+            connection, reporter=reporting.DUMMY_REPORTER
+        )
         await controller.probe_capabilities(session, timeout=0.1)
-        self.assertEqual(connection.queries, [LUCK_MODEL_QUERY_PACKET, LUCK_VERSION_QUERY_PACKET])
-        self.assertTrue(controller.runtime_capabilities().supports_gray)
+        self.assertEqual(
+            connection.queries, [LUCK_MODEL_QUERY_PACKET, LUCK_VERSION_QUERY_PACKET]
+        )
+        capabilities = controller.runtime_capabilities()
+        self.assertIsNotNone(capabilities)
+        if capabilities is None:
+            self.fail("runtime capabilities should have been established")
+        self.assertTrue(capabilities.supports_gray)
 
 
-class _FunnySession:
-    def __init__(self, control_replies: list[bytes], wait_replies: list[bytes] = []) -> None:
+class _FunnySession(RuntimeSessionFake):
+    def __init__(
+        self, control_replies: list[bytes], wait_replies: list[bytes] | None = None
+    ) -> None:
         self.control_replies = list(control_replies)
-        self.wait_replies = list(wait_replies)
+        self.wait_replies = [] if wait_replies is None else list(wait_replies)
         self.control: list[bytes] = []
         self.standard: list[bytes] = []
-        self.warnings = []
-        self.on_standard = None
+        self.warnings: list[tuple[str, str]] = []
+        self.on_standard: Callable[[bytes], None] | None = None
 
-    def can_send_control_packet(self): return True
-    def can_query_control_packet(self): return False
-    def can_send_standard_payload(self): return True
-    def can_send_bulk_payload(self): return False
-    def can_wait_for_notification(self): return True
-    def can_send_control_packet_wait_notification(self): return True
-    async def send_control_packet(self, packet, **_kwargs):
-        self.control.append(bytes(packet)); return True
-    async def send_control_packet_wait_notification(self, packet, **_kwargs):
-        self.control.append(bytes(packet)); return self.control_replies.pop(0)
-    async def send_standard_payload(self, data):
+    def can_send_control_packet(self) -> bool:
+        return True
+
+    def can_query_control_packet(self) -> bool:
+        return False
+
+    def can_send_standard_payload(self) -> bool:
+        return True
+
+    def can_send_bulk_payload(self) -> bool:
+        return False
+
+    def can_wait_for_notification(self) -> bool:
+        return True
+
+    def can_send_control_packet_wait_notification(self) -> bool:
+        return True
+
+    async def send_control_packet(self, packet: bytes, *, timeout: float = 1.0) -> bool:
+        self.control.append(bytes(packet))
+        return True
+
+    async def send_control_packet_wait_notification(
+        self,
+        packet: bytes,
+        *,
+        label: str,
+        match: Callable[[bytes], bool],
+        timeout: float,
+        required: bool = True,
+    ) -> bytes | None:
+        self.control.append(bytes(packet))
+        return self.control_replies.pop(0)
+
+    async def send_standard_payload(self, data: bytes) -> object:
         self.standard.append(bytes(data))
-        if self.on_standard: self.on_standard(bytes(data))
-    async def wait_for_notification(self, *_args, **_kwargs):
+        if self.on_standard:
+            self.on_standard(bytes(data))
+
+    async def wait_for_notification(
+        self,
+        label: str,
+        match: Callable[[bytes], bool],
+        *,
+        timeout: float,
+        required: bool = True,
+    ) -> bytes | None:
         return self.wait_replies.pop(0) if self.wait_replies else None
-    def report_debug(self, _message): pass
-    def report_warning(self, *, short, detail): self.warnings.append((short, detail))
+
+    def report_debug(self, message: str) -> None:
+        pass
+
+    def report_warning(self, *, short: str, detail: str) -> None:
+        self.warnings.append((short, detail))
 
 
 class FunnyLxTests(unittest.IsolatedAsyncioTestCase):
@@ -214,12 +264,12 @@ class FunnyLxTests(unittest.IsolatedAsyncioTestCase):
         crc = challenge_crc(random_bytes, mac)
         session = _FunnySession(
             [
-                b"\x5A\x01\x00",
-                b"\x5A\x0A" + crc.low,
-                b"\x5A\x0B\x01",
-                b"\x5A\x04\x00\x02\x01",
+                b"\x5a\x01\x00",
+                b"\x5a\x0a" + crc.low,
+                b"\x5a\x0b\x01",
+                b"\x5a\x04\x00\x02\x01",
             ],
-            [b"\x5A\x06\x00"],
+            [b"\x5a\x06\x00"],
         )
         controller = FunnyLxRuntimeController(
             bluetooth_address="C0:00:00:00:04:60",
@@ -234,11 +284,15 @@ class FunnyLxTests(unittest.IsolatedAsyncioTestCase):
             nonlocal requested
             if not requested and payload.startswith(b"\x55\x00\x00"):
                 requested = True
-                controller.handle_notification(session, b"\x5A\x05\x00\x01")
+                controller.handle_notification(session, b"\x5a\x05\x00\x01")
 
         session.on_standard = retry_after_first
-        self.assertTrue(await controller.send_protocol_steps(session, job.steps, timeout=0.1))
-        indexes = [packet[1:3] for packet in session.standard if packet.startswith(b"\x55")]
+        self.assertTrue(
+            await controller.send_protocol_steps(session, job.steps, timeout=0.1)
+        )
+        indexes = [
+            packet[1:3] for packet in session.standard if packet.startswith(b"\x55")
+        ]
         self.assertEqual(indexes, [b"\x00\x00", b"\x00\x00", b"\x00\x01"])
         self.assertEqual(session.warnings, [])
 
@@ -253,10 +307,17 @@ class _PartialSocket:
         self.sent = b""
         self.timeout = None
 
-    def sendall(self, data: bytes) -> None: self.sent += data
-    def recv(self, _size: int) -> bytes: return self.replies.pop(0)
-    def settimeout(self, value) -> None: self.timeout = value
-    def gettimeout(self): return self.timeout
+    def sendall(self, data: bytes) -> None:
+        self.sent += data
+
+    def recv(self, _size: int) -> bytes:
+        return self.replies.pop(0)
+
+    def settimeout(self, value) -> None:
+        self.timeout = value
+
+    def gettimeout(self):
+        return self.timeout
 
 
 class SppQueryTests(unittest.TestCase):
@@ -282,7 +343,7 @@ class SppQueryTests(unittest.TestCase):
             def read_bytes(self, target: bytearray) -> None:
                 target[:] = b"OK"
 
-        sock = _WinRtSocket(None)
+        sock = _WinRtSocket(_WinRtClassicBackend())
         sock._reader = Reader()
         sock.settimeout(0.1)
         try:

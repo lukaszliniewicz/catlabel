@@ -57,6 +57,8 @@ const MessageRow = ({ m }) => {
 };
 
 const buildCanvasStateSnapshot = (state) => ({
+  __project_id__: state.currentProjectId,
+  __project_revision__: state.currentProjectRevision,
   width: state.canvasWidth,
   height: state.canvasHeight,
   isRotated: state.isRotated,
@@ -139,10 +141,13 @@ export default function AIAssistant() {
   useEffect(() => {
     if (aiMode === 'live') {
       fetchHistories();
-    } else {
-      setShowHistory(false);
     }
   }, [aiMode]);
+
+  const selectAiMode = (mode) => {
+    setShowHistory(false);
+    setAiMode(mode);
+  };
 
   const fetchHistories = async () => {
     try {
@@ -274,7 +279,7 @@ export default function AIAssistant() {
       } else if (action.action === 'refresh_projects') {
         useStore.getState().fetchProjects();
       } else if (action.action === 'loaded_project_id') {
-        useStore.getState().setCurrentProjectId(action.project_id);
+        useStore.getState().setCurrentProjectId(action.project_id, action.revision);
       } else if (action.action === 'frontend_visual_preview') {
         window.setTimeout(() => {
           handleSendLive(
@@ -548,7 +553,7 @@ export default function AIAssistant() {
 
         <div className="flex bg-neutral-100 dark:bg-neutral-900 p-1 rounded-md text-[10px] font-bold uppercase tracking-widest">
           <button
-            onClick={() => setAiMode('live')}
+            onClick={() => selectAiMode('live')}
             className={`flex-1 py-2 rounded transition-colors ${
               aiMode === 'live'
                 ? 'bg-white dark:bg-neutral-800 shadow-sm text-blue-600 dark:text-blue-400'
@@ -558,7 +563,7 @@ export default function AIAssistant() {
             Live Agent (API)
           </button>
           <button
-            onClick={() => setAiMode('external')}
+            onClick={() => selectAiMode('external')}
             className={`flex-1 py-2 rounded transition-colors ${
               aiMode === 'external'
                 ? 'bg-white dark:bg-neutral-800 shadow-sm text-purple-600 dark:text-purple-400'

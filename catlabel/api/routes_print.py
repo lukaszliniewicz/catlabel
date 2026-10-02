@@ -1,21 +1,28 @@
 import asyncio
-import base64
 import logging
 import uuid
-from io import BytesIO
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from ..core.database import engine
 from ..core.models import PrinterProfile, Settings
+from ..core.resource_limits import (
+    MAX_BATCH_RECORDS,
+    MAX_PRINT_COPIES,
+    MAX_PRINT_JOBS,
+    ResourceLimitError,
+    batch_record_count,
+    validate_render_budget,
+)
 from ..printing.admission import (
     DeviceBusyError,
     canonical_device_address,
     printer_admission,
 )
+from ..rendering.image_payload import decode_image_payloads
 from ..rendering.template import render_via_browser
 from ..transport.bluetooth import SppBackend
 
@@ -75,28 +82,30 @@ def _same_device_address(left: str, right: str) -> bool:
 
 class PrintRequest(BaseModel):
     mac_address: str
-    variables: dict[str, str] = {}
+    variables: dict[str, str] = Field(default_factory=dict)
 
 
 class DirectPrintRequest(BaseModel):
     mac_address: str
     canvas_state: dict[str, Any]
-    variables: dict[str, str] = {}
+    variables: dict[str, str] = Field(default_factory=dict)
     dither: bool = True
 
 
 class BatchPrintRequest(BaseModel):
     mac_address: str
     canvas_state: dict[str, Any]
-    copies: int = 1
-    variables_list: list[dict[str, str]] = []
+    copies: int = Field(default=1, strict=True, ge=1, le=MAX_PRINT_COPIES)
+    variables_list: list[dict[str, str]] = Field(
+        default_factory=list, max_length=MAX_BATCH_RECORDS
+    )
     variables_matrix: dict[str, list[str]] | None = None
     dither: bool = True
 
 
 class ImagePrintRequest(BaseModel):
     mac_address: str
-    images: list[str]
+    images: list[str] = Field(max_length=MAX_PRINT_JOBS)
     split_mode: bool = False
     is_rotated: bool = False
     dither: bool = True
@@ -359,6 +368,18 @@ async def _execute_claimed_print_jobs(
         ) from exc
 
     try:
+        submitted_labels = client.validate_images(images, split_mode)
+    except ResourceLimitError as exc:
+        raise _print_http_error(
+            job_id=job_id,
+            stage="validation",
+            message=str(exc),
+            status_code=422,
+            exc=exc,
+            delivery_uncertain=False,
+        ) from exc
+
+    try:
         try:
             connected = await client.connect()
         except HTTPException as exc:
@@ -419,7 +440,7 @@ async def _execute_claimed_print_jobs(
             logger.exception("Print job %s failed while disconnecting", job_id)
     return {
         "status": "submitted",
-        "submitted": len(images),
+        "submitted": submitted_labels,
         "physical_completion": "unverified",
         "job_id": job_id,
         "message": "Label data sent. Check the printer for the physical output.",
@@ -434,6 +455,10 @@ async def execute_print_job(
 
 @router.post("/api/print/direct")
 async def print_direct(request: DirectPrintRequest):
+    try:
+        validate_render_budget(request.canvas_state, records=1, copies=1)
+    except ResourceLimitError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     split_mode = request.canvas_state.get("splitMode", False)
     images = await asyncio.to_thread(
         render_via_browser,
@@ -441,14 +466,25 @@ async def print_direct(request: DirectPrintRequest):
         [request.variables or {}],
         1,
     )
-    receipt = await execute_print_jobs(
-        request.mac_address, images, split_mode, dither=request.dither
-    )
-    return {**receipt, "mac_address": request.mac_address}
+    try:
+        receipt = await execute_print_jobs(
+            request.mac_address, images, split_mode, dither=request.dither
+        )
+        return {**receipt, "mac_address": request.mac_address}
+    finally:
+        for image in images:
+            image.close()
 
 
 @router.post("/api/print/batch")
 async def print_batch(request: BatchPrintRequest):
+    try:
+        records = batch_record_count(request.variables_list, request.variables_matrix)
+        validate_render_budget(
+            request.canvas_state, records=records, copies=request.copies
+        )
+    except ResourceLimitError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     split_mode = request.canvas_state.get("splitMode", False)
 
     variables_collection = []
@@ -473,39 +509,35 @@ async def print_batch(request: BatchPrintRequest):
         request.copies,
     )
 
-    return await execute_print_jobs(
-        request.mac_address, images, split_mode, dither=request.dither
-    )
+    try:
+        return await execute_print_jobs(
+            request.mac_address, images, split_mode, dither=request.dither
+        )
+    finally:
+        for image in images:
+            image.close()
 
 
 @router.post("/api/print/images")
 async def print_images_direct(request: ImagePrintRequest):
-    from PIL import Image
-
     if not request.images:
         return {"status": "empty", "submitted": 0, "physical_completion": "unverified"}
 
-    def _process_images(images_b64, is_rotated):
-        pil_images = []
-        for b64_image in images_b64:
-            image_data = b64_image.split(",", 1)[1] if "," in b64_image else b64_image
-            decoded = base64.b64decode(image_data)
-            with Image.open(BytesIO(decoded)) as image:
-                rendered = image.convert("RGB")
-                if is_rotated:
-                    rendered = rendered.rotate(90, expand=True)
-                pil_images.append(rendered)
-        return pil_images
-
     try:
         pil_images = await asyncio.to_thread(
-            _process_images, request.images, request.is_rotated
+            decode_image_payloads, request.images, rotate=request.is_rotated
         )
+    except ResourceLimitError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=400, detail="Invalid image payload supplied."
         ) from exc
 
-    return await execute_print_jobs(
-        request.mac_address, pil_images, request.split_mode, dither=request.dither
-    )
+    try:
+        return await execute_print_jobs(
+            request.mac_address, pil_images, request.split_mode, dither=request.dither
+        )
+    finally:
+        for image in pil_images:
+            image.close()

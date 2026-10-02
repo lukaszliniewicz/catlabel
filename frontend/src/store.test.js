@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { useStore } from './store';
+import * as apiClient from './utils/apiClient';
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   useStore.setState({
     items: [],
     pageLayouts: [{ pageIndex: 0, htmlContent: '', activeTemplate: null }],
     batchRecords: [{}],
     currentPage: 0,
     currentProjectId: null,
+    currentProjectRevision: null,
+    projects: [],
+    apiError: null,
     history: [],
     historyIndex: -1,
     canUndo: false,
@@ -70,5 +75,40 @@ describe('editor store correctness', () => {
     expect(useStore.getState().printCopies).toBe(100);
     expect(useStore.getState().batchRecords).toHaveLength(1_000);
     expect(useStore.getState().pageLayouts[0].pageIndex).toBe(0);
+  });
+
+  test.each([
+    ['rename', 'Renamed', undefined],
+    ['move', undefined, 7]
+  ])('%s updates send a revision without replacing the saved canvas', async (_kind, name, category) => {
+    useStore.setState({ projects: [{ id: 42, revision: 3 }], items: [{ id: 'unrelated' }] });
+    const fetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ id: 42, revision: 4 }) });
+    vi.spyOn(apiClient, 'apiJson').mockResolvedValue([]);
+    await useStore.getState().updateProject(42, name, category);
+    const payload = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(payload.expected_revision).toBe(3);
+    expect(payload).not.toHaveProperty('canvas_state');
+    if (name) expect(payload.name).toBe(name);
+    if (category !== undefined) expect(payload.category_id).toBe(category);
+  });
+
+  test('canvas saves use the loaded revision rather than a refreshed listing', async () => {
+    useStore.getState().loadProject({ id: 42, revision: 3, canvas_state: { items: [] } });
+    useStore.setState({ projects: [{ id: 42, revision: 9 }] });
+    const fetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ id: 42, revision: 4 }) });
+    vi.spyOn(apiClient, 'apiJson').mockResolvedValue([]);
+    await useStore.getState().updateProject(42);
+    const payload = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(payload.expected_revision).toBe(3);
+    expect(payload.canvas_state.items).toEqual([]);
+    expect(useStore.getState().currentProjectRevision).toBe(4);
+  });
+
+  test('a conflict preserves the loaded revision and edited canvas', async () => {
+    useStore.getState().loadProject({ id: 42, revision: 3, canvas_state: { items: [{ id: 'draft' }] } });
+    vi.spyOn(apiClient, 'apiFetch').mockRejectedValue(new Error('A newer revision is saved.'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await useStore.getState().updateProject(42);
+    expect(useStore.getState()).toMatchObject({ currentProjectRevision: 3, items: [{ id: 'draft' }], apiError: 'A newer revision is saved.' });
   });
 });
