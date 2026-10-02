@@ -48,3 +48,27 @@ test('plain-text HTTP failures are still useful', async () => {
   expect(error.message).toBe('Internal Server Error');
   expect(error.status).toBe(500);
 });
+
+test('lost responses and timeouts warn about uncertain delivery', async () => {
+  for (const error of [
+    new TypeError('Failed to fetch'),
+    new ApiRequestError('Request timed out.', { stage: 'frontend_request' }),
+  ]) {
+    const message = await describePrintError(error, async () => true);
+    expect(message).toMatch(/physical output/i);
+    expect(message).toMatch(/duplicate/i);
+    expect(message).not.toMatch(/scan.*and retry/i);
+  }
+});
+
+test('structured delivery uncertainty survives parsing', async () => {
+  const error = await apiErrorFromResponse({
+    status: 500,
+    text: async () => JSON.stringify({ detail: {
+      message: 'Some labels may already have printed.',
+      delivery_uncertain: true,
+      stage: 'end_page',
+    } }),
+  });
+  expect(error.deliveryUncertain).toBe(true);
+});

@@ -1,47 +1,54 @@
 from datetime import datetime
-from typing import Optional
+
+from pydantic import NaiveDatetime
 from sqlmodel import Field, SQLModel
 
+
 class PrinterProfile(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     mac_address: str = Field(index=True, unique=True)
-    name: Optional[str] = None
+    name: str | None = None
     transport: str = "BLE"
     default_darkness: int = 3
-    speed: Optional[int] = None
-    energy: Optional[int] = None
-    feed_lines: Optional[int] = None
-    paper_mode: Optional[str] = None
+    speed: int | None = None
+    energy: int | None = None
+    feed_lines: int | None = None
+    paper_mode: str | None = None
+
 
 class Font(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str
     file_path: str
 
+
 class Category(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    parent_id: Optional[int] = Field(default=None, foreign_key="category.id")
+    id: int | None = Field(default=None, primary_key=True)
+    parent_id: int | None = Field(default=None, foreign_key="category.id")
     name: str
 
+
 class Project(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    category_id: Optional[int] = Field(default=None, foreign_key="category.id")
+    id: int | None = Field(default=None, primary_key=True)
+    category_id: int | None = Field(default=None, foreign_key="category.id")
     name: str
     canvas_state_json: str
 
+
 class LabelPreset(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str
-    description: Optional[str] = None
-    media_type: str = "any" # "continuous", "pre-cut", or "any"
+    description: str | None = None
+    media_type: str = "any"  # "continuous", "pre-cut", or "any"
     width_mm: float
     height_mm: float
     is_rotated: bool = False
     split_mode: bool = False
     border: str = "none"
 
+
 class Settings(SQLModel, table=True):
-    id: Optional[int] = Field(default=1, primary_key=True)
+    id: int | None = Field(default=1, primary_key=True)
     paper_width_mm: float = 58.0
     print_width_mm: float = 48.0
     default_dpi: int = 203
@@ -51,8 +58,9 @@ class Settings(SQLModel, table=True):
     default_font: str = "Roboto.ttf"
     intended_media_type: str = "unknown"
 
+
 class Address(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     alias: str
     name: str
     street: str
@@ -60,32 +68,36 @@ class Address(SQLModel, table=True):
     city: str
     country: str
 
+
 class AIConfig(SQLModel, table=True):
-    id: Optional[int] = Field(default=1, primary_key=True)
-    provider: str = "openai" # 'openai', 'gemini', 'vertex_ai', 'custom'
+    id: int | None = Field(default=1, primary_key=True)
+    provider: str = "openai"  # 'openai', 'gemini', 'vertex_ai', 'custom'
     model_name: str = "gpt-4o"
     api_key: str = ""
     base_url: str = ""
     use_env: bool = False
     vertex_region: str = ""
 
+
 class AIConversation(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     title: str = "New Conversation"
     messages_json: str = "[]"
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: NaiveDatetime = Field(default_factory=datetime.utcnow)
+
 
 class AIProvider(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = "New Provider"
-    provider: str = "openai" # 'openai', 'gemini', 'vertex_ai', 'custom'
+    provider: str = "openai"  # 'openai', 'gemini', 'vertex_ai', 'custom'
     api_key: str = ""
     base_url: str = ""
     use_env: bool = False
     vertex_region: str = ""
 
+
 class AIModelConfig(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     provider_id: int = Field(foreign_key="aiprovider.id")
     name: str = "Default Model"
     model_name: str = "gpt-4o"

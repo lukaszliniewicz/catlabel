@@ -46,6 +46,8 @@ https://github.com/user-attachments/assets/4e784645-0ccf-478c-a6e1-0c41a3519624
 
 *The app runs at [http://localhost:8000](http://localhost:8000).*
 
+CatLabel listens on this computer only by default. See [local operation and API clients](docs/local-operation.md) for optional LAN access, access tokens, developer origins.
+
 ---
 
 ## Instruction Manual & Features

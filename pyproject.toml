@@ -46,7 +46,12 @@ include = ["catlabel", "launcher.py", "tools", "tests"]
 exclude = ["frontend", "docs", ".pixi", "env", "venv", ".venv"]
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
-strict = ["tools/check.py", "tools/import_graph.py", "tools/sync_dependencies.py"]
+strict = [
+  "tools/check.py",
+  "tools/import_graph.py",
+  "tools/sync_dependencies.py",
+  "catlabel/core/server_security.py",
+]
 
 [tool.importlinter]
 root_package = "catlabel"

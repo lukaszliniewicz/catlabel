@@ -1,31 +1,34 @@
 import os
-import urllib.request
-from contextlib import asynccontextmanager
-from typing import Dict, Any, List, Optional
 import shutil
+import urllib.request
+from collections.abc import Callable
+from contextlib import asynccontextmanager
+from typing import Annotated, cast
 
-from fastapi import FastAPI, UploadFile, File
+import pypdfium2 as pdfium
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlmodel import Session, select
-import pypdfium2 as pdfium
+from sqlmodel import Session, col, select
 
 from ..core.database import create_db_and_tables, engine
-from ..core.models import Font, Settings, Address, LabelPreset, Project, Category
+from ..core.models import Address, Category, Font, LabelPreset, Project, Settings
+from ..core.server_security import ServerSecurity
 from ..services.layout_engine import TEMPLATE_METADATA
-
+from .routes_ai import migrate_legacy_provider
+from .routes_ai import router as ai_router
 from .routes_print import router as print_router
 from .routes_project import router as project_router
-from .routes_ai import router as ai_router
+from .security import LocalSecurityMiddleware
+
 
 def seed_default_presets():
     from ..vendors import VendorRegistry
 
     with Session(engine) as session:
         existing_names = {
-            preset.name
-            for preset in session.exec(select(LabelPreset)).all()
+            preset.name for preset in session.exec(select(LabelPreset)).all()
         }
 
         added = False
@@ -38,6 +41,7 @@ def seed_default_presets():
         if added:
             session.commit()
 
+
 def download_default_fonts():
     fonts = {
         "Roboto.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto%5Bwdth%2Cwght%5D.ttf",
@@ -45,10 +49,10 @@ def download_default_fonts():
         "FiraCode.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/firacode/FiraCode%5Bwght%5D.ttf",
         "Oswald.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald%5Bwght%5D.ttf",
         "BebasNeue.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/bebasneue/BebasNeue-Regular.ttf",
-        "PlayfairDisplay.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf"
+        "PlayfairDisplay.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf",
     }
     os.makedirs("data/fonts", exist_ok=True)
-    
+
     if os.path.exists("fonts"):
         for filename in os.listdir("fonts"):
             if filename.lower().endswith((".ttf", ".otf")):
@@ -63,8 +67,11 @@ def download_default_fonts():
             print(f"Downloading Variable Font: {filename}...")
             temporary_target = f"{target}.download"
             try:
-                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=30) as response, open(temporary_target, 'wb') as f:
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with (
+                    urllib.request.urlopen(req, timeout=30) as response,
+                    open(temporary_target, "wb") as f,
+                ):
                     shutil.copyfileobj(response, f)
                 os.replace(temporary_target, target)
             except Exception as e:
@@ -72,13 +79,17 @@ def download_default_fonts():
                     os.remove(temporary_target)
                 print(f"Failed to download {filename}: {e}")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    migrate_legacy_provider(engine)
     seed_default_presets()
     download_default_fonts()
     yield
 
+
+security_settings = ServerSecurity.from_environment()
 app = FastAPI(title="CatLabel Server", lifespan=lifespan)
 
 os.makedirs("data/fonts", exist_ok=True)
@@ -86,10 +97,12 @@ app.mount("/fonts", StaticFiles(directory="data/fonts"), name="fonts")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=list(security_settings.allowed_origins),
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-CatLabel-Client", "Authorization"],
+    allow_credentials=True,
 )
+app.add_middleware(LocalSecurityMiddleware, settings=security_settings)
 
 app.include_router(print_router)
 app.include_router(project_router)
@@ -101,9 +114,10 @@ def health_check():
     """Lightweight same-origin probe used to distinguish API errors from a stopped server."""
     return {"status": "ok"}
 
+
 class PresetCreate(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     media_type: str = "any"
     width_mm: float
     height_mm: float
@@ -111,20 +125,25 @@ class PresetCreate(BaseModel):
     split_mode: bool = False
     border: str = "none"
 
+
 @app.get("/api/presets")
 def list_presets():
     with Session(engine) as session:
         return session.exec(select(LabelPreset).order_by(LabelPreset.name)).all()
 
+
 @app.post("/api/presets")
 def create_preset(preset: PresetCreate):
     with Session(engine) as session:
-        payload = preset.model_dump() if hasattr(preset, "model_dump") else preset.dict()
+        payload = (
+            preset.model_dump() if hasattr(preset, "model_dump") else preset.dict()
+        )
         db_preset = LabelPreset(**payload)
         session.add(db_preset)
         session.commit()
         session.refresh(db_preset)
         return db_preset
+
 
 @app.delete("/api/presets/{preset_id}")
 def delete_preset(preset_id: int):
@@ -134,6 +153,7 @@ def delete_preset(preset_id: int):
             session.delete(db_preset)
             session.commit()
         return {"status": "ok"}
+
 
 @app.get("/api/agent/context")
 def get_agent_context():
@@ -147,8 +167,12 @@ def get_agent_context():
         fonts = session.exec(select(Font)).all()
         font_names = [f.name.rsplit(".", 1)[0] for f in fonts]
 
-        root_projects = session.exec(select(Project).where(Project.category_id == None)).all()
-        root_categories = session.exec(select(Category).where(Category.parent_id == None)).all()
+        root_projects = session.exec(
+            select(Project).where(col(Project.category_id).is_(None))
+        ).all()
+        root_categories = session.exec(
+            select(Category).where(col(Category.parent_id).is_(None))
+        ).all()
         presets = session.exec(select(LabelPreset).order_by(LabelPreset.name)).all()
 
         project_summaries = [{"id": p.id, "name": p.name} for p in root_projects]
@@ -159,8 +183,9 @@ def get_agent_context():
                 "media_type": p.media_type,
                 "description": p.description,
                 "width_mm": p.width_mm,
-                "height_mm": p.height_mm
-            } for p in presets
+                "height_mm": p.height_mm,
+            }
+            for p in presets
         ]
 
     return {
@@ -168,18 +193,21 @@ def get_agent_context():
         "engine_rules": {
             "coordinate_system": "Dimensions are in PIXELS. 1 mm = (DPI / 25.4) pixels. The active DPI will be provided in your printer_info block. If no printer is connected, assume 203 DPI (1mm ≈ 8px).",
             "hardware_width_mm": settings.print_width_mm,
-            "hardware_width_px": int(settings.print_width_mm * (settings.default_dpi / 25.4)),
+            "hardware_width_px": int(
+                settings.print_width_mm * (settings.default_dpi / 25.4)
+            ),
             "behavior_padding": "If you define a canvas narrower than the hardware width, the engine will automatically center and pad it with white space. Do NOT stretch elements to fit the hardware if the user wants a small label.",
             "behavior_oversize": "If the dimension across the print head exceeds hardware width and splitMode=false, the engine scales it down.",
-            "orientation_and_rotation": "CRITICAL ORIENTATION RULES:\n1. PRE-CUT LABELS (Niimbot): Usually fed sideways. ALWAYS use `apply_preset`. It automatically sets the correct rotation. Design normally left-to-right.\n2. CONTINUOUS ROLLS: Tape feeds infinitely. Use `set_canvas_dimensions`:\n  - Portrait ('across_tape'): width <= hardware_width, height = custom length. Good for standard lists/tags.\n  - Banner ('along_tape_banner'): height <= hardware_width, width = custom length. Use this when the user asks for a 'long' label, '20cm box label', or wide layout. Text reads along the tape."
+            "orientation_and_rotation": "CRITICAL ORIENTATION RULES:\n1. PRE-CUT LABELS (Niimbot): Usually fed sideways. ALWAYS use `apply_preset`. It automatically sets the correct rotation. Design normally left-to-right.\n2. CONTINUOUS ROLLS: Tape feeds infinitely. Use `set_canvas_dimensions`:\n  - Portrait ('across_tape'): width <= hardware_width, height = custom length. Good for standard lists/tags.\n  - Banner ('along_tape_banner'): height <= hardware_width, width = custom length. Use this when the user asks for a 'long' label, '20cm box label', or wide layout. Text reads along the tape.",
         },
         "standard_presets": presets_data,
         "available_fonts": font_names,
         "root_projects": project_summaries,
         "root_categories": category_summaries,
         "global_default_font": settings.default_font,
-        "available_templates": TEMPLATE_METADATA
+        "available_templates": TEMPLATE_METADATA,
     }
+
 
 @app.get("/api/settings")
 def get_settings():
@@ -196,6 +224,7 @@ def get_settings():
             session.commit()
             session.refresh(settings)
         return settings
+
 
 @app.post("/api/settings")
 def update_settings(new_settings: Settings):
@@ -215,14 +244,17 @@ def update_settings(new_settings: Settings):
         session.commit()
         return settings
 
+
 @app.post("/api/fonts")
-def upload_font(file: UploadFile = File(...)):
+def upload_font(file: Annotated[UploadFile, File()]):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="A font filename is required.")
     os.makedirs("data/fonts", exist_ok=True)
     safe_filename = os.path.basename(file.filename)
     file_path = f"data/fonts/{safe_filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-        
+
     with Session(engine) as session:
         db_font = Font(name=safe_filename, file_path=f"fonts/{safe_filename}")
         session.add(db_font)
@@ -230,29 +262,34 @@ def upload_font(file: UploadFile = File(...)):
         session.refresh(db_font)
         return db_font
 
+
 @app.get("/api/fonts")
 def list_fonts():
     os.makedirs("data/fonts", exist_ok=True)
     with Session(engine) as session:
         db_fonts = {f.name: f for f in session.exec(select(Font)).all()}
-        disk_fonts = [f for f in os.listdir("data/fonts") if f.lower().endswith((".ttf", ".otf"))]
-        
+        disk_fonts = [
+            f for f in os.listdir("data/fonts") if f.lower().endswith((".ttf", ".otf"))
+        ]
+
         new_fonts = []
         for f in disk_fonts:
             if f not in db_fonts:
                 new_font = Font(name=f, file_path=f"fonts/{f}")
                 session.add(new_font)
                 new_fonts.append(new_font)
-        
+
         if new_fonts:
             session.commit()
-            
+
         return session.exec(select(Font)).all()
+
 
 @app.get("/api/addresses")
 def get_addresses():
     with Session(engine) as session:
         return session.exec(select(Address)).all()
+
 
 @app.post("/api/addresses")
 def create_address(address: Address):
@@ -261,6 +298,7 @@ def create_address(address: Address):
         session.commit()
         session.refresh(address)
         return address
+
 
 @app.delete("/api/addresses/{address_id}")
 def delete_address(address_id: int):
@@ -271,15 +309,18 @@ def delete_address(address_id: int):
             session.commit()
         return {"status": "deleted"}
 
+
 class TemplateGenerateRequest(BaseModel):
     template_id: str
     width: int
     height: int
-    params: Dict[str, str] = {}
+    params: dict[str, str] = {}
+
 
 @app.get("/api/templates")
 def get_templates():
     return {"templates": TEMPLATE_METADATA}
+
 
 @app.post("/api/templates/generate")
 def generate_template(req: TemplateGenerateRequest):
@@ -287,38 +328,48 @@ def generate_template(req: TemplateGenerateRequest):
 
     if not valid:
         from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail=f"Unknown template_id: '{req.template_id}'")
+
+        raise HTTPException(
+            status_code=400, detail=f"Unknown template_id: '{req.template_id}'"
+        )
 
     return {"items": []}
 
+
 @app.post("/api/pdf/convert")
-async def convert_pdf(file: UploadFile = File(...)):
-    import base64
+async def convert_pdf(file: Annotated[UploadFile, File()]):
     import asyncio
+    import base64
     from io import BytesIO
+
     from fastapi import HTTPException
+
     try:
         pdf_bytes = await file.read()
-        
+
         def _process_pdf(data_bytes):
             doc = pdfium.PdfDocument(data_bytes)
             images = []
             scale = 203 / 72.0
             for i in range(len(doc)):
                 page = doc[i]
-                pil_img = page.render(scale=scale).to_pil()
-                
+                # PDFium documents float scale; its untyped default of 1 is
+                # inferred as int. Keep the exact DPI with a narrow boundary cast.
+                render_page = cast(Callable[[float], pdfium.PdfBitmap], page.render)
+                pil_img = render_page(scale).to_pil()
+
                 buf = BytesIO()
                 pil_img.save(buf, format="PNG")
                 b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
                 images.append(f"data:image/png;base64,{b64}")
             return images
-            
+
         images = await asyncio.to_thread(_process_pdf, pdf_bytes)
-            
+
         return {"images": images}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
 
 if os.path.exists("frontend/dist"):
     app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")

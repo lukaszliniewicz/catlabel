@@ -46,14 +46,16 @@ export const apiErrorFromResponse = async (response, fallback = 'Request failed'
     technicalDetail: structured.error,
     suggestion: structured.suggestion,
     errorId: structured.error_id,
+    deliveryUncertain: structured.delivery_uncertain,
   });
 };
 
-export const checkServerHealth = async () => {
+const checkServerHealth = async () => {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 2000);
   try {
     const response = await fetch('/api/health', {
+      headers: { 'X-CatLabel-Client': '1' },
       cache: 'no-store',
       signal: controller.signal,
     });
@@ -73,10 +75,13 @@ const isNetworkFetchError = (error) => (
 export const describePrintError = async (error, healthCheck = checkServerHealth) => {
   if (error instanceof ApiRequestError) {
     const lines = [error.message];
+    if (error.stage === 'frontend_request') {
+      lines.push('The browser stopped waiting, but the printer may still be working. Check the physical output before submitting again; retrying can produce duplicate labels.');
+    }
     if (error.technicalDetail && error.technicalDetail !== error.message) {
       lines.push(`Technical detail: ${error.technicalDetail}`);
     }
-    if (error.suggestion) lines.push(`Try: ${error.suggestion}`);
+    if (error.suggestion) lines.push(`Next step: ${error.suggestion}`);
 
     const reference = [
       error.stage ? `stage: ${error.stage}` : null,
@@ -92,12 +97,12 @@ export const describePrintError = async (error, healthCheck = checkServerHealth)
     if (!serverIsRunning) {
       return [
         'The CatLabel server stopped responding while the print request was running.',
-        'Reopen CatLabel and check the launcher window for the underlying Python or Bluetooth error. Then turn the printer off and on, scan again, and retry.',
+        'Some labels may already have printed. Check the physical output before resubmitting; retrying can produce duplicates. Reopen CatLabel and check the launcher window for the underlying Python or Bluetooth error.',
       ].join('\n\n');
     }
     return [
       'The browser lost the print request, although the CatLabel server is responding again.',
-      'Check the launcher window for the underlying Bluetooth error, then scan for the printer again and retry.',
+      'The printer may still be working. Check the physical output before resubmitting; retrying can produce duplicates. Check the launcher window for the underlying Bluetooth error.',
       `Browser detail: ${error?.message || 'Network request failed'}`,
     ].join('\n\n');
   }

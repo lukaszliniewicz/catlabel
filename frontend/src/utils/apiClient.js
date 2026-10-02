@@ -23,7 +23,9 @@ export const apiFetch = async (input, init = {}, options = {}) => {
     : null;
 
   try {
-    const response = await fetch(input, { ...init, signal: controller.signal });
+    const headers = new Headers(init.headers);
+    headers.set('X-CatLabel-Client', '1');
+    const response = await fetch(input, { ...init, headers, signal: controller.signal });
     if (!response.ok) {
       throw await apiErrorFromResponse(response, options.fallback || 'Request failed');
     }

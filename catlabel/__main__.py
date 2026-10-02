@@ -1,8 +1,10 @@
-import uvicorn
-import os
 import threading
 import time
 import webbrowser
+
+import uvicorn
+
+from .core.server_security import ServerSecurity
 
 
 def open_browser_when_ready(
@@ -10,6 +12,7 @@ def open_browser_when_ready(
     port: int,
     *,
     poll_interval: float = 0.1,
+    browser_url: str | None = None,
     browser_open=None,
     sleeper=None,
 ) -> bool:
@@ -22,15 +25,16 @@ def open_browser_when_ready(
             return False
         sleeper(poll_interval)
 
-    browser_open(f"http://localhost:{port}")
+    browser_open(browser_url or f"http://localhost:{port}")
     return True
 
 
 def main() -> None:
-    port = int(os.environ.get("CATLABEL_PORT", 8000))
+    settings = ServerSecurity.from_environment()
+    port = settings.port
     config = uvicorn.Config(
         "catlabel.api.main:app",
-        host="0.0.0.0",
+        host=settings.host,
         port=port,
         reload=False,
     )
@@ -38,6 +42,7 @@ def main() -> None:
     threading.Thread(
         target=open_browser_when_ready,
         args=(server, port),
+        kwargs={"browser_url": settings.browser_url},
         daemon=True,
     ).start()
     server.run()

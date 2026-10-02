@@ -7,6 +7,18 @@ from catlabel.__main__ import open_browser_when_ready
 
 
 class ServerStartupTests(unittest.TestCase):
+    def test_explicit_lan_url_is_used_after_startup(self) -> None:
+        server = SimpleNamespace(started=True, should_exit=False)
+        opened_urls: list[str] = []
+        opened = open_browser_when_ready(
+            server,
+            8000,
+            browser_url="http://192.168.1.20:8000",
+            browser_open=opened_urls.append,
+        )
+        self.assertTrue(opened)
+        self.assertEqual(opened_urls, ["http://192.168.1.20:8000"])
+
     def test_browser_opens_only_after_server_reports_ready(self) -> None:
         server = SimpleNamespace(started=False, should_exit=False)
         opened_urls: list[str] = []

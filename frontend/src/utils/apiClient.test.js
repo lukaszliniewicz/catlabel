@@ -5,6 +5,14 @@ import { ApiRequestError } from './apiErrors';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('API client', () => {
+  test('identifies app requests while preserving caller headers', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await apiFetch('/api/test', { headers: { 'Content-Type': 'application/json' } });
+    const headers = fetchMock.mock.calls[0][1].headers;
+    expect(headers.get('X-CatLabel-Client')).toBe('1');
+    expect(headers.get('Content-Type')).toBe('application/json');
+  });
   test('rejects non-success responses with backend detail', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ detail: { message: 'No printer', stage: 'connect' } }),

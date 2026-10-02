@@ -19,7 +19,7 @@ export default function AIConfigModal({ onClose }) {
         )),
         validationMessage: 'AI provider data is malformed.'
       });
-      setProviders(data);
+      setProviders(data.map((provider) => ({ ...provider, api_key: '', clear_api_key: false })));
 
       if (data.length > 0) {
         let activeProviderId = data[0].id;
@@ -45,6 +45,8 @@ export default function AIConfigModal({ onClose }) {
       name: 'New Provider',
       provider: 'openai',
       api_key: '',
+      has_api_key: false,
+      clear_api_key: false,
       base_url: '',
       use_env: false,
       vertex_region: '',
@@ -65,7 +67,12 @@ export default function AIConfigModal({ onClose }) {
 
   const handleUpdateProvider = (field, value) => {
     setProviders(providers.map((provider) => (
-      provider.id === selectedProviderId ? { ...provider, [field]: value } : provider
+      provider.id === selectedProviderId ? {
+        ...provider,
+        [field]: value,
+        ...(field === 'api_key' && value ? { clear_api_key: false } : {}),
+        ...(field === 'clear_api_key' && value ? { api_key: '' } : {})
+      } : provider
     )));
   };
 
@@ -265,13 +272,22 @@ export default function AIConfigModal({ onClose }) {
 
                   {!current.use_env && (
                     <>
-                      <label className={labelClass}>{current.provider === 'vertex_ai' ? 'Service Account JSON' : 'API Key'}</label>
+                      <label htmlFor="provider-secret" className={labelClass}>{current.provider === 'vertex_ai' ? 'Service Account JSON' : 'API Key'}</label>
                       {current.provider === 'vertex_ai' ? (
-                        <textarea value={current.api_key} onChange={(e) => handleUpdateProvider('api_key', e.target.value)} className={inputClass} rows={3} placeholder='{"type": "service_account", ...}' />
+                        <textarea id="provider-secret" aria-describedby="provider-secret-status" value={current.api_key} onChange={(e) => handleUpdateProvider('api_key', e.target.value)} className={inputClass} rows={3} placeholder={current.has_api_key ? 'Credentials saved. Leave blank to keep them.' : '{"type": "service_account", ...}'} />
                       ) : (
-                        <input type="password" value={current.api_key} onChange={(e) => handleUpdateProvider('api_key', e.target.value)} className={inputClass} placeholder="sk-..." />
+                        <input id="provider-secret" aria-describedby="provider-secret-status" type="password" autoComplete="new-password" value={current.api_key} onChange={(e) => handleUpdateProvider('api_key', e.target.value)} className={inputClass} placeholder={current.has_api_key ? 'Key saved. Leave blank to keep it.' : 'Enter an API key'} />
                       )}
                     </>
+                  )}
+                  <p id="provider-secret-status" className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+                    {current.clear_api_key ? 'The saved credentials will be removed when you save.' : current.has_api_key ? 'Credentials are saved on the server and are never sent back to this browser. Enter a replacement to change them.' : 'No credentials saved. You can enter them above or use server environment variables.'}
+                  </p>
+                  {current.has_api_key && (
+                    <label className="mt-2 flex items-center gap-2 text-xs text-neutral-700 dark:text-neutral-300">
+                      <input type="checkbox" checked={current.clear_api_key} onChange={(e) => handleUpdateProvider('clear_api_key', e.target.checked)} />
+                      Remove saved credentials when saving
+                    </label>
                   )}
                 </div>
 
