@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import asyncio
 import threading
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
+from sqlalchemy.pool import StaticPool
+from sqlmodel import SQLModel, create_engine
 
 from catlabel.api import routes_print
 from catlabel.transport.bluetooth.backend import SppBackend
@@ -63,12 +64,27 @@ class BluetoothThreadAffinityTests(unittest.IsolatedAsyncioTestCase):
 
 class PrintErrorReportingTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
+        self._original_engine = routes_print.engine
+        self._original_scanned_devices_cache = routes_print._scanned_devices_cache
         self.device = SimpleNamespace(
             name="Test Printer",
             address="AA:BB:CC:DD:EE:FF",
             paired=True,
         )
+        self.engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        SQLModel.metadata.create_all(self.engine)
+        routes_print.engine = self.engine
         routes_print._scanned_devices_cache = [self.device]
+        self.addCleanup(self._restore_route_state)
+
+    def _restore_route_state(self) -> None:
+        routes_print.engine = self._original_engine
+        routes_print._scanned_devices_cache = self._original_scanned_devices_cache
+        self.engine.dispose()
 
     async def _execute_with_client(self, client: _FakeClient) -> HTTPException:
         manifest = SimpleNamespace(get_client=lambda *args: client)

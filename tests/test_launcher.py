@@ -57,13 +57,14 @@ class LauncherTests(unittest.TestCase):
             )
 
     def test_clone_repo_closes_the_repository(self) -> None:
+        target = Path("C:/CatLabel/catlabel")
         repo = mock.Mock()
         porcelain = mock.Mock()
         porcelain.clone.return_value = repo
         with mock.patch.object(launcher, "porcelain", porcelain):
-            self.assertTrue(launcher.clone_repo(Path("C:/CatLabel/catlabel")))
+            self.assertTrue(launcher.clone_repo(target))
 
-        porcelain.clone.assert_called_once_with(launcher.REPO_URL, "C:\\CatLabel\\catlabel")
+        porcelain.clone.assert_called_once_with(launcher.REPO_URL, str(target))
         repo.close.assert_called_once_with()
 
 
