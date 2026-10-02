@@ -6,7 +6,7 @@ from ..protocol._builders import _build_job_model_from_raster_set
 from ..protocol.family import ProtocolFamily
 from ..protocol.job import ProtocolJob
 from ..protocol.runtime import RuntimePrintCapabilities
-from ..protocol.types import ImagePipelineConfig, PaperMode
+from ..protocol.types import ImagePipelineConfig, PageFlow, PaperMode
 from ..raster import RasterSet
 from .paper import apply_paper_layout_to_raster_set
 
@@ -31,6 +31,7 @@ def build_raster_job(
     protocol_family: ProtocolFamily | str | None = None,
     protocol_variant: str | None = None,
     runtime_capabilities: RuntimePrintCapabilities | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> ProtocolJob:
     """Bridge a resolved printer model and raster into a stateless job."""
 
@@ -65,5 +66,6 @@ def build_raster_job(
         a4xii=model.a4xii,
         a4_sheet_max_height=a4_sheet_max_height,
         runtime_capabilities=runtime_capabilities,
+        page_flow=page_flow,
     )
     return ProtocolJob(payload=payload, steps=steps, wait_for_completion=True)

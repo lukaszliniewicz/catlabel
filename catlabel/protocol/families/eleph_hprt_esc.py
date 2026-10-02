@@ -53,7 +53,14 @@ class ElephHprtEscRecipe:
                 "hprt-media-type",
                 _MEDIA_TYPE_CMD + bytes([recipe.media_paper_type]),
             ),
-            ProtocolStep.send("hprt-esc-job", _esc_job(raster, thickness=thickness)),
+            ProtocolStep.send(
+                "hprt-esc-job",
+                _esc_job(
+                    raster,
+                    thickness=thickness,
+                    ends_media_page=request.ends_media_page,
+                ),
+            ),
         )
 
     def _paper_recipe(self, paper_mode: PaperMode | None) -> ElephHprtEscPaperRecipe:
@@ -81,17 +88,16 @@ def retract_paper_cmd(_dpi: int, _family, _variant: str | None = None) -> bytes:
     return _RETRACT_DOTS_CMD + bytes([_MANUAL_PAPER_MOTION_DOTS])
 
 
-def _esc_job(raster: RasterBuffer, *, thickness: int) -> bytes:
-    return (
-        _ENABLE_CMD
-        + _WAKEUP_CMD
-        + _LOCATION_CENTER_CMD
-        + _image_cmd(raster)
-        + _POSITION_CMD
-        + _STOP_JOB_CMD
-        + _THICKNESS_CMD
-        + bytes([thickness])
-    )
+def _esc_job(
+    raster: RasterBuffer,
+    *,
+    thickness: int,
+    ends_media_page: bool = True,
+) -> bytes:
+    job = _ENABLE_CMD + _WAKEUP_CMD + _LOCATION_CENTER_CMD + _image_cmd(raster)
+    if ends_media_page:
+        job += _POSITION_CMD
+    return job + _STOP_JOB_CMD + _THICKNESS_CMD + bytes([thickness])
 
 
 def _image_cmd(raster: RasterBuffer) -> bytes:

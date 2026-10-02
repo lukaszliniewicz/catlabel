@@ -1,0 +1,10 @@
+TiMini-Print
+Copyright 2026 Daniel Banecki
+
+Licensed under the Apache License, Version 2.0. See LICENSE for the full terms.
+
+CatLabel is a modified fork. Its web application, vendor integrations and
+maintenance changes are maintained separately from TiMini-Print.
+Released protocol updates are based on TiMini-Print v0.8.1, commit
+f676917257b5d1f869e0f13beff03785258e2a2e. Local changes and acceptance evidence
+are recorded in docs/maintenance-progress.md and the upstream parity ledger.

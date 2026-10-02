@@ -40,12 +40,16 @@ class _FakeSendSession(RuntimeSessionFake):
     def __init__(self) -> None:
         self.control: list[bytes] = []
         self.bulk: list[bytes] = []
+        self.atomic: list[bytes] = []
         self.debug: list[str] = []
 
     def can_send_control_packet(self) -> bool:
         return True
 
     def can_send_bulk_payload(self) -> bool:
+        return True
+
+    def can_send_control_packet_wait_notification(self) -> bool:
         return True
 
     async def send_control_packet(self, packet: bytes, *, timeout: float = 1.0) -> bool:
@@ -56,6 +60,14 @@ class _FakeSendSession(RuntimeSessionFake):
         self.bulk.append(data)
         return True
 
+    async def send_control_packet_wait_notification(
+        self, packet, *, label, match, timeout, required=True
+    ):
+        self.atomic.append(packet)
+        reply = make_packet(0xA9, b"\x00", ProtocolFamily.V5X)
+        self.assert_match = match(reply)
+        return reply
+
     def report_debug(self, message: str) -> None:
         self.debug.append(message)
 
@@ -64,17 +76,19 @@ class V5XCompletionTests(unittest.IsolatedAsyncioTestCase):
     async def test_runtime_owns_command_and_bulk_stream_routing(self) -> None:
         controller = V5XRuntimeController()
         session = _FakeSendSession()
-        command = make_packet(0xC0, b"\x01", ProtocolFamily.V5X)
-        bulk = b"raw-bitmap-payload"
+        command = make_packet(0xA2, b"\x5d", ProtocolFamily.V5X)
+        start = bytes.fromhex("2221A9000400000130000000")
+        bulk = b"\x00"
 
         handled = await controller.send_payload(
             session,
-            command + bulk + V5X_FINALIZE_PACKET,
+            command + start + bulk + V5X_FINALIZE_PACKET,
             timeout=0.01,
         )
 
         self.assertTrue(handled)
         self.assertEqual(session.control, [command, V5X_FINALIZE_PACKET])
+        self.assertEqual(session.atomic, [start])
         self.assertEqual(session.bulk, [bulk])
 
     async def test_idle_status_finishes_without_active_polling(self) -> None:

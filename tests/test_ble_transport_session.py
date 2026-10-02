@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import unittest
 
 from catlabel import reporting
 from catlabel.devices import BleTransportProfile
+from catlabel.printing.runtime.tiny import TinyRuntimeController
 from catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver import (
     _BleWriteEndpointResolver,
 )
@@ -42,6 +44,73 @@ class _ImmediateReplyClient:
 
 
 class BleTransportSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_tiny_notifications_pause_actual_ble_chunk_writes(self) -> None:
+        session = _BleakTransportSession(
+            transport_profile=BleTransportProfile(
+                flow_controlled_standard_write=True,
+                flow_resume_timeout_s=1.0,
+                standard_chunk_cap=5,
+                standard_write_delay_ms=0,
+            ),
+            write_resolver=_BleWriteEndpointResolver(reporter=reporting.DUMMY_REPORTER),
+            reporter=reporting.DUMMY_REPORTER,
+        )
+        session.bindings.write_char = _Characteristic()
+        session.bindings.write_char_uuid = _Characteristic.uuid
+        session.bindings.write_selection_strategy = "preferred_uuid"
+        session.bindings.write_response_preference = False
+        resume = bytes.fromhex("5178AE0101000000FF")
+        client = _ImmediateReplyClient(session, resume)
+        await session.initialize_connection(client, mtu_size=5, timeout=0.1)
+        await session.attach_runtime_controller(
+            TinyRuntimeController(), mtu_size=5, timeout=0.1
+        )
+        pause = bytes.fromhex("5178AE0101001070FF")
+        session.handle_notification(pause[:4])
+        session.handle_notification(pause[4:])
+        task = asyncio.create_task(session.send_standard_payload(b"abcdefghij"))
+        try:
+            await asyncio.sleep(0)
+            self.assertEqual(client.writes, [])
+            self.assertFalse(session.flow_can_write)
+            session.handle_notification(resume)
+            self.assertTrue(await task)
+            self.assertEqual(client.writes, [b"abcde", b"fghij"])
+        finally:
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await session.stop_notify_if_started(client)
+
+    async def test_flow_resume_budget_is_independent_of_command_timeout(self) -> None:
+        session = _BleakTransportSession(
+            transport_profile=BleTransportProfile(flow_resume_timeout_s=1.0),
+            write_resolver=_BleWriteEndpointResolver(reporter=reporting.DUMMY_REPORTER),
+            reporter=reporting.DUMMY_REPORTER,
+        )
+        session.set_flow_paused(True)
+
+        async def resume() -> None:
+            await asyncio.sleep(0.01)
+            session.set_flow_paused(False)
+
+        task = asyncio.create_task(resume())
+        try:
+            await session._wait_for_flow(timeout=0.0)
+            self.assertTrue(session.flow_can_write)
+        finally:
+            await task
+
+    async def test_flow_pause_still_has_a_finite_failure_budget(self) -> None:
+        session = _BleakTransportSession(
+            transport_profile=BleTransportProfile(flow_resume_timeout_s=0.0),
+            write_resolver=_BleWriteEndpointResolver(reporter=reporting.DUMMY_REPORTER),
+            reporter=reporting.DUMMY_REPORTER,
+        )
+        session.set_flow_paused(True)
+        with self.assertRaisesRegex(TimeoutError, "flow-control resume"):
+            await session._wait_for_flow(timeout=100.0)
+
     def test_generic_notify_profile_binds_notify_characteristic(self) -> None:
         session = _BleakTransportSession(
             transport_profile=BleTransportProfile(prefer_generic_notify=True),

@@ -50,3 +50,5 @@ Knip includes source/config entry points, excludes generated dist, and marks pro
 `checks/audit-exceptions.json` requires an exact advisory/package/version scope, owner, rationale and expiry. New findings and expired exceptions fail, including on the same package. Baseline capture cannot create advisory exceptions. Current exceptions are migration debt, not a claim that vulnerable versions are safe; prompt patches and the tested Vitest migration must remove them. Their initial deadline is 16 October 2026.
 
 The GitHub workflow runs shared checks/tests/builds on Linux, Windows and macOS and preserves uncapped reports. It is configured locally; do not claim hosted CI passed until actual runs are inspected.
+
+Current acceptance availability (user-confirmed): Linux only. Windows and macOS validation is best effort; successful lock resolution, script/interface checks and configured CI are evidence about those artifacts, not proof of a native install or print. Unavailable native runs are recorded without blocking local implementation.

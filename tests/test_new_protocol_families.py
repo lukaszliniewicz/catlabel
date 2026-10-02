@@ -79,19 +79,15 @@ class StatelessProtocolFamilyTests(unittest.TestCase):
             density=9,
             paper_mode=PaperMode.TAG,
         )
-        markers = (
-            b"\x10\xff\x10\x03\x02",
-            b"SIZE 1 mm,0.25 mm\r\n",
-            b"DIRECTION 0,0\r\n",
-            b"GAP 3 mm,0 mm\r\n",
-            b"SET RIBBON OFF\r\n",
-            b"DENSITY 9\r\n",
-            b"REFERENCE 0,0\r\n",
-            b"BITMAP 0,0,1,2,0,\x80@\r\n",
+        self.assertEqual(
+            job.payload,
+            b"SIZE 1 mm,0 mm\r\n"
+            b"GAP 2 mm,0 mm\r\n"
+            b"DIRECTION 0\r\n"
+            b"CLS\r\n"
+            b"BITMAP 0,0,1,2,0,\x7f\xbf\r\n"
             b"PRINT 1,1\r\n",
         )
-        positions = [job.payload.index(marker) for marker in markers]
-        self.assertEqual(positions, sorted(positions))
 
     def test_instaprint_core_job_is_byte_exact(self) -> None:
         job = _job(

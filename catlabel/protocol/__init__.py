@@ -6,8 +6,9 @@ from .steps import (
     ProtocolReplyMatcher,
     ProtocolStep,
     ProtocolStepOperation,
+    ProtocolWriteChannel,
 )
-from .types import ImageEncoding, ImagePipelineConfig, PaperMode
+from .types import ImageEncoding, ImagePipelineConfig, PageFlow, PaperMode
 
 __all__ = [
     "ProtocolFamily",
@@ -15,10 +16,12 @@ __all__ = [
     "PrinterProtocol",
     "ImageEncoding",
     "ImagePipelineConfig",
+    "PageFlow",
     "PaperMode",
     "ProtocolReplyExpectation",
     "ProtocolReplyMatcher",
     "ProtocolStep",
     "ProtocolStepOperation",
+    "ProtocolWriteChannel",
     "RuntimePrintCapabilities",
 ]

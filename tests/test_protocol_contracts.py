@@ -41,6 +41,11 @@ class ProtocolSpecDefinitionTests(unittest.TestCase):
                 ProtocolCommandSet.ELEPH_HPRT_ESC,
             ),
             ProtocolFamily.ELEPH_TSPL: (None, ProtocolCommandSet.ELEPH_TSPL),
+            ProtocolFamily.TOPRINT_HPRT_ESC: (
+                None,
+                ProtocolCommandSet.TOPRINT_HPRT_ESC,
+            ),
+            ProtocolFamily.TOPRINT_TSPL: (None, ProtocolCommandSet.TOPRINT_TSPL),
             ProtocolFamily.INSTAPRINT_CORE: (
                 None,
                 ProtocolCommandSet.INSTAPRINT_CORE,

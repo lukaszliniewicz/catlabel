@@ -115,6 +115,39 @@ def _family_default_pipeline(family: ProtocolFamily) -> ImagePipelineConfig:
     return get_protocol_definition(family).behavior.default_image_pipeline
 
 
+def _normalize_legacy_toprint_profile(
+    profile: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Keep old source snapshots usable after separating their ToPrint dialects."""
+    migrations = {
+        "toprint_tspl_p1": ("eleph_tspl", "toprint_tspl"),
+        "toprint_hprt_esc_zl1": ("eleph_hprt_esc", "toprint_hprt_esc"),
+    }
+    migration = migrations.get(str(profile.get("profile_key", "")))
+    if migration is None:
+        return profile
+    old_family, new_family = migration
+    protocol = _mapping(profile["protocol_default"], "default protocol")
+    if protocol.get("type") != old_family:
+        return profile
+    normalized = dict(profile)
+    normalized["protocol_default"] = {**protocol, "type": new_family}
+    pipeline = _optional_mapping(
+        profile.get("default_image_pipeline"), "image pipeline"
+    )
+    old_encoding = (
+        "eleph_tspl_bitmap" if old_family == "eleph_tspl" else "eleph_hprt_esc_raster"
+    )
+    if pipeline.get("encoding") == old_encoding:
+        new_encoding = (
+            "toprint_tspl_bitmap"
+            if new_family == "toprint_tspl"
+            else "toprint_hprt_esc_raster"
+        )
+        normalized["default_image_pipeline"] = {**pipeline, "encoding": new_encoding}
+    return normalized
+
+
 def _pipeline_from_entry(
     entry: Mapping[str, Any] | None,
     family: ProtocolFamily,
@@ -420,7 +453,7 @@ class PrinterModelRegistry:
             )
 
         profiles = {
-            str(item["profile_key"]): item
+            str(item["profile_key"]): _normalize_legacy_toprint_profile(item)
             for item in _entries(profiles_raw, "profiles")
         }
         presets = {

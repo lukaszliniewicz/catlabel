@@ -25,6 +25,8 @@ class ProtocolCommandSet(ProtocolStrEnum):
     DCK = "dck"
     ELEPH_HPRT_ESC = "eleph_hprt_esc"
     ELEPH_TSPL = "eleph_tspl"
+    TOPRINT_HPRT_ESC = "toprint_hprt_esc"
+    TOPRINT_TSPL = "toprint_tspl"
     INSTAPRINT_CORE = "instaprint_core"
     FUNNY_LX = "funny_lx"
 
@@ -46,6 +48,8 @@ class ProtocolFamily(ProtocolStrEnum):
     DCK = "dck"
     ELEPH_HPRT_ESC = "eleph_hprt_esc"
     ELEPH_TSPL = "eleph_tspl"
+    TOPRINT_HPRT_ESC = "toprint_hprt_esc"
+    TOPRINT_TSPL = "toprint_tspl"
     INSTAPRINT_CORE = "instaprint_core"
     FUNNY_LX = "funny_lx"
 
@@ -100,6 +104,12 @@ PROTOCOL_SPECS: Mapping[ProtocolFamily, ProtocolSpec] = MappingProxyType(
             None, ProtocolCommandSet.ELEPH_HPRT_ESC
         ),
         ProtocolFamily.ELEPH_TSPL: ProtocolSpec(None, ProtocolCommandSet.ELEPH_TSPL),
+        ProtocolFamily.TOPRINT_HPRT_ESC: ProtocolSpec(
+            None, ProtocolCommandSet.TOPRINT_HPRT_ESC
+        ),
+        ProtocolFamily.TOPRINT_TSPL: ProtocolSpec(
+            None, ProtocolCommandSet.TOPRINT_TSPL
+        ),
         ProtocolFamily.INSTAPRINT_CORE: ProtocolSpec(
             None, ProtocolCommandSet.INSTAPRINT_CORE
         ),

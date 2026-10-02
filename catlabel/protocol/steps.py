@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from .family import ProtocolStrEnum
 
 
+class ProtocolWriteChannel(ProtocolStrEnum):
+    STANDARD = "standard"
+    CONTROL = "control"
+    BULK = "bulk"
+
+
 class ProtocolStepOperation(ProtocolStrEnum):
     SEND = "send"
     QUERY = "query"
@@ -38,11 +44,21 @@ class ProtocolStep:
     reply_matcher: ProtocolReplyMatcher | None = None
     repeat_interval_sec: float | None = None
     repeat_timeout_sec: float | None = None
+    write_channel: ProtocolWriteChannel = ProtocolWriteChannel.STANDARD
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "data", bytes(self.data))
         object.__setattr__(self, "operation", ProtocolStepOperation(self.operation))
         object.__setattr__(self, "expect", ProtocolReplyExpectation(self.expect))
+        write_channel = ProtocolWriteChannel(self.write_channel)
+        object.__setattr__(self, "write_channel", write_channel)
+        if (
+            self.operation is not ProtocolStepOperation.SEND
+            and write_channel is not ProtocolWriteChannel.STANDARD
+        ):
+            raise ValueError(
+                "Protocol query and wait steps must use the standard write channel"
+            )
         if self.timeout_sec is not None and self.timeout_sec < 0:
             raise ValueError("Protocol step timeout must be non-negative")
         if self.repeat_interval_sec is not None and self.repeat_interval_sec <= 0:
@@ -51,8 +67,14 @@ class ProtocolStep:
             raise ValueError("Protocol step repeat timeout must be non-negative")
 
     @classmethod
-    def send(cls, label: str, data: bytes) -> ProtocolStep:
-        return cls(label=label, data=data)
+    def send(
+        cls,
+        label: str,
+        data: bytes,
+        *,
+        write_channel: ProtocolWriteChannel = ProtocolWriteChannel.STANDARD,
+    ) -> ProtocolStep:
+        return cls(label=label, data=data, write_channel=write_channel)
 
     @classmethod
     def query(

@@ -4,7 +4,7 @@ import asyncio
 import time
 
 from ..protocol import ProtocolReplyExpectation, ProtocolStep, ProtocolStepOperation
-from ..protocol.steps import reply_matches_expectation
+from ..protocol.steps import ProtocolWriteChannel, reply_matches_expectation
 from .runtime.base import RuntimeSessionApi
 
 
@@ -19,7 +19,31 @@ async def execute_protocol_step(
         session.report_debug(
             f"{log_prefix} send {step.label}: {packet_summary(step.data)}"
         )
-        await session.send_standard_payload(step.data)
+        if step.write_channel is ProtocolWriteChannel.STANDARD:
+            await session.send_standard_payload(step.data)
+            return None
+
+        if step.write_channel is ProtocolWriteChannel.CONTROL:
+            if not session.can_send_control_packet():
+                raise RuntimeError(
+                    f"Protocol step {step.label!r} control write route unavailable"
+                )
+            sent = await session.send_control_packet(step.data, timeout=timeout)
+        elif step.write_channel is ProtocolWriteChannel.BULK:
+            if not session.can_send_bulk_payload():
+                raise RuntimeError(
+                    f"Protocol step {step.label!r} bulk write route unavailable"
+                )
+            sent = await session.send_bulk_payload(step.data, timeout=timeout)
+        else:
+            raise ValueError(
+                f"Unsupported protocol write channel: {step.write_channel.value}"
+            )
+
+        if not sent:
+            raise RuntimeError(
+                f"Protocol step {step.label!r} {step.write_channel.value} write route unavailable"
+            )
         return None
     if step.operation is ProtocolStepOperation.WAIT:
         return await _execute_wait_step(

@@ -1,0 +1,112 @@
+{
+  "checkpoint": "phase3-protocol-foundation",
+  "date": "2026-10-02",
+  "base_commit": "af1ae9811f723211045461e38865c5d17574397d",
+  "upstream": {
+    "revision": "v0.8.1",
+    "commit": "f676917257b5d1f869e0f13beff03785258e2a2e"
+  },
+  "command": "PATH=/tmp/catlabel-implementation-20261002/check-env/bin:$PATH python -m tools.check --lane full --report check-results/phase3-protocol-foundation.json",
+  "exit_code": 0,
+  "environment": {
+    "os": "Linux",
+    "python": "3.11.15",
+    "node": "24.18.0",
+    "npm": "11.16.0"
+  },
+  "static_findings": {
+    "ruff": [],
+    "format": [],
+    "typing": [],
+    "react": [],
+    "knip": [],
+    "knip-production": [],
+    "python-cycles": [],
+    "import-contracts": [],
+    "frontend-cycles": []
+  },
+  "backend_tests": {
+    "run": 410,
+    "passed": 409,
+    "skipped": 1,
+    "seconds": 6.645,
+    "skip": "Windows SDK native import"
+  },
+  "frontend_tests": {
+    "files": 7,
+    "passed": 33
+  },
+  "production_build_seconds": 10.53,
+  "frontend_source_and_shipped_artifact_changed": false,
+  "retained_frontend_aggregate_sha256": "668b0d78e0a373ea6502f0828149683548f6e397184a77f46bbf1a94faabaf8a",
+  "independent_review": {
+    "configured_model": "GPT-6.1 Sol",
+    "configured_effort": "high",
+    "runtime_telemetry_available": false,
+    "finding": "Mixed V5X steps bypassed required A9 ACK via generic fallback",
+    "resolved": true
+  },
+  "source_files_sha256": {
+    "catlabel/devices/bluetooth_profiles.py": "6dda426df33aa69a0301628d0622697c570e60029cce4d21e9bd57c39adb8e99",
+    "catlabel/printing/raster_job.py": "7fdec6251be96c05abbbb0f7be138fd7901d3b12ca4dd718d03da64adc5acba2",
+    "catlabel/printing/runtime/factory.py": "cb6251c0773d37afb75462c7922a55a3b4db0622255152c0ce4d3ec915507c57",
+    "catlabel/printing/runtime/funny_lx.py": "e637e7d080331bb914f41f3a169ee2bdda39daf47fa9ece2fd5b2211165e79e4",
+    "catlabel/printing/runtime/tiny.py": "f7ba11793e43450f16fd94e5caa375b3a2110ad04acf23e365cc65b260633461",
+    "catlabel/printing/runtime/v5x.py": "3dd8bd723f8a66bec664568ef63a2beaecba566236add17dbf7ba50a00d139ba",
+    "catlabel/printing/send.py": "b81104c2a6703cd3d2bea2c7878f88365970313f1bee99b3d8560342afdeb979",
+    "catlabel/printing/step_execution.py": "8b4999a2b482f74b0d4419846a971ebcbc5e3b6a73907c349efbcb137781ecb5",
+    "catlabel/protocol/__init__.py": "55f652fc722aa0b0626f4a083bb81b2e39b9e839b7e163aef30b90de6d92c871",
+    "catlabel/protocol/_builders.py": "74de909e5725ce474c8e1a391b62f9c9370f8ba3321e638484f5a8495592b3fe",
+    "catlabel/protocol/families/__init__.py": "fa53dbbf7f66efb2fe252f35b2ce9d686fc6d2d954a85b2bb2e17dc6828bafd6",
+    "catlabel/protocol/families/base.py": "5be72f17940158ce1af0a4775ec9bad4b976edd64977e87fde9175268a938b58",
+    "catlabel/protocol/families/eleph_hprt_esc.py": "9cdddd64bebb1581f713d83555969e68aff6a1c5f44f84b5a9a2c0a7ef274c07",
+    "catlabel/protocol/families/eleph_tspl.py": "7bb019df90a7ed1f8818b88bf5fead2082094f17503c96a2165d266a2857495f",
+    "catlabel/protocol/families/toprint_hprt_esc.py": "31508ec96826cd596c9604412b621f2692a06866de4ebf33acb1233203c49a56",
+    "catlabel/protocol/families/toprint_tspl.py": "9eb5031662f95e53c3123a629d529dbeb47df652bf888f0cc12a6cd73a7e2cf6",
+    "catlabel/protocol/families/v5x.py": "ee1eb3c9b4363d9adb7c3d73b13f7ecf54b1701e7fadd7997ae0cfb499ec1bf2",
+    "catlabel/protocol/families/yk_astra_session.py": "3dca73ebac37e3b5f6724e32c5c25e8d42f90a46eb2de722165bb685e2f1c220",
+    "catlabel/protocol/families/yk_common.py": "ecfa936b44c513dabae4c9d39032d1a359941d6f794a6946a79e28e84f544d01",
+    "catlabel/protocol/family.py": "ef543788441875476e5e1a086c9fbfba0db962d5122574120274557fa8d886c3",
+    "catlabel/protocol/job.py": "a41d8170d953a5cc8e25b86b2dd262ae077ccf701a944bc9dbf1f35080100bc0",
+    "catlabel/protocol/packet.py": "2ab7a00048dce47eba155c26d044936a25d31029976ced10bd28b83b5fa65ac6",
+    "catlabel/protocol/steps.py": "1eb66840864d164883c9bc5a3a6d58f47d9c413106c9f3634f35ee9ba1e4832f",
+    "catlabel/protocol/types.py": "b20ceaf14f5fa2c1df7d25ebe44a1ec6b864fdecb3475c0aa5ba3f3d968a02fc",
+    "catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": "d60d77307d50f67ad7f0e1fbdea237965c6175b5ed84d403cc28240b5ccdb653",
+    "catlabel/transport/bluetooth/classic_receive.py": "bc2ea4f718cfc3daa047bfcec464d789113a20ceed24e9c8d48d4f1e7ed3bae8",
+    "catlabel/vendors/generic/models.py": "b00a335a0bf881e2f5f6d42b4c4ae1443ea2d825686e600a427804d790f9c2ca",
+    "tests/test_ble_policy.py": "48e989c2519f2571f668a93662e46c88dbd1ca9cf87c031fe4870a708495f3eb",
+    "tests/test_ble_transport_session.py": "8f27528dedc06c09148f0484a743d626449133607b119e196c5696f005deb7d0",
+    "tests/test_classic_receive.py": "9af0e7e40945c9e0203cfb9235e0e3463fb08ba276de6bc13b5d414f8addd7c4",
+    "tests/test_eleph_toprint_release.py": "bfbe6bb2cbe9bbb84672397c5d8beb515222dcf690c8353c5004fc264fcf9f39",
+    "tests/test_funny_lx_preflight.py": "32e1b913d3d627f4536250efea65e1d8465e746f1d2dbf3d02cd09885ad9ba39",
+    "tests/test_generic_catalog.py": "617f983aaa7711c3d293b211f6f3b6d9508bcd3659ebc0868ca7cb4deffd7d3f",
+    "tests/test_legacy_toprint_profiles.py": "16b7c289c73e7aa6e1ce610c3bff4d1d0853b97f21b5310ceb8e8feb8fb629d3",
+    "tests/test_new_protocol_families.py": "af5009879c72cadf007a9304642ae2e1969d567bb44fa237aee7edd774bb92d3",
+    "tests/test_protocol_contracts.py": "b2e64245b6a63ce2395ef4f30cff9bb10cfb752b4c7a707a4ab808d9ee03d37a",
+    "tests/test_protocol_write_channels.py": "6f63de20e8bc93587ac264da7827a054610810b3f1c908fdbcd15554b1d016d6",
+    "tests/test_tiny_flow_control.py": "99cca76f546ffb2f36e69b4431b0028f46b934b2a585e8c28827bfc7f98043d8",
+    "tests/test_v5x_completion.py": "5a8bb6ec6b67d655425b00e6ff9b71310533d027fed3ca57bd4c81e179505fc8",
+    "tests/test_v5x_plan_admission.py": "b3a493906d883296b69beca547afeed8136b900cbaf0b59c86d922e093a1550b",
+    "tests/test_v5x_release_parity.py": "35593a32a3fc56ef42981ddf18b4674cb3749dab4770895fec4f7b7e168fe054",
+    "tests/test_yk_frame_contracts.py": "3a2837686ab9b8633d47414d91cb180dcb97afc3b327e67175483b6ed9935ee9",
+    "typings/crc8.pyi": "fd0930c92761f3cf828a81e257fb7e4bfff5cda616012916dbe1894735991a8c"
+  },
+  "policy_and_locks_sha256": {
+    "requirements-check.lock": "5520a6ca39e676948cf03bf05bdc06a546f92e4584846771d1f156b689259a28",
+    "frontend/package-lock.json": "52e7bd6c95963229454fc848da1f72bb44f50ebaf2d3fd58416b54a17b2da0ac",
+    "pixi.lock": "a60e21b3b2fba62a6ac01230d70f88627c5bb5cef49f4a4fe2f1d19f3962b82a",
+    "pyproject.toml": "ec8405c78c236c82bfb6f4210bd66573fbabfb81578188c7bbcad263261fdc5c",
+    "checks/debt.json": "ee4f7f5812a6b096f5dd89af9a8f2342300401c5e3939b7375ddefdb9771092a",
+    "NOTICE": "c6afad929b29fed746d93eaf6400052c84df5270c3dc47d580e8f3849d4b1753"
+  },
+  "log_sha256": "0ac34dd2296bad18b54496e865d5011f39875b44375da3986e60a94fc1df36b1",
+  "limitations": [
+    "Catalog remains v0.7.3; local legacy ToPrint profiles are normalized without source mutation",
+    "Classic receive hub is a tested standalone foundation; live backend integration pending",
+    "S001 frame/status helpers only; encoder/runtime and model promotion pending",
+    "V5X fixtures use complete notification frames; transport fragmentation/coalescing parity pending",
+    "No physical printer acceptance",
+    "Windows and macOS native execution unverified; best effort per user",
+    "Dependency audit not repeated: locks unchanged; existing Vitest advisory migration remains phase4"
+  ]
+}

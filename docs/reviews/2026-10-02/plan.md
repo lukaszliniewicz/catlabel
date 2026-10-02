@@ -17,6 +17,8 @@ This is a proposed plan based on the [2 October review](README.md), [baseline](b
 
 Phase 1 safety/correctness fixes can proceed as soon as phase 0 produces reproducible tests. Small patched dependency updates may accompany phase 1 in a separate change. Major upgrades must wait for the relevant tests and peer/engine compatibility; hardware coverage may keep a new family deferred rather than block unrelated work.
 
+Implementation scope clarification: the user has Linux available and requested best effort for Windows/macOS. Validate their locks, bootstrap branches and portable interfaces, label native execution unverified, and do not block local implementation on unavailable native systems. Physical printer receipts remain separate from source/fixture parity; see the current [implementation ledger](../../maintenance-progress.md) and [upstream parity ledger](../../upstream-parity.md).
+
 ## Phase 0 Reproduce the baseline and introduce check policy
 
 Add `pyproject.toml` for Ruff/basedpyright configuration and a locked development feature/environment. Preserve Python 3.11 initially. Use the tested Node 24 toolchain with a recorded version and `npm ci`; define a supported engine floor compatible with the selected tooling. Resolve a single authoritative dependency declaration, with generated compatibility requirements rather than manually divergent copies. Add CI on Linux, Windows and macOS for platform-relevant code; native installation tests belong to phase 4.

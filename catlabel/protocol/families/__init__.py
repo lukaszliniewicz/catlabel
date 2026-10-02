@@ -24,6 +24,8 @@ from .instaprint_core import BEHAVIOR as INSTAPRINT_CORE_BEHAVIOR
 from .legacy import BEHAVIOR as LEGACY_BEHAVIOR
 from .luck_normal import BEHAVIOR as LUCK_NORMAL_BEHAVIOR
 from .luck_normal_a4 import BEHAVIOR as LUCK_NORMAL_A4_BEHAVIOR
+from .toprint_hprt_esc import BEHAVIOR as TOPRINT_HPRT_ESC_BEHAVIOR
+from .toprint_tspl import BEHAVIOR as TOPRINT_TSPL_BEHAVIOR
 from .v5c import BEHAVIOR as V5C_BEHAVIOR
 from .v5g import BEHAVIOR as V5G_BEHAVIOR
 from .v5x import BEHAVIOR as V5X_BEHAVIOR
@@ -59,6 +61,12 @@ _DEFINITIONS = {
     ),
     ProtocolFamily.ELEPH_TSPL: _definition(
         ProtocolFamily.ELEPH_TSPL, ELEPH_TSPL_BEHAVIOR
+    ),
+    ProtocolFamily.TOPRINT_HPRT_ESC: _definition(
+        ProtocolFamily.TOPRINT_HPRT_ESC, TOPRINT_HPRT_ESC_BEHAVIOR
+    ),
+    ProtocolFamily.TOPRINT_TSPL: _definition(
+        ProtocolFamily.TOPRINT_TSPL, TOPRINT_TSPL_BEHAVIOR
     ),
     ProtocolFamily.INSTAPRINT_CORE: _definition(
         ProtocolFamily.INSTAPRINT_CORE, INSTAPRINT_CORE_BEHAVIOR

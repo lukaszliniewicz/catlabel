@@ -6,6 +6,7 @@ from ...protocol.family import ProtocolFamily
 from .base import RuntimeController
 from .funny_lx import FunnyLxRuntimeController
 from .luck_normal import LuckNormalRuntimeController
+from .tiny import TinyRuntimeController
 from .v5c import V5CRuntimeController
 from .v5g import V5GRuntimeController
 from .v5x import V5XRuntimeController
@@ -22,6 +23,8 @@ def runtime_controller_for_device(
     family = ProtocolFamily.from_value(
         protocol_family or getattr(device, "protocol_family", None)
     )
+    if family in {ProtocolFamily.LEGACY, ProtocolFamily.LEGACY_PREFIXED}:
+        return TinyRuntimeController()
     if family is ProtocolFamily.V5G:
         density_profile = getattr(device, "runtime_density_profile", None)
         return V5GRuntimeController(

@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from .. import reporting
-from ..protocol import ProtocolJob, ProtocolStep, ProtocolStepOperation
+from ..protocol import (
+    ProtocolJob,
+    ProtocolStep,
+    ProtocolStepOperation,
+    ProtocolWriteChannel,
+)
 from .runtime.base import PreparedRuntimeContext
 from .runtime.factory import runtime_controller_for_device
 from .runtime.session import RuntimeConnectionSession
+from .runtime.v5x import V5XRuntimeController
 from .step_execution import bytes_preview, execute_protocol_step, reply_matches_for
 
 _DEFAULT_RUNTIME_CONTEXT = PreparedRuntimeContext()
@@ -22,8 +28,19 @@ async def send_prepared_job(
     """Send one job without discarding its ordered protocol operations."""
 
     session = RuntimeConnectionSession(connection, reporter=reporter)
+    if (
+        any(step.write_channel is ProtocolWriteChannel.CONTROL for step in job.steps)
+        and not session.can_send_control_packet()
+    ):
+        raise RuntimeError("This printer job requires a control write route")
+    if (
+        any(step.write_channel is ProtocolWriteChannel.BULK for step in job.steps)
+        and not session.can_send_bulk_payload()
+    ):
+        raise RuntimeError("This printer job requires a bulk write route")
     controller = runtime_context.runtime_controller
-    if controller is None and job.wait_for_completion:
+    if controller is None:
+        # Skipping final physical completion must not skip protocol ACKs or flow control.
         controller = runtime_controller_for_device(device)
     if controller is not None:
         await session.attach_runtime_controller(controller, timeout=timeout)
@@ -34,6 +51,10 @@ async def send_prepared_job(
             sent = await controller.send_protocol_steps(
                 session, job.steps, timeout=timeout
             )
+            if not sent and isinstance(controller, V5XRuntimeController):
+                raise RuntimeError(
+                    "V5X step plans must be handled by their acknowledgement runtime"
+                )
         if not sent:
             await _send_protocol_steps(session, job.steps, timeout=timeout)
             sent = True

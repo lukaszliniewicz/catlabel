@@ -8,7 +8,7 @@ from .commands import advance_paper_cmd, retract_paper_cmd
 from .families import get_protocol_behavior
 from .runtime import RuntimePrintCapabilities
 from .steps import ProtocolStep
-from .types import ImageEncoding, ImagePipelineConfig, PaperMode
+from .types import ImageEncoding, ImagePipelineConfig, PageFlow, PaperMode
 
 
 class ProtocolJob:
@@ -59,6 +59,7 @@ class PrinterProtocol:
         page_index: int = 1,
         page_count: int = 1,
         runtime_capabilities: RuntimePrintCapabilities | None = None,
+        page_flow: PageFlow = PageFlow.PAGED,
     ) -> ProtocolJob:
         pipeline = self.resolve_image_pipeline(
             image_pipeline=image_pipeline,
@@ -87,6 +88,7 @@ class PrinterProtocol:
             one_length=getattr(profile, "one_length", 0),
             a4xii=bool(getattr(profile, "a4xii", False)),
             runtime_capabilities=runtime_capabilities,
+            page_flow=page_flow,
         )
         return ProtocolJob(payload=payload, steps=steps, wait_for_completion=True)
 

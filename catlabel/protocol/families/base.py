@@ -8,7 +8,7 @@ from ..family import ProtocolFamily, ProtocolSpec
 from ..packet import prefixed_packet_length
 from ..plan import ProtocolPlan
 from ..runtime import RuntimePrintCapabilities
-from ..types import ImageEncoding, ImagePipelineConfig, PaperMode
+from ..types import ImageEncoding, ImagePipelineConfig, PageFlow, PaperMode
 
 ManualMotionBuilder = Callable[[int, ProtocolFamily, str | None], bytes]
 
@@ -60,6 +60,11 @@ class PrintJobRequest:
     a4xii: bool = False
     a4_sheet_max_height: int | None = None
     runtime_capabilities: RuntimePrintCapabilities | None = None
+    page_flow: PageFlow = PageFlow.PAGED
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.page_flow, PageFlow):
+            object.__setattr__(self, "page_flow", PageFlow(self.page_flow))
 
     def require_raster(self, pixel_format: PixelFormat) -> RasterBuffer:
         return self.raster_set.require(pixel_format)
@@ -83,6 +88,14 @@ class PrintJobRequest:
     @property
     def is_last_page(self) -> bool:
         return self.page_index >= self.page_count
+
+    @property
+    def starts_media_page(self) -> bool:
+        return self.page_flow is PageFlow.PAGED or self.is_first_page
+
+    @property
+    def ends_media_page(self) -> bool:
+        return self.page_flow is PageFlow.PAGED or self.is_last_page
 
 
 @dataclass(frozen=True)

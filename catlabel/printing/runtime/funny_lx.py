@@ -127,6 +127,13 @@ class FunnyLxRuntimeController(RuntimeController):
     ) -> bool:
         if not any(_is_image_packet(step) for step in steps):
             return False
+        if any(
+            step.operation is ProtocolStepOperation.QUERY for step in steps
+        ) and not (
+            session.can_query_control_packet()
+            or session.can_send_control_packet_wait_notification()
+        ):
+            raise RuntimeError("Funny LX requires request/reply protocol support")
         if (
             not session.can_send_standard_payload()
             or not session.can_wait_for_notification()

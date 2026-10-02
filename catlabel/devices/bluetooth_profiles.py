@@ -25,12 +25,19 @@ class BleTransportProfile:
     flow_controlled_standard_write: bool = False
     bulk_write: BleBulkWriteProfile | None = None
     write_without_response_payload_reserve: int = 0
+    flow_resume_timeout_s: float | None = None
 
 
 _FALLBACK = BleTransportProfile()
+_TINY = BleTransportProfile(
+    standard_chunk_cap=512,
+    prefer_generic_notify=True,
+    flow_controlled_standard_write=True,
+    flow_resume_timeout_s=600.0,
+)
 _PROFILES = {
-    "legacy": BleTransportProfile(standard_chunk_cap=512),
-    "legacy_prefixed": BleTransportProfile(standard_chunk_cap=512),
+    "legacy": _TINY,
+    "legacy_prefixed": _TINY,
     "luck_normal": BleTransportProfile(),
     "luck_normal_a4": BleTransportProfile(),
     "v5g": BleTransportProfile(
@@ -57,6 +64,7 @@ _PROFILES = {
     "phomemo_esc": BleTransportProfile(
         preferred_service_uuid="0000ff00-0000-1000-8000-00805f9b34fb",
         preferred_write_char_uuid="0000ff02-0000-1000-8000-00805f9b34fb",
+        prefer_generic_notify=True,
         standard_chunk_cap=128,
         standard_write_delay_ms=20,
     ),
@@ -73,6 +81,14 @@ _PROFILES = {
     "eleph_tspl": BleTransportProfile(
         preferred_service_uuid="000018f0-0000-1000-8000-00805f9b34fb",
         preferred_write_char_uuid="00002af1-0000-1000-8000-00805f9b34fb",
+        standard_chunk_cap=20,
+        standard_write_delay_ms=30,
+    ),
+    "toprint_tspl": BleTransportProfile(
+        standard_chunk_cap=180,
+        standard_write_delay_ms=10,
+    ),
+    "toprint_hprt_esc": BleTransportProfile(
         standard_chunk_cap=180,
         standard_write_delay_ms=10,
     ),

@@ -4,22 +4,25 @@ import asyncio
 import time
 from dataclasses import dataclass, field
 
-from ...protocol.families import split_prefixed_bulk_stream
+from ...protocol.families.base import SplitWritePlan
 from ...protocol.families.v5x import (
     V5X_CONNECT_INIT_PACKET,
     V5X_FINALIZE_PACKET,
     V5X_GET_SERIAL_PACKET,
-    V5X_GRAY_MODE_SUFFIX,
     V5X_NOTIFY_PAUSE_PACKETS,
     V5X_NOTIFY_RESUME_PACKETS,
     V5X_STATUS_POLL_PACKET,
+    build_sign_response,
+    split_print_stream,
 )
 from ...protocol.family import ProtocolFamily
 from ...protocol.packet import (
     make_packet,
+    prefixed_packet_length,
     prefixed_packet_opcode,
     prefixed_packet_payload,
 )
+from ...protocol.steps import ProtocolStep, ProtocolStepOperation, ProtocolWriteChannel
 from .base import RuntimeController
 
 
@@ -43,9 +46,13 @@ class _V5XSessionState:
     status_poll_ack_seen: bool = False
     last_ab_status: int | None = None
     mxw_sign_requested: bool = False
+    mxw_sign_responses_sent: int = 0
+    pending_sign_responses: set[asyncio.Task[None]] = field(default_factory=set)
     pending_get_serial: asyncio.Task | None = None
     pending_status_poll: asyncio.Task | None = None
     command_ack_events: dict[int, asyncio.Event] = field(default_factory=dict)
+    await_start_ready: bool = False
+    start_ready_seen: bool = False
     start_ready_event: asyncio.Event | None = None
     connect_info_event: asyncio.Event | None = None
 
@@ -57,6 +64,7 @@ class _V5XJobContext:
 
 
 class V5XRuntimeController(RuntimeController):
+    _START_READY_MAX_S = 60.0
     _COMPLETION_QUIET_S = 3.0
     _COMPLETION_GRACE_S = 3.0
     _COMPLETION_MAX_S = 60.0
@@ -67,17 +75,19 @@ class V5XRuntimeController(RuntimeController):
     def adopt_previous(self, previous: RuntimeController | None) -> None:
         if not isinstance(previous, V5XRuntimeController):
             return
-        pending_get_serial = self._state.pending_get_serial
-        pending_status_poll = self._state.pending_status_poll
-        command_ack_events = self._state.command_ack_events
-        start_ready_event = self._state.start_ready_event
-        connect_info_event = self._state.connect_info_event
-        self._state = previous._state
-        self._state.pending_get_serial = pending_get_serial
-        self._state.pending_status_poll = pending_status_poll
-        self._state.command_ack_events = command_ack_events
-        self._state.start_ready_event = start_ready_event
-        self._state.connect_info_event = connect_info_event
+        current_state = self._state
+        previous_state = previous._state
+        previous_state.pending_get_serial = current_state.pending_get_serial
+        previous_state.pending_status_poll = current_state.pending_status_poll
+        previous_state.command_ack_events = current_state.command_ack_events
+        previous_state.await_start_ready = current_state.await_start_ready
+        previous_state.start_ready_seen = current_state.start_ready_seen
+        previous_state.start_ready_event = current_state.start_ready_event
+        previous_state.connect_info_event = current_state.connect_info_event
+        previous_state.pending_sign_responses.update(
+            current_state.pending_sign_responses
+        )
+        self._state = previous_state
 
     def debug_snapshot(self) -> dict[str, object]:
         return {
@@ -99,9 +109,12 @@ class V5XRuntimeController(RuntimeController):
             "status_poll_ack_seen": self._state.status_poll_ack_seen,
             "last_ab_status": self._state.last_ab_status,
             "mxw_sign_requested": self._state.mxw_sign_requested,
+            "mxw_sign_responses_sent": self._state.mxw_sign_responses_sent,
             "pending_command_ack_opcodes": sorted(
                 self._state.command_ack_events.keys()
             ),
+            "await_start_ready": self._state.await_start_ready,
+            "start_ready_seen": self._state.start_ready_seen,
             "has_start_ready_event": self._state.start_ready_event is not None,
             "has_connect_info_event": self._state.connect_info_event is not None,
         }
@@ -129,52 +142,213 @@ class V5XRuntimeController(RuntimeController):
             await self._wait_for_connect_info(session, min(timeout, 0.4))
 
     async def stop(self, session) -> None:
-        self._cancel_pending_get_serial()
-        self._cancel_pending_status_poll()
+        pending_background = tuple(
+            task
+            for task in (
+                self._state.pending_get_serial,
+                self._state.pending_status_poll,
+                *self._state.pending_sign_responses,
+            )
+            if task is not None
+        )
+        for task in pending_background:
+            task.cancel()
+        self._state.pending_get_serial = None
+        self._state.pending_status_poll = None
+        self._state.pending_sign_responses.clear()
+        if pending_background:
+            await asyncio.gather(*pending_background, return_exceptions=True)
+        self._state.command_ack_events.clear()
+        self._clear_start_ready()
+        self._state.last_a9_status = None
+        self._state.connect_info_event = None
 
     async def send_payload(self, session, data: bytes, *, timeout: float) -> bool:
-        split = split_prefixed_bulk_stream(
-            data,
-            ProtocolFamily.V5X,
-            (V5X_FINALIZE_PACKET,),
+        split = split_print_stream(data)
+        has_bulk = bool(split.bulk_payload)
+        self._validate_split_plan(split, has_bulk=has_bulk)
+        self._preflight(session, split, has_bulk=has_bulk)
+        await self._execute_split_plan(session, split, timeout=timeout)
+        return True
+
+    async def send_protocol_steps(
+        self,
+        session,
+        steps: tuple[ProtocolStep, ...],
+        *,
+        timeout: float,
+    ) -> bool:
+        split_result = self._split_protocol_steps(steps)
+        if split_result is None:
+            return False
+        split, has_bulk = split_result
+        self._validate_split_plan(split, has_bulk=has_bulk)
+        self._preflight(session, split, has_bulk=has_bulk)
+        await self._execute_split_plan(session, split, timeout=timeout)
+        return True
+
+    def _split_protocol_steps(
+        self, steps: tuple[ProtocolStep, ...]
+    ) -> tuple[SplitWritePlan, bool] | None:
+        if any(
+            step.operation is not ProtocolStepOperation.SEND
+            or step.write_channel is ProtocolWriteChannel.STANDARD
+            for step in steps
+        ):
+            return None
+        leading: list[bytes] = []
+        trailing: list[bytes] = []
+        bulk_payload = b""
+        has_bulk = False
+        bulk_seen = False
+        for step in steps:
+            if step.write_channel is ProtocolWriteChannel.CONTROL:
+                (trailing if bulk_seen else leading).append(step.data)
+                continue
+            if step.write_channel is ProtocolWriteChannel.BULK:
+                if has_bulk:
+                    raise ValueError("V5X plans may contain at most one bulk step")
+                has_bulk = True
+                bulk_seen = True
+                bulk_payload = step.data
+        if not has_bulk:
+            start_index = next(
+                (
+                    index
+                    for index, packet in enumerate(leading)
+                    if prefixed_packet_opcode(packet, ProtocolFamily.V5X) == 0xA9
+                ),
+                None,
+            )
+            if start_index is not None:
+                trailing.extend(leading[start_index + 1 :])
+                leading = leading[: start_index + 1]
+        return (
+            SplitWritePlan(
+                commands=tuple(leading),
+                bulk_payload=bulk_payload,
+                trailing_commands=tuple(trailing),
+            ),
+            has_bulk,
         )
+
+    def _validate_split_plan(self, split: SplitWritePlan, *, has_bulk: bool) -> None:
+        packets = split.commands + split.trailing_commands
+        if not packets:
+            raise ValueError("V5X plans must contain at least one control packet")
+        for packet in packets:
+            if not self._is_complete_control_packet(packet):
+                raise ValueError("V5X control step must contain one complete packet")
+
+        opcodes = [
+            prefixed_packet_opcode(packet, ProtocolFamily.V5X) for packet in packets
+        ]
+        start_indexes = [
+            index for index, opcode in enumerate(opcodes) if opcode == 0xA9
+        ]
+        if len(start_indexes) > 1:
+            raise ValueError("V5X plans may contain at most one A9 start command")
+        if split.bulk_payload and not has_bulk:
+            has_bulk = True
+        if has_bulk and not start_indexes:
+            raise ValueError("V5X bulk payload requires an A9 start command")
+
+        if start_indexes:
+            start_packet = packets[start_indexes[0]]
+            if not self._is_valid_start_packet(start_packet):
+                raise ValueError("Invalid V5X A9 start command")
+            if start_indexes[0] != len(split.commands) - 1:
+                raise ValueError("V5X A9 must be the final leading control command")
+            if (
+                not split.trailing_commands
+                or split.trailing_commands[-1] != V5X_FINALIZE_PACKET
+            ):
+                raise ValueError("V5X A9 job must end with its finalizer")
+            if any(opcode == 0xAD for opcode in opcodes[: start_indexes[0]]):
+                raise ValueError("V5X finalizer cannot precede the A9 start command")
+        else:
+            if has_bulk or split.bulk_payload:
+                raise ValueError("V5X raster payload requires an A9 start command")
+            finalizer_indexes = [
+                index for index, opcode in enumerate(opcodes) if opcode == 0xAD
+            ]
+            if finalizer_indexes and finalizer_indexes != [len(opcodes) - 1]:
+                raise ValueError("V5X finalizer must be the last control command")
+
+        if sum(opcode == 0xAD for opcode in opcodes) > 1:
+            raise ValueError("V5X plans may contain only one finalizer")
+
+    @staticmethod
+    def _is_complete_control_packet(packet: bytes) -> bool:
+        packet_length = prefixed_packet_length(packet, 0, ProtocolFamily.V5X)
+        return packet_length is not None and packet_length == len(packet)
+
+    @staticmethod
+    def _is_valid_start_packet(packet: bytes) -> bool:
+        prefix = ProtocolFamily.V5X.require_packet_prefix()
+        if not packet.startswith(prefix + b"\xa9\x00\x04\x00"):
+            return False
+        payload = prefixed_packet_payload(packet, ProtocolFamily.V5X)
+        return (
+            payload is not None
+            and len(payload) == 4
+            and payload[2] == 0x30
+            and payload[3] in (0x00, 0x01, 0x02)
+            and packet.endswith(b"\x00\x00")
+        )
+
+    def _preflight(self, session, split: SplitWritePlan, *, has_bulk: bool) -> None:
         if not session.can_send_control_packet():
             raise RuntimeError("V5X control packet send unavailable")
-        if split.bulk_payload and not session.can_send_bulk_payload():
+        if (has_bulk or split.bulk_payload) and not session.can_send_bulk_payload():
             raise RuntimeError("V5X bulk payload send unavailable")
-
-        split_context = self.build_split_context(session, split)
-        for packet in split.commands:
-            packet, density_updated = self.prepare_split_command(
-                session,
-                packet,
-                split_context,
+        if (
+            any(
+                prefixed_packet_opcode(packet, ProtocolFamily.V5X) == 0xA9
+                for packet in split.commands + split.trailing_commands
             )
-            if packet is None:
+            and not session.can_send_control_packet_wait_notification()
+        ):
+            raise RuntimeError("V5X atomic A9 acknowledgment unavailable")
+
+    async def _execute_split_plan(
+        self,
+        session,
+        split: SplitWritePlan,
+        *,
+        timeout: float,
+    ) -> None:
+        split_context = self.build_split_context(session, split)
+        density_changed = False
+        for packet in split.commands:
+            prepared_packet, density_updated = self.prepare_split_command(
+                session, packet, split_context
+            )
+            if prepared_packet is None:
                 continue
+            packet = prepared_packet
+            opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
+            if opcode == 0xAD:
+                await self._send_finalizer(session, packet, timeout=timeout)
+                continue
+            density_changed = density_changed or density_updated
             await self.before_split_command(
                 session,
                 packet,
                 split_context,
                 timeout=timeout,
-                density_updated=density_updated,
+                density_updated=density_changed,
             )
-            ack_token = self.arm_command_ack(session, packet)
-            try:
+            if opcode == 0xA9:
+                await self._send_a9_and_validate(session, packet, timeout=timeout)
+            else:
                 sent = await session.send_control_packet(packet, timeout=timeout)
                 if not sent:
                     raise RuntimeError("V5X control packet send unavailable")
-                await self.after_split_command(
-                    session,
-                    packet,
-                    split_context,
-                    timeout=timeout,
-                    density_updated=density_updated,
-                    ack_token=ack_token,
-                )
-            except Exception:
-                self.clear_command_ack(session, ack_token)
-                raise
+            if density_updated:
+                density_payload = prefixed_packet_payload(packet, ProtocolFamily.V5X)
+                if density_payload is not None:
+                    self._state.last_density_payload = density_payload
 
         if split.bulk_payload:
             sent = await session.send_bulk_payload(split.bulk_payload, timeout=timeout)
@@ -182,10 +356,55 @@ class V5XRuntimeController(RuntimeController):
                 raise RuntimeError("V5X bulk payload send unavailable")
 
         for packet in split.trailing_commands:
+            if packet == V5X_FINALIZE_PACKET:
+                await self._send_finalizer(session, packet, timeout=timeout)
+                continue
             sent = await session.send_control_packet(packet, timeout=timeout)
             if not sent:
                 raise RuntimeError("V5X trailing control packet send unavailable")
-        return True
+
+    async def _send_a9_and_validate(
+        self, session, packet: bytes, *, timeout: float
+    ) -> None:
+        ack_token = self.arm_command_ack(session, packet)
+        self._state.last_a9_status = None
+        try:
+            reply = await session.send_control_packet_wait_notification(
+                packet,
+                label="V5X command ack 0xa9",
+                match=self._is_valid_a9_notification,
+                timeout=timeout,
+                required=True,
+            )
+            status = self._extract_status_byte(session, reply or b"")
+            self._state.last_a9_status = status
+            self._validate_command_ack(0xA9)
+        finally:
+            self.clear_command_ack(session, ack_token)
+
+    @staticmethod
+    def _is_valid_a9_notification(payload: bytes) -> bool:
+        prefix = ProtocolFamily.V5X.require_packet_prefix()
+        if len(payload) == len(prefix) + 4:
+            return payload.startswith(prefix + b"\xa9")
+        packet_length = prefixed_packet_length(payload, 0, ProtocolFamily.V5X)
+        raw = prefixed_packet_payload(payload, ProtocolFamily.V5X)
+        return (
+            payload.startswith(prefix + b"\xa9")
+            and packet_length == len(payload)
+            and raw is not None
+            and len(raw) >= 1
+        )
+
+    async def _send_finalizer(self, session, packet: bytes, *, timeout: float) -> None:
+        self._arm_start_ready()
+        try:
+            sent = await session.send_control_packet(packet, timeout=timeout)
+            if not sent:
+                raise RuntimeError("V5X finalizer send unavailable")
+        except BaseException:
+            self._clear_start_ready()
+            raise
 
     def build_split_context(self, session, split) -> _V5XJobContext:
         is_gray = False
@@ -195,10 +414,8 @@ class V5XRuntimeController(RuntimeController):
             payload = prefixed_packet_payload(packet, ProtocolFamily.V5X)
             if payload is None:
                 continue
-            if len(payload) == 2:
-                is_gray = True
-            elif len(payload) >= 6:
-                is_gray = payload[2:6] == V5X_GRAY_MODE_SUFFIX
+            if len(payload) >= 4:
+                is_gray = payload[3] == 0x02
             break
         coverage_ratio = 0.0
         if split.bulk_payload and not is_gray:
@@ -226,7 +443,6 @@ class V5XRuntimeController(RuntimeController):
                 f"skipping unchanged V5X density packet: {payload.hex()}"
             )
             return None, False
-        self._state.last_density_payload = payload
         return packet, True
 
     async def before_split_command(
@@ -240,45 +456,7 @@ class V5XRuntimeController(RuntimeController):
     ) -> None:
         opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
         if opcode in (0xA2, 0xA9):
-            await self._wait_for_start_ready(timeout)
-
-    def arm_command_ack(
-        self, session, packet: bytes
-    ) -> tuple[int, asyncio.Event] | None:
-        opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
-        if opcode not in (0xA7, 0xA9):
-            return None
-        if opcode == 0xA7:
-            self._state.start_ready_event = asyncio.Event()
-        event = asyncio.Event()
-        self._state.command_ack_events[opcode] = event
-        return opcode, event
-
-    async def after_split_command(
-        self,
-        session,
-        packet: bytes,
-        split_context: _V5XJobContext,
-        *,
-        timeout: float,
-        density_updated: bool,
-        ack_token,
-    ) -> None:
-        opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
-        if ack_token is not None:
-            ack_opcode, event = ack_token
-            try:
-                await asyncio.wait_for(event.wait(), timeout=timeout)
-                self._validate_command_ack(ack_opcode)
-            finally:
-                if self._state.command_ack_events.get(ack_opcode) is event:
-                    self._state.command_ack_events.pop(ack_opcode, None)
-                    if (
-                        ack_opcode == 0xA7
-                        and self._state.start_ready_event is not None
-                        and not self._state.start_ready_event.is_set()
-                    ):
-                        self._state.start_ready_event = None
+            await self._wait_for_start_ready(session, timeout)
         if opcode == 0xA9:
             delay_ms = self._compute_start_delay_ms(
                 split_context, density_updated=density_updated
@@ -286,21 +464,27 @@ class V5XRuntimeController(RuntimeController):
             if delay_ms > 0:
                 await asyncio.sleep(delay_ms / 1000.0)
 
+    def arm_command_ack(
+        self, session, packet: bytes
+    ) -> tuple[int, asyncio.Event] | None:
+        opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
+        if opcode != 0xA9:
+            return None
+        event = asyncio.Event()
+        self._state.command_ack_events[opcode] = event
+        return opcode, event
+
     def clear_command_ack(self, session, ack_token) -> None:
         if ack_token is None:
             return
-        opcode, _event = ack_token
-        self._state.command_ack_events.pop(opcode, None)
-        if (
-            opcode == 0xA7
-            and self._state.start_ready_event is not None
-            and not self._state.start_ready_event.is_set()
-        ):
-            self._state.start_ready_event = None
+        opcode, event = ack_token
+        if self._state.command_ack_events.get(opcode) is event:
+            self._state.command_ack_events.pop(opcode, None)
 
     async def wait_for_completion(self, session, *, timeout: float) -> None:
         # V5X devices stream A1 state while the mechanism is moving. Waiting is
         # passive: polling A3 here would move paper on affected firmware.
+        self._clear_start_ready()
         if not session.can_wait_for_notification():
             return
         session.report_debug("V5X waiting for print completion before disconnect")
@@ -341,7 +525,6 @@ class V5XRuntimeController(RuntimeController):
         opcode = prefixed_packet_opcode(payload, ProtocolFamily.V5X)
         if opcode == 0xA7:
             self._update_info_from_a7(session, payload)
-            self._release_command_ack(session, 0xA7)
         elif opcode == 0xA1:
             self._update_status(session, payload)
         elif opcode == 0xA3:
@@ -351,9 +534,8 @@ class V5XRuntimeController(RuntimeController):
         elif opcode == 0xAA:
             self._release_start_ready(session)
         elif opcode == 0xA9:
-            status = self._extract_status_byte(session, payload)
-            self._state.last_a9_status = status
-            self._release_command_ack(session, 0xA9)
+            if self._is_valid_a9_notification(payload):
+                self._release_command_ack(session, 0xA9)
         elif opcode == 0xAB:
             self._update_ab_status(session, payload)
         elif opcode == 0xB0:
@@ -364,17 +546,29 @@ class V5XRuntimeController(RuntimeController):
         elif opcode == 0xB2:
             self._schedule_status_poll(session)
         elif opcode == 0xB3:
-            self._mark_sign_request(session)
+            self._schedule_sign_response(session, payload)
 
-    async def _wait_for_start_ready(self, timeout: float) -> None:
-        if self._state.start_ready_event is None:
-            return
+    async def _wait_for_start_ready(self, session, timeout: float) -> None:
         event = self._state.start_ready_event
+        if not self._state.await_start_ready or event is None:
+            return
         try:
-            await asyncio.wait_for(event.wait(), timeout=timeout)
-        finally:
-            if self._state.start_ready_event is event:
-                self._state.start_ready_event = None
+            wait_timeout = max(timeout, self._START_READY_MAX_S)
+            await asyncio.wait_for(event.wait(), timeout=wait_timeout)
+        except TimeoutError:
+            self._clear_start_ready()
+            raise TimeoutError("Timed out waiting for V5X start ready 0xaa") from None
+        self._clear_start_ready()
+
+    def _arm_start_ready(self) -> None:
+        self._state.await_start_ready = True
+        self._state.start_ready_seen = False
+        self._state.start_ready_event = asyncio.Event()
+
+    def _clear_start_ready(self) -> None:
+        self._state.await_start_ready = False
+        self._state.start_ready_seen = False
+        self._state.start_ready_event = None
 
     async def _wait_for_connect_info(self, session, timeout: float) -> None:
         if self._state.connect_info_event is None:
@@ -398,10 +592,12 @@ class V5XRuntimeController(RuntimeController):
 
     def _release_start_ready(self, session) -> None:
         if (
-            self._state.start_ready_event is None
+            not self._state.await_start_ready
+            or self._state.start_ready_event is None
             or self._state.start_ready_event.is_set()
         ):
             return
+        self._state.start_ready_seen = True
         self._state.start_ready_event.set()
         session.report_debug("start ready: 0xaa")
 
@@ -441,10 +637,7 @@ class V5XRuntimeController(RuntimeController):
             return
         if not session.can_send_control_packet():
             return
-        if (
-            0xA7 in self._state.command_ack_events
-            or self._state.start_ready_event is not None
-        ):
+        if self._state.await_start_ready:
             return
         try:
             loop = asyncio.get_running_loop()
@@ -464,18 +657,6 @@ class V5XRuntimeController(RuntimeController):
 
     async def _send_command(self, session, packet: bytes) -> None:
         await session.send_control_packet(packet, timeout=1.0)
-
-    def _cancel_pending_get_serial(self) -> None:
-        if self._state.pending_get_serial is None:
-            return
-        self._state.pending_get_serial.cancel()
-        self._state.pending_get_serial = None
-
-    def _cancel_pending_status_poll(self) -> None:
-        if self._state.pending_status_poll is None:
-            return
-        self._state.pending_status_poll.cancel()
-        self._state.pending_status_poll = None
 
     def _validate_command_ack(self, opcode: int) -> None:
         if opcode != 0xA9:
@@ -580,12 +761,16 @@ class V5XRuntimeController(RuntimeController):
 
     def _extract_status_byte(self, session, payload: bytes) -> int | None:
         raw = prefixed_packet_payload(payload, ProtocolFamily.V5X)
-        if raw:
+        packet_length = prefixed_packet_length(payload, 0, ProtocolFamily.V5X)
+        if raw and packet_length == len(payload):
             return raw[0]
         prefix = ProtocolFamily.V5X.require_packet_prefix()
-        if len(payload) < len(prefix) + 2 or payload[: len(prefix)] != prefix:
+        if (
+            len(payload) != len(prefix) + 4
+            or payload[: len(prefix) + 1] != prefix + b"\xa9"
+        ):
             return None
-        return payload[len(prefix) + 1]
+        return payload[-2]
 
     def _update_status(self, session, payload: bytes) -> None:
         raw = prefixed_packet_payload(payload, ProtocolFamily.V5X)
@@ -637,14 +822,44 @@ class V5XRuntimeController(RuntimeController):
             return
         self._state.last_ab_status = raw[-1]
 
-    def _mark_sign_request(self, session) -> None:
-        if self._state.mxw_sign_requested:
-            return
+    def _schedule_sign_response(self, session, payload: bytes) -> None:
         self._state.mxw_sign_requested = True
-        session.report_warning(
-            short="V5X printer requested an additional signing step",
-            detail="Continuing without the optional signing command for this session.",
+        challenge = prefixed_packet_payload(payload, ProtocolFamily.V5X)
+        if challenge is None or len(challenge) < 10:
+            session.report_warning(
+                short="V5X signing challenge was invalid",
+                detail="A B3 challenge requires ten bytes; no response was sent.",
+            )
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            session.report_warning(
+                short="V5X signing response could not be scheduled",
+                detail="No active runtime event loop was available for the B3 response.",
+            )
+            return
+        packet = build_sign_response(
+            challenge[:10], timestamp_ms=int(time.time() * 1000)
         )
+        task = loop.create_task(self._send_sign_response(session, packet))
+        self._state.pending_sign_responses.add(task)
+        task.add_done_callback(
+            lambda completed: self._state.pending_sign_responses.discard(completed)
+        )
+
+    async def _send_sign_response(self, session, packet: bytes) -> None:
+        try:
+            if not await session.send_control_packet(packet, timeout=1.0):
+                raise RuntimeError("V5X signing response send unavailable")
+        except Exception as exc:
+            session.report_warning(
+                short="V5X signing response could not be sent",
+                detail=str(exc),
+            )
+            return
+        self._state.mxw_sign_responses_sent += 1
+        session.report_debug("V5X local signing response sent: 0xb3")
 
     def _update_head_type_from_b0(self, session, payload: bytes) -> None:
         raw = prefixed_packet_payload(payload, ProtocolFamily.V5X)

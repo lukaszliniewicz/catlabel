@@ -28,8 +28,10 @@ class GenericCatalogTests(unittest.TestCase):
         self.assertEqual(len(self.registry.models), 132)
         self.assertEqual(counts[ProtocolFamily.LEGACY], 79)
         self.assertEqual(counts[ProtocolFamily.V5G], 14)
-        self.assertEqual(counts[ProtocolFamily.ELEPH_TSPL], 2)
-        self.assertEqual(counts[ProtocolFamily.ELEPH_HPRT_ESC], 1)
+        self.assertEqual(counts[ProtocolFamily.ELEPH_TSPL], 1)
+        self.assertEqual(counts[ProtocolFamily.TOPRINT_TSPL], 1)
+        self.assertEqual(counts[ProtocolFamily.TOPRINT_HPRT_ESC], 1)
+        self.assertNotIn(ProtocolFamily.ELEPH_HPRT_ESC, counts)
         self.assertEqual(counts[ProtocolFamily.INSTAPRINT_CORE], 1)
         self.assertEqual(counts[ProtocolFamily.FUNNY_LX], 1)
         self.assertNotIn(ProtocolFamily.DCK, counts)
@@ -88,7 +90,7 @@ class GenericCatalogTests(unittest.TestCase):
             "CorePrint": ProtocolFamily.INSTAPRINT_CORE,
             "LX-D01": ProtocolFamily.FUNNY_LX,
             "P1_F30E": ProtocolFamily.ELEPH_TSPL,
-            "P11_F30E": ProtocolFamily.ELEPH_HPRT_ESC,
+            "P11_F30E": ProtocolFamily.TOPRINT_HPRT_ESC,
         }
         for name, family in expected.items():
             with self.subTest(name=name):

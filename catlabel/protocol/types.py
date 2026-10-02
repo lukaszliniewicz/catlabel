@@ -21,6 +21,8 @@ class ImageEncoding(ProtocolStrEnum):
     DCK_DEFAULT = "dck_default"
     ELEPH_HPRT_ESC_RASTER = "eleph_hprt_esc_raster"
     ELEPH_TSPL_BITMAP = "eleph_tspl_bitmap"
+    TOPRINT_HPRT_ESC_RASTER = "toprint_hprt_esc_raster"
+    TOPRINT_TSPL_BITMAP = "toprint_tspl_bitmap"
     INSTAPRINT_CORE_RASTER = "instaprint_core_raster"
     FUNNY_LX_RASTER = "funny_lx_raster"
 
@@ -46,6 +48,11 @@ class PaperMode(ProtocolStrEnum):
             PaperMode.CIRCLE_TAG: "Circle tag",
         }
         return labels[self]
+
+
+class PageFlow(ProtocolStrEnum):
+    PAGED = "paged"
+    CONTINUOUS = "continuous"
 
 
 @dataclass(frozen=True)

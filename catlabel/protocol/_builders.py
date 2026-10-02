@@ -16,7 +16,7 @@ from .family import ProtocolFamily
 from .plan import ProtocolPlan
 from .runtime import RuntimePrintCapabilities
 from .steps import ProtocolStep
-from .types import ImagePipelineConfig, PaperMode
+from .types import ImagePipelineConfig, PageFlow, PaperMode
 
 
 def _build_family_job(request: PrintJobRequest) -> ProtocolPlan | None:
@@ -106,6 +106,7 @@ def _build_request(
     a4xii: bool = False,
     a4_sheet_max_height: int | None = None,
     runtime_capabilities: RuntimePrintCapabilities | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> PrintJobRequest:
     family = ProtocolFamily.from_value(protocol_family)
     request = PrintJobRequest(
@@ -131,6 +132,7 @@ def _build_request(
         a4xii=a4xii,
         a4_sheet_max_height=a4_sheet_max_height,
         runtime_capabilities=runtime_capabilities,
+        page_flow=page_flow,
     )
     _validate_request(request)
     return request
@@ -148,6 +150,7 @@ def _build_print_payload(
     can_print_label: bool = False,
     image_pipeline: ImagePipelineConfig | None = None,
     paper_mode: PaperMode | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> bytes:
     raster = RasterBuffer(pixels=pixels, width=width, pixel_format=PixelFormat.BW1)
     return _build_print_payload_from_raster(
@@ -161,6 +164,7 @@ def _build_print_payload(
         can_print_label=can_print_label,
         image_pipeline=image_pipeline,
         paper_mode=paper_mode,
+        page_flow=page_flow,
     )
 
 
@@ -175,6 +179,7 @@ def _build_print_payload_from_raster(
     can_print_label: bool = False,
     image_pipeline: ImagePipelineConfig | None = None,
     paper_mode: PaperMode | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> bytes:
     return _build_print_payload_from_raster_set(
         raster_set=RasterSet.from_single(raster),
@@ -187,6 +192,7 @@ def _build_print_payload_from_raster(
         can_print_label=can_print_label,
         image_pipeline=image_pipeline,
         paper_mode=paper_mode,
+        page_flow=page_flow,
     )
 
 
@@ -203,6 +209,7 @@ def _build_print_payload_from_raster_set(
     paper_mode: PaperMode | None = None,
     page_index: int = 1,
     page_count: int = 1,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> bytes:
     request = _build_request(
         raster_set=raster_set,
@@ -222,6 +229,7 @@ def _build_print_payload_from_raster_set(
         paper_mode=paper_mode,
         page_index=page_index,
         page_count=page_count,
+        page_flow=page_flow,
     )
     family_payload = _build_family_job(request)
     if family_payload is not None:
@@ -269,6 +277,7 @@ def _build_job(
     one_length: int = 0,
     a4xii: bool = False,
     a4_sheet_max_height: int | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> bytes:
     raster = RasterBuffer(pixels=pixels, width=width, pixel_format=PixelFormat.BW1)
     return _build_job_from_raster(
@@ -293,6 +302,7 @@ def _build_job(
         one_length=one_length,
         a4xii=a4xii,
         a4_sheet_max_height=a4_sheet_max_height,
+        page_flow=page_flow,
     )
 
 
@@ -318,6 +328,7 @@ def _build_job_from_raster(
     one_length: int = 0,
     a4xii: bool = False,
     a4_sheet_max_height: int | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> bytes:
     return _build_job_from_raster_set(
         raster_set=RasterSet.from_single(raster),
@@ -341,6 +352,7 @@ def _build_job_from_raster(
         one_length=one_length,
         a4xii=a4xii,
         a4_sheet_max_height=a4_sheet_max_height,
+        page_flow=page_flow,
     )
 
 
@@ -366,6 +378,7 @@ def _build_job_from_raster_set(
     one_length: int = 0,
     a4xii: bool = False,
     a4_sheet_max_height: int | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> bytes:
     payload, _steps = _build_job_model_from_raster_set(
         raster_set=raster_set,
@@ -389,6 +402,7 @@ def _build_job_from_raster_set(
         one_length=one_length,
         a4xii=a4xii,
         a4_sheet_max_height=a4_sheet_max_height,
+        page_flow=page_flow,
     )
     return payload
 
@@ -416,6 +430,7 @@ def _build_job_model_from_raster_set(
     a4xii: bool = False,
     a4_sheet_max_height: int | None = None,
     runtime_capabilities: RuntimePrintCapabilities | None = None,
+    page_flow: PageFlow = PageFlow.PAGED,
 ) -> tuple[bytes, tuple[ProtocolStep, ...]]:
     request = _build_request(
         raster_set=raster_set,
@@ -440,6 +455,7 @@ def _build_job_model_from_raster_set(
         a4xii=a4xii,
         a4_sheet_max_height=a4_sheet_max_height,
         runtime_capabilities=runtime_capabilities,
+        page_flow=page_flow,
     )
     family_plan = _build_family_job(request)
     if family_plan is not None:
@@ -460,6 +476,7 @@ def _build_job_model_from_raster_set(
         paper_mode=request.paper_mode,
         page_index=request.page_index,
         page_count=request.page_count,
+        page_flow=request.page_flow,
     )
     if request.feed_padding > 0:
         job += feed_cmd(request.feed_padding, request.protocol_family)
