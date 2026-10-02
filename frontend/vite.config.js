@@ -1,10 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const logoFileName = 'logo.webp'
-const logoSourcePath = resolve(__dirname, '..', logoFileName)
+const logoSourcePath = fileURLToPath(new URL('../logo.webp', import.meta.url))
+const apiTarget = process.env.CATLABEL_DEV_API_URL || 'http://127.0.0.1:8000'
 
 const getLogoContents = () => {
   if (!existsSync(logoSourcePath)) {
@@ -48,24 +49,25 @@ export default defineConfig({
     restoreMocks: true
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks(id) {
-          const moduleId = id.replaceAll('\\', '/');
-          if (/\/node_modules\/(react|react-dom|scheduler)\//.test(moduleId)) return 'react-vendor';
-          if (/\/node_modules\/(konva|react-konva)\//.test(moduleId)) return 'canvas-vendor';
-          if (/\/node_modules\/(zustand|dompurify|html-to-image)\//.test(moduleId)) return 'editor-vendor';
-          return undefined;
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [
+            { name: 'react-vendor', test: /[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/ },
+            { name: 'canvas-vendor', test: /[\\/]node_modules[\\/](konva|react-konva|react-reconciler|its-fine)[\\/]/ },
+            { name: 'editor-vendor', test: /[\\/]node_modules[\\/](zustand|dompurify|html-to-image)[\\/]/ }
+          ]
         }
       }
     }
   },
   server: {
     port: 5173,
-    host: true,
+    host: '127.0.0.1',
     proxy: {
-      '/api': 'http://127.0.0.1:8000',
-      '/fonts': 'http://127.0.0.1:8000'
+      '/api': apiTarget,
+      '/fonts': apiTarget
     }
   }
 })

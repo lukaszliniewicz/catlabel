@@ -1,21 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import * as Icons from 'lucide-react';
-import { X, Search } from 'lucide-react';
+import { icons, X, Search } from 'lucide-react';
 import { useDialogAccessibility } from '../utils/useDialogAccessibility';
+
+const ICON_NAMES = Object.keys(icons).sort();
+const PAGE_SIZE = 80;
 
 export default function IconPicker({ onClose, onSelect }) {
   const dialogRef = useDialogAccessibility(onClose);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(null);
+  const [page, setPage] = useState(0);
   const svgRef = useRef(null);
 
-  const iconNames = Object.keys(Icons).filter(name => {
-    const isPascalCase = /^[A-Z]/.test(name);
-    const isNotBase = name !== 'Icon' && name !== 'LucideIcon';
-    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
-    return isPascalCase && isNotBase && matchesSearch;
-  });
+  const iconNames = ICON_NAMES.filter(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(iconNames.length / PAGE_SIZE));
+  const visibleNames = iconNames.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   useEffect(() => {
     if (!selectedIcon) return;
@@ -107,21 +107,22 @@ export default function IconPicker({ onClose, onSelect }) {
               type="text" 
               placeholder="Search icons..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
               className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:text-white transition-colors"
             />
           </div>
         </div>
 
         <div className="p-4 overflow-y-auto grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-4">
-          {iconNames.map((name) => {
-            const IconComponent = Icons[name];
+          {visibleNames.map((name) => {
+            const IconComponent = icons[name];
             return (
               <button
                 key={name}
                 onClick={() => setSelectedIcon(name)}
                 className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors group"
                 title={name}
+                aria-label={name}
               >
                 <IconComponent className="text-neutral-700 dark:text-neutral-300 group-hover:scale-110 transition-transform" size={24} strokeWidth={2} />
               </button>
@@ -129,11 +130,19 @@ export default function IconPicker({ onClose, onSelect }) {
           })}
         </div>
 
+        <div className="flex items-center justify-between gap-3 p-4 border-t border-neutral-100 dark:border-neutral-800 text-sm">
+          <span role="status">{iconNames.length} icons · Page {page + 1} of {pageCount}</span>
+          <div className="flex gap-2">
+            <button disabled={page === 0} onClick={() => setPage(page - 1)} className="px-3 py-2 rounded border disabled:opacity-40">Previous</button>
+            <button disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)} className="px-3 py-2 rounded border disabled:opacity-40">Next</button>
+          </div>
+        </div>
+
       </div>
 
       {selectedIcon && (
         <div ref={svgRef} className="hidden">
-          {React.createElement(Icons[selectedIcon], { size: 24, color: "black", strokeWidth: 2 })}
+          {React.createElement(icons[selectedIcon], { size: 24, color: "black", strokeWidth: 2 })}
         </div>
       )}
     </div>,

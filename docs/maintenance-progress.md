@@ -239,3 +239,32 @@ The 24 frontend files retain byte parity with the accepted historical artifact;
 the release manifest's documented aggregation yields `584aa51c9f50d137e5f824a4b7042c948b25f93dd65ddd97385f8c52960c9861`.
 Native foreign systems remain best effort and unverified. Frontend package groups
 and phases 5–7 remain active.
+
+Frontend runtime/toolchain checkpoint accepted locally: React/DOM/React-Konva 19.3,
+Konva 10.7, Zustand 5.0.15, Markdown 10.1, js-beautify 2.0.3 and Lucide 1.50 are
+integrated with Vite 8.3.2/plugin-react 6.1.1/Vitest 5.0.3/jsdom 30.1.1.
+Markdown uses an explicit class wrapper. Rolldown groups include the canvas
+reconciler dependencies after production browser acceptance exposed an entry
+initialization cycle. Canonical icon names and 80-result pagination replace the
+6,355-export grid that stalled inspection. Search/selection/capture and pagination
+tests pass. ESLint remains on the compatible 9.x line; Tailwind 4 remains a separate
+visual migration.
+
+Parent production-browser checks cover text, QR/barcode, cat raster capture,
+save/reload and fixture Markdown history. The saved project has revision 1 and
+three retained objects; no provider or print job was submitted. Automatic printer
+discovery still runs in the current UI. Discovered pre-existing UX debt includes
+offline profile selection being replaced by discovery and displayed millimetres
+depending on unresolved printer DPI. Phase 5 must address both.
+
+The refreshed Python/npm advisory gate passes with zero findings and no
+exceptions. The former three exact Vitest exceptions are retired. A new icon
+pagination regression brings frontend coverage to 34 tests. Production build
+observations are recorded separately from edit/render performance.
+
+Full Linux gate: 702 backend tests (701 passed, one Windows SDK skip), 34 frontend
+tests and a 1.47-second scratch production build pass; all nine static categories
+are zero. The shipped 26-file frontend matches the accepted production build,
+including exact root-logo bytes. Old generated assets were retained in the
+disposable acceptance backup before replacement.
+[Runtime/toolchain receipt](reviews/2026-10-02/evidence/phase4-frontend-runtime-toolchain-receipt.json).

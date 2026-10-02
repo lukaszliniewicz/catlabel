@@ -46,9 +46,11 @@ const MessageRow = ({ m }) => {
           {isUser ? (
             <div className="whitespace-pre-wrap">{m.content}</div>
           ) : (
-            <ReactMarkdown className="markdown-body" remarkPlugins={[remarkGfm]}>
-              {m.content}
-            </ReactMarkdown>
+            <div className="markdown-body">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {m.content}
+              </ReactMarkdown>
+            </div>
           )}
         </div>
       )}

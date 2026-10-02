@@ -1,6 +1,6 @@
 {
-  "entry": ["src/main.jsx!", "src/**/*.test.js"],
-  "project": ["src/**/*.{js,jsx}!", "!src/**/*.test.js!", "src/**/*.test.js", "*.config.js"],
+  "entry": ["src/main.jsx!", "src/**/*.test.{js,jsx}"],
+  "project": ["src/**/*.{js,jsx}!", "!src/**/*.test.{js,jsx}!", "src/**/*.test.{js,jsx}", "*.config.js"],
   "ignore": ["dist/**"],
   "includeEntryExports": true
 }
