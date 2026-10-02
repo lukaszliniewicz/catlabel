@@ -1,0 +1,68 @@
+[project]
+name = "catlabel"
+version = "0.1.0"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "fastapi>=0.115.6",
+  "python-multipart>=0.0.20",
+  "uvicorn>=0.34.0",
+  "sqlmodel>=0.0.22",
+  "Pillow>=11.1.0",
+  "pypdfium2>=4.30.1",
+  "bleak>=0.22.3",
+  "crc8>=0.2.1",
+  "pyserial>=3.5",
+  "pyobjc-framework-IOBluetooth>=11.0; sys_platform == 'darwin'",
+  "winsdk>=1.0.0b10; sys_platform == 'win32'",
+  "google-cloud-aiplatform",
+  "litellm>=1.59.3,<1.92.0",
+]
+
+[project.optional-dependencies]
+headless = ["playwright>=1.40.0"]
+launcher = ["dulwich==1.2.10", "pyinstaller==6.21.0", "urllib3==2.7.0"]
+
+[dependency-groups]
+dev = [
+  "ruff==0.15.22",
+  "basedpyright==1.40.1",
+  "vulture==2.16",
+  "import-linter==2.15",
+  "pip-audit==2.10.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py311"
+include = ["catlabel/**/*.py", "launcher.py", "tools/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "C4"]
+
+[tool.basedpyright]
+include = ["catlabel", "launcher.py", "tools", "tests"]
+exclude = ["frontend", "docs", ".pixi", "env", "venv", ".venv"]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+strict = ["tools/check.py", "tools/import_graph.py", "tools/sync_dependencies.py"]
+
+[tool.importlinter]
+root_package = "catlabel"
+exclude_type_checking_imports = false
+
+[[tool.importlinter.contracts]]
+name = "Protocol stays stateless and avoids live printing and transport"
+type = "forbidden"
+source_modules = ["catlabel.protocol"]
+forbidden_modules = ["catlabel.printing", "catlabel.transport"]
+
+[[tool.importlinter.contracts]]
+name = "Transport avoids protocol parsing and runtime selection"
+type = "forbidden"
+source_modules = ["catlabel.transport"]
+forbidden_modules = ["catlabel.protocol", "catlabel.printing.runtime"]
+# Device policy currently imports only the stateless family identifier.
+# Maintenance phase 2 owns this exact edge; review/remove by 2026-11-02.
+ignore_imports = ["catlabel.devices.bluetooth_profiles -> catlabel.protocol.family"]

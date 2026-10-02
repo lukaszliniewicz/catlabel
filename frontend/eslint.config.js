@@ -23,11 +23,17 @@ export default [
       ...js.configs.recommended.rules,
       'react/jsx-uses-react': 'error',
       'react/jsx-uses-vars': 'error',
+      ...reactHooks.configs.flat.recommended.rules,
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }]
     }
+  },
+  {
+    files: ['*.config.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
+    rules: js.configs.recommended.rules
   }
 ];

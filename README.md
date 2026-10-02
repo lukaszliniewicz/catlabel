@@ -134,6 +134,8 @@ In the **Canvas & Printer** tab, you can override default hardware behaviors:
 
 See the [backend architecture](docs/architecture.md), [frontend architecture](docs/frontend-architecture.md), and [upstream synchronization ledger](docs/upstream-sync.md) for layer ownership, document invariants, imported changes, and intentionally deferred printer families.
 
+For contributors, see the [development check policy](docs/development-checks.md) and [maintenance implementation ledger](docs/maintenance-progress.md). Checks use a locked disposable test environment and build without replacing release assets.
+
 ---
 
 ## License & Attribution

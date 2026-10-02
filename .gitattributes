@@ -1,0 +1,7 @@
+requirements.txt text eol=lf
+launcher-requirements.txt text eol=lf
+pixi.toml text eol=lf
+pyproject.toml text eol=lf
+requirements-dev.lock text eol=lf
+requirements-check.lock text eol=lf
+checks/*.json text eol=lf

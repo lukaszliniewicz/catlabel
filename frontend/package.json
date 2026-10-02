@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "lint": "eslint src",
+    "lint": "eslint src *.config.js",
     "check": "npm run lint && npm run test && npm run build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "debt": "knip",
+    "cycles": "madge --circular --json --extensions js,jsx src"
   },
   "dependencies": {
     "bwip-js": "^4.5.1",
@@ -36,9 +38,15 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.4.0",
     "jsdom": "^26.1.0",
+    "knip": "6.39.0",
+    "madge": "8.0.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.7",
     "vitest": "^3.2.6"
+  },
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "npm": ">=11.16.0 <12"
   }
 }
