@@ -1,10 +1,20 @@
 import asyncio
+from collections.abc import Iterator
 
 from PIL import Image, ImageOps
 
-from ...core.resource_limits import validate_image_budget
+from ...core.resource_limits import (
+    MAX_PRINT_JOBS,
+    ResourceLimitError,
+    validate_image_budget,
+)
 from ...devices import get_ble_transport_profile
 from ...protocol.encoding import pack_line
+from ...protocol.families.phomemo_esc_core import (
+    build_released_page,
+    plan_released_raster_size,
+)
+from ...protocol.types import PaperMode
 from ...raster import PixelFormat
 from ...rendering.renderer import image_to_raster
 from ...transport.bluetooth import DeviceInfo, DeviceTransport, SppBackend
@@ -29,19 +39,40 @@ class PhomemoClient(BasePrinterClient):
         self.transport = SppBackend()
 
     async def connect(self) -> bool:
-        address = self.device.address
-        if hasattr(self.device, "ble_endpoint") and self.device.ble_endpoint:
-            address = self.device.ble_endpoint.address
+        variant = self._released_variant()
+        if variant is not None:
+            plan_released_raster_size(1, 1, variant=variant)
 
-        attempts = [
-            DeviceInfo(
-                name=getattr(self.device, "name", "Phomemo Printer"),
-                address=address,
-                paired=getattr(self.device, "paired", None),
-                transport=DeviceTransport.BLE,
-                ble_profile=get_ble_transport_profile("phomemo_esc"),
+        address = self.device.address
+        ble_endpoint = getattr(self.device, "ble_endpoint", None)
+        if ble_endpoint:
+            address = ble_endpoint.address
+
+        name = getattr(self.device, "name", "Phomemo Printer")
+        paired = getattr(self.device, "paired", None)
+        ble_attempt = DeviceInfo(
+            name=name,
+            address=address,
+            paired=paired,
+            transport=DeviceTransport.BLE,
+            ble_profile=get_ble_transport_profile("phomemo_esc"),
+        )
+        if variant is None:
+            attempts = [ble_attempt]
+        else:
+            classic_endpoint = getattr(self.device, "classic_endpoint", None)
+            classic_address = (
+                classic_endpoint.address if classic_endpoint else self.device.address
             )
-        ]
+            attempts = [
+                DeviceInfo(
+                    name=name,
+                    address=classic_address,
+                    paired=paired,
+                    transport=DeviceTransport.CLASSIC,
+                ),
+                ble_attempt,
+            ]
 
         max_retries = 3
         for _ in range(max_retries):
@@ -91,6 +122,10 @@ class PhomemoClient(BasePrinterClient):
         split_mode: bool = False,
     ) -> int:
         planned_labels = super().validate_images(images, split_mode)
+        variant = self._released_variant()
+        if variant is not None:
+            return self._validate_released_images(images, split_mode, variant)
+
         protocol = str(self.hardware_info.get("protocol_family", "legacy")).lower()
         print_width_px = int(self.hardware_info.get("width_px", 384) or 384)
         dpi = int(self.hardware_info.get("dpi", _BASE_DPI) or _BASE_DPI)
@@ -129,6 +164,121 @@ class PhomemoClient(BasePrinterClient):
 
         return planned_labels
 
+    def _released_variant(self) -> str | None:
+        value = self.hardware_info.get("protocol_variant")
+        if value is None or value == "":
+            return None
+        return str(value)
+
+    def _released_paper_mode(self) -> PaperMode | None:
+        value = getattr(self.printer_profile, "paper_mode", None)
+        if value is None:
+            return None
+        if isinstance(value, PaperMode):
+            return value
+        aliases = {
+            "continuous": PaperMode.PLAIN,
+            "pre-cut": PaperMode.TAG,
+        }
+        text = str(value)
+        if text in aliases:
+            return aliases[text]
+        return PaperMode(text)
+
+    @staticmethod
+    def _released_job_count(width: int, head_width: int, split_mode: bool) -> int:
+        if split_mode and width > head_width:
+            return (width + head_width - 1) // head_width
+        return 1
+
+    def _released_job_sizes(
+        self,
+        width: int,
+        height: int,
+        head_width: int,
+        split_mode: bool,
+    ) -> Iterator[tuple[int, int]]:
+        if width > head_width:
+            if split_mode:
+                for left in range(0, width, head_width):
+                    yield min(head_width, width - left), height
+                return
+            yield self._head_scaled_size(width, height, head_width)
+            return
+        yield width, height
+
+    def _validate_released_images(
+        self,
+        images: list[Image.Image],
+        split_mode: bool,
+        variant: str,
+    ) -> int:
+        head_width = int(self.hardware_info.get("width_px", 384) or 384)
+        paper_mode: PaperMode | None = None
+        paper_mode_resolved = False
+        planned_jobs = 0
+        normalized_pixels = 0
+        padded_pixels = 0
+
+        for image in images:
+            if image.width > head_width and split_mode:
+                first_width, first_height = head_width, image.height
+            elif image.width > head_width:
+                first_width, first_height = self._head_scaled_size(
+                    image.width,
+                    image.height,
+                    head_width,
+                )
+            else:
+                first_width, first_height = image.width, image.height
+
+            # Validate the variant before counting or preparing any image jobs.
+            plan_released_raster_size(
+                first_width,
+                first_height,
+                variant=variant,
+            )
+
+            if not paper_mode_resolved:
+                paper_mode = self._released_paper_mode()
+                paper_mode_resolved = True
+
+            image_jobs = self._released_job_count(
+                image.width,
+                head_width,
+                split_mode,
+            )
+            planned_jobs += image_jobs
+            if planned_jobs > MAX_PRINT_JOBS:
+                raise ResourceLimitError(
+                    f"Print requires more than {MAX_PRINT_JOBS} physical jobs."
+                )
+
+            for width, height in self._released_job_sizes(
+                image.width,
+                image.height,
+                head_width,
+                split_mode,
+            ):
+                normalized_pixels = validate_image_budget(
+                    width,
+                    height,
+                    normalized_pixels,
+                )
+                padded_width, padded_height = plan_released_raster_size(
+                    width,
+                    height,
+                    variant=variant,
+                    paper_mode=paper_mode,
+                )
+                padded_pixels = validate_image_budget(
+                    padded_width,
+                    padded_height,
+                    padded_pixels,
+                )
+
+        return planned_jobs
+
     def _render_to_raster(
         self,
         img: Image.Image,
@@ -155,6 +305,16 @@ class PhomemoClient(BasePrinterClient):
         self, images: list[Image.Image], split_mode: bool = False, dither: bool = True
     ) -> None:
         self.validate_images(images, split_mode)
+        variant = self._released_variant()
+        if variant is not None:
+            await self._print_released_images(
+                images,
+                split_mode=split_mode,
+                dither=dither,
+                variant=variant,
+            )
+            return
+
         protocol = str(self.hardware_info.get("protocol_family", "legacy")).lower()
 
         hardware_default_energy = int(self.hardware_info.get("default_energy", 6) or 6)
@@ -235,6 +395,122 @@ class PhomemoClient(BasePrinterClient):
                 await self._print_m_series(
                     working_image, width_bytes, density, feed, dither=dither
                 )
+
+    async def _print_released_images(
+        self,
+        images: list[Image.Image],
+        *,
+        split_mode: bool,
+        dither: bool,
+        variant: str,
+    ) -> None:
+        head_width = int(self.hardware_info.get("width_px", 384) or 384)
+        paper_mode = self._released_paper_mode()
+
+        default_density = 4 if variant == "m02x" else 2
+        hardware_density = self.hardware_info.get("default_energy")
+        if hardware_density in (None, 0):
+            hardware_density = default_density
+        profile_density = getattr(self.printer_profile, "energy", None)
+        density = int(
+            hardware_density if profile_density in (None, 0) else profile_density
+        )
+
+        hardware_feed = self.hardware_info.get("default_feed")
+        if hardware_feed is None:
+            hardware_feed = 0
+        profile_feed = getattr(self.printer_profile, "feed_lines", None)
+        feed_count = int(hardware_feed if profile_feed is None else profile_feed)
+
+        total_jobs = sum(
+            self._released_job_count(image.width, head_width, split_mode)
+            for image in images
+        )
+        pages: list[bytes] = []
+        page_index = 0
+
+        for image in images:
+            working_image = image.copy()
+            try:
+                if working_image.width > head_width and not split_mode:
+                    scaled_width, scaled_height = self._head_scaled_size(
+                        working_image.width,
+                        working_image.height,
+                        head_width,
+                    )
+                    resized_image = working_image.resize(
+                        (scaled_width, scaled_height),
+                        Image.Resampling.LANCZOS,
+                    )
+                    previous_image = working_image
+                    working_image = resized_image
+                    previous_image.close()
+
+                if split_mode and working_image.width > head_width:
+                    for left in range(0, working_image.width, head_width):
+                        right = min(left + head_width, working_image.width)
+                        segment = working_image.crop(
+                            (left, 0, right, working_image.height)
+                        )
+                        try:
+                            pages.append(
+                                self._build_released_job(
+                                    segment,
+                                    variant=variant,
+                                    paper_mode=paper_mode,
+                                    density=density,
+                                    feed_count=feed_count,
+                                    is_first_page=page_index == 0,
+                                    is_last_page=page_index == total_jobs - 1,
+                                    dither=dither,
+                                )
+                            )
+                            page_index += 1
+                        finally:
+                            segment.close()
+                else:
+                    pages.append(
+                        self._build_released_job(
+                            working_image,
+                            variant=variant,
+                            paper_mode=paper_mode,
+                            density=density,
+                            feed_count=feed_count,
+                            is_first_page=page_index == 0,
+                            is_last_page=page_index == total_jobs - 1,
+                            dither=dither,
+                        )
+                    )
+                    page_index += 1
+            finally:
+                working_image.close()
+
+        if pages:
+            await self._send(b"".join(pages))
+
+    @staticmethod
+    def _build_released_job(
+        image: Image.Image,
+        *,
+        variant: str,
+        paper_mode: PaperMode | None,
+        density: int,
+        feed_count: int,
+        is_first_page: bool,
+        is_last_page: bool,
+        dither: bool,
+    ) -> bytes:
+        raster = image_to_raster(image, PixelFormat.BW1, dither=dither)
+        return build_released_page(
+            raster,
+            variant=variant,
+            density=density,
+            paper_mode=paper_mode,
+            is_first_page=is_first_page,
+            is_last_page=is_last_page,
+            ends_media_page=True,
+            post_print_feed_count=feed_count,
+        )
 
     async def _print_m_series(
         self,

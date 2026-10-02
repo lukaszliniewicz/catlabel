@@ -34,8 +34,18 @@ class NiimbotManifest(VendorManifest):
                 **base,
                 "name": "D11/D110 (15mm)",
                 "model_id": "D110",
+                "protocol_variant": "d110",
                 "width_px": 120,
                 "width_mm": 15,
+                "dpi": 203,
+            },
+            {
+                **base,
+                "name": "D11S (experimental, 203 DPI)",
+                "model_id": "D11S",
+                "protocol_variant": "d11_v1",
+                "width_px": 96,
+                "width_mm": 12,
                 "dpi": 203,
             },
             {
@@ -216,11 +226,15 @@ class NiimbotManifest(VendorManifest):
                 if not normalized_alias:
                     continue
                 if normalized == normalized_alias:
-                    matches.append((len(normalized_alias), model_id, model))
+                    matches.append(
+                        (len(normalized_alias), model_id, model, normalized_alias)
+                    )
                 elif normalized.startswith(normalized_alias):
                     boundary = normalized[len(normalized_alias)]
                     if boundary.isspace() or boundary in "-_":
-                        matches.append((len(normalized_alias), model_id, model))
+                        matches.append(
+                            (len(normalized_alias), model_id, model, normalized_alias)
+                        )
 
         if not matches:
             return None
@@ -229,7 +243,13 @@ class NiimbotManifest(VendorManifest):
         best_matches = [match for match in matches if match[0] == longest_alias_length]
         if len({match[1] for match in best_matches}) != 1:
             return None
-        return best_matches[0][2]
+        selected = best_matches[0]
+        model = selected[2]
+        if selected[1] == "D110" and selected[3] == "D11":
+            # Keep CatLabel's existing geometry while probing the protocol.
+            # The retail D11 name alone does not establish head width or DPI.
+            return {**model, "protocol_variant": "d11_auto"}
+        return model
 
     def get_client(self, device, hardware_info: dict, profile, settings):
         return NiimbotClient(device, hardware_info, profile, settings)

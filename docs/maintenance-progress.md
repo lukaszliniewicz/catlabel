@@ -7,7 +7,7 @@ Objective: implement the complete [2 October maintenance plan](reviews/2026-10-0
 | 0 — reproducible checks | Implemented locally; native acceptance open | Review committed as `0e61a31`; hermetic/portable tests as `2718c08` (67/67). Canonical dependencies, hashed check locks, diagnostic ratchet, graph/contracts, advisory gate and native CI are integrated. Full Linux check: 83 backend tests, 21 frontend tests and scratch production build pass. A deliberately introduced F821 failed the actual static gate; no new tooling debt is baselined. Existing Pixi lock verified unchanged by dry-run. Hosted/native validation remains unverified. |
 | 1 — correctness and local operation | Implemented locally; hardware acceptance open | Classification/row packing, local-server/provider-secret fixes, device admission and Niimbot acknowledgements, shared processing limits, safe catalog publication and project transactions/revisions are integrated. Full Linux checks pass: 300 backend tests, 28 frontend tests and a scratch production build. |
 | 2 — debt elimination | Implemented locally; native acceptance open | All source/check debt gates are zero, both full Python SCCs are removed, and no import-contract exception remains. 329 backend tests pass with one native SDK test skipped on Linux; 33 frontend tests and production build pass. |
-| 3 — upstream parity | In progress; released generic integration implemented locally | V5X, Eleph/ToPrint, Tiny and S001 fixtures pass. Live Linux Classic receive, S001 encoder/runtime, paper transforms and v0.8.1 bundle are integrated. Dedicated vendor parity and selected post-release changes remain. |
+| 3 — upstream parity | In progress; released generic integration implemented locally | V5X, Eleph/ToPrint, Tiny and S001 fixtures pass. Live Linux Classic receive, S001 encoder/runtime, paper transforms and v0.8.1 bundle are integrated. NIIMBOT and ordinary Phomemo recipes plus selected BLE/payload hooks are integrated. Luck A4 transaction and PrintMaster runtime adoption remain; unsafe compact M110/M120/M220 aliases are deferred. |
 | 4 — installation/dependencies | Pending | Native locked bootstrap and release/update/repair workflow; staged major migrations and native installation matrix. |
 | 5 — structure/UX | Pending | Typed interfaces/store/component decomposition; responsive/accessible setup/editor/save recovery. Parent owns browser acceptance. |
 | 6 — performance/lifecycle | Pending | Measured alpha hoist, unified render readiness, Playwright ownership, bounded jobs/previews and representative benchmarks. |
@@ -87,3 +87,46 @@ configured assignments; runtime model telemetry is unavailable. Parent owns
 integration and acceptance. No physical printer output, Windows/macOS native run,
 dependency audit refresh or deployment is claimed. Dedicated vendor parity,
 selected master changes and phases 4–7 remain active.
+
+Dedicated-vendor/BLE-hook checkpoint: NIIMBOT probes before job commands, emits
+released D-row frames and uses E0 or finite A3/B3 completion before advancing.
+D11 auto-selection rejects short B5 version fields; the experimental D11S profile
+is 96 px / 203 DPI. A GPT-6.1 Sol/high read-only review reproduced a fragmented
+pre-arm completion race; first-byte offsets and generation guards now exclude it
+without dropping partial device errors. Missing completion fails with delivery
+uncertainty; pixels are never resent. Existing B/D101 paths remain legacy.
+
+Phomemo M02/M02S/M02X/T02 use released page recipes and native raster pixels,
+model-specific density/feed units and actual strip splitting. Budgets/counts are
+checked before allocation and owned images close on failures. Released variants
+prefer Classic with BLE fallback. M02 Pro keeps its conflicting local geometry
+and recipe. Selected upstream ownership correction `3bd80ba` defers M110/M120
+PrintMaster and M220/M221/M260 aliases; compact helper fixtures do not advertise
+those devices. The immutable generic v0.8.1 catalog is unchanged.
+
+Selected `1afe428` adds separate BLE control notifications and a physical-chunk
+permission hook after flow resume. Partial subscription/cancellation/stop failures
+still attempt all unsubscribes and physical disconnect while retaining the primary
+error. `7be93f5` separates declared-payload access from frame validation. Pure
+vendor wire helpers now live in the stateless protocol layer; direct imports
+preserve zero cycles. Luna/max implementers supplied the bounded non-UI packets
+and a Luna/max researcher collected selected Luck/PrintMaster evidence. These are
+configured assignments; runtime telemetry is unavailable. Parent reviewed edits,
+corrected integration tests and owns acceptance.
+
+Final Linux full gate: 558 backend tests run (557 passed, one Windows SDK skip),
+33 frontend tests pass, production build 7.25 seconds and every static category
+is zero, with no baseline additions. Frontend source/artifact and dependency locks
+are unchanged. [Machine-readable receipt](reviews/2026-10-02/evidence/phase3-dedicated-and-write-hooks-receipt.json).
+No physical output, Windows/macOS native run, advisory refresh or deployment is
+claimed. Remaining pinned Luck A4/PrintMaster work and phases 4–7 stay active.
+
+Phase 4 preparation only: a disposable Pixi 0.72.2 candidate resolves unchanged
+application dependencies and optional headless support for linux-64, linux-aarch64,
+osx-64, osx-arm64 and win-64 at Python 3.11.15. Linux candidate installation and
+imports pass; foreign native environments were not installed. Installation took
+14.52 seconds after lock resolution; this is not a fully cold download benchmark.
+The environment occupies about 667 MiB and its candidate cache about 650 MiB.
+Isolated imports measured roughly 0.58 seconds/49 MiB for the vendor registry,
+2.79 seconds/196 MiB for LiteLLM and 2.47 seconds/228 MiB for the Google SDK.
+These measurements are preparation evidence, not bootstrap or dependency promotion.

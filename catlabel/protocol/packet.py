@@ -154,16 +154,23 @@ def prefixed_packet_payload(
     packet: bytes,
     protocol_family: ProtocolFamily | str,
 ) -> bytes | None:
+    """Extract declared payload bytes without requiring or validating a trailer.
+
+    Matches TiMini-Print commit 7be93f549597fe7e82ef67e3102c6233aa875f28.
+    This is a payload accessor, not proof that a complete valid frame arrived;
+    the stream decoder still requires the CRC and footer before emitting a frame.
+    """
     family = ProtocolFamily.from_value(protocol_family)
     prefix = family.packet_prefix
     if prefix is None:
         return None
-    packet_length = prefixed_packet_length(packet, 0, family)
-    if packet_length is None:
+    payload_start = len(prefix) + 4
+    if len(packet) < payload_start or not packet.startswith(prefix):
         return None
     payload_length_offset = len(prefix) + 2
     payload_length = packet[payload_length_offset] | (
         packet[payload_length_offset + 1] << 8
     )
-    payload_start = len(prefix) + 4
+    if payload_start + payload_length > len(packet):
+        return None
     return packet[payload_start : payload_start + payload_length]

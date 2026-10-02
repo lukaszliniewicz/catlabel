@@ -398,12 +398,34 @@ class _BleakSocket:
         """Stop notifications before disconnecting the bleak client."""
         if not self._client:
             return
-        await self._transport.stop_notify_if_started(self._client)
-        disconnect = getattr(self._client, "disconnect", None)
-        if not callable(disconnect):
-            return
-        with suppress(Exception):
-            await await_operation(disconnect(), operation="disconnect")
+        stop_error: BaseException | None = None
+        try:
+            await self._transport.stop_notify_if_started(self._client)
+        except BaseException as exc:
+            stop_error = exc
+
+        disconnect_error: BaseException | None = None
+        try:
+            disconnect = getattr(self._client, "disconnect", None)
+        except BaseException as exc:
+            disconnect_error = exc
+        else:
+            if callable(disconnect):
+                try:
+                    await await_operation(disconnect(), operation="disconnect")
+                except BaseException as exc:
+                    if stop_error is not None or not isinstance(exc, Exception):
+                        disconnect_error = exc
+
+        if stop_error is not None:
+            if disconnect_error is not None:
+                with suppress(BaseException):
+                    self._transport.report_debug(
+                        f"disconnect also failed after runtime stop: {disconnect_error}"
+                    )
+            raise stop_error
+        if disconnect_error is not None:
+            raise disconnect_error
 
     def _cleanup_loop(self) -> None:
         """Dispose the temporary event loop used by the socket wrapper."""
@@ -412,8 +434,9 @@ class _BleakSocket:
                 self._loop.close()
             self._loop = None
 
-    def _handle_notification(self, _sender: Any, data: Any) -> None:
-        self._transport.handle_notification(bytes(data))
+    def _handle_notification(self, sender: Any, data: Any) -> None:
+        source_uuid = getattr(sender, "uuid", sender)
+        self._transport.handle_notification(bytes(data), source_uuid=str(source_uuid))
 
     @classmethod
     def _find_notify_characteristic(cls, services):

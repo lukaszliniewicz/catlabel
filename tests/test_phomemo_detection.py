@@ -20,8 +20,8 @@ class PhomemoDetectionTests(unittest.TestCase):
             ("M02_PRO", "M02_PRO"),
             ("M02 PRO Label", "M02_PRO"),
             ("M02", "M02"),
-            ("M02S", "M02"),
-            ("M02X", "M02"),
+            ("M02S", "M02S"),
+            ("M02X", "M02X"),
             ("PM241BT", "PM241"),
             ("PM-241-BT", "PM241"),
             ("D30", "D30"),
@@ -48,13 +48,18 @@ class PhomemoDetectionTests(unittest.TestCase):
         assert pro is not None
         self.assertEqual((pro["width_px"], pro["dpi"]), (624, 300))
 
-        for name in ("M02", "M02S", "M02X"):
+        for name, width, dpi, variant in (
+            ("M02", 384, 203, "m02"),
+            ("M02S", 576, 300, "m02s"),
+            ("M02X", 384, 203, "m02x"),
+        ):
             with self.subTest(name=name):
                 info = self.manifest.identify_device(name)
-                self.assertIsNotNone(info)
                 assert info is not None
-                self.assertEqual(info["model_id"], "M02")
-                self.assertEqual((info["width_px"], info["dpi"]), (384, 203))
+                self.assertEqual(info["model_id"], name)
+                self.assertEqual((info["width_px"], info["dpi"]), (width, dpi))
+                self.assertEqual(info["protocol_variant"], variant)
+        self.assertNotIn("protocol_variant", pro)
 
     def test_vendor_names_and_unbounded_prefixes_do_not_claim_models(self) -> None:
         for name in (
@@ -71,6 +76,28 @@ class PhomemoDetectionTests(unittest.TestCase):
         ):
             with self.subTest(name=name):
                 self.assertIsNone(self.manifest.identify_device(name))
+
+    def test_printmaster_redirects_and_unconfirmed_clones_are_not_claimed(self) -> None:
+        for name in (
+            "M110",
+            "M120",
+            "M110_123",
+            "M120-label",
+            "PHOMEMO M110",
+            "M220",
+            "M220_123",
+            "PHOMEMO-M220",
+            "M221",
+            "M260",
+        ):
+            with self.subTest(name=name):
+                self.assertIsNone(self.manifest.identify_device(name))
+                info = VendorRegistry.identify_device(name)
+                self.assertEqual(info["model_id"], "generic")
+        advertised = {
+            model["model_id"] for model in self.manifest.get_supported_models()
+        }
+        self.assertFalse({"M110", "M220"} & advertised)
 
     def test_longest_alias_wins_independently_of_model_list_order(self) -> None:
         models = self.manifest.get_supported_models()

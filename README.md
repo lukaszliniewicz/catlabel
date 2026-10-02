@@ -18,9 +18,11 @@ https://github.com/user-attachments/assets/d7103905-7133-41c0-b20b-ee69727d9418
 
 CatLabel communicates directly with portable thermal printers over Bluetooth. It supports many models that do not use standard ESC/POS commands.
 
-*   **Niimbot:** D-Series (D11, D110, D101), B-Series (B1, B21, B3S, B24, B18).
-*   **Phomemo:** M-Series (M02, M03, M04, M110, M200, M220), D-Series (D30), T02, P12, PM-241.
+*   **Niimbot:** D-Series (D11, D110, D101; experimental D11S 203 DPI profile), B-Series (B1, B21, B3S, B24, B18).
+*   **Phomemo:** M-Series (M02, M02S, M02X, M03, M04, M200), D-Series (D30), T02, P12, PM-241.
 *   **Generic:** 133 source-backed model records from the TiMini-Print v0.8.1 catalog across Tiny/Tiny-prefixed, Luck (including PPA2L/PPA2LH), V5G/V5X/V5C, Eleph/ToPrint dialects, Instaprint Core, Funny LX, and Orgstra S001 families. Detection uses advertised names and MAC constraints from the catalog; models owned by the separate Niimbot and Phomemo backends are not duplicated.
+
+M110/M120 need the separate PrintMaster implementation and are currently deferred; M220 and the unconfirmed M221/M260 aliases are not advertised. Phomemo P12/D-series/M03/M04/M200 support uses existing local recipes, not released upstream parity. Changed printer paths have source-backed tests; physical printer acceptance is still open.
 
 ---
 

@@ -26,6 +26,7 @@ class BleTransportProfile:
     bulk_write: BleBulkWriteProfile | None = None
     write_without_response_payload_reserve: int = 0
     flow_resume_timeout_s: float | None = None
+    control_notify_char_uuid: str = ""
 
 
 _FALLBACK = BleTransportProfile()

@@ -27,6 +27,20 @@ class PhomemoManifest(VendorManifest):
             "default_energy": 6,
             "max_density": 8,
         }
+        compact = {
+            **base,
+            "default_energy": 2,
+            "max_density": 4,
+            "capabilities": {
+                **self._build_capabilities(),
+                "density": {"available": True, "min": 1, "max": 4, "default": 2},
+                "feed": {"available": False},
+            },
+        }
+        # Selected upstream correction 3bd80ba (included in pinned 7be93f5):
+        # M110/M120 redirect to PrintMaster; M220 is unsupported. Do not assign
+        # their names, or the former unconfirmed M221/M260 aliases, to compact
+        # Phomemo. The pure recipes remain reference fixtures, not model claims.
         return [
             {
                 **base,
@@ -49,14 +63,44 @@ class PhomemoManifest(VendorManifest):
                 "protocol_family": "phomemo_p12",
             },
             {
-                **base,
-                "name": "M02 / M02S / M02X",
+                **compact,
+                "name": "M02",
                 "model_id": "M02",
+                "protocol_variant": "m02",
                 "width_px": 384,
                 "width_mm": 48,
                 "dpi": 203,
                 "media_type": "continuous",
                 "protocol_family": "phomemo_m02",
+            },
+            {
+                **compact,
+                "name": "M02S (300 DPI)",
+                "model_id": "M02S",
+                "protocol_variant": "m02s",
+                "width_px": 576,
+                "width_mm": 48,
+                "dpi": 300,
+                "media_type": "continuous",
+                "protocol_family": "phomemo_m02",
+            },
+            {
+                **base,
+                "name": "M02X",
+                "model_id": "M02X",
+                "protocol_variant": "m02x",
+                "width_px": 384,
+                "width_mm": 48,
+                "dpi": 203,
+                "media_type": "continuous",
+                "protocol_family": "phomemo_m02",
+                "default_energy": 4,
+                "default_feed": 0,
+                "capabilities": {
+                    **self._build_capabilities(),
+                    "density": {"available": True, "min": 1, "max": 8, "default": 4},
+                    "feed": {"available": True, "default": 0},
+                },
             },
             {
                 **base,
@@ -90,16 +134,6 @@ class PhomemoManifest(VendorManifest):
             },
             {
                 **base,
-                "name": "M110 / M120",
-                "model_id": "M110",
-                "width_px": 384,
-                "width_mm": 48,
-                "dpi": 203,
-                "media_type": "continuous",
-                "protocol_family": "phomemo_m110",
-            },
-            {
-                **base,
                 "name": "M200 / M250",
                 "model_id": "M200",
                 "width_px": 608,
@@ -109,19 +143,10 @@ class PhomemoManifest(VendorManifest):
                 "protocol_family": "phomemo_m",
             },
             {
-                **base,
-                "name": "M220 / M221 / M260",
-                "model_id": "M220",
-                "width_px": 576,
-                "width_mm": 72,
-                "dpi": 203,
-                "media_type": "continuous",
-                "protocol_family": "phomemo_m",
-            },
-            {
-                **base,
+                **compact,
                 "name": "T02",
                 "model_id": "T02",
+                "protocol_variant": "t02",
                 "width_px": 384,
                 "width_mm": 48,
                 "dpi": 203,
@@ -258,13 +283,13 @@ class PhomemoManifest(VendorManifest):
         mapping = {
             "P12": ("P12", "P12PRO", "P12 PRO"),
             "A30": ("A30",),
-            "M02": ("M02", "M02S", "M02X"),
+            "M02": ("M02",),
+            "M02S": ("M02S",),
+            "M02X": ("M02X",),
             "M02_PRO": ("M02 PRO", "M02PRO", "M02_PRO"),
             "M03": ("M03",),
             "M04S": ("M04", "M04S", "M04AS"),
-            "M110": ("M110", "M120"),
             "M200": ("M200", "M250"),
-            "M220": ("M220", "M221", "M260"),
             "D30": ("D30", "D35", "D50"),
             "Q30": ("Q30", "Q30S"),
             "T02": ("T02", "T02E", "Q02E", "C02E"),

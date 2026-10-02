@@ -74,6 +74,8 @@ strict = [
   "catlabel/rendering/paper_layout.py",
   "catlabel/services/uploads.py",
   "catlabel/vendors/generic/catalog_snapshot.py",
+  "catlabel/protocol/families/niimbot_core.py",
+  "catlabel/protocol/families/phomemo_esc_core.py",
   "tools/sync_timiniprint_catalog.py",
 ]
 

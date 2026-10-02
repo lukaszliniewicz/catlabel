@@ -160,6 +160,24 @@ class RuntimeController:
     def handle_notification(self, session: RuntimeSessionApi, payload: bytes) -> None:
         return None
 
+    def handle_control_notification(
+        self, session: RuntimeSessionApi, payload: bytes
+    ) -> None:
+        """Receive BLE flow-control notifications separate from printer replies."""
+
+        return None
+
+    async def before_write(
+        self, session: RuntimeSessionApi, *, size: int, timeout: float
+    ) -> None:
+        """Reserve permission for exactly one physical BLE write chunk.
+
+        Returning permits one write. Raising prevents it and aborts subsequent
+        chunks. A failed physical write does not refund permission or retry it.
+        """
+
+        return None
+
     def debug_snapshot(self) -> dict[str, Any]:
         return {}
 

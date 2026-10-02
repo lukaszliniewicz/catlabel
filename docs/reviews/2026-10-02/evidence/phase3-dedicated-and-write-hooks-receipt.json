@@ -1,0 +1,89 @@
+{
+  "checkpoint": "phase3-dedicated-and-write-hooks",
+  "date": "2026-10-02",
+  "base_commit": "35d97a007200f915fa1a5bba156028ce6c346431",
+  "upstream": {
+    "release": "v0.8.1",
+    "commit": "f676917257b5d1f869e0f13beff03785258e2a2e",
+    "selected_commits": [
+      "1afe4287428a73a0be8beace8079efcfd0d70d6b",
+      "7be93f549597fe7e82ef67e3102c6233aa875f28",
+      "3bd80bac89f8894e143ee867c63683b6c7f2f02b"
+    ]
+  },
+  "command": "PATH=/tmp/catlabel-implementation-20261002/check-env/bin:$PATH python -m tools.check --lane full --report check-results/phase3-dedicated-and-write-hooks.json",
+  "exit_code": 0,
+  "environment": {
+    "os": "Linux",
+    "python": "3.11.15",
+    "node": "24.18.0",
+    "npm": "11.16.0"
+  },
+  "static_findings": {
+    "ruff": [],
+    "format": [],
+    "typing": [],
+    "react": [],
+    "knip": [],
+    "knip-production": [],
+    "python-cycles": [],
+    "import-contracts": [],
+    "frontend-cycles": []
+  },
+  "backend_tests": {
+    "run": 558,
+    "passed": 557,
+    "skipped": 1,
+    "seconds": 7.836,
+    "skip": "Windows SDK native import"
+  },
+  "frontend_tests": {
+    "files": 7,
+    "passed": 33
+  },
+  "production_build_seconds": 7.25,
+  "frontend_source_and_shipped_artifact_changed": false,
+  "retained_frontend_aggregate_sha256": "668b0d78e0a373ea6502f0828149683548f6e397184a77f46bbf1a94faabaf8a",
+  "source_files_sha256": {
+    "catlabel/devices/bluetooth_profiles.py": "1deb353b8e5883f4955fb7f26b5f2cbb3b8fe0af08a623f887b339a719cd0b9e",
+    "catlabel/printing/runtime/base.py": "5294a82d02a09e72db6aa429551536713d45988a6d03d9bfee18d888c5daaf54",
+    "catlabel/protocol/families/niimbot_core.py": "1e5cad4c21c573ce542a0ddb75dfc047226c0bcb9d6cc336350388e5a305b68b",
+    "catlabel/protocol/families/phomemo_esc_core.py": "a7840b9ee8c02bad42b8eac31cb4b574fc271e78b382f695e5f2bf99d35917a9",
+    "catlabel/protocol/packet.py": "4f58c014a271c6237c9e937167cc03baacf82fcbbd1a0df9faf24d518ec2a0dc",
+    "catlabel/transport/bluetooth/adapters/bleak_adapter.py": "0981f7f493e12e675f71660feadf56de9ad0165de7ee1432dbca13407a8e3716",
+    "catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": "98b16fd9098d7340ac0ea65c5956f02c22e86a9fd675ef6c145b0e529d979507",
+    "catlabel/vendors/niimbot/client.py": "ebe905327cbfbc64c4be2eb1536aef2409e8a270f74d739b0c37228d932a3aef",
+    "catlabel/vendors/niimbot/manifest.py": "dc538de9322bfdc31d5a94cbebf15543a22d311e896a943661d613739156da50",
+    "catlabel/vendors/phomemo/client.py": "814c31dbf4ffc59b104d78fc584c25ad2ffbf969a4dba6f634aec147b19b0297",
+    "catlabel/vendors/phomemo/manifest.py": "b2051a9d15c8744b947bafc39f6bc93136942148f6a44fc395d419f51cb1acb5",
+    "pyproject.toml": "6bad59b773eb325a7743bac87b7bcec4dff068d547a328efef9b267d0d767d0a",
+    "tests/test_ble_write_control.py": "83f067fd89a147def57000590cf6f55b9c3a57fd4a0d3a193f8865b43c1acc73",
+    "tests/test_niimbot_codec.py": "cb6af70b10fe88814df7ee05dd083931cb4873acd77d1e76daf425c4e8bcb511",
+    "tests/test_niimbot_detection.py": "220969aabdc9ae96a121766b090c6b3aa5e5577e61cfe002ccd5fb189991933b",
+    "tests/test_niimbot_released_client.py": "cf5572012818c4c71425ae9adb8c6b5dd278fc06632393bb8c0f787949479fc6",
+    "tests/test_packet_declared_payload.py": "d69b3e3e06ef59191910c74d1af6e1eb739ea47bb6afd37b3c8ee17b9aadc481",
+    "tests/test_phomemo_detection.py": "9198aa3bb112cbf9bc1ae8b035751867dbb8d61d875e41e09e9280c8583c5000",
+    "tests/test_phomemo_released_client.py": "83b461d8b6b5eaeeb5e0a8546368ade25994569f3a8f486a75348132ae53dbec",
+    "tests/test_phomemo_released_recipes.py": "daaaca113669e6e3d38c67b11e93ee77246583ca42e382fdd6a76aea597941d2"
+  },
+  "lock_sha256": {
+    "pixi.lock": "a60e21b3b2fba62a6ac01230d70f88627c5bb5cef49f4a4fe2f1d19f3962b82a",
+    "requirements-check.lock": "5520a6ca39e676948cf03bf05bdc06a546f92e4584846771d1f156b689259a28",
+    "requirements-dev.lock": "f1974a6f88b6e87efdc13aacc5fa1a0b3960d49dc7f80245d0e6d75cd9c2077c",
+    "frontend/package-lock.json": "52e7bd6c95963229454fc848da1f72bb44f50ebaf2d3fd58416b54a17b2da0ac"
+  },
+  "review": {
+    "configured_model": "GPT-6.1 Sol/high",
+    "finding": "pre-arm fragmented E0 could complete a newly armed page",
+    "resolution": "first-byte receipt offset plus generation guard; four regression tests",
+    "runtime_model_telemetry": "unavailable"
+  },
+  "evidence_limits": [
+    "No physical printer output or firmware/media receipt",
+    "Windows/macOS native execution unverified",
+    "No dependency advisory refresh or deployment",
+    "V5X fixtures do not establish arbitrary stream fragmentation acceptance",
+    "Luck A4 selected-master transactions and PrintMaster runtime remain pending",
+    "M110/M120/M220 and unconfirmed M221/M260 aliases are deferred, not ordinary compact support"
+  ]
+}

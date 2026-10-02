@@ -8,3 +8,8 @@ maintenance changes are maintained separately from TiMini-Print.
 Released protocol updates are based on TiMini-Print v0.8.1, commit
 f676917257b5d1f869e0f13beff03785258e2a2e. Local changes and acceptance evidence
 are recorded in docs/maintenance-progress.md and the upstream parity ledger.
+
+Selected post-release interfaces and detection corrections are adapted from
+1afe4287428a73a0be8beace8079efcfd0d70d6b,
+7be93f549597fe7e82ef67e3102c6233aa875f28 and
+3bd80bac89f8894e143ee867c63683b6c7f2f02b.

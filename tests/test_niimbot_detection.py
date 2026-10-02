@@ -36,7 +36,10 @@ class NiimbotDetectionTests(unittest.TestCase):
             with self.subTest(alias=alias):
                 detected = self.manifest.identify_device(alias)
                 assert detected is not None
-                self.assertEqual(detected, supported_models[model_id])
+                expected = dict(supported_models[model_id])
+                if alias == "D11":
+                    expected["protocol_variant"] = "d11_auto"
+                self.assertEqual(detected, expected)
                 self.assertEqual(
                     (detected["width_px"], detected["width_mm"]),
                     expected_geometry[model_id],
@@ -56,6 +59,7 @@ class NiimbotDetectionTests(unittest.TestCase):
             "B3S-serial": "B3S",
             "B24_serial": "B3S",
             "niimbot D11": "D110",
+            "D11S_serial": "D11S",
             "NIIMBOT-D110_serial": "D110",
             "NIIMBOT_B21-serial": "B1",
         }
@@ -67,9 +71,25 @@ class NiimbotDetectionTests(unittest.TestCase):
                 assert detected is not None
                 self.assertEqual(detected["model_id"], expected_model_id)
 
+    def test_d_protocol_variants_preserve_existing_geometry(self) -> None:
+        for name, variant, width in (
+            ("D11", "d11_auto", 120),
+            ("D110_serial", "d110", 120),
+            ("D11S_serial", "d11_v1", 96),
+        ):
+            with self.subTest(name=name):
+                detected = self.manifest.identify_device(name)
+                assert detected is not None
+                self.assertEqual(detected["protocol_variant"], variant)
+                self.assertEqual(detected["width_px"], width)
+                self.assertEqual(detected["dpi"], 203)
+        models = self.manifest.get_supported_models()
+        d110 = next(model for model in models if model["model_id"] == "D110")
+        self.assertEqual(d110["protocol_variant"], "d110")
+        self.assertNotIn("protocol_variant", self.manifest.identify_device("B21") or {})
+
     def test_unsupported_similar_model_names_are_not_claimed(self) -> None:
         for name in (
-            "D11S",
             "D111",
             "D1100",
             "B18PROJECT",

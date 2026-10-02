@@ -4,6 +4,7 @@ import logging
 import struct
 import threading
 from contextlib import suppress
+from dataclasses import dataclass
 
 from bleak import BleakClient
 from PIL import Image
@@ -11,6 +12,13 @@ from PIL import Image
 from ...core.resource_limits import validate_image_budget
 from ...devices import get_ble_transport_profile
 from ...protocol.encoding import pack_line
+from ...protocol.families.niimbot_core import (
+    connect_result,
+    encode_d_rows,
+    frame,
+    model_id,
+    protocol_version,
+)
 from ...protocol.types import PixelFormat
 from ...rendering.renderer import image_to_raster
 from ..base import BasePrinterClient
@@ -27,6 +35,7 @@ if not logger.handlers:
 
 
 class RequestCodeEnum(enum.IntEnum):
+    CONNECT = 0xC1
     GET_INFO = 64
     GET_RFID = 26
     HEARTBEAT = 220
@@ -41,6 +50,7 @@ class RequestCodeEnum(enum.IntEnum):
     SET_DIMENSION = 19
     SET_QUANTITY = 21
     GET_PRINT_STATUS = 163
+    GET_STATUS_DATA = 0xA5
 
 
 class InfoEnum(enum.IntEnum):
@@ -51,9 +61,11 @@ class InfoEnum(enum.IntEnum):
     BATTERY = 10
     DEVICESERIAL = 11
     HARDVERSION = 12
+    MODEL_ID = 8
 
 
 _STATIC_RESPONSE_CODES: dict[int, frozenset[int]] = {
+    RequestCodeEnum.CONNECT: frozenset({0xC2}),
     RequestCodeEnum.HEARTBEAT: frozenset({0xDE, 0xDF, 0xDD, 0xD9}),
     RequestCodeEnum.SET_LABEL_TYPE: frozenset({0x33}),
     RequestCodeEnum.SET_LABEL_DENSITY: frozenset({0x31}),
@@ -65,6 +77,7 @@ _STATIC_RESPONSE_CODES: dict[int, frozenset[int]] = {
     RequestCodeEnum.SET_DIMENSION: frozenset({0x14}),
     RequestCodeEnum.SET_QUANTITY: frozenset({0x16}),
     RequestCodeEnum.GET_PRINT_STATUS: frozenset({0xB3}),
+    RequestCodeEnum.GET_STATUS_DATA: frozenset({0xB5}),
 }
 
 _INFO_RESPONSE_CODES: dict[int, int] = {
@@ -75,6 +88,7 @@ _INFO_RESPONSE_CODES: dict[int, int] = {
     InfoEnum.BATTERY: 0x4A,
     InfoEnum.DEVICESERIAL: 0x4B,
     InfoEnum.HARDVERSION: 0x4C,
+    InfoEnum.MODEL_ID: 0x48,
 }
 
 
@@ -150,12 +164,15 @@ class NiimbotPacket:
         return cls(type_, data)
 
     def to_bytes(self) -> bytes:
-        checksum = self.type ^ len(self.data)
-        for value in self.data:
-            checksum ^= value
-        return bytes(
-            (0x55, 0x55, self.type, len(self.data), *self.data, checksum, 0xAA, 0xAA)
-        )
+        return frame(self.type, self.data)
+
+
+@dataclass
+class _PageIndexWaiter:
+    event: asyncio.Event
+    loop: asyncio.AbstractEventLoop
+    generation: int
+    receive_offset: int
 
 
 class NiimbotClient(BasePrinterClient):
@@ -166,6 +183,7 @@ class NiimbotClient(BasePrinterClient):
         self.write_uuid: str | None = None
         self._write_with_response = False
         self._buffer = bytearray()
+        self._received_byte_count = 0
         self._events: dict[int, tuple[asyncio.Event, asyncio.AbstractEventLoop]] = {}
         self._expected_responses: dict[int, frozenset[int]] = {}
         self._responses: dict[int, NiimbotPacket] = {}
@@ -173,7 +191,65 @@ class NiimbotClient(BasePrinterClient):
         self._print_state_lock = threading.Lock()
         self._print_active = False
         self._print_device_error: NiimbotPacket | None = None
+        self._completion_waiter: _PageIndexWaiter | None = None
+        self._completion_generation = 0
+        self._completion_timeout = 5.0
+        self._completion_poll_interval = 0.3
+        self._completion_query_timeout = 1.0
+        self._connect_result: int | None = None
+        self._protocol_version: int | None = None
+        self._model_id: int | None = None
+        self._resolved_protocol_variant: str | None = None
         self._ble_profile = get_ble_transport_profile("niimbot")
+
+    def _clear_protocol_state(self) -> None:
+        self._clear_completion_state()
+        self._connect_result = None
+        self._protocol_version = None
+        self._model_id = None
+        self._resolved_protocol_variant = None
+
+    def _clear_completion_state(self) -> None:
+        self._completion_generation += 1
+        self._completion_waiter = None
+
+    def _arm_page_index_waiter(self) -> _PageIndexWaiter:
+        self._completion_generation += 1
+        waiter = _PageIndexWaiter(
+            asyncio.Event(),
+            asyncio.get_running_loop(),
+            self._completion_generation,
+            self._received_byte_count,
+        )
+        self._completion_waiter = waiter
+        return waiter
+
+    def _disarm_page_index_waiter(self, waiter: _PageIndexWaiter) -> None:
+        if self._completion_waiter is waiter:
+            self._completion_generation += 1
+            self._completion_waiter = None
+
+    def _publish_page_index(
+        self,
+        waiter: _PageIndexWaiter,
+        generation: int,
+        packet: NiimbotPacket,
+    ) -> None:
+        if (
+            self._completion_waiter is not waiter
+            or self._completion_generation != generation
+            or waiter.generation != generation
+        ):
+            return
+        if _is_device_error(packet):
+            waiter.event.set()
+            return
+        if (
+            packet.type == 0xE0
+            and len(packet.data) >= 2
+            and int.from_bytes(packet.data[:2], byteorder="big") == 1
+        ):
+            waiter.event.set()
 
     def _begin_print(self) -> None:
         with self._print_state_lock:
@@ -209,6 +285,7 @@ class NiimbotClient(BasePrinterClient):
     def _on_notify(self, sender, payload: bytearray) -> None:
         """Route raw Bleak notification packets back onto the waiting asyncio loop safely."""
         self._buffer.extend(payload)
+        self._received_byte_count += len(payload)
 
         while True:
             start = self._buffer.find(b"\x55\x55")
@@ -233,6 +310,8 @@ class NiimbotClient(BasePrinterClient):
                 del self._buffer[:2]
                 continue
 
+            # Exclude a frame that began before its page waiter was armed.
+            packet_start_offset = self._received_byte_count - len(self._buffer)
             packet_bytes = bytes(self._buffer[:total_length])
             del self._buffer[:total_length]
 
@@ -244,6 +323,25 @@ class NiimbotClient(BasePrinterClient):
                 with self._print_state_lock:
                     if self._print_active and self._print_device_error is None:
                         self._print_device_error = packet
+
+            if _is_device_error(packet) or packet.type == 0xE0:
+                waiter = self._completion_waiter
+                is_new_page_event = (
+                    packet.type == 0xE0
+                    and waiter is not None
+                    and packet_start_offset >= waiter.receive_offset
+                )
+                if (
+                    waiter is not None
+                    and not waiter.loop.is_closed()
+                    and (_is_device_error(packet) or is_new_page_event)
+                ):
+                    waiter.loop.call_soon_threadsafe(
+                        self._publish_page_index,
+                        waiter,
+                        waiter.generation,
+                        packet,
+                    )
 
             matched_req_code = next(
                 (
@@ -278,7 +376,9 @@ class NiimbotClient(BasePrinterClient):
             )
 
     async def connect(self) -> bool:
+        self._clear_protocol_state()
         self._buffer.clear()
+        self._received_byte_count = 0
         self._events.clear()
         self._expected_responses.clear()
         self._responses.clear()
@@ -403,10 +503,12 @@ class NiimbotClient(BasePrinterClient):
             self.write_uuid = None
             self._write_with_response = False
             self._buffer.clear()
+            self._received_byte_count = 0
             self._events.clear()
             self._expected_responses.clear()
             self._responses.clear()
             self._finish_print()
+            self._clear_protocol_state()
 
     async def send_command(
         self,
@@ -489,27 +591,39 @@ class NiimbotClient(BasePrinterClient):
         self, image: Image.Image, print_width_px: int
     ) -> Image.Image:
         working = image.copy()
+        try:
+            # Only scale down if the user somehow generated a label wider than the
+            # absolute physical maximum of the printhead (e.g., > 120px for D11).
+            if working.width > print_width_px:
+                ratio = print_width_px / float(working.width)
+                new_height = max(1, int(working.height * ratio))
+                resized = working.resize(
+                    (print_width_px, new_height), Image.Resampling.LANCZOS
+                )
+                working.close()
+                working = resized
 
-        # Only scale down if the user somehow generated a label wider than the absolute
-        # physical maximum of the printhead (e.g., > 120px for D11).
-        if working.width > print_width_px:
-            ratio = print_width_px / float(working.width)
-            new_height = max(1, int(working.height * ratio))
-            working = working.resize(
-                (print_width_px, new_height), Image.Resampling.LANCZOS
-            )
+            # Firmware centers by RFID tape width; padding is only for byte packing.
+            remainder = working.width % 8
+            if remainder != 0:
+                new_width = working.width + (8 - remainder)
+                padded = Image.new("RGB", (new_width, working.height), "white")
+                try:
+                    padded.paste(working, (0, 0))
+                except Exception:
+                    padded.close()
+                    raise
+                working.close()
+                working = padded
 
-        # CRITICAL FIX: Do NOT pad to print_width_px to center it.
-        # Niimbot firmware auto-centers based on the RFID tape width and SET_DIMENSION.
-        # We only need to pad slightly to ensure the width is a multiple of 8 for byte packing.
-        remainder = working.width % 8
-        if remainder != 0:
-            new_width = working.width + (8 - remainder)
-            padded = Image.new("RGB", (new_width, working.height), "white")
-            padded.paste(working, (0, 0))
-            working = padded
-
-        return working.convert("RGB")
+            converted = working.convert("RGB")
+            if converted is not working:
+                working.close()
+            return converted
+        except Exception:
+            with suppress(Exception):
+                working.close()
+            raise
 
     def validate_images(
         self,
@@ -611,16 +725,348 @@ class NiimbotClient(BasePrinterClient):
             True,
         )
 
+    def _configured_d_variant(self) -> str | None:
+        variant = self.hardware_info.get("protocol_variant")
+        if variant is None or variant == "":
+            return None
+        if isinstance(variant, str) and variant in {
+            "d11_auto",
+            "d11_v1",
+            "d110",
+        }:
+            return variant
+        raise NiimbotPrintError(
+            "protocol_variant",
+            False,
+            f"Unsupported NIIMBOT protocol variant: {variant!r}.",
+        )
+
+    async def _query_model_id(self) -> None:
+        try:
+            packet = await self.send_command(
+                RequestCodeEnum.GET_INFO,
+                bytes((InfoEnum.MODEL_ID.value,)),
+                timeout=1.0,
+            )
+        except Exception as exc:
+            self._raise_for_print_device_error("protocol_probe")
+            logger.warning("NIIMBOT model ID probe failed: %s", exc)
+            return
+
+        self._raise_for_print_device_error("protocol_probe")
+        if packet is not None and packet.type == 0x48:
+            self._model_id = model_id(packet.data)
+        if self._model_id is None:
+            logger.warning("NIIMBOT model ID probe returned no valid model ID.")
+
+    async def _probe_d_variant(self, configured_variant: str) -> str:
+        self._connect_result = None
+        self._protocol_version = None
+        self._model_id = None
+        self._resolved_protocol_variant = None
+        failure: str | None = None
+
+        try:
+            connect_packet = await self.send_command(
+                RequestCodeEnum.CONNECT,
+                b"\x01",
+                timeout=1.0,
+            )
+        except Exception as exc:
+            self._raise_for_print_device_error("protocol_probe")
+            connect_packet = None
+            failure = f"CONNECT query failed: {exc}"
+
+        self._raise_for_print_device_error("protocol_probe")
+        if failure is None:
+            result = (
+                connect_result(connect_packet.data)
+                if connect_packet is not None and connect_packet.type == 0xC2
+                else None
+            )
+            if result is None:
+                failure = "CONNECT returned no recognized connect result"
+            else:
+                self._connect_result = result
+                if result == 1:
+                    self._protocol_version = 0
+                elif result == 2:
+                    self._protocol_version = 1
+                else:
+                    try:
+                        status_packet = await self.send_command(
+                            RequestCodeEnum.GET_STATUS_DATA,
+                            b"\x01",
+                            timeout=1.0,
+                        )
+                    except Exception as exc:
+                        self._raise_for_print_device_error("protocol_probe")
+                        status_packet = None
+                        failure = f"status-data query failed: {exc}"
+
+                    self._raise_for_print_device_error("protocol_probe")
+                    if failure is None:
+                        if (
+                            status_packet is None
+                            or status_packet.type != 0xB5
+                            or len(status_packet.data) < 13
+                        ):
+                            failure = "status-data response is missing or too short"
+                        else:
+                            # The pinned parser maps short payloads to version 0. This
+                            # local adapter requires bytes 11-12 before auto-selecting,
+                            # so a truncated B5 response cannot silently choose a recipe.
+                            self._protocol_version = protocol_version(
+                                status_packet.data
+                            )
+                await self._query_model_id()
+
+        if failure is not None:
+            if configured_variant == "d11_auto":
+                raise NiimbotPrintError(
+                    "protocol_probe",
+                    False,
+                    f"Could not resolve NIIMBOT D11 protocol: {failure}.",
+                )
+            logger.warning(
+                "NIIMBOT %s protocol probe is unverified (%s); keeping the configured variant.",
+                configured_variant,
+                failure,
+            )
+            resolved_variant = configured_variant
+        elif configured_variant == "d11_auto":
+            if self._protocol_version is None:
+                raise NiimbotPrintError(
+                    "protocol_probe",
+                    False,
+                    "NIIMBOT D11 protocol version is unavailable.",
+                )
+            resolved_variant = "d110" if self._protocol_version in (1, 2) else "d11_v1"
+        else:
+            resolved_variant = configured_variant
+
+        self._resolved_protocol_variant = resolved_variant
+        logger.debug(
+            "NIIMBOT D probe: connect_result=%s protocol_version=%s model_id=%s configured_variant=%s resolved_variant=%s",
+            self._connect_result,
+            self._protocol_version,
+            self._model_id,
+            configured_variant,
+            resolved_variant,
+        )
+        return resolved_variant
+
+    async def _wait_for_page_index(
+        self,
+        waiter: _PageIndexWaiter,
+        *,
+        variant: str,
+    ) -> None:
+        deadline = waiter.loop.time() + self._completion_timeout
+        if variant == "d11_v1":
+            remaining = deadline - waiter.loop.time()
+            try:
+                await asyncio.wait_for(waiter.event.wait(), timeout=remaining)
+            except TimeoutError as exc:
+                raise NiimbotPrintError(
+                    "completion",
+                    True,
+                    "Printer did not report D11 page completion.",
+                ) from exc
+            self._raise_for_print_device_error("completion")
+            return
+
+        while True:
+            self._raise_for_print_device_error("completion")
+            remaining = deadline - waiter.loop.time()
+            if remaining <= 0:
+                raise NiimbotPrintError(
+                    "completion",
+                    True,
+                    "Printer did not report D110 page completion before the deadline.",
+                )
+
+            try:
+                packet = await self.send_command(
+                    RequestCodeEnum.GET_PRINT_STATUS,
+                    b"\x01",
+                    timeout=min(self._completion_query_timeout, remaining),
+                )
+            except Exception as exc:
+                self._raise_for_print_device_error("completion")
+                raise NiimbotPrintError(
+                    "completion",
+                    True,
+                    f"D110 completion status query failed: {exc}",
+                ) from exc
+
+            self._raise_for_print_device_error("completion")
+            if (
+                packet is not None
+                and packet.type == 0xB3
+                and len(packet.data) >= 2
+                and int.from_bytes(packet.data[:2], byteorder="big") >= 1
+            ):
+                return
+
+            remaining = deadline - waiter.loop.time()
+            if remaining <= 0:
+                raise NiimbotPrintError(
+                    "completion",
+                    True,
+                    "Printer did not report D110 page completion before the deadline.",
+                )
+            await asyncio.sleep(min(self._completion_poll_interval, remaining))
+
+    async def _print_d_label(
+        self,
+        image: Image.Image,
+        print_width_px: int,
+        density: int,
+        label_type: int,
+        variant: str,
+        dither: bool,
+        raster_write_attempted: bool,
+    ) -> bool:
+        current_stage = "reset_end_print"
+        prepared: Image.Image | None = None
+        waiter: _PageIndexWaiter | None = None
+        attempted = raster_write_attempted
+        try:
+            # Transaction ordering follows TiMini-Print v0.8.1's D11/D110 recipe
+            # (Apache-2.0; commit f676917257b5d1f869e0f13beff03785258e2a2e).
+            await self._send_reset_command(
+                RequestCodeEnum.END_PRINT,
+                current_stage,
+                attempted,
+            )
+            current_stage = "reset_clear"
+            await self._send_reset_command(
+                RequestCodeEnum.ALLOW_PRINT_CLEAR,
+                current_stage,
+                attempted,
+            )
+
+            current_stage = "set_label_density"
+            await self._send_required_ack(
+                RequestCodeEnum.SET_LABEL_DENSITY,
+                bytes((density,)),
+                timeout=1.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+            current_stage = "set_label_type"
+            await self._send_required_ack(
+                RequestCodeEnum.SET_LABEL_TYPE,
+                bytes((label_type,)),
+                timeout=1.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+            current_stage = "start_print"
+            await self._send_required_ack(
+                RequestCodeEnum.START_PRINT,
+                b"\x01",
+                timeout=2.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+            current_stage = "page_clear"
+            await self._send_required_ack(
+                RequestCodeEnum.ALLOW_PRINT_CLEAR,
+                b"\x01",
+                timeout=1.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+
+            current_stage = "raster_prepare"
+            prepared = self._prepare_print_image(image, print_width_px)
+            raster = image_to_raster(prepared, PixelFormat.BW1, dither=dither)
+            encoded_rows = encode_d_rows(raster)
+
+            current_stage = "start_page_print"
+            await self._send_required_ack(
+                RequestCodeEnum.START_PAGE_PRINT,
+                b"\x01",
+                timeout=2.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+            current_stage = "set_dimension"
+            dimension_data = (
+                struct.pack(">H", raster.height)
+                if variant == "d11_v1"
+                else struct.pack(">HH", raster.height, raster.width)
+            )
+            await self._send_required_ack(
+                RequestCodeEnum.SET_DIMENSION,
+                dimension_data,
+                timeout=2.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+            current_stage = "set_quantity"
+            await self._send_required_ack(
+                RequestCodeEnum.SET_QUANTITY,
+                struct.pack(">H", 1),
+                timeout=2.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+
+            waiter = self._arm_page_index_waiter()
+            logger.debug("Streaming %s NIIMBOT D row frame(s)...", len(encoded_rows))
+            for encoded_row in encoded_rows:
+                current_stage = "raster_write"
+                self._raise_for_print_device_error(current_stage)
+                attempted = True
+                await self.write_raw(encoded_row)
+
+            current_stage = "end_page"
+            await self._wait_for_end_page_ack(timeout=15.0)
+
+            current_stage = "completion"
+            await self._wait_for_page_index(waiter, variant=variant)
+
+            current_stage = "end_print"
+            await self._send_required_ack(
+                RequestCodeEnum.END_PRINT,
+                b"\x01",
+                timeout=3.0,
+                stage=current_stage,
+                delivery_uncertain=attempted,
+            )
+            return attempted
+        except NiimbotPrintError as exc:
+            if attempted:
+                exc.delivery_uncertain = True
+            raise
+        except Exception as exc:
+            raise NiimbotPrintError(
+                current_stage,
+                attempted,
+                f"Print failed during {current_stage}: {exc}",
+            ) from exc
+        finally:
+            if waiter is not None:
+                self._disarm_page_index_waiter(waiter)
+            if prepared is not None:
+                with suppress(Exception):
+                    prepared.close()
+
     async def print_images(
         self,
         images: list[Image.Image],
         split_mode: bool = False,
         dither: bool = True,
     ) -> None:
+        configured_variant = self._configured_d_variant()
         self.validate_images(images, split_mode)
         self._begin_print()
         raster_write_attempted = False
         current_stage = "print_setup"
+        d_variant: str | None = None
         try:
             logger.info(
                 f"Starting batch print job for {len(images)} image(s) using independent jobs..."
@@ -639,8 +1085,24 @@ class NiimbotClient(BasePrinterClient):
             media_type_str = self.hardware_info.get("media_type", "pre-cut")
             label_type = 2 if media_type_str == "continuous" else 1
 
+            if configured_variant is not None:
+                current_stage = "protocol_probe"
+                d_variant = await self._probe_d_variant(configured_variant)
+
             for i, image in enumerate(images):
                 logger.info(f"--- Printing label {i + 1} of {len(images)} ---")
+
+                if d_variant is not None:
+                    raster_write_attempted = await self._print_d_label(
+                        image,
+                        print_width_px,
+                        density,
+                        label_type,
+                        d_variant,
+                        dither,
+                        raster_write_attempted,
+                    )
+                    continue
 
                 # FORCE STATE CLEAR before each label to avoid "Job Full" (Error 06) firmware issues
                 current_stage = "reset_end_print"
@@ -685,8 +1147,14 @@ class NiimbotClient(BasePrinterClient):
                 )
 
                 current_stage = "raster_prepare"
-                prepared = self._prepare_print_image(image, print_width_px)
-                raster = image_to_raster(prepared, PixelFormat.BW1, dither=dither)
+                prepared: Image.Image | None = None
+                try:
+                    prepared = self._prepare_print_image(image, print_width_px)
+                    raster = image_to_raster(prepared, PixelFormat.BW1, dither=dither)
+                finally:
+                    if prepared is not None:
+                        with suppress(Exception):
+                            prepared.close()
                 packed_bytes = pack_line(list(raster.pixels), lsb_first=False)
                 width_bytes = (raster.width + 7) // 8
 
@@ -782,4 +1250,5 @@ class NiimbotClient(BasePrinterClient):
                 except Exception as cleanup_error:
                     logger.debug(f"Best-effort cleanup delay failed: {cleanup_error}")
             finally:
+                self._clear_completion_state()
                 self._finish_print()
