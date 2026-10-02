@@ -48,6 +48,8 @@ https://github.com/user-attachments/assets/4e784645-0ccf-478c-a6e1-0c41a3519624
 
 CatLabel listens on this computer only by default. See [local operation and API clients](docs/local-operation.md) for optional LAN access, access tokens, developer origins.
 
+See [print jobs and hardware acceptance](docs/print-jobs.md) for busy-printer responses, uncertain delivery and physical acceptance status.
+
 ---
 
 ## Instruction Manual & Features

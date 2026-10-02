@@ -1,167 +1,6 @@
 {
   "ruff": [
     {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP035",
-      "message": "`typing.Dict` is deprecated, use `dict` instead",
-      "line": 7,
-      "column": 1
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP035",
-      "message": "`typing.List` is deprecated, use `list` instead",
-      "line": 7,
-      "column": 1
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 77,
-      "column": 16
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 81,
-      "column": 19
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 82,
-      "column": 16
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 87,
-      "column": 19
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 89,
-      "column": 21
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 89,
-      "column": 26
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 90,
-      "column": 23
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 90,
-      "column": 32
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 90,
-      "column": 42
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 95,
-      "column": 13
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 101,
-      "column": 12
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 102,
-      "column": 13
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 103,
-      "column": 17
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 104,
-      "column": 17
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 107,
-      "column": 25
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 109,
-      "column": 42
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 109,
-      "column": 56
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 129,
-      "column": 42
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 209,
-      "column": 56
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "B905",
-      "message": "`zip()` without an explicit `strict=` parameter",
-      "line": 379,
-      "column": 46
-    },
-    {
       "path": "catlabel/api/routes_project.py",
       "rule": "I001",
       "message": "Import block is un-sorted or un-formatted",
@@ -3256,146 +3095,6 @@
       "column": 10
     },
     {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "line": 1,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP035",
-      "message": "`typing.Dict` is deprecated, use `dict` instead",
-      "line": 5,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP035",
-      "message": "`typing.List` is deprecated, use `list` instead",
-      "line": 5,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP035",
-      "message": "`typing.Tuple` is deprecated, use `tuple` instead",
-      "line": 5,
-      "column": 1
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 88,
-      "column": 22
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 89,
-      "column": 27
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP045",
-      "message": "Use `X | None` for type annotations",
-      "line": 90,
-      "column": 26
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 92,
-      "column": 23
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP006",
-      "message": "Use `tuple` instead of `Tuple` for type annotation",
-      "line": 92,
-      "column": 33
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP006",
-      "message": "Use `dict` instead of `Dict` for type annotation",
-      "line": 93,
-      "column": 26
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "SIM105",
-      "message": "Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`",
-      "line": 244,
-      "column": 21
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "E722",
-      "message": "Do not use bare `except`",
-      "line": 246,
-      "column": 21
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "SIM105",
-      "message": "Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`",
-      "line": 260,
-      "column": 17
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "E722",
-      "message": "Do not use bare `except`",
-      "line": 262,
-      "column": 17
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP041",
-      "message": "Replace aliased errors with `TimeoutError`",
-      "line": 288,
-      "column": 16
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "UP006",
-      "message": "Use `list` instead of `List` for type annotation",
-      "line": 354,
-      "column": 42
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "F541",
-      "message": "f-string without any placeholders",
-      "line": 394,
-      "column": 36
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "B904",
-      "message": "Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling",
-      "line": 427,
-      "column": 13
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "SIM105",
-      "message": "Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`",
-      "line": 430,
-      "column": 13
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "E722",
-      "message": "Do not use bare `except`",
-      "line": 432,
-      "column": 13
-    },
-    {
       "path": "catlabel/vendors/utils.py",
       "rule": "I001",
       "message": "Import block is un-sorted or un-formatted",
@@ -3544,10 +3243,6 @@
     }
   ],
   "format": [
-    {
-      "path": "catlabel/api/routes_print.py",
-      "sha256": "1bb3907666dc17f6933f238dd5f46b5cc7c95b1259fa607213a9997aa3fbd32a"
-    },
     {
       "path": "catlabel/api/routes_project.py",
       "sha256": "98dbab9ceb23607c049a3f887001c2b4be16a96da393a55ff68c038856cf8111"
@@ -3793,10 +3488,6 @@
       "sha256": "d50215a3d46ebaa8bf361dceecb8ca33380c4199d049bfce6dcf9e5da2e5be41"
     },
     {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "sha256": "ea63456d0b2dfde65e2988324bef47c85d79ff9e1d7abfd8dc9a9157e1b8a95a"
-    },
-    {
       "path": "catlabel/vendors/utils.py",
       "sha256": "062f9f92c35e4d9ad97fa075a60aefb2cd8cf0193544330efe417145cf26c063"
     },
@@ -3850,22 +3541,6 @@
     }
   ],
   "typing": [
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "reportOptionalMemberAccess",
-      "message": "\"value\" is not a known attribute of \"None\"",
-      "severity": "error",
-      "line": 121,
-      "column": 37
-    },
-    {
-      "path": "catlabel/api/routes_print.py",
-      "rule": "reportOptionalMemberAccess",
-      "message": "\"value\" is not a known attribute of \"None\"",
-      "severity": "error",
-      "line": 135,
-      "column": 33
-    },
     {
       "path": "catlabel/api/routes_project.py",
       "rule": "reportArgumentType",
@@ -4689,46 +4364,6 @@
       "severity": "error",
       "line": 512,
       "column": 85
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "reportPrivateImportUsage",
-      "message": "\"BleakError\" is not exported from module \"bleak\"\n\u00a0\u00a0Import from \"bleak.exc\" instead",
-      "severity": "error",
-      "line": 8,
-      "column": 32
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"str | None\" cannot be assigned to parameter \"char_specifier\" of type \"BleakGATTCharacteristic | int | str | UUID\" in function \"stop_notify\"\n\u00a0\u00a0Type \"str | None\" is not assignable to type \"BleakGATTCharacteristic | int | str | UUID\"\n\u00a0\u00a0\u00a0\u00a0Type \"None\" is not assignable to type \"BleakGATTCharacteristic | int | str | UUID\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"BleakGATTCharacteristic\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"int\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"UUID\"",
-      "severity": "error",
-      "line": 261,
-      "column": 51
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"str | None\" cannot be assigned to parameter \"char_specifier\" of type \"BleakGATTCharacteristic | int | str | UUID\" in function \"write_gatt_char\"\n\u00a0\u00a0Type \"str | None\" is not assignable to type \"BleakGATTCharacteristic | int | str | UUID\"\n\u00a0\u00a0\u00a0\u00a0Type \"None\" is not assignable to type \"BleakGATTCharacteristic | int | str | UUID\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"BleakGATTCharacteristic\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"int\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"UUID\"",
-      "severity": "error",
-      "line": 308,
-      "column": 51
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"str | None\" cannot be assigned to parameter \"char_specifier\" of type \"BleakGATTCharacteristic | int | str | UUID\" in function \"write_gatt_char\"\n\u00a0\u00a0Type \"str | None\" is not assignable to type \"BleakGATTCharacteristic | int | str | UUID\"\n\u00a0\u00a0\u00a0\u00a0Type \"None\" is not assignable to type \"BleakGATTCharacteristic | int | str | UUID\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"BleakGATTCharacteristic\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"int\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"str\"\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"None\" is not assignable to \"UUID\"",
-      "severity": "error",
-      "line": 311,
-      "column": 51
-    },
-    {
-      "path": "catlabel/vendors/niimbot/client.py",
-      "rule": "reportArgumentType",
-      "message": "Argument of type \"Sequence[int]\" cannot be assigned to parameter \"line\" of type \"List[int]\" in function \"pack_line\"\n\u00a0\u00a0\"Sequence[int]\" is not assignable to \"List[int]\"",
-      "severity": "error",
-      "line": 389,
-      "column": 42
     },
     {
       "path": "catlabel/vendors/utils.py",

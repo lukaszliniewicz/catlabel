@@ -51,6 +51,7 @@ strict = [
   "tools/import_graph.py",
   "tools/sync_dependencies.py",
   "catlabel/core/server_security.py",
+  "catlabel/printing/admission.py",
 ]
 
 [tool.importlinter]
