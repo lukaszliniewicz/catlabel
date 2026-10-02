@@ -1,12 +1,14 @@
-import os
-
+from sqlalchemy import URL
 from sqlmodel import SQLModel, create_engine
 
-os.makedirs("data", exist_ok=True)
-sqlite_file_name = "data/catlabel.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+from .paths import DATA_DIRECTORY
+
+DATA_DIRECTORY.mkdir(parents=True, exist_ok=True)
+sqlite_file_name = str(DATA_DIRECTORY / "catlabel.db")
+_database_url = URL.create("sqlite", database=sqlite_file_name)
+sqlite_url = _database_url.render_as_string(hide_password=False)
 engine = create_engine(
-    sqlite_url, echo=False, connect_args={"check_same_thread": False}
+    _database_url, echo=False, connect_args={"check_same_thread": False}
 )
 
 

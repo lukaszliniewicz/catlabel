@@ -20,31 +20,30 @@ CatLabel communicates directly with portable thermal printers over Bluetooth. It
 
 *   **Niimbot:** D-Series (D11, D110, D101; experimental D11S 203 DPI profile), B-Series (B1, B21, B3S, B24, B18).
 *   **Phomemo:** M-Series (M02, M02S, M02X, M03, M04, M200), D-Series (D30), T02, P12, PM-241.
-*   **Generic:** 133 source-backed model records from the TiMini-Print v0.8.1 catalog across Tiny/Tiny-prefixed, Luck (including PPA2L/PPA2LH), V5G/V5X/V5C, Eleph/ToPrint dialects, Instaprint Core, Funny LX, and Orgstra S001 families. Detection uses advertised names and MAC constraints from the catalog; models owned by the separate Niimbot and Phomemo backends are not duplicated.
+*   **Generic:** 136 executable model records from the pinned TiMini-Print v0.8.1 catalog and selected Luck/PrintMaster updates across Tiny/Tiny-prefixed, Luck, V5G/V5X/V5C, Eleph/ToPrint, Instaprint Core, Funny LX, Orgstra S001, and PrintMaster families. Detection uses advertised names and MAC constraints from the catalog; models owned by the separate Niimbot and Phomemo backends are not duplicated.
 
-M110/M120 need the separate PrintMaster implementation and are currently deferred; M220 and the unconfirmed M221/M260 aliases are not advertised. Phomemo P12/D-series/M03/M04/M200 support uses existing local recipes, not released upstream parity. Changed printer paths have source-backed tests; physical printer acceptance is still open.
+Exact M110/M120 names select experimental PrintMaster recipes. Unconfirmed suffixes, M220 and the unconfirmed M221/M260 aliases remain unknown. Phomemo P12/D-series/M03/M04/M200 support uses existing local recipes. Changed printer paths have source-backed tests; physical printer acceptance is still open. See the [upstream parity ledger](docs/upstream-parity.md) for pinned sources and remaining differences.
 
 ---
 
 ## Installation & Running
 
-CatLabel runs a local web server and opens the interface in your browser. On Windows, it manages a locked, isolated environment with a portable copy of Pixi, so it does not require a system Python or Node.js installation.
+CatLabel runs a local web server and opens the interface in your browser. The installation scripts manage a locked, isolated Python environment with a checksum-verified copy of Pixi. You do not need system Python or Node.js. First setup needs internet access; subsequent launches use the installed environment.
 
 ### Windows
-The easiest way to run CatLabel on Windows is using the standalone launcher.
-1. Download `CatLabel-Launcher.exe` from the [Releases](../../releases) page.
-2. Place it in an empty folder where you want the app to reside.
-3. Double-click the executable. It downloads the repository, a verified standalone Pixi executable, and the locked dependencies before starting the app.
+Download or clone this repository into a writable folder and double-click `run.bat`. It installs the locked environment and starts CatLabel. Windows support is best effort; native installation has not been verified in this maintenance run.
 
-The launcher keeps the Pixi environment and cache inside the CatLabel folder. Run `catlabel\run.bat --install-headless` if you later want to add optional headless API rendering support.
+The existing standalone launcher on the [Releases](../../releases) page may predate these scripts. Its release/update workflow is being revised as part of the maintenance plan.
 
 https://github.com/user-attachments/assets/4e784645-0ccf-478c-a6e1-0c41a3519624
 
 ### macOS & Linux
 1. Clone or download this repository.
 2. Open a terminal in the repository folder.
-3. Run the bootstrap script: `chmod +x run.sh && ./run.sh`
-4. The script downloads Micromamba, installs the dependencies, and starts the server. The compiled frontend is included in the repository.
+3. Run `bash ./run.sh`.
+4. The script downloads verified Pixi, installs the locked dependencies, and starts the server. The compiled frontend is included. macOS support is best effort; native execution has not been verified in this maintenance run.
+
+Both scripts accept `--setup-only`, `--install-headless`, `--skip-headless`, `--repair` and `--diagnose`. Headless Chromium is an explicit add-on for backend HTML rendering. Normal browser design and printing do not need it. See [installation and recovery](docs/installation.md) for data paths, optional setup and diagnostics.
 
 *The app runs at [http://localhost:8000](http://localhost:8000).*
 

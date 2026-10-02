@@ -19,6 +19,12 @@ _SPECIFIER_PATTERN = re.compile(
 )
 _MARKER_PATTERN = re.compile(r"sys_platform\s*==\s*(['\"])(darwin|win32)\1\Z")
 _NAME_NORMALIZATION_PATTERN = re.compile(r"[-_.]+")
+PIXI_PLATFORMS = ("win-64", "linux-64", "linux-aarch64", "osx-64", "osx-arm64")
+_MARKER_PLATFORMS = {
+    "win32": ("win-64",),
+    "darwin": ("osx-64", "osx-arm64"),
+}
+_RequirementEntry = tuple[str, str]
 
 
 class DependencyManifestError(ValueError):
@@ -108,20 +114,59 @@ def _parse_requirement(requirement: str) -> tuple[str, str, str | None]:
     return normalized_name, raw_specifier.strip(), marker
 
 
-def _pypi_entries(requirements: list[str], *, source: str) -> list[tuple[str, str]]:
-    entries: list[tuple[str, str]] = []
-    seen: dict[str, str] = {}
+def _platform_entries(
+    requirements: list[str], *, source: str
+) -> tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]]:
+    """Resolve unmarked and supported platform-specific requirements."""
+    common: list[_RequirementEntry] = []
+    targets: dict[str, list[_RequirementEntry]] = {
+        platform: [] for platform in PIXI_PLATFORMS
+    }
+    seen: dict[str, dict[str, str]] = {platform: {} for platform in PIXI_PLATFORMS}
     for requirement in requirements:
         name, specifier, marker = _parse_requirement(requirement)
-        if marker == "darwin":
-            continue
-        if name in seen:
+        platforms = PIXI_PLATFORMS if marker is None else _MARKER_PLATFORMS[marker]
+        if marker is None:
+            common.append((name, specifier or "*"))
+        else:
+            for platform in platforms:
+                targets[platform].append((name, specifier or "*"))
+
+        for platform in platforms:
+            prior = seen[platform].get(name)
+            if prior is not None:
+                raise DependencyManifestError(
+                    f"{source} has overlapping requirements for normalized package "
+                    f"{name!r} on {platform}: {prior!r} and {requirement!r}"
+                )
+            seen[platform][name] = requirement
+
+    return common, targets
+
+
+def _check_base_headless_overlap(
+    base_common: list[_RequirementEntry],
+    base_targets: dict[str, list[_RequirementEntry]],
+    headless_common: list[_RequirementEntry],
+    headless_targets: dict[str, list[_RequirementEntry]],
+) -> None:
+    for platform in PIXI_PLATFORMS:
+        base_names = {
+            name for name, _specifier in [*base_common, *base_targets[platform]]
+        }
+        headless_names = {
+            name
+            for name, _specifier in [
+                *headless_common,
+                *headless_targets[platform],
+            ]
+        }
+        overlap = sorted(base_names & headless_names)
+        if overlap:
             raise DependencyManifestError(
-                f"{source} has multiple requirements for normalized package {name!r}"
+                "[project].dependencies and headless have overlapping requirements "
+                f"for normalized package {overlap[0]!r} on {platform}"
             )
-        seen[name] = requirement
-        entries.append((name, specifier or "*"))
-    return entries
 
 
 def _render_requirements(requirements: list[str]) -> bytes:
@@ -136,8 +181,20 @@ def _render_pixi(
     base_requirements: list[str],
     headless_requirements: list[str],
 ) -> bytes:
-    base_entries = _pypi_entries(base_requirements, source="[project].dependencies")
-    headless_entries = _pypi_entries(headless_requirements, source="headless")
+    base_common, base_targets = _platform_entries(
+        base_requirements,
+        source="[project].dependencies",
+    )
+    headless_common, headless_targets = _platform_entries(
+        headless_requirements,
+        source="headless",
+    )
+    _check_base_headless_overlap(
+        base_common,
+        base_targets,
+        headless_common,
+        headless_targets,
+    )
 
     lines = [
         GENERATED_HEADER,
@@ -145,20 +202,38 @@ def _render_pixi(
         "[workspace]",
         f"name = {json.dumps(project_name)}",
         'channels = ["conda-forge"]',
-        'platforms = ["win-64"]',
+        "platforms = ["
+        + ", ".join(json.dumps(platform) for platform in PIXI_PLATFORMS)
+        + "]",
         "",
         "[dependencies]",
-        'python = "3.11.*"',
+        'python = "==3.11.15"',
         "",
         "[pypi-dependencies]",
     ]
-    lines.extend(
-        f"{name} = {json.dumps(specifier)}" for name, specifier in base_entries
-    )
+    for name, specifier in base_common:
+        lines.append(f"{name} = {json.dumps(specifier)}")
+    for platform in PIXI_PLATFORMS:
+        entries = base_targets[platform]
+        if entries:
+            lines.extend(["", f"[target.{platform}.pypi-dependencies]"])
+            lines.extend(
+                f"{name} = {json.dumps(specifier)}" for name, specifier in entries
+            )
+
     lines.extend(["", "[feature.headless.pypi-dependencies]"])
     lines.extend(
-        f"{name} = {json.dumps(specifier)}" for name, specifier in headless_entries
+        f"{name} = {json.dumps(specifier)}" for name, specifier in headless_common
     )
+    for platform in PIXI_PLATFORMS:
+        entries = headless_targets[platform]
+        if entries:
+            lines.extend(
+                ["", f"[feature.headless.target.{platform}.pypi-dependencies]"]
+            )
+            lines.extend(
+                f"{name} = {json.dumps(specifier)}" for name, specifier in entries
+            )
     lines.extend(
         [
             "",

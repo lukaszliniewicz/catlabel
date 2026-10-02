@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-03",
+  "candidates": {
+    "litellm": "1.103.2",
+    "google-cloud-aiplatform": "2.3.0"
+  },
+  "cases": [
+    {
+      "case": "openai",
+      "url": "https://api.openai.com/v1/chat/completions",
+      "body_fields": [
+        "messages",
+        "model",
+        "tool_choice",
+        "tools"
+      ],
+      "image": "PNG data URL preserved",
+      "tool": "fixture_tool required integer value",
+      "tool_choice": "auto",
+      "credential_placeholder": true,
+      "response_class": "ModelResponse",
+      "usage_tokens": [
+        11,
+        5,
+        16
+      ],
+      "passed": true
+    },
+    {
+      "case": "custom_openai",
+      "url": "https://fixture.invalid/v1/chat/completions",
+      "body_fields": [
+        "messages",
+        "model",
+        "tool_choice",
+        "tools"
+      ],
+      "image": "PNG data URL preserved",
+      "tool": "fixture_tool required integer value",
+      "tool_choice": "auto",
+      "credential_placeholder": true,
+      "response_class": "ModelResponse",
+      "usage_tokens": [
+        11,
+        5,
+        16
+      ],
+      "passed": true
+    },
+    {
+      "case": "gemini",
+      "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      "body_fields": [
+        "contents",
+        "system_instruction",
+        "tools",
+        "toolConfig"
+      ],
+      "image": "PNG inline_data with image/png; bytes preserved",
+      "tool": "fixture_tool required integer value",
+      "tool_choice": "toolConfig.functionCallingConfig.mode=AUTO",
+      "credential_placeholder": true,
+      "response_class": "ModelResponse",
+      "usage_tokens": [
+        11,
+        5,
+        16
+      ],
+      "passed": true
+    },
+    {
+      "case": "vertex_gemini",
+      "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/fixture-project/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent",
+      "body_fields": [
+        "contents",
+        "system_instruction",
+        "tools",
+        "toolConfig"
+      ],
+      "image": "PNG inline_data with image/png; bytes preserved",
+      "tool": "fixture_tool required integer value",
+      "tool_choice": "toolConfig.functionCallingConfig.mode=AUTO",
+      "credential_placeholder": true,
+      "response_class": "ModelResponse",
+      "usage_tokens": [
+        11,
+        5,
+        16
+      ],
+      "passed": true
+    }
+  ],
+  "socket_egress_attempts": [],
+  "interception": "httpx.Client.send; real SDK request serialization precedes interception; mocked provider JSON follows real response parsing",
+  "limitations": [
+    "Actual SDK request building and response parsing exercised against mocked HTTP responses.",
+    "No live provider acceptance, real authentication, OAuth refresh, or server validation tested.",
+    "Vertex credentials acquisition bypassed at VertexBase.load_auth; default credentials forbidden."
+  ],
+  "source_result_sha256": "24f0ad7d7da75f787f37f5c7de26d4fdd832c7e98a51f595b6299c1b7b59d0bb",
+  "source_script_sha256": "e2c59a3266ef8a8489f54aa67f074ea533fda2227414a41016b5a3c5008fcbfe",
+  "vertex_inline_json": {
+    "gemini": "vertex_llm_base.py load_auth accepts file or JSON string",
+    "legacy": "vertex_ai_non_gemini.py:135 calls json.loads(vertex_credentials)",
+    "scope": "Installed LiteLLM 1.103.2 source trace; actual authentication not executed"
+  },
+  "application_changes": "Saved Vertex JSON now supplied inline; malformed JSON and non-string private_key stop before SDK invocation."
+}

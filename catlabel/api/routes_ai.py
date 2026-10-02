@@ -1,10 +1,8 @@
 import copy
 import json
 import logging
-import tempfile
 from collections.abc import Iterable
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -642,7 +640,6 @@ def _chat_with_provider(
 ):
     from ..core.database import engine
 
-    credential_path = None
     try:
         kwargs = {
             "model": f"{active_provider.provider}/{active_model.model_name}"
@@ -657,12 +654,23 @@ def _chat_with_provider(
 
         if not active_provider.use_env:
             if active_provider.provider == "vertex_ai":
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".json", mode="w"
-                ) as f:
-                    credential_path = f.name
-                    f.write(active_provider.api_key)
-                    kwargs["vertex_credentials"] = f.name
+                # Both Gemini and legacy Vertex accept inline JSON. Legacy
+                # Vertex does not load a filename, and no secret file is needed.
+                try:
+                    credentials = json.loads(active_provider.api_key)
+                except ValueError as exc:
+                    raise ValueError("Vertex credentials must be valid JSON") from exc
+                if not isinstance(credentials, dict):
+                    raise ValueError("Vertex credentials must be a JSON object")
+                if (
+                    "private_key" in credentials
+                    or credentials.get("type")
+                    not in ("external_account", "authorized_user")
+                ) and not isinstance(credentials.get("private_key"), str):
+                    raise ValueError(
+                        "Vertex credentials must contain a string private_key"
+                    )
+                kwargs["vertex_credentials"] = active_provider.api_key
             else:
                 kwargs["api_key"] = active_provider.api_key
 
@@ -898,6 +906,3 @@ def _chat_with_provider(
                 req.canvas_state, secrets, redact_fields=False
             ),
         }
-    finally:
-        if credential_path is not None:
-            Path(credential_path).unlink(missing_ok=True)

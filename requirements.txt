@@ -10,5 +10,5 @@ crc8>=0.2.1
 pyserial>=3.5
 pyobjc-framework-IOBluetooth>=11.0; sys_platform == 'darwin'
 winsdk>=1.0.0b10; sys_platform == 'win32'
-google-cloud-aiplatform
-litellm>=1.59.3,<1.92.0
+google-cloud-aiplatform==2.3.0
+litellm==1.103.2

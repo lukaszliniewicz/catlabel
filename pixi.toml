@@ -3,10 +3,10 @@
 [workspace]
 name = "catlabel"
 channels = ["conda-forge"]
-platforms = ["win-64"]
+platforms = ["win-64", "linux-64", "linux-aarch64", "osx-64", "osx-arm64"]
 
 [dependencies]
-python = "3.11.*"
+python = "==3.11.15"
 
 [pypi-dependencies]
 fastapi = ">=0.115.6"
@@ -18,9 +18,17 @@ pypdfium2 = ">=4.30.1"
 bleak = ">=0.22.3"
 crc8 = ">=0.2.1"
 pyserial = ">=3.5"
+google-cloud-aiplatform = "==2.3.0"
+litellm = "==1.103.2"
+
+[target.win-64.pypi-dependencies]
 winsdk = ">=1.0.0b10"
-google-cloud-aiplatform = "*"
-litellm = ">=1.59.3,<1.92.0"
+
+[target.osx-64.pypi-dependencies]
+pyobjc-framework-iobluetooth = ">=11.0"
+
+[target.osx-arm64.pypi-dependencies]
+pyobjc-framework-iobluetooth = ">=11.0"
 
 [feature.headless.pypi-dependencies]
 playwright = ">=1.40.0"

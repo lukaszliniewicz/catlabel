@@ -32,6 +32,19 @@ jobs:
       - run: npm install --global npm@11.16.0
       - run: npm ci
         working-directory: frontend
+      - name: Bootstrap shell syntax
+        shell: bash
+        run: bash -n run.sh
+      - name: Bootstrap PowerShell syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'run.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { $parseErrors; exit 1 }
+      - name: Bootstrap shell lint
+        if: runner.os == 'Linux'
+        run: shellcheck run.sh
       - name: Linux complete static, test and scratch-build gate
         if: runner.os == 'Linux'
         run: python -m tools.check --lane full --report check-results/static.json

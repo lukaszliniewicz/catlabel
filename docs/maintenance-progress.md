@@ -8,7 +8,7 @@ Objective: implement the complete [2 October maintenance plan](reviews/2026-10-0
 | 1 — correctness and local operation | Implemented locally; hardware acceptance open | Classification/row packing, local-server/provider-secret fixes, device admission and Niimbot acknowledgements, shared processing limits, safe catalog publication and project transactions/revisions are integrated. Full Linux checks pass: 300 backend tests, 28 frontend tests and a scratch production build. |
 | 2 — debt elimination | Implemented locally; native acceptance open | All source/check debt gates are zero, both full Python SCCs are removed, and no import-contract exception remains. 329 backend tests pass with one native SDK test skipped on Linux; 33 frontend tests and production build pass. |
 | 3 — upstream parity | Implemented locally within pinned scope; hardware acceptance open | Released generic/dedicated recipes, Classic receive and selected BLE hooks pass fixtures. Pinned Luck A4 overlay/transactions and experimental PrintMaster M110/M120 are integrated. Explicit unadopted deltas and physical/native limits remain in the parity ledger. |
-| 4 — installation/dependencies | Pending | Native locked bootstrap and release/update/repair workflow; staged major migrations and native installation matrix. |
+| 4 — installation/dependencies | In progress | Five-platform locked bootstrap, shared data paths, SDK migration and Linux setup/repair/offline/failure checks pass. Optional AI packaging, selected-artifact updates and remaining package groups are next. Foreign native checks are best effort. |
 | 5 — structure/UX | Pending | Typed interfaces/store/component decomposition; responsive/accessible setup/editor/save recovery. Parent owns browser acceptance. |
 | 6 — performance/lifecycle | Pending | Measured alpha hoist, unified render readiness, Playwright ownership, bounded jobs/previews and representative benchmarks. |
 | 7 — maintenance routine | Pending | Owners, expiry/review triggers, dependency/upstream/release receipts and debt gates maintained. |
@@ -162,3 +162,34 @@ credential-handling tests pass and all 97 installed packages are compatible.
 Completion was mocked; request serialization and live providers are unverified.
 The five-platform dependency generator passed nine tests in scratch and has not
 yet been promoted. These preparations do not change application dependencies.
+
+
+Phase 4 bootstrap foundation: Pixi 0.72.2 is pinned by official binary digest,
+size and version on five targets. Bash and PowerShell share setup, headless,
+repair and diagnostic options. Verified restarts avoid synchronization; scoped
+identity stamps preserve prior lock verification. Failed downloads preserve the
+old binary. Shared absolute data paths keep SQLite/fonts separate from code;
+SQLite URL delimiters, Unicode, spaces and foreign working directories are tested.
+
+LiteLLM 1.103.2 and Google AI Platform 2.3.0 are promoted after credentials-free
+SDK request/response probes. Saved Vertex JSON goes inline, with malformed values
+rejected before SDK invocation; supported WIF/authorized-user shapes are preserved.
+No live authentication or paid provider call was made. Earlier preparation entries
+above are historical; the generator and dependencies are now promoted.
+
+Final Linux checks: 666 backend tests run (665 pass, one Windows SDK skip),
+including 21 tests for the next, not-yet-integrated artifact library; 33 frontend
+tests and production build (8.84 seconds) pass, all nine static categories zero.
+Python audit has zero findings; three exact existing npm exceptions remain until
+the toolchain migration. Fresh setup, repair, headless retry, offline warm setup
+and invalid/partial download preservation pass in disposable paths. An initial
+Chromium download hit temporary-directory quota; routing temporary files into
+its data directory fixed it. Parent launched Chromium and inspected a fixture
+render. PowerShell portable contracts pass on Linux; Windows/macOS native runs
+remain unverified under the user's best-effort scope.
+
+[Machine-readable receipt](reviews/2026-10-02/evidence/phase4-bootstrap-foundation-receipt.json).
+Luna/max implementers, researcher and verifier supplied bounded non-UI packets
+and evidence; configured assignments are recorded, runtime telemetry unavailable.
+No physical printing, deployment or automatic update is claimed. Optional AI,
+selected releases, remaining dependencies and phases 5–7 remain active.

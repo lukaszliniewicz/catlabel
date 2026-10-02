@@ -1,6 +1,6 @@
 # Development checks and static debt policy
 
-Use Python 3.11.15 and Node 24.18.0 (`.node-version`), with npm 11.16.0. The application runtime's existing Windows Pixi lock remains separate from the universal CI/development lock until the native-installation phase is accepted.
+Use Python 3.11.15 and Node 24.18.0 (`.node-version`), with npm 11.16.0. The five-platform Pixi runtime lock is separate from the universal CI/development lock. Native acceptance is recorded separately from lock resolution.
 
 Create an isolated environment and install the **hash-locked** check dependencies:
 
@@ -24,9 +24,9 @@ Hardware/integration acceptance requires named device, firmware, OS, transport, 
 
 ## Canonical dependencies and locks
 
-`pyproject.toml` owns application requirements and optional headless/launcher dependencies. `python -m tools.sync_dependencies --check` rejects divergent pip/Pixi manifests. `--write` explicitly regenerates `requirements.txt`, `launcher-requirements.txt` and `pixi.toml`. It currently supports the established win-64 Pixi runtime only; adding native platforms belongs to phase 4.
+`pyproject.toml` owns application requirements and optional headless/launcher dependencies. `python -m tools.sync_dependencies --check` rejects divergent pip/Pixi manifests. `--write` explicitly regenerates `requirements.txt`, `launcher-requirements.txt` and `pixi.toml`. The generator maps platform bridges to win-64/osx-64/osx-arm64 targets and resolves common dependencies across all five declared platforms. Overlapping normalized requirements are rejected.
 
-`requirements-dev.lock` pins the checker-only environment; `requirements-check.lock` includes app, launcher, optional renderer and check dependencies for reproducible CI. Neither replaces the accepted Windows runtime lock. Refresh deliberately:
+`requirements-dev.lock` pins the checker-only environment; `requirements-check.lock` includes app, launcher, optional renderer and check dependencies for reproducible CI. Neither replaces the runtime lock. Refresh deliberately:
 
 ```sh
 uv pip compile --group dev --python-version 3.11 --universal --generate-hashes --output-file requirements-dev.lock

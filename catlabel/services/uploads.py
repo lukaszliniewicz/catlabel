@@ -21,6 +21,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select
 
 from ..core.models import Font
+from ..core.paths import FONTS_DIRECTORY
 from ..core.resource_limits import (
     MAX_IMAGE_BYTES,
     MAX_PRINT_JOBS,
@@ -29,7 +30,7 @@ from ..core.resource_limits import (
     validate_image_budget,
 )
 
-_FONT_DIRECTORY = Path("data") / "fonts"
+_FONT_DIRECTORY = FONTS_DIRECTORY
 _FONT_PROMOTION_LOCK = threading.Lock()
 _PDF_SCALE = 203 / 72
 

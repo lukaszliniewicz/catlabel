@@ -14,8 +14,8 @@ dependencies = [
   "pyserial>=3.5",
   "pyobjc-framework-IOBluetooth>=11.0; sys_platform == 'darwin'",
   "winsdk>=1.0.0b10; sys_platform == 'win32'",
-  "google-cloud-aiplatform",
-  "litellm>=1.59.3,<1.92.0",
+  "google-cloud-aiplatform==2.3.0",
+  "litellm==1.103.2",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +51,8 @@ strict = [
   "tools/check.py",
   "tools/import_graph.py",
   "tools/sync_dependencies.py",
+  "tools/bootstrap_runtime.py",
+  "catlabel/core/paths.py",
   "catlabel/core/server_security.py",
   "catlabel/core/async_operations.py",
   "catlabel/services/agent_context.py",

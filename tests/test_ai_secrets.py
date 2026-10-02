@@ -613,15 +613,8 @@ class AISecretBoundaryTests(unittest.TestCase):
             self.assertTrue(all(row[1] == "text" for row in raw))
             self.assertTrue(all("+00:00" not in row[0] for row in raw))
 
-    def test_vertex_tempfile_cleanup_at_every_exit(self) -> None:
+    def test_vertex_inline_credentials_at_every_exit(self) -> None:
         self.seed(VERTEX_KEY, "vertex_ai")
-        paths: list[Path] = []
-        original = tempfile.NamedTemporaryFile
-
-        def create_file(*args, **kwargs):
-            result = original(*args, dir=self.tempdir.name, **kwargs)
-            paths.append(Path(result.name))
-            return result
 
         successful_message = SimpleNamespace(
             model_dump=lambda **kwargs: {"role": "assistant", "content": "done"},
@@ -634,15 +627,17 @@ class AISecretBoundaryTests(unittest.TestCase):
             with (
                 self.subTest(mode=mode),
                 patch.object(
-                    routes_ai.tempfile, "NamedTemporaryFile", side_effect=create_file
+                    tempfile,
+                    "NamedTemporaryFile",
+                    side_effect=AssertionError(
+                        "Vertex must not publish a credential file"
+                    ),
                 ),
                 patch.object(routes_ai.litellm, "completion_cost", return_value=0),
             ):
 
                 def complete(_mode=mode, **kwargs):
-                    path = Path(kwargs["vertex_credentials"])
-                    self.assertTrue(path.exists())
-                    self.assertEqual(path.read_text(), VERTEX_KEY)
+                    self.assertEqual(kwargs["vertex_credentials"], VERTEX_KEY)
                     self.assertNotIn(PRIVATE_BODY, json.dumps(kwargs["messages"]))
                     if _mode == "provider_failure":
                         raise RuntimeError(
@@ -681,8 +676,31 @@ class AISecretBoundaryTests(unittest.TestCase):
                         self.assertNotIn(PRIVATE_BODY, json.dumps(result))
                         self.assertNotIn(VERTEX_KEY, json.dumps(result))
                 self.assertNotIn(PRIVATE_BODY, "\n".join(logs.output))
-                self.assertTrue(paths)
-                self.assertFalse(paths[-1].exists())
+
+    def test_malformed_vertex_private_key_stops_before_sdk(self) -> None:
+        for key in ("not-json", json.dumps({"private_key": [PRIVATE_BODY]})):
+            with self.subTest(key=key):
+                provider_id, _ = self.seed(key, "vertex_ai")
+                with patch.object(routes_ai.litellm, "completion") as completion:
+                    result = self.chat()
+                self.assertIn("error", result)
+                self.assertNotIn(PRIVATE_BODY, json.dumps(result))
+                completion.assert_not_called()
+                self.client.delete(f"/api/ai/config/{provider_id}")
+
+    def test_vertex_retains_sdk_supported_credentials_without_private_key(self) -> None:
+        for credential_type in ("external_account", "authorized_user"):
+            with self.subTest(credential_type=credential_type):
+                key = json.dumps({"type": credential_type, "client_secret": SAMPLE_KEY})
+                provider_id, _ = self.seed(key, "vertex_ai")
+                with patch.object(
+                    routes_ai.litellm,
+                    "completion",
+                    side_effect=RuntimeError("provider fixture failure"),
+                ) as completion:
+                    self.chat()
+                self.assertEqual(completion.call_args.kwargs["vertex_credentials"], key)
+                self.client.delete(f"/api/ai/config/{provider_id}")
 
 
 class RedactionTests(unittest.TestCase):

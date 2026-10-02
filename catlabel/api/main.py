@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 
 from ..core.database import create_db_and_tables, engine
 from ..core.models import Address, Font, LabelPreset, Settings
+from ..core.paths import FONTS_DIRECTORY, FRONTEND_DIRECTORY, LEGACY_FONTS_DIRECTORY
 from ..core.server_security import ServerSecurity
 from ..services.agent_context import build_agent_context
 from ..services.layout_engine import TEMPLATE_METADATA
@@ -52,32 +53,31 @@ def download_default_fonts():
         "BebasNeue.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/bebasneue/BebasNeue-Regular.ttf",
         "PlayfairDisplay.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf",
     }
-    os.makedirs("data/fonts", exist_ok=True)
+    FONTS_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
-    if os.path.exists("fonts"):
-        for filename in os.listdir("fonts"):
-            if filename.lower().endswith((".ttf", ".otf")):
-                src = os.path.join("fonts", filename)
-                dst = os.path.join("data/fonts", filename)
-                if not os.path.exists(dst):
-                    shutil.copy2(src, dst)
+    if LEGACY_FONTS_DIRECTORY.is_dir():
+        for source in LEGACY_FONTS_DIRECTORY.iterdir():
+            if source.is_file() and source.suffix.lower() in (".ttf", ".otf"):
+                target = FONTS_DIRECTORY / source.name
+                if not target.exists():
+                    shutil.copy2(source, target)
 
     for filename, url in fonts.items():
-        target = os.path.join("data/fonts", filename)
+        target = FONTS_DIRECTORY / filename
         if not os.path.exists(target):
             print(f"Downloading Variable Font: {filename}...")
-            temporary_target = f"{target}.download"
+            temporary_target = target.with_name(f"{target.name}.download")
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
                 with (
                     urllib.request.urlopen(req, timeout=30) as response,
-                    open(temporary_target, "wb") as f,
+                    temporary_target.open("wb") as f,
                 ):
                     shutil.copyfileobj(response, f)
                 os.replace(temporary_target, target)
             except Exception as e:
-                if os.path.exists(temporary_target):
-                    os.remove(temporary_target)
+                if temporary_target.exists():
+                    temporary_target.unlink()
                 print(f"Failed to download {filename}: {e}")
 
 
@@ -93,8 +93,8 @@ async def lifespan(app: FastAPI):
 security_settings = ServerSecurity.from_environment()
 app = FastAPI(title="CatLabel Server", lifespan=lifespan)
 
-os.makedirs("data/fonts", exist_ok=True)
-app.mount("/fonts", StaticFiles(directory="data/fonts"), name="fonts")
+FONTS_DIRECTORY.mkdir(parents=True, exist_ok=True)
+app.mount("/fonts", StaticFiles(directory=str(FONTS_DIRECTORY)), name="fonts")
 
 app.add_middleware(RequestLimitsMiddleware)
 app.add_middleware(
@@ -205,11 +205,13 @@ async def upload_font(file: Annotated[UploadFile, File()]):
 
 @app.get("/api/fonts")
 def list_fonts():
-    os.makedirs("data/fonts", exist_ok=True)
+    FONTS_DIRECTORY.mkdir(parents=True, exist_ok=True)
     with Session(engine) as session:
         db_fonts = {f.name: f for f in session.exec(select(Font)).all()}
         disk_fonts = [
-            f for f in os.listdir("data/fonts") if f.lower().endswith((".ttf", ".otf"))
+            font_path.name
+            for font_path in FONTS_DIRECTORY.iterdir()
+            if font_path.is_file() and font_path.suffix.lower() in (".ttf", ".otf")
         ]
 
         new_fonts = []
@@ -281,5 +283,7 @@ async def convert_pdf(file: Annotated[UploadFile, File()]):
     return {"images": await convert_uploaded_pdf(file)}
 
 
-if os.path.exists("frontend/dist"):
-    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+if FRONTEND_DIRECTORY.exists():
+    app.mount(
+        "/", StaticFiles(directory=str(FRONTEND_DIRECTORY), html=True), name="frontend"
+    )
