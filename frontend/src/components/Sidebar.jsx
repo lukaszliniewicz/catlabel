@@ -6,11 +6,40 @@ import SavePresetModal from './SavePresetModal';
 import PrinterDropdown from './PrinterDropdown';
 import PresetPickerModal from './PresetPickerModal';
 import { getPageIndices } from '../utils/canvasPages';
-import { apiFetch } from '../utils/apiClient';
+import { apiJson } from '../utils/apiClient';
 import {
   ChevronDown, ChevronRight, LayoutTemplate,
   Menu, Printer, Wifi, Archive
 } from 'lucide-react';
+
+function SidebarButton({ icon: Icon, label, onClick, primary = false, collapsed, disabled = false }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={collapsed ? label : undefined}
+      className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium
+        ${primary
+          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40'
+          : 'bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900'}`}
+    >
+      <Icon size={16} className="shrink-0" />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </button>
+  );
+}
+
+function scanPrinters(signal) {
+  return apiJson('/api/printers/scan', { signal }, {
+    validate: (value) => value && Array.isArray(value.devices),
+    validationMessage: 'Printer scan data is malformed.'
+  });
+}
+
+function reportScanError(error) {
+  console.error(error);
+  alert('Failed to scan for printers. Is the backend running on port 8000?');
+}
 
 export default function Sidebar() {
   const {
@@ -38,28 +67,29 @@ export default function Sidebar() {
   })));
 
   const [printers, setPrinters] = useState([]);
-  const [isScanning, setIsScanning] = useState(false);
+  const [isScanning, setIsScanning] = useState(true);
   const [showProjects, setShowProjects] = useState(true);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [showPresetPicker, setShowPresetPicker] = useState(false);
   const activePreset = useStore((state) => state.getActivePreset());
 
-  const handleScan = useCallback(async () => {
+  const applyScan = useCallback(async (data) => {
+    setPrinters(data.devices);
+    if (data.devices.length > 0 && !useStore.getState().selectedPrinter) {
+      await setSelectedPrinter(data.devices[0].address, data.devices[0]);
+    }
+  }, [setSelectedPrinter]);
+
+  const handleScan = async () => {
     setIsScanning(true);
     try {
-      const res = await apiFetch('/api/printers/scan');
-      const data = await res.json();
-      setPrinters(data.devices || []);
-
-      if (data.devices && data.devices.length > 0 && !useStore.getState().selectedPrinter) {
-        await setSelectedPrinter(data.devices[0].address, data.devices[0]);
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Failed to scan for printers. Is the backend running on port 8000?');
+      await applyScan(await scanPrinters());
+    } catch (error) {
+      reportScanError(error);
+    } finally {
+      setIsScanning(false);
     }
-    setIsScanning(false);
-  }, [setSelectedPrinter]);
+  };
 
   useEffect(() => {
     if (window.matchMedia('(max-width: 767px)').matches && !useStore.getState().isSidebarCollapsed) {
@@ -70,8 +100,17 @@ export default function Sidebar() {
     useStore.getState().fetchAddresses();
     useStore.getState().fetchPresets();
 
-    handleScan();
-  }, [handleScan]);
+    const controller = new AbortController();
+    let active = true;
+    scanPrinters(controller.signal)
+      .then((data) => { if (active) return applyScan(data); })
+      .catch((error) => { if (active) reportScanError(error); })
+      .finally(() => { if (active) setIsScanning(false); });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [applyScan]);
 
   const pageIndices = getPageIndices({ items, pageLayouts, currentPage });
   const pageCount = pageIndices.length;
@@ -92,19 +131,7 @@ export default function Sidebar() {
     printPages(selectedPagesForPrint);
   };
 
-  const SidebarButton = ({ icon: Icon, label, onClick, primary = false }) => (
-    <button
-      onClick={onClick}
-      title={isSidebarCollapsed ? label : undefined}
-      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-3 px-4 py-2.5 rounded-none transition-colors text-xs uppercase tracking-wider font-medium
-        ${primary
-          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40'
-          : 'bg-transparent text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900'}`}
-    >
-      <Icon size={16} className="shrink-0" />
-      {!isSidebarCollapsed && <span className="truncate">{label}</span>}
-    </button>
-  );
+
 
   return (
     <div className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-4 flex flex-col gap-6 z-10 overflow-y-auto overflow-x-hidden transition-all duration-300 shrink-0`}>
@@ -137,7 +164,7 @@ export default function Sidebar() {
         <div className="space-y-3">
           <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
 
-          <SidebarButton icon={Wifi} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
+          <SidebarButton collapsed={isSidebarCollapsed} icon={Wifi} disabled={isScanning} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
 
           {(printers.length > 0 || manualPrinters.length > 0) && (
             <PrinterDropdown
@@ -181,7 +208,7 @@ export default function Sidebar() {
           )}
         </div>
       ) : (
-        <SidebarButton icon={Printer} label="Print Options" onClick={handlePrintCollapsed} primary />
+        <SidebarButton collapsed={isSidebarCollapsed} icon={Printer} label="Print Options" onClick={handlePrintCollapsed} primary />
       )}
 
       {!isSidebarCollapsed ? (
@@ -205,11 +232,11 @@ export default function Sidebar() {
           </button>
         </div>
       ) : (
-        <SidebarButton icon={LayoutTemplate} label="Presets (Expand to view)" onClick={toggleSidebar} />
+        <SidebarButton collapsed={isSidebarCollapsed} icon={LayoutTemplate} label="Presets (Expand to view)" onClick={toggleSidebar} />
       )}
 
       {isSidebarCollapsed ? (
-        <SidebarButton icon={Archive} label="Saved Projects (Expand to view)" onClick={toggleSidebar} />
+        <SidebarButton collapsed={isSidebarCollapsed} icon={Archive} label="Saved Projects (Expand to view)" onClick={toggleSidebar} />
       ) : (
         <div className="space-y-3">
           <button

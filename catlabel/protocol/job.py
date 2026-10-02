@@ -6,9 +6,10 @@ from ..raster import PixelFormat, RasterSet
 from ._builders import _build_job_model_from_raster_set
 from .commands import advance_paper_cmd, retract_paper_cmd
 from .families import get_protocol_behavior
-from .steps import ProtocolStep
 from .runtime import RuntimePrintCapabilities
+from .steps import ProtocolStep
 from .types import ImageEncoding, ImagePipelineConfig, PaperMode
+
 
 class ProtocolJob:
     """Stateless payload and execution policy, independent of a live session."""
@@ -29,7 +30,9 @@ class ProtocolJob:
         else:
             normalized_payload = bytes(payload)
             if normalized_steps and normalized_payload != steps_payload:
-                raise ValueError("Protocol job payload does not match included protocol steps")
+                raise ValueError(
+                    "Protocol job payload does not match included protocol steps"
+                )
         self.payload = normalized_payload
         self.steps = normalized_steps
         self.wait_for_completion = bool(wait_for_completion)
@@ -140,7 +143,11 @@ class PrinterProtocol:
             else:
                 pipeline = ImagePipelineConfig(
                     formats=(pixel_format_override,)
-                    + tuple(value for value in pipeline.formats if value != pixel_format_override),
+                    + tuple(
+                        value
+                        for value in pipeline.formats
+                        if value != pixel_format_override
+                    ),
                     encoding=pipeline.encoding,
                 )
         elif pipeline.default_format not in supported:

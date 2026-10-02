@@ -63,19 +63,20 @@ class PrintingPaperTests(unittest.TestCase):
                     left_padding_pixels=preset.left_padding_px,
                 )
                 effective_width = laid_out.width + preset.left_padding_px
-                if model.protocol_family.value != "legacy" or model.protocol_variant not in {
-                    "esc_star",
-                    "esc_star_eight",
-                }:
-                    if effective_width % 8:
-                        failures.append(
-                            f"{model.model_no}/{preset.key}: {effective_width}px"
-                        )
+                if (
+                    model.protocol_family.value != "legacy"
+                    or model.protocol_variant not in {"esc_star", "esc_star_eight"}
+                ) and effective_width % 8:
+                    failures.append(
+                        f"{model.model_no}/{preset.key}: {effective_width}px"
+                    )
         self.assertEqual(failures, [])
 
     def test_90_pixel_tiny_catalog_model_builds_after_layout(self) -> None:
         model = PrinterModelRegistry.load().get("label_printer")
         self.assertIsNotNone(model)
+        if model is None:
+            self.fail("label_printer profile should exist")
         preset = model.paper_preset()
         raster = RasterSet.from_single(
             RasterBuffer(

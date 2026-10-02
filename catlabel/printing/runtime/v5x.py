@@ -3,9 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
-from ...protocol.family import ProtocolFamily
 from ...protocol.families import split_prefixed_bulk_stream
 from ...protocol.families.v5x import (
     V5X_CONNECT_INIT_PACKET,
@@ -16,29 +14,34 @@ from ...protocol.families.v5x import (
     V5X_NOTIFY_RESUME_PACKETS,
     V5X_STATUS_POLL_PACKET,
 )
-from ...protocol.packet import make_packet, prefixed_packet_opcode, prefixed_packet_payload
+from ...protocol.family import ProtocolFamily
+from ...protocol.packet import (
+    make_packet,
+    prefixed_packet_opcode,
+    prefixed_packet_payload,
+)
 from .base import RuntimeController
 
 
 @dataclass
 class _V5XSessionState:
     task_state_name: str = "normal"
-    last_density_payload: Optional[bytes] = None
+    last_density_payload: bytes | None = None
     print_head_type: str = "gaoya"
     firmware_version: str = ""
     connect_info_received: bool = False
     device_serial: str = ""
-    serial_valid: Optional[bool] = None
+    serial_valid: bool | None = None
     last_a7_payload: bytes = b""
-    last_a9_status: Optional[int] = None
-    task_state: Optional[int] = None
-    battery_level: Optional[int] = None
-    temperature_c: Optional[int] = None
-    error_group: Optional[int] = None
-    error_code: Optional[int] = None
-    last_error_signature: Optional[tuple[int, int]] = None
+    last_a9_status: int | None = None
+    task_state: int | None = None
+    battery_level: int | None = None
+    temperature_c: int | None = None
+    error_group: int | None = None
+    error_code: int | None = None
+    last_error_signature: tuple[int, int] | None = None
     status_poll_ack_seen: bool = False
-    last_ab_status: Optional[int] = None
+    last_ab_status: int | None = None
     mxw_sign_requested: bool = False
     pending_get_serial: asyncio.Task | None = None
     pending_status_poll: asyncio.Task | None = None
@@ -96,7 +99,9 @@ class V5XRuntimeController(RuntimeController):
             "status_poll_ack_seen": self._state.status_poll_ack_seen,
             "last_ab_status": self._state.last_ab_status,
             "mxw_sign_requested": self._state.mxw_sign_requested,
-            "pending_command_ack_opcodes": sorted(self._state.command_ack_events.keys()),
+            "pending_command_ack_opcodes": sorted(
+                self._state.command_ack_events.keys()
+            ),
             "has_start_ready_event": self._state.start_ready_event is not None,
             "has_connect_info_event": self._state.connect_info_event is not None,
         }
@@ -107,11 +112,15 @@ class V5XRuntimeController(RuntimeController):
                 raise KeyError(f"Unknown V5X debug field '{key}'")
             setattr(self._state, key, value)
 
-    async def initialize_connection(self, session, *, mtu_size: int, timeout: float) -> None:
+    async def initialize_connection(
+        self, session, *, mtu_size: int, timeout: float
+    ) -> None:
         _ = mtu_size
         self._state.connect_info_event = asyncio.Event()
         await asyncio.sleep(0.2)
-        sent = await session.send_control_packet(V5X_CONNECT_INIT_PACKET, timeout=timeout)
+        sent = await session.send_control_packet(
+            V5X_CONNECT_INIT_PACKET, timeout=timeout
+        )
         if not sent:
             raise RuntimeError("V5X connect init send unavailable")
 
@@ -199,7 +208,9 @@ class V5XRuntimeController(RuntimeController):
                 coverage_ratio = black_bits / total_bits
         return _V5XJobContext(coverage_ratio=coverage_ratio, is_gray=is_gray)
 
-    def prepare_split_command(self, session, packet: bytes, split_context: _V5XJobContext) -> tuple[bytes | None, bool]:
+    def prepare_split_command(
+        self, session, packet: bytes, split_context: _V5XJobContext
+    ) -> tuple[bytes | None, bool]:
         opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
         if opcode != 0xA2:
             return packet, False
@@ -211,17 +222,29 @@ class V5XRuntimeController(RuntimeController):
             packet = make_packet(0xA2, adjusted_payload, ProtocolFamily.V5X)
             payload = adjusted_payload
         if self._state.last_density_payload == payload:
-            session.report_debug(f"skipping unchanged V5X density packet: {payload.hex()}")
+            session.report_debug(
+                f"skipping unchanged V5X density packet: {payload.hex()}"
+            )
             return None, False
         self._state.last_density_payload = payload
         return packet, True
 
-    async def before_split_command(self, session, packet: bytes, split_context: _V5XJobContext, *, timeout: float, density_updated: bool) -> None:
+    async def before_split_command(
+        self,
+        session,
+        packet: bytes,
+        split_context: _V5XJobContext,
+        *,
+        timeout: float,
+        density_updated: bool,
+    ) -> None:
         opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
         if opcode in (0xA2, 0xA9):
             await self._wait_for_start_ready(timeout)
 
-    def arm_command_ack(self, session, packet: bytes) -> tuple[int, asyncio.Event] | None:
+    def arm_command_ack(
+        self, session, packet: bytes
+    ) -> tuple[int, asyncio.Event] | None:
         opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
         if opcode not in (0xA7, 0xA9):
             return None
@@ -231,7 +254,16 @@ class V5XRuntimeController(RuntimeController):
         self._state.command_ack_events[opcode] = event
         return opcode, event
 
-    async def after_split_command(self, session, packet: bytes, split_context: _V5XJobContext, *, timeout: float, density_updated: bool, ack_token) -> None:
+    async def after_split_command(
+        self,
+        session,
+        packet: bytes,
+        split_context: _V5XJobContext,
+        *,
+        timeout: float,
+        density_updated: bool,
+        ack_token,
+    ) -> None:
         opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
         if ack_token is not None:
             ack_opcode, event = ack_token
@@ -241,10 +273,16 @@ class V5XRuntimeController(RuntimeController):
             finally:
                 if self._state.command_ack_events.get(ack_opcode) is event:
                     self._state.command_ack_events.pop(ack_opcode, None)
-                    if ack_opcode == 0xA7 and self._state.start_ready_event is not None and not self._state.start_ready_event.is_set():
+                    if (
+                        ack_opcode == 0xA7
+                        and self._state.start_ready_event is not None
+                        and not self._state.start_ready_event.is_set()
+                    ):
                         self._state.start_ready_event = None
         if opcode == 0xA9:
-            delay_ms = self._compute_start_delay_ms(split_context, density_updated=density_updated)
+            delay_ms = self._compute_start_delay_ms(
+                split_context, density_updated=density_updated
+            )
             if delay_ms > 0:
                 await asyncio.sleep(delay_ms / 1000.0)
 
@@ -253,7 +291,11 @@ class V5XRuntimeController(RuntimeController):
             return
         opcode, _event = ack_token
         self._state.command_ack_events.pop(opcode, None)
-        if opcode == 0xA7 and self._state.start_ready_event is not None and not self._state.start_ready_event.is_set():
+        if (
+            opcode == 0xA7
+            and self._state.start_ready_event is not None
+            and not self._state.start_ready_event.is_set()
+        ):
             self._state.start_ready_event = None
 
     async def wait_for_completion(self, session, *, timeout: float) -> None:
@@ -267,7 +309,9 @@ class V5XRuntimeController(RuntimeController):
         while time.monotonic() < deadline:
             frame = await session.wait_for_notification(
                 "V5X print completion 0xa1",
-                lambda payload: prefixed_packet_opcode(payload, ProtocolFamily.V5X) == 0xA1,
+                lambda payload: (
+                    prefixed_packet_opcode(payload, ProtocolFamily.V5X) == 0xA1
+                ),
                 timeout=self._COMPLETION_QUIET_S,
                 required=False,
             )
@@ -281,9 +325,12 @@ class V5XRuntimeController(RuntimeController):
                 capped = False
                 break
         if capped:
-            session.report_debug("V5X completion wait hit max cap; disconnecting anyway")
+            session.report_debug(
+                "V5X completion wait hit max cap; disconnecting anyway"
+            )
         if self._COMPLETION_GRACE_S > 0:
             await asyncio.sleep(self._COMPLETION_GRACE_S)
+
     def handle_notification(self, session, payload: bytes) -> None:
         if payload in V5X_NOTIFY_PAUSE_PACKETS:
             session.set_flow_paused(True, payload=payload)
@@ -336,7 +383,9 @@ class V5XRuntimeController(RuntimeController):
         try:
             await asyncio.wait_for(event.wait(), timeout=timeout)
         except TimeoutError:
-            session.report_debug("V5X connect info was not received during the initial settle window")
+            session.report_debug(
+                "V5X connect info was not received during the initial settle window"
+            )
         finally:
             if self._state.connect_info_event is event:
                 self._state.connect_info_event = None
@@ -348,19 +397,28 @@ class V5XRuntimeController(RuntimeController):
             session.report_debug(f"command ack: 0x{opcode:02x}")
 
     def _release_start_ready(self, session) -> None:
-        if self._state.start_ready_event is None or self._state.start_ready_event.is_set():
+        if (
+            self._state.start_ready_event is None
+            or self._state.start_ready_event.is_set()
+        ):
             return
         self._state.start_ready_event.set()
         session.report_debug("start ready: 0xaa")
 
     def _release_connect_info(self, session) -> None:
-        if self._state.connect_info_event is None or self._state.connect_info_event.is_set():
+        if (
+            self._state.connect_info_event is None
+            or self._state.connect_info_event.is_set()
+        ):
             return
         self._state.connect_info_event.set()
         session.report_debug("connect info ready: 0xb1")
 
     def _schedule_status_poll(self, session) -> None:
-        if self._state.pending_status_poll is not None and not self._state.pending_status_poll.done():
+        if (
+            self._state.pending_status_poll is not None
+            and not self._state.pending_status_poll.done()
+        ):
             return
         if not session.can_send_control_packet():
             return
@@ -368,22 +426,36 @@ class V5XRuntimeController(RuntimeController):
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        self._state.pending_status_poll = loop.create_task(self._send_status_poll(session))
-        self._state.pending_status_poll.add_done_callback(lambda _task: setattr(self._state, "pending_status_poll", None))
+        self._state.pending_status_poll = loop.create_task(
+            self._send_status_poll(session)
+        )
+        self._state.pending_status_poll.add_done_callback(
+            lambda _task: setattr(self._state, "pending_status_poll", None)
+        )
 
     def _schedule_get_serial(self, session) -> None:
-        if self._state.pending_get_serial is not None and not self._state.pending_get_serial.done():
+        if (
+            self._state.pending_get_serial is not None
+            and not self._state.pending_get_serial.done()
+        ):
             return
         if not session.can_send_control_packet():
             return
-        if 0xA7 in self._state.command_ack_events or self._state.start_ready_event is not None:
+        if (
+            0xA7 in self._state.command_ack_events
+            or self._state.start_ready_event is not None
+        ):
             return
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        self._state.pending_get_serial = loop.create_task(self._send_command(session, V5X_GET_SERIAL_PACKET))
-        self._state.pending_get_serial.add_done_callback(lambda _task: setattr(self._state, "pending_get_serial", None))
+        self._state.pending_get_serial = loop.create_task(
+            self._send_command(session, V5X_GET_SERIAL_PACKET)
+        )
+        self._state.pending_get_serial.add_done_callback(
+            lambda _task: setattr(self._state, "pending_get_serial", None)
+        )
 
     async def _send_status_poll(self, session) -> None:
         await asyncio.sleep(0.7)
@@ -423,13 +495,19 @@ class V5XRuntimeController(RuntimeController):
         head_type = self._state.print_head_type
         is_gray = context.is_gray
         if is_gray:
-            target_density = self._gray_density_target(temperature_c, user_density, head_type)
+            target_density = self._gray_density_target(
+                temperature_c, user_density, head_type
+            )
         else:
-            target_density = self._dot_density_target(temperature_c, user_density, head_type, coverage_ratio)
+            target_density = self._dot_density_target(
+                temperature_c, user_density, head_type, coverage_ratio
+            )
         target_density = max(0, min(user_density, target_density))
         return bytes([target_density])
 
-    def _compute_start_delay_ms(self, context: _V5XJobContext, *, density_updated: bool) -> int:
+    def _compute_start_delay_ms(
+        self, context: _V5XJobContext, *, density_updated: bool
+    ) -> int:
         # High-coverage gaoya heads need a noticeably longer settle window
         # before the print-start command becomes reliable.
         if self._state.print_head_type == "gaoya" and context.coverage_ratio > 0.4:
@@ -448,7 +526,9 @@ class V5XRuntimeController(RuntimeController):
             return 3
         return 4
 
-    def _gray_density_target(self, temperature_c: int, user_density: int, head_type: str) -> int:
+    def _gray_density_target(
+        self, temperature_c: int, user_density: int, head_type: str
+    ) -> int:
         # Gray-mode thresholds are head-specific lookup tables rather than a
         # smooth formula.
         if head_type == "gaoya":
@@ -460,16 +540,30 @@ class V5XRuntimeController(RuntimeController):
                 return min(user_density, value)
         return user_density
 
-    def _dot_density_target(self, temperature_c: int, user_density: int, head_type: str, coverage_ratio: float) -> int:
+    def _dot_density_target(
+        self,
+        temperature_c: int,
+        user_density: int,
+        head_type: str,
+        coverage_ratio: float,
+    ) -> int:
         if temperature_c <= 60:
             return user_density
         band = self._coverage_band(coverage_ratio)
         # Dot-mode fallback uses one table per head type and temperature band,
         # then picks a slot based on black coverage.
         if head_type == "gaoya":
-            values = (48, 15, 15, 10) if temperature_c < 65 else ((36, 9, 5, 5) if temperature_c < 70 else (22, 5, 3, 3))
+            values = (
+                (48, 15, 15, 10)
+                if temperature_c < 65
+                else ((36, 9, 5, 5) if temperature_c < 70 else (22, 5, 3, 3))
+            )
         else:
-            values = (60, 50, 50, 30) if temperature_c <= 65 else ((50, 40, 40, 20) if temperature_c <= 70 else (40, 30, 30, 10))
+            values = (
+                (60, 50, 50, 30)
+                if temperature_c <= 65
+                else ((50, 40, 40, 20) if temperature_c <= 70 else (40, 30, 30, 10))
+            )
         return min(user_density, values[band - 1])
 
     def _update_info_from_a7(self, session, payload: bytes) -> None:
@@ -479,9 +573,12 @@ class V5XRuntimeController(RuntimeController):
         self._state.last_a7_payload = raw
         serial_hex = raw[:6].hex()
         self._state.device_serial = serial_hex
-        self._state.serial_valid = bool(serial_hex) and serial_hex not in {"000000000000", "ffffffffffff"}
+        self._state.serial_valid = bool(serial_hex) and serial_hex not in {
+            "000000000000",
+            "ffffffffffff",
+        }
 
-    def _extract_status_byte(self, session, payload: bytes) -> Optional[int]:
+    def _extract_status_byte(self, session, payload: bytes) -> int | None:
         raw = prefixed_packet_payload(payload, ProtocolFamily.V5X)
         if raw:
             return raw[0]

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any
+
 from ...protocol.families.v5g import (
     V5G_CONNECT_QUERY_PACKET,
     V5G_TEMPERATURE_QUERY_PACKET,
@@ -42,22 +44,22 @@ class _V5GSessionState:
     d2_status: bool = False
     didian_status: bool = False
     printing: bool = False
-    helper_kind: Optional[str] = None
-    density_profile_key: Optional[str] = None
+    helper_kind: str | None = None
+    density_profile_key: str | None = None
     last_complete_time: float = 0.0
-    last_density_value: Optional[int] = None
+    last_density_value: int | None = None
     last_single_density_value: int = 0
     last_print_record_copies: int = 0
-    last_print_record_density: Optional[int] = None
+    last_print_record_density: int | None = None
     last_print_mode_is_text: bool = False
     pending_reset_task: asyncio.Task | None = None
 
 
-def supports_v5g_d2_status(density_profile_key: Optional[str]) -> bool:
+def supports_v5g_d2_status(density_profile_key: str | None) -> bool:
     return density_profile_key in {"mx06", "mx08", "mx09"}
 
 
-def supports_v5g_didian_status(density_profile_key: Optional[str]) -> bool:
+def supports_v5g_didian_status(density_profile_key: str | None) -> bool:
     return density_profile_key in {"mx09"}
 
 
@@ -79,7 +81,9 @@ def mx06_single_density_value(current_value: int, last_density_value: int) -> in
     return clamp_density_value(value)
 
 
-def mx10_single_density_value(temperature_c: int, levels: DensityLevels, current_value: int) -> int:
+def mx10_single_density_value(
+    temperature_c: int, levels: DensityLevels, current_value: int
+) -> int:
     # These temperature breakpoints mirror the step-down helper used by MX10-
     # style devices once the head moves out of the safe range.
     value = current_value
@@ -100,7 +104,9 @@ def mx10_single_density_value(temperature_c: int, levels: DensityLevels, current
     return clamp_density_value(value)
 
 
-def pd01_single_density_value(temperature_c: int, levels: DensityLevels, current_value: int) -> int:
+def pd01_single_density_value(
+    temperature_c: int, levels: DensityLevels, current_value: int
+) -> int:
     # PD01 follows a slightly shallower fallback curve than MX10 at the same
     # temperatures.
     value = current_value
@@ -118,7 +124,9 @@ def pd01_single_density_value(temperature_c: int, levels: DensityLevels, current
     return clamp_density_value(value)
 
 
-def mx10_continuous_plan(temperature_c: int, levels: DensityLevels, current_value: int) -> V5GContinuousPlan:
+def mx10_continuous_plan(
+    temperature_c: int, levels: DensityLevels, current_value: int
+) -> V5GContinuousPlan:
     # Continuous jobs keep the first few density packets steady, then decay
     # toward a floor that depends on the current head temperature.
     begin_value = min(levels.middle, current_value)
@@ -273,7 +281,9 @@ def mx06_continuous_plan(
     )
 
 
-def mx10_continuous_series(start_value: int, count: int, *, minimum_value: int) -> list[int]:
+def mx10_continuous_series(
+    start_value: int, count: int, *, minimum_value: int
+) -> list[int]:
     values: list[int] = []
     step = 15 if start_value > 135 else 10
     for index in range(1, max(0, count) + 1):
@@ -284,7 +294,9 @@ def mx10_continuous_series(start_value: int, count: int, *, minimum_value: int) 
     return values
 
 
-def v5g_continuous_series(start_value: int, count: int, *, clamp_low_70: bool = False) -> list[int]:
+def v5g_continuous_series(
+    start_value: int, count: int, *, clamp_low_70: bool = False
+) -> list[int]:
     values: list[int] = []
     step = 5 if clamp_low_70 else 10
     for index in range(1, max(0, count) + 1):
@@ -295,7 +307,9 @@ def v5g_continuous_series(start_value: int, count: int, *, clamp_low_70: bool = 
     return values
 
 
-def pd01_continuous_series(start_value: int, count: int, *, shallow: bool = False) -> list[int]:
+def pd01_continuous_series(
+    start_value: int, count: int, *, shallow: bool = False
+) -> list[int]:
     values: list[int] = []
     current = start_value
     for _ in range(max(0, count)):
@@ -321,9 +335,9 @@ class V5GRuntimeController(RuntimeController):
     def __init__(
         self,
         *,
-        helper_kind: Optional[str] = None,
-        density_profile_key: Optional[str] = None,
-        density_profile: Optional[Any] = None,
+        helper_kind: str | None = None,
+        density_profile_key: str | None = None,
+        density_profile: Any | None = None,
         density_levels: Mapping[str, object] | None = None,
     ) -> None:
         self._state = _V5GSessionState(
@@ -343,7 +357,9 @@ class V5GRuntimeController(RuntimeController):
         density_levels = self._density_levels
         self._state = previous._state
         self._state.helper_kind = helper_kind or self._state.helper_kind
-        self._state.density_profile_key = density_profile_key or self._state.density_profile_key
+        self._state.density_profile_key = (
+            density_profile_key or self._state.density_profile_key
+        )
         self._state.pending_reset_task = pending_reset_task
         self._density_profile = density_profile or previous._density_profile
         self._density_levels = density_levels or previous._density_levels
@@ -352,7 +368,10 @@ class V5GRuntimeController(RuntimeController):
         density_levels = None
         if self._density_levels is not None:
             density_levels = self._density_levels
-        elif self._density_profile is not None and self._density_profile.density is not None:
+        elif (
+            self._density_profile is not None
+            and self._density_profile.density is not None
+        ):
             density_levels = {
                 "image": {
                     "low": self._density_profile.density.image.low,
@@ -393,9 +412,13 @@ class V5GRuntimeController(RuntimeController):
                 raise KeyError(f"Unknown V5G debug field '{key}'")
             setattr(self._state, key, value)
 
-    async def initialize_connection(self, session, *, mtu_size: int, timeout: float) -> None:
+    async def initialize_connection(
+        self, session, *, mtu_size: int, timeout: float
+    ) -> None:
         _ = mtu_size
-        sent = await session.send_control_packet(V5G_CONNECT_QUERY_PACKET, timeout=timeout)
+        sent = await session.send_control_packet(
+            V5G_CONNECT_QUERY_PACKET, timeout=timeout
+        )
         if not sent:
             raise RuntimeError("V5G connect query send unavailable")
 
@@ -448,7 +471,11 @@ class V5GRuntimeController(RuntimeController):
                 )
         if self._density_profile is None or self._density_profile.density is None:
             return None
-        source = self._density_profile.density.text if is_text else self._density_profile.density.image
+        source = (
+            self._density_profile.density.text
+            if is_text
+            else self._density_profile.density.image
+        )
         return DensityLevels(low=source.low, middle=source.middle, high=source.high)
 
     def _prepare_v5g_standard_payload(self, session, data: bytes) -> bytes:
@@ -458,15 +485,20 @@ class V5GRuntimeController(RuntimeController):
         if packets is None:
             return data
         density_indexes = [
-            index for index, packet in enumerate(packets)
+            index
+            for index, packet in enumerate(packets)
             if prefixed_packet_opcode(packet, ProtocolFamily.V5G) == 0xF2
         ]
         if not density_indexes:
             return data
         if self._should_use_continuous_helper(session, packets, density_indexes):
-            rewrite_map = self._build_continuous_density_map(session, packets, density_indexes)
+            rewrite_map = self._build_continuous_density_map(
+                session, packets, density_indexes
+            )
         else:
-            rewrite_map = self._build_single_density_map(session, packets, density_indexes)
+            rewrite_map = self._build_single_density_map(
+                session, packets, density_indexes
+            )
 
         updated = bytearray()
         current_mode_is_text = self._state.last_print_mode_is_text
@@ -493,26 +525,36 @@ class V5GRuntimeController(RuntimeController):
             return data
         return bytes(updated)
 
-    def _should_use_continuous_helper(self, session, packets: list[bytes], density_indexes: list[int]) -> bool:
+    def _should_use_continuous_helper(
+        self, session, packets: list[bytes], density_indexes: list[int]
+    ) -> bool:
         if len(density_indexes) <= 4:
             return False
         first_index = density_indexes[0]
-        current_mode_is_text = self._mode_before_packet_index(session, packets, first_index)
+        current_mode_is_text = self._mode_before_packet_index(
+            session, packets, first_index
+        )
         levels = self._select_levels(is_text=current_mode_is_text)
         first_value = self._extract_density_value(session, packets[first_index])
         if levels is None or first_value is None:
             return False
         helper_kind = self._state.helper_kind
-        qualifies = helper_kind in {"mx06", "mx10", "pd01"} or first_value >= levels.middle
+        qualifies = (
+            helper_kind in {"mx06", "mx10", "pd01"} or first_value >= levels.middle
+        )
         if not qualifies:
             return False
         if helper_kind in {"mx10", "pd01"}:
             return True
         return supports_v5g_d2_status(self._state.density_profile_key)
 
-    def _build_single_density_map(self, session, packets: list[bytes], density_indexes: list[int]) -> dict[int, int]:
+    def _build_single_density_map(
+        self, session, packets: list[bytes], density_indexes: list[int]
+    ) -> dict[int, int]:
         first_index = density_indexes[0]
-        current_mode_is_text = self._mode_before_packet_index(session, packets, first_index)
+        current_mode_is_text = self._mode_before_packet_index(
+            session, packets, first_index
+        )
         levels = self._select_levels(is_text=current_mode_is_text)
         current_value = self._extract_density_value(session, packets[first_index])
         if current_value is None or levels is None:
@@ -523,7 +565,9 @@ class V5GRuntimeController(RuntimeController):
         recent_completion = (time.time() - self._state.last_complete_time) < 50
         temperature_c = self._state.temperature_c
         if helper_kind == "mx06" and self._state.d2_status and recent_completion:
-            adjusted = mx06_single_density_value(current_value, self._state.last_single_density_value)
+            adjusted = mx06_single_density_value(
+                current_value, self._state.last_single_density_value
+            )
         elif helper_kind == "pd01" and temperature_c >= 50:
             adjusted = pd01_single_density_value(temperature_c, levels, current_value)
         elif helper_kind == "mx10" and temperature_c >= 50:
@@ -536,7 +580,7 @@ class V5GRuntimeController(RuntimeController):
             f"V5G single density adjusted mode={'text' if current_mode_is_text else 'image'} "
             f"user={current_value} target={adjusted} temp={self._state.temperature_c}"
         )
-        return {density_index: adjusted for density_index in density_indexes}
+        return dict.fromkeys(density_indexes, adjusted)
 
     def _build_continuous_density_map(
         self,
@@ -545,7 +589,9 @@ class V5GRuntimeController(RuntimeController):
         density_indexes: list[int],
     ) -> dict[int, int]:
         first_index = density_indexes[0]
-        current_mode_is_text = self._mode_before_packet_index(session, packets, first_index)
+        current_mode_is_text = self._mode_before_packet_index(
+            session, packets, first_index
+        )
         levels = self._select_levels(is_text=current_mode_is_text)
         first_value = self._extract_density_value(session, packets[first_index])
         if levels is None or first_value is None:
@@ -572,7 +618,9 @@ class V5GRuntimeController(RuntimeController):
             )
 
         rewrite_map: dict[int, int] = {}
-        leading_value = plan.begin_density_value if plan.update_first_packet else first_value
+        leading_value = (
+            plan.begin_density_value if plan.update_first_packet else first_value
+        )
         leading_count = min(len(density_indexes), plan.unchanged_packet_count)
         for density_index in density_indexes[:leading_count]:
             current_value = self._extract_density_value(session, packets[density_index])
@@ -597,7 +645,9 @@ class V5GRuntimeController(RuntimeController):
                     clamp_low_70=plan.clamp_low_70,
                 )
 
-        for offset, density_index in enumerate(density_indexes[plan.unchanged_packet_count:]):
+        for offset, density_index in enumerate(
+            density_indexes[plan.unchanged_packet_count :]
+        ):
             if offset >= len(sequence):
                 break
             current_value = self._extract_density_value(session, packets[density_index])
@@ -613,7 +663,9 @@ class V5GRuntimeController(RuntimeController):
         )
         return rewrite_map
 
-    def _mode_before_packet_index(self, session, packets: list[bytes], packet_index: int) -> bool:
+    def _mode_before_packet_index(
+        self, session, packets: list[bytes], packet_index: int
+    ) -> bool:
         is_text = self._state.last_print_mode_is_text
         for packet in packets[:packet_index]:
             if prefixed_packet_opcode(packet, ProtocolFamily.V5G) == 0xBE:
@@ -678,7 +730,10 @@ class V5GRuntimeController(RuntimeController):
         session.report_debug(f"V5G temperature={self._state.temperature_c}")
 
     def _schedule_density_reset(self, session, value: int) -> None:
-        if self._state.pending_reset_task is not None and not self._state.pending_reset_task.done():
+        if (
+            self._state.pending_reset_task is not None
+            and not self._state.pending_reset_task.done()
+        ):
             return
         if not session.can_send_control_packet():
             return
@@ -686,7 +741,9 @@ class V5GRuntimeController(RuntimeController):
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        self._state.pending_reset_task = loop.create_task(self._send_density_reset(session, value))
+        self._state.pending_reset_task = loop.create_task(
+            self._send_density_reset(session, value)
+        )
         self._state.pending_reset_task.add_done_callback(
             lambda _task: setattr(self._state, "pending_reset_task", None)
         )

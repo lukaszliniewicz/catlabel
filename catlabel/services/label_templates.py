@@ -1,13 +1,25 @@
-from html import escape
 import re
+from html import escape
 
 TEMPLATE_MAP = {
     "default": {"container": "layout-default", "text": "text-standard", "sub": None},
     "center": {"container": "layout-center", "text": "text-standard", "sub": None},
     "maximize": {"container": "layout-center", "text": "text-maximized", "sub": None},
-    "title_subtitle": {"container": "layout-flex-col", "text": "text-title", "sub": "text-subtitle"},
-    "warning_banner": {"container": "layout-banner", "text": "text-bold-inverted", "sub": None},
-    "price_tag": {"container": "layout-price", "text": "text-huge-price", "sub": "text-product-name"},
+    "title_subtitle": {
+        "container": "layout-flex-col",
+        "text": "text-title",
+        "sub": "text-subtitle",
+    },
+    "warning_banner": {
+        "container": "layout-banner",
+        "text": "text-bold-inverted",
+        "sub": None,
+    },
+    "price_tag": {
+        "container": "layout-price",
+        "text": "text-huge-price",
+        "sub": "text-product-name",
+    },
     "address": {"container": "layout-address", "text": "text-address", "sub": None},
     "jar_apothecary": {"container": None, "text": None, "sub": None},
     "jar_farmhouse": {"container": None, "text": None, "sub": None},
@@ -178,7 +190,9 @@ body {
 _SCRIPT_RE = re.compile(r"<script[\s\S]*?>[\s\S]*?</script>", re.IGNORECASE)
 _IFRAME_RE = re.compile(r"<iframe[\s\S]*?>[\s\S]*?</iframe>", re.IGNORECASE)
 _EMBEDDED_RE = re.compile(r"<(object|embed|form)[\s\S]*?>[\s\S]*?</\1>", re.IGNORECASE)
-_VOID_RE = re.compile(r"<(input|button|textarea|select|link|meta)[^>]*?/?>", re.IGNORECASE)
+_VOID_RE = re.compile(
+    r"<(input|button|textarea|select|link|meta)[^>]*?/?>", re.IGNORECASE
+)
 _EVENT_HANDLER_RE = re.compile(r"\son\w+\s*=\s*(\".*?\"|'.*?'|[^\s>]+)", re.IGNORECASE)
 _JS_PROTOCOL_RE = re.compile(r"javascript\s*:", re.IGNORECASE)
 

@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from typing import List, Optional, Set, Tuple
 
 from ..types import DeviceInfo, DeviceTransport
 
 
 class LinuxCommandTools:
-    def scan_devices(self, timeout: float) -> Tuple[List[DeviceInfo], Optional[Set[str]]]:
+    def scan_devices(self, timeout: float) -> tuple[list[DeviceInfo], set[str] | None]:
         if not self._has_bluetoothctl():
             raise RuntimeError("bluetoothctl not found")
         timeout_s = max(1, int(timeout))
-        self._run_bluetoothctl(["--timeout", str(timeout_s), "scan", "on"], timeout=timeout_s)
+        self._run_bluetoothctl(
+            ["--timeout", str(timeout_s), "scan", "on"], timeout=timeout_s
+        )
         devices_output = self._run_bluetoothctl(["devices"])
         if devices_output is None:
             return [], None
@@ -53,7 +54,7 @@ class LinuxCommandTools:
             return DeviceInfo.dedupe(devices), derived_paired
         return DeviceInfo.dedupe(devices), None
 
-    def resolve_rfcomm_channels(self, address: str) -> List[int]:
+    def resolve_rfcomm_channels(self, address: str) -> list[int]:
         if not shutil.which("sdptool"):
             return []
         try:
@@ -107,7 +108,7 @@ class LinuxCommandTools:
         return bool(shutil.which("bluetoothctl"))
 
     @staticmethod
-    def _run_bluetoothctl(args: List[str], timeout: Optional[float] = None) -> Optional[str]:
+    def _run_bluetoothctl(args: list[str], timeout: float | None = None) -> str | None:
         if not shutil.which("bluetoothctl"):
             return None
         try:
@@ -127,8 +128,8 @@ class LinuxCommandTools:
     def _normalize_address(address: str) -> str:
         return address.strip().replace("-", ":").upper()
 
-    def _parse_paired_addresses(self, output: str) -> Set[str]:
-        addresses: Set[str] = set()
+    def _parse_paired_addresses(self, output: str) -> set[str]:
+        addresses: set[str] = set()
         for raw in output.splitlines():
             line = raw.strip()
             if not line.startswith("Device "):
@@ -153,8 +154,7 @@ class LinuxCommandTools:
             return
         result = subprocess.run(
             ["bluetoothctl", "pair", address],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
             text=True,
             timeout=timeout,

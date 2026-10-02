@@ -1,26 +1,24 @@
 import os
 import subprocess
-from typing import Optional
 
 from PIL import ImageFont
 
 
-def find_monospace_bold_font() -> Optional[str]:
+def find_monospace_bold_font() -> str | None:
     fc_match = _find_fc_match()
     if fc_match:
         return fc_match
     return _find_common_monospace()
 
 
-def _find_fc_match() -> Optional[str]:
+def _find_fc_match() -> str | None:
     if not _has_executable("fc-match"):
         return None
     try:
         result = subprocess.run(
             ["fc-match", "-f", "%{file}\n", "monospace:style=Bold"],
             check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
         )
     except OSError:
@@ -39,7 +37,7 @@ def _has_executable(name: str) -> bool:
     return False
 
 
-def _find_common_monospace() -> Optional[str]:
+def _find_common_monospace() -> str | None:
     candidates = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf",
@@ -56,7 +54,10 @@ def _find_common_monospace() -> Optional[str]:
     return None
 
 
-def load_font(path: Optional[str], size: int) -> ImageFont.FreeTypeFont:
+def load_font(
+    path: str | None,
+    size: int,
+) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     if path:
         return ImageFont.truetype(path, size)
     return ImageFont.load_default()

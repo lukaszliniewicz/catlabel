@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-SCOPE = ["catlabel", "launcher.py", "tools", "tests"]
+SCOPE = ["catlabel", "launcher.py", "tools", "tests", "typings"]
 BASELINE = ROOT / "checks" / "debt.json"
 AUDIT_EXCEPTIONS = ROOT / "checks" / "audit-exceptions.json"
 

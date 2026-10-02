@@ -25,16 +25,22 @@ class Lzo1xCompressionTests(unittest.TestCase):
 
     def test_round_trip_varied_blocks(self) -> None:
         rng = random.Random(0x1050)
-        blocks = [bytes(length) for length in (0, 1, 2, 3, 4, 18, 19, 238, 239, 256, 1024)]
+        blocks = [
+            bytes(length) for length in (0, 1, 2, 3, 4, 18, 19, 238, 239, 256, 1024)
+        ]
         blocks.extend(
             bytes(rng.randrange(256) for _ in range(length))
             for length in (3, 17, 257, 3840, 7680)
         )
-        blocks.extend((b"ABCD" * ((length + 3) // 4))[:length] for length in (31, 256, 4096))
+        blocks.extend(
+            (b"ABCD" * ((length + 3) // 4))[:length] for length in (31, 256, 4096)
+        )
 
         for source in blocks:
             with self.subTest(length=len(source), prefix=source[:8]):
-                self.assertEqual(_decode_emitted_stream(compress_lzo1x_1(source)), source)
+                self.assertEqual(
+                    _decode_emitted_stream(compress_lzo1x_1(source)), source
+                )
 
 
 def _decode_emitted_stream(stream: bytes) -> bytes:

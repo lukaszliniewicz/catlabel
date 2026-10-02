@@ -18,18 +18,24 @@ class ProtocolPlan:
         object.__setattr__(self, "payload", payload)
         object.__setattr__(self, "steps", steps)
         if steps:
-            steps_payload = b"".join(step.data for step in steps if step.include_in_payload)
+            steps_payload = b"".join(
+                step.data for step in steps if step.include_in_payload
+            )
             if payload != steps_payload:
-                raise ValueError("Protocol plan payload does not match included protocol steps")
+                raise ValueError(
+                    "Protocol plan payload does not match included protocol steps"
+                )
 
     @classmethod
-    def stream(cls, payload: bytes) -> "ProtocolPlan":
+    def stream(cls, payload: bytes) -> ProtocolPlan:
         return cls(payload=payload)
 
     @classmethod
-    def sequence(cls, steps: tuple[ProtocolStep, ...]) -> "ProtocolPlan":
+    def sequence(cls, steps: tuple[ProtocolStep, ...]) -> ProtocolPlan:
         normalized = tuple(steps)
         return cls(
-            payload=b"".join(step.data for step in normalized if step.include_in_payload),
+            payload=b"".join(
+                step.data for step in normalized if step.include_in_payload
+            ),
             steps=normalized,
         )

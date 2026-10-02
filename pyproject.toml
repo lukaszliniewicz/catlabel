@@ -36,13 +36,13 @@ package = false
 
 [tool.ruff]
 target-version = "py311"
-include = ["catlabel/**/*.py", "launcher.py", "tools/**/*.py", "tests/**/*.py"]
+include = ["catlabel/**/*.py", "launcher.py", "tools/**/*.py", "tests/**/*.py", "typings/**/*.pyi"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "C4"]
 
 [tool.basedpyright]
-include = ["catlabel", "launcher.py", "tools", "tests"]
+include = ["catlabel", "launcher.py", "tools", "tests", "typings"]
 exclude = ["frontend", "docs", ".pixi", "env", "venv", ".venv"]
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
@@ -52,7 +52,15 @@ strict = [
   "tools/import_graph.py",
   "tools/sync_dependencies.py",
   "catlabel/core/server_security.py",
+  "catlabel/core/async_operations.py",
+  "catlabel/services/agent_context.py",
   "catlabel/printing/admission.py",
+  "catlabel/devices/bluetooth_profiles.py",
+  "catlabel/protocol/family.py",
+  "catlabel/protocol/encoding.py",
+  "catlabel/protocol/plan.py",
+  "catlabel/protocol/steps.py",
+  "catlabel/protocol/types.py",
   "catlabel/core/resource_limits.py",
   "catlabel/api/request_limits.py",
   "catlabel/rendering/image_payload.py",
@@ -76,6 +84,3 @@ name = "Transport avoids protocol parsing and runtime selection"
 type = "forbidden"
 source_modules = ["catlabel.transport"]
 forbidden_modules = ["catlabel.protocol", "catlabel.printing.runtime"]
-# Device policy currently imports only the stateless family identifier.
-# Maintenance phase 2 owns this exact edge; review/remove by 2026-11-02.
-ignore_imports = ["catlabel.devices.bluetooth_profiles -> catlabel.protocol.family"]

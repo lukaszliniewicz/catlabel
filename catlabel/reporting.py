@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import sys
-from typing import Any, Dict, Iterable, Optional, Set
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+from typing import Any
 
 STATUS_IDLE = "idle"
 STATUS_SCAN_START = "scan_start"
@@ -65,7 +66,7 @@ class MessageCatalog:
     }
 
     @classmethod
-    def resolve(cls, level: str, key: Optional[str], **ctx: Any) -> Optional[str]:
+    def resolve(cls, level: str, key: str | None, **ctx: Any) -> str | None:
         if not key:
             return None
         if level == "status":
@@ -103,11 +104,11 @@ def summarize_detail(detail: str) -> str:
 @dataclass(frozen=True)
 class ReportMessage:
     level: str
-    key: Optional[str]
+    key: str | None
     short: str
-    detail: Optional[str] = None
-    exc: Optional[Exception] = None
-    context: Dict[str, Any] = field(default_factory=dict)
+    detail: str | None = None
+    exc: Exception | None = None
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 class ReportSink:
@@ -120,14 +121,14 @@ class StderrSink(ReportSink):
         self,
         *,
         stream=None,
-        levels: Optional[Iterable[str]] = None,
-        prefix_levels: Optional[Iterable[str]] = None,
+        levels: Iterable[str] | None = None,
+        prefix_levels: Iterable[str] | None = None,
     ) -> None:
         self._stream = stream or sys.stderr
-        self._levels: Set[str] = set(levels or {"warning", "error"})
+        self._levels: set[str] = set(levels or {"warning", "error"})
         if prefix_levels is None:
             prefix_levels = {"warning", "error"}
-        self._prefix_levels: Set[str] = set(prefix_levels)
+        self._prefix_levels: set[str] = set(prefix_levels)
 
     def emit(self, message: ReportMessage) -> None:
         if message.level not in self._levels:
@@ -155,48 +156,62 @@ class QueueStatusSink(ReportSink):
             if message.short:
                 self._queue.put(("error", message.short))
             return
-        if message.level == "warning" and self._show_warnings:
-            if message.short:
-                self._queue.put(("status", f"Warning: {message.short}"))
+        if message.level == "warning" and self._show_warnings and message.short:
+            self._queue.put(("status", f"Warning: {message.short}"))
+
+
+_DEFAULT_MESSAGE_CATALOG = MessageCatalog()
 
 
 class Reporter:
-    def __init__(self, sinks: Iterable[ReportSink], *, catalog: MessageCatalog = MessageCatalog()) -> None:
+    def __init__(
+        self,
+        sinks: Iterable[ReportSink],
+        *,
+        catalog: MessageCatalog = _DEFAULT_MESSAGE_CATALOG,
+    ) -> None:
         self._sinks = list(sinks)
         self._catalog = catalog
 
-    def status(self, key: Optional[str] = None, *, short: Optional[str] = None, detail: Optional[str] = None, **ctx: Any) -> None:
+    def status(
+        self,
+        key: str | None = None,
+        *,
+        short: str | None = None,
+        detail: str | None = None,
+        **ctx: Any,
+    ) -> None:
         self._emit("status", key, short, detail, None, ctx)
 
     def warning(
         self,
-        key: Optional[str] = None,
+        key: str | None = None,
         *,
-        short: Optional[str] = None,
-        detail: Optional[str] = None,
-        exc: Optional[Exception] = None,
+        short: str | None = None,
+        detail: str | None = None,
+        exc: Exception | None = None,
         **ctx: Any,
     ) -> None:
         self._emit("warning", key, short, detail, exc, ctx)
 
     def error(
         self,
-        key: Optional[str] = None,
+        key: str | None = None,
         *,
-        short: Optional[str] = None,
-        detail: Optional[str] = None,
-        exc: Optional[Exception] = None,
+        short: str | None = None,
+        detail: str | None = None,
+        exc: Exception | None = None,
         **ctx: Any,
     ) -> None:
         self._emit("error", key, short, detail, exc, ctx)
 
     def debug(
         self,
-        key: Optional[str] = None,
+        key: str | None = None,
         *,
-        short: Optional[str] = None,
-        detail: Optional[str] = None,
-        exc: Optional[Exception] = None,
+        short: str | None = None,
+        detail: str | None = None,
+        exc: Exception | None = None,
         **ctx: Any,
     ) -> None:
         self._emit("debug", key, short, detail, exc, ctx)
@@ -204,11 +219,11 @@ class Reporter:
     def _emit(
         self,
         level: str,
-        key: Optional[str],
-        short: Optional[str],
-        detail: Optional[str],
-        exc: Optional[Exception],
-        ctx: Dict[str, Any],
+        key: str | None,
+        short: str | None,
+        detail: str | None,
+        exc: Exception | None,
+        ctx: dict[str, Any],
     ) -> None:
         if detail is None and exc is not None:
             detail = str(exc)

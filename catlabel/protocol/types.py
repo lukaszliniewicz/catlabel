@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from enum import Enum
 from dataclasses import dataclass
 
 from ..raster import PixelFormat
+from .family import ProtocolStrEnum
 
 
-class ImageEncoding(str, Enum):
+class ImageEncoding(ProtocolStrEnum):
     LEGACY_RAW = "legacy_raw"
     LEGACY_RLE = "legacy_rle"
     LUCK_NORMAL_RAW = "luck_normal_raw"
@@ -25,7 +25,7 @@ class ImageEncoding(str, Enum):
     FUNNY_LX_RASTER = "funny_lx_raster"
 
 
-class PaperMode(str, Enum):
+class PaperMode(ProtocolStrEnum):
     PLAIN = "plain"
     A4_SHEET = "a4_sheet"
     TAG = "tag"
@@ -56,10 +56,7 @@ class ImagePipelineConfig:
     def __post_init__(self) -> None:
         if not self.formats:
             raise ValueError("Image pipeline formats must not be empty")
-        normalized = tuple(
-            value if isinstance(value, PixelFormat) else PixelFormat(str(value))
-            for value in self.formats
-        )
+        normalized = tuple(_normalize_pixel_format(value) for value in self.formats)
         if len(set(normalized)) != len(normalized):
             raise ValueError("Image pipeline formats must be unique")
         object.__setattr__(self, "formats", normalized)
@@ -71,7 +68,7 @@ class ImagePipelineConfig:
     def supports(self, pixel_format: PixelFormat) -> bool:
         return pixel_format in self.formats
 
-    def with_default_format(self, pixel_format: PixelFormat) -> "ImagePipelineConfig":
+    def with_default_format(self, pixel_format: PixelFormat) -> ImagePipelineConfig:
         if pixel_format not in self.formats:
             raise ValueError(
                 f"Image pipeline does not support raster format {pixel_format.value}"
@@ -82,3 +79,7 @@ class ImagePipelineConfig:
             value for value in self.formats if value != pixel_format
         )
         return ImagePipelineConfig(formats=reordered, encoding=self.encoding)
+
+
+def _normalize_pixel_format(value: object) -> PixelFormat:
+    return value if isinstance(value, PixelFormat) else PixelFormat(str(value))

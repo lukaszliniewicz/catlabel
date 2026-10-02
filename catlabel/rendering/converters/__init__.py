@@ -1,26 +1,33 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Set
 
 from .base import Page, PageConverter
 from .image import ImageConverter
 from .pdf import PdfConverter
 from .text import TextConverter
 
-SUPPORTED_EXTENSIONS: Set[str] = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".pdf", ".txt"}
+SUPPORTED_EXTENSIONS: set[str] = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".pdf",
+    ".txt",
+}
 
 
 class PageLoader:
     def __init__(
         self,
-        converters: Optional[Dict[str, PageConverter]] = None,
-        text_font: Optional[str] = None,
-        text_columns: Optional[int] = None,
+        converters: dict[str, PageConverter] | None = None,
+        text_font: str | None = None,
+        text_columns: int | None = None,
         text_wrap: bool = True,
         trim_side_margins: bool = True,
         trim_top_bottom_margins: bool = True,
-        pdf_pages: Optional[str] = None,
+        pdf_pages: str | None = None,
         pdf_page_gap_px: int = 0,
     ) -> None:
         if converters is None:
@@ -45,10 +52,10 @@ class PageLoader:
         self._converters = converters
 
     @property
-    def supported_extensions(self) -> Set[str]:
+    def supported_extensions(self) -> set[str]:
         return set(self._converters.keys())
 
-    def load(self, path: str, width: int) -> List[Page]:
+    def load(self, path: str, width: int) -> list[Page]:
         ext = os.path.splitext(path)[1].lower()
         converter = self._converters.get(ext)
         if not converter:
@@ -56,7 +63,7 @@ class PageLoader:
         return converter.load(path, width)
 
 
-def load_pages(path: str, width: int) -> List[Page]:
+def load_pages(path: str, width: int) -> list[Page]:
     return PageLoader().load(path, width)
 
 

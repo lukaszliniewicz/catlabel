@@ -5,8 +5,8 @@ from typing import Any
 from ..protocol._builders import _build_job_model_from_raster_set
 from ..protocol.family import ProtocolFamily
 from ..protocol.job import ProtocolJob
-from ..protocol.types import ImagePipelineConfig, PaperMode
 from ..protocol.runtime import RuntimePrintCapabilities
+from ..protocol.types import ImagePipelineConfig, PaperMode
 from ..raster import RasterSet
 from .paper import apply_paper_layout_to_raster_set
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from collections.abc import Callable
+from unittest.mock import patch
 
 from catlabel.printing import build_raster_job, send_prepared_job
 from catlabel.printing.runtime.base import PreparedRuntimeContext
@@ -344,11 +345,11 @@ class SppQueryTests(unittest.TestCase):
                 target[:] = b"OK"
 
         sock = _WinRtSocket(_WinRtClassicBackend())
-        sock._reader = Reader()
         sock.settimeout(0.1)
         try:
-            self.assertEqual(sock.recv(4096), b"OK")
-            self.assertEqual(sock.gettimeout(), 0.1)
+            with patch.object(sock, "_reader", Reader()):
+                self.assertEqual(sock.recv(4096), b"OK")
+                self.assertEqual(sock.gettimeout(), 0.1)
         finally:
             if sock._loop is not None:
                 sock._loop.close()

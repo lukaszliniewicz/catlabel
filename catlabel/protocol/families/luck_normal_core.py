@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Mapping
 
 from ...raster import PixelFormat, RasterBuffer
 from ..compression import compress_zlib_wbits_10
@@ -190,8 +190,10 @@ class LuckNormalFamilyRecipe:
     end_line_dots_200dpi: int = 80
     end_line_dots_300dpi: int = 120
     dialect: LuckNormalCommandDialect = LUCK_NORMAL_DIALECT
-    bitmap_encoder: LuckNormalBitmapEncoder = field(default_factory=LuckNormalBitmapEncoder)
-    variants: Mapping[str, "LuckNormalVariantRecipe"] = field(default_factory=dict)
+    bitmap_encoder: LuckNormalBitmapEncoder = field(
+        default_factory=LuckNormalBitmapEncoder
+    )
+    variants: Mapping[str, LuckNormalVariantRecipe] = field(default_factory=dict)
 
     def build_job(self, request: PrintJobRequest) -> ProtocolPlan:
         steps = self.build_steps(request)
@@ -245,19 +247,44 @@ class LuckNormalFamilyRecipe:
                     expect=ProtocolReplyExpectation.OK,
                 )
             )
-        elif recipe.paper_mode is not None and recipe.paper_type_stage != "before_enable":
-            raise ValueError(f"Unsupported Luck normal paper type stage: {recipe.paper_type_stage}")
-        if self._should_run_scope(recipe.adjust_before_scope, request) and recipe.adjust_before is not None:
-            steps.append(ProtocolStep.send("adjust before", dialect.adjust_position_auto(recipe.adjust_before)))
+        elif (
+            recipe.paper_mode is not None and recipe.paper_type_stage != "before_enable"
+        ):
+            raise ValueError(
+                f"Unsupported Luck normal paper type stage: {recipe.paper_type_stage}"
+            )
+        if (
+            self._should_run_scope(recipe.adjust_before_scope, request)
+            and recipe.adjust_before is not None
+        ):
+            steps.append(
+                ProtocolStep.send(
+                    "adjust before", dialect.adjust_position_auto(recipe.adjust_before)
+                )
+            )
         steps.append(ProtocolStep.send("bitmap", self.bitmap_encoder.encode(request)))
         if recipe.finish_action == "position":
             steps.append(ProtocolStep.send("position", dialect.position_command))
         elif recipe.finish_action == "line_feed":
-            steps.append(ProtocolStep.send("line feed", dialect.line_feed(self.end_line_dots_for_request(request))))
+            steps.append(
+                ProtocolStep.send(
+                    "line feed",
+                    dialect.line_feed(self.end_line_dots_for_request(request)),
+                )
+            )
         else:
-            raise ValueError(f"Unsupported Luck normal finish action: {recipe.finish_action}")
-        if self._should_run_scope(recipe.adjust_after_scope, request) and recipe.adjust_after is not None:
-            steps.append(ProtocolStep.send("adjust after", dialect.adjust_position_auto(recipe.adjust_after)))
+            raise ValueError(
+                f"Unsupported Luck normal finish action: {recipe.finish_action}"
+            )
+        if (
+            self._should_run_scope(recipe.adjust_after_scope, request)
+            and recipe.adjust_after is not None
+        ):
+            steps.append(
+                ProtocolStep.send(
+                    "adjust after", dialect.adjust_position_auto(recipe.adjust_after)
+                )
+            )
         if self._should_run_scope(recipe.mark_last_scope, request):
             steps.append(ProtocolStep.send("mark last", dialect.mark_last()))
         steps.append(
@@ -276,7 +303,9 @@ class LuckNormalFamilyRecipe:
         _protocol_family: ProtocolFamily,
         protocol_variant: str | None = None,
     ) -> bytes:
-        return self.dialect_for_variant(protocol_variant).line_feed(self.end_line_dots_for_dpi(dpi, protocol_variant))
+        return self.dialect_for_variant(protocol_variant).line_feed(
+            self.end_line_dots_for_dpi(dpi, protocol_variant)
+        )
 
     def build_retract_paper(
         self,
@@ -284,9 +313,13 @@ class LuckNormalFamilyRecipe:
         _protocol_family: ProtocolFamily,
         protocol_variant: str | None = None,
     ) -> bytes:
-        return self.dialect_for_variant(protocol_variant).reverse_feed(self.end_line_dots_for_dpi(dpi, protocol_variant))
+        return self.dialect_for_variant(protocol_variant).reverse_feed(
+            self.end_line_dots_for_dpi(dpi, protocol_variant)
+        )
 
-    def dialect_for_variant(self, protocol_variant: str | None) -> LuckNormalCommandDialect:
+    def dialect_for_variant(
+        self, protocol_variant: str | None
+    ) -> LuckNormalCommandDialect:
         variant = self._variant(protocol_variant)
         if variant is not None and variant.dialect is not None:
             return variant.dialect
@@ -295,7 +328,9 @@ class LuckNormalFamilyRecipe:
     def end_line_dots_for_request(self, request: PrintJobRequest) -> int:
         return self.end_line_dots_for_dpi(request.dev_dpi, request.protocol_variant)
 
-    def end_line_dots_for_dpi(self, dpi: int, protocol_variant: str | None = None) -> int:
+    def end_line_dots_for_dpi(
+        self, dpi: int, protocol_variant: str | None = None
+    ) -> int:
         variant = self._variant(protocol_variant)
         if int(dpi) == 300:
             if variant is not None and variant.end_line_dots_300dpi is not None:
@@ -305,7 +340,9 @@ class LuckNormalFamilyRecipe:
             return variant.end_line_dots_200dpi
         return self.end_line_dots_200dpi
 
-    def supported_paper_modes(self, protocol_variant: str | None = None) -> tuple[PaperMode, ...]:
+    def supported_paper_modes(
+        self, protocol_variant: str | None = None
+    ) -> tuple[PaperMode, ...]:
         return tuple(self.mode_recipes_for_variant(protocol_variant))
 
     def supported_variants(self) -> tuple[str, ...]:
@@ -321,9 +358,13 @@ class LuckNormalFamilyRecipe:
         try:
             return recipes[mode]
         except KeyError as exc:
-            raise ValueError(f"{self.protocol_family.value} does not support paper mode {mode.value}") from exc
+            raise ValueError(
+                f"{self.protocol_family.value} does not support paper mode {mode.value}"
+            ) from exc
 
-    def mode_recipes_for_variant(self, protocol_variant: str | None) -> Mapping[PaperMode, LuckNormalModeRecipe]:
+    def mode_recipes_for_variant(
+        self, protocol_variant: str | None
+    ) -> Mapping[PaperMode, LuckNormalModeRecipe]:
         variant = self._variant(protocol_variant)
         if variant is not None and variant.mode_recipes is not None:
             return variant.mode_recipes
@@ -356,7 +397,7 @@ class LuckNormalFamilyRecipe:
             )
         return ProtocolStep.send(label, data)
 
-    def _variant(self, protocol_variant: str | None) -> "LuckNormalVariantRecipe | None":
+    def _variant(self, protocol_variant: str | None) -> LuckNormalVariantRecipe | None:
         if protocol_variant in (None, ""):
             return None
         try:

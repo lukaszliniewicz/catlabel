@@ -169,23 +169,22 @@ export default function PropertiesPanel() {
   const activeTemplate = currentLayout.activeTemplate;
   const htmlContent = currentLayout.htmlContent;
 
-  // Automatically switch tabs based on selection
-  useEffect(() => {
+  const [previousSelection, setPreviousSelection] = useState(selectedId);
+  if (previousSelection !== selectedId) {
+    setPreviousSelection(selectedId);
     if (selectedItem) setActiveTab('element');
-  }, [selectedId, selectedItem]);
+  }
 
-  // Local settings state for explicit DB saving
-  const [localSettings, setLocalSettings] = useState(settings);
+  // A new settings snapshot invalidates the draft without an effect-driven render.
+  const [settingsDraft, setSettingsDraft] = useState({ source: settings, value: settings });
+  const localSettings = settingsDraft.source === settings ? settingsDraft.value : settings;
+  const setLocalSettings = (value) => setSettingsDraft({ source: settings, value });
   const [isSaving, setIsSaving] = useState(false);
 
   const [dupCopies, setDupCopies] = useState(1);
   const [dupGap, setDupGap] = useState(10);
   const [multCopies, setMultCopies] = useState(1);
   
-
-  useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
 
   useEffect(() => {
     if (isPreCut && splitMode) {

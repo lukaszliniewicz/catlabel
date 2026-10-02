@@ -21,7 +21,9 @@ class SerialTransport:
         if interval_ms is not None and not delay_ms:
             delay_ms = interval_ms
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._write_blocking, data, chunk_size, delay_ms)
+        await loop.run_in_executor(
+            None, self._write_blocking, data, chunk_size, delay_ms
+        )
 
     def _write_blocking(
         self,
@@ -35,10 +37,14 @@ class SerialTransport:
         try:
             import serial
         except Exception as exc:  # pragma: no cover
-            raise RuntimeError("pyserial is required. Install with: pip install -r requirements.txt") from exc
+            raise RuntimeError(
+                "pyserial is required. Install with: pip install -r requirements.txt"
+            ) from exc
         interval = max(0.0, delay_ms / 1000.0)
         try:
-            with serial.Serial(self._port, self._baud_rate, timeout=1, write_timeout=5) as ser:
+            with serial.Serial(
+                self._port, self._baud_rate, timeout=1, write_timeout=5
+            ) as ser:
                 offset = 0
                 while offset < len(data):
                     chunk = data[offset : offset + chunk_size]

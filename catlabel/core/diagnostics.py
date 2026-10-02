@@ -3,10 +3,9 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from typing import List, Optional
 
-from ..transport.bluetooth.constants import IS_MACOS, IS_WINDOWS
 from .. import reporting
+from ..transport.bluetooth.constants import IS_MACOS, IS_WINDOWS
 
 _WARNED = False
 _REQUIREMENTS_PATH = Path(__file__).resolve().parents[2] / "requirements.txt"
@@ -16,7 +15,7 @@ _IMPORT_NAMES = {
 }
 
 
-def emit_startup_warnings(reporter: Optional[reporting.Reporter] = None) -> None:
+def emit_startup_warnings(reporter: reporting.Reporter | None = None) -> None:
     global _WARNED
     if _WARNED:
         return
@@ -31,32 +30,65 @@ def emit_startup_warnings(reporter: Optional[reporting.Reporter] = None) -> None
         )
 
 
-def collect_dependency_warnings() -> List[str]:
+def collect_dependency_warnings() -> list[str]:
     try:
         lines = _REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
-        requirements = [l.split(";", 1)[0].split("#", 1)[0].split("[", 1)[0].strip().split("=", 1)[0].split(">", 1)[0].split("<", 1)[0].lower() for l in (line.strip() for line in lines) if l and not l.startswith(("#", "-")) and ("sys_platform" not in l or ("==" in l and sys.platform == l.split("==", 1)[1].split()[0].strip("'\"")) or ("!=" in l and sys.platform != l.split("!=", 1)[1].split()[0].strip("'\"")))]
+        requirements = [
+            requirement_line.split(";", 1)[0]
+            .split("#", 1)[0]
+            .split("[", 1)[0]
+            .strip()
+            .split("=", 1)[0]
+            .split(">", 1)[0]
+            .split("<", 1)[0]
+            .lower()
+            for requirement_line in (line.strip() for line in lines)
+            if requirement_line
+            and not requirement_line.startswith(("#", "-"))
+            and (
+                "sys_platform" not in requirement_line
+                or (
+                    "==" in requirement_line
+                    and sys.platform
+                    == requirement_line.split("==", 1)[1].split()[0].strip("'\"")
+                )
+                or (
+                    "!=" in requirement_line
+                    and sys.platform
+                    != requirement_line.split("!=", 1)[1].split()[0].strip("'\"")
+                )
+            )
+        ]
     except OSError:
         requirements = []
-    warnings: List[str] = []
+    warnings: list[str] = []
     for requirement in requirements:
         if requirement == "pillow":
             if not _has_module("PIL"):
-                warnings.append("Missing Pillow (PIL). Image/text rendering will not work, and PDF raster output will fail.")
+                warnings.append(
+                    "Missing Pillow (PIL). Image/text rendering will not work, and PDF raster output will fail."
+                )
         elif requirement == "pypdfium2":
             if not _has_module("pypdfium2"):
                 warnings.append("Missing pypdfium2. PDF rendering will not work.")
         elif requirement == "crc8":
             if not _has_module("crc8"):
-                warnings.append("Missing crc8. Printer protocol encoding will not work.")
+                warnings.append(
+                    "Missing crc8. Printer protocol encoding will not work."
+                )
         elif requirement == "bleak":
             if not _has_module("bleak"):
                 warnings.append("Missing bleak. BLE scanning/printing will not work.")
         elif requirement == "pyserial":
             if not _has_module("serial"):
-                warnings.append("Missing pyserial. Serial printing via --serial will not work.")
+                warnings.append(
+                    "Missing pyserial. Serial printing via --serial will not work."
+                )
         elif requirement == "winsdk":
             if IS_WINDOWS and not _has_module("winsdk"):
-                warnings.append("Missing winsdk. Windows Bluetooth SPP scanning/connection will not work.")
+                warnings.append(
+                    "Missing winsdk. Windows Bluetooth SPP scanning/connection will not work."
+                )
         elif requirement == "pyobjc-framework-iobluetooth":
             if IS_MACOS and (not _has_module("objc") or not _has_module("IOBluetooth")):
                 warnings.append(

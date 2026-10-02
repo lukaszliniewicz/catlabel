@@ -1,12 +1,15 @@
 """Family-agnostic BLE transport helpers for the bleak adapter."""
+
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Iterable
+from contextlib import suppress
 from dataclasses import dataclass
-from collections.abc import Callable
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any
 
 from .... import reporting
+from ....core.async_operations import await_operation
 from ....devices import BleTransportProfile
 from .bleak_adapter_endpoint_resolver import _BleWriteEndpointResolver, _WriteSelection
 
@@ -17,7 +20,7 @@ class _BleakBindings:
     bulk_write_char: Any = None
     notify_char: Any = None
     write_selection_strategy: str = "unknown"
-    write_response_preference: Optional[bool] = None
+    write_response_preference: bool | None = None
     write_service_uuid: str = ""
     write_char_uuid: str = ""
     bulk_write_char_uuid: str = ""
@@ -80,8 +83,10 @@ class _BleakTransportSession:
                 bulk_write.char_uuid,
                 preferred_service_uuid=transport.preferred_service_uuid,
             )
-            self.bindings.bulk_write_char_uuid = _BleWriteEndpointResolver._normalize_uuid(
-                getattr(self.bindings.bulk_write_char, "uuid", "")
+            self.bindings.bulk_write_char_uuid = (
+                _BleWriteEndpointResolver._normalize_uuid(
+                    getattr(self.bindings.bulk_write_char, "uuid", "")
+                )
             )
             if self.bindings.bulk_write_char:
                 self.report_debug(
@@ -117,7 +122,10 @@ class _BleakTransportSession:
         start_notify = getattr(client, "start_notify", None)
         if not callable(start_notify):
             return
-        await start_notify(self.bindings.notify_char_uuid, callback)
+        await await_operation(
+            start_notify(self.bindings.notify_char_uuid, callback),
+            operation="start_notify",
+        )
         self.notify_started = True
         self.report_debug(
             f"subscribed to notify characteristic {self.bindings.notify_char_uuid}"
@@ -153,10 +161,11 @@ class _BleakTransportSession:
         stop_notify = getattr(client, "stop_notify", None)
         if not callable(stop_notify):
             return
-        try:
-            await stop_notify(self.bindings.notify_char_uuid)
-        except Exception:
-            pass
+        with suppress(Exception):
+            await await_operation(
+                stop_notify(self.bindings.notify_char_uuid),
+                operation="stop_notify",
+            )
         self.notify_started = False
         for waiter in self._notification_waiters:
             if not waiter.future.done():
@@ -264,10 +273,8 @@ class _BleakTransportSession:
         for waiter in tuple(self._notification_waiters):
             if waiter.future.done() or not waiter.match(payload):
                 continue
-            try:
+            with suppress(ValueError):
                 self._notification_history.remove(payload)
-            except ValueError:
-                pass
             waiter.future.set_result(bytes(payload))
             self._notification_waiters.remove(waiter)
         if self._runtime_controller is not None:
@@ -306,10 +313,14 @@ class _BleakTransportSession:
         waiter = _NotificationWaiter(label=label, match=match, future=future)
         self._notification_waiters.append(waiter)
         try:
-            return await asyncio.wait_for(asyncio.shield(future), timeout=max(0.0, timeout))
-        except asyncio.TimeoutError:
+            return await asyncio.wait_for(
+                asyncio.shield(future), timeout=max(0.0, timeout)
+            )
+        except TimeoutError as exc:
             if required:
-                raise TimeoutError(f"Timed out waiting for BLE notification: {label}")
+                raise TimeoutError(
+                    f"Timed out waiting for BLE notification: {label}"
+                ) from exc
             return None
         finally:
             if waiter in self._notification_waiters:
@@ -335,16 +346,20 @@ class _BleakTransportSession:
             sent = await self.send_control_packet(packet, timeout=timeout)
             if not sent:
                 if required:
-                    raise RuntimeError(f"BLE control send failed before waiting for {label}")
+                    raise RuntimeError(
+                        f"BLE control send failed before waiting for {label}"
+                    )
                 return None
             try:
                 return await asyncio.wait_for(
                     asyncio.shield(future),
                     timeout=max(0.0, timeout),
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError as exc:
                 if required:
-                    raise TimeoutError(f"Timed out waiting for BLE notification: {label}")
+                    raise TimeoutError(
+                        f"Timed out waiting for BLE notification: {label}"
+                    ) from exc
                 return None
         finally:
             if waiter in self._notification_waiters:
@@ -356,34 +371,55 @@ class _BleakTransportSession:
         char_uuid: str,
         *,
         preferred_service_uuid: str = "",
-    ) -> Optional[Any]:
+    ) -> Any | None:
         target = _BleWriteEndpointResolver._normalize_uuid(char_uuid)
-        preferred_service = _BleWriteEndpointResolver._normalize_uuid(preferred_service_uuid)
+        preferred_service = _BleWriteEndpointResolver._normalize_uuid(
+            preferred_service_uuid
+        )
         if preferred_service:
             for service in services:
-                service_uuid = _BleWriteEndpointResolver._normalize_uuid(getattr(service, "uuid", ""))
+                service_uuid = _BleWriteEndpointResolver._normalize_uuid(
+                    getattr(service, "uuid", "")
+                )
                 if service_uuid != preferred_service:
                     continue
                 for characteristic in getattr(service, "characteristics", []):
-                    if _BleWriteEndpointResolver._normalize_uuid(getattr(characteristic, "uuid", "")) == target:
+                    if (
+                        _BleWriteEndpointResolver._normalize_uuid(
+                            getattr(characteristic, "uuid", "")
+                        )
+                        == target
+                    ):
                         return characteristic
         for service in services:
             for characteristic in getattr(service, "characteristics", []):
-                if _BleWriteEndpointResolver._normalize_uuid(getattr(characteristic, "uuid", "")) == target:
+                if (
+                    _BleWriteEndpointResolver._normalize_uuid(
+                        getattr(characteristic, "uuid", "")
+                    )
+                    == target
+                ):
                     return characteristic
         return None
 
     @classmethod
-    def find_notify_characteristic(cls, services: Iterable[object]) -> Optional[Any]:
-        preferred: List[Tuple[str, str, Any]] = []
-        generic: List[Tuple[str, str, Any]] = []
+    def find_notify_characteristic(cls, services: Iterable[object]) -> Any | None:
+        preferred: list[tuple[str, str, Any]] = []
+        generic: list[tuple[str, str, Any]] = []
         for service in services:
-            service_uuid = _BleWriteEndpointResolver._normalize_uuid(getattr(service, "uuid", ""))
+            service_uuid = _BleWriteEndpointResolver._normalize_uuid(
+                getattr(service, "uuid", "")
+            )
             for characteristic in getattr(service, "characteristics", []):
-                props = {str(item).strip().lower() for item in getattr(characteristic, "properties", [])}
+                props = {
+                    str(item).strip().lower()
+                    for item in getattr(characteristic, "properties", [])
+                }
                 if "notify" not in props and "indicate" not in props:
                     continue
-                char_uuid = _BleWriteEndpointResolver._normalize_uuid(getattr(characteristic, "uuid", ""))
+                char_uuid = _BleWriteEndpointResolver._normalize_uuid(
+                    getattr(characteristic, "uuid", "")
+                )
                 candidate = (service_uuid, char_uuid, characteristic)
                 if _BleWriteEndpointResolver._uuid_is_preferred(
                     char_uuid,
@@ -400,7 +436,7 @@ class _BleakTransportSession:
         self,
         characteristic: Any,
         strategy: str,
-        response_preference: Optional[bool],
+        response_preference: bool | None,
     ) -> bool:
         return self._write_resolver.resolve_response_mode(
             getattr(characteristic, "properties", []),

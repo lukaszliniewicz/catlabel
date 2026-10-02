@@ -28,8 +28,12 @@ class LuckNormalRuntimeController(RuntimeController):
         if previous._state.protocol_variant == self._state.protocol_variant:
             self._state = previous._state
 
-    async def probe_capabilities(self, session: RuntimeSessionApi, *, timeout: float) -> None:
-        gray_override = 12 if self._state.protocol_variant == "lujiang_normal_h" else None
+    async def probe_capabilities(
+        self, session: RuntimeSessionApi, *, timeout: float
+    ) -> None:
+        gray_override = (
+            12 if self._state.protocol_variant == "lujiang_normal_h" else None
+        )
         if not session.can_query_control_packet():
             self._warn_degraded(session, "query transport is unavailable")
             self._state.capabilities = RuntimePrintCapabilities(
@@ -49,7 +53,9 @@ class LuckNormalRuntimeController(RuntimeController):
 
         model_name = reply.decode("gb2312", errors="ignore").replace("\x00", "").strip()
         self._state.probed_model = model_name
-        version = await self._query(session, LUCK_VERSION_QUERY_PACKET, "firmware", timeout)
+        version = await self._query(
+            session, LUCK_VERSION_QUERY_PACKET, "firmware", timeout
+        )
         if version:
             self._state.firmware_version = (
                 version.decode("gb2312", errors="ignore").replace("\x00", "").strip()

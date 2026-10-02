@@ -16,13 +16,19 @@ async def execute_protocol_step(
     log_prefix: str = "Protocol",
 ) -> bytes | None:
     if step.operation is ProtocolStepOperation.SEND:
-        session.report_debug(f"{log_prefix} send {step.label}: {packet_summary(step.data)}")
+        session.report_debug(
+            f"{log_prefix} send {step.label}: {packet_summary(step.data)}"
+        )
         await session.send_standard_payload(step.data)
         return None
     if step.operation is ProtocolStepOperation.WAIT:
-        return await _execute_wait_step(session, step, timeout=timeout, log_prefix=log_prefix)
+        return await _execute_wait_step(
+            session, step, timeout=timeout, log_prefix=log_prefix
+        )
     if step.operation is ProtocolStepOperation.QUERY:
-        return await _execute_query_step(session, step, timeout=timeout, log_prefix=log_prefix)
+        return await _execute_query_step(
+            session, step, timeout=timeout, log_prefix=log_prefix
+        )
     raise ValueError(f"Unsupported protocol step operation: {step.operation.value}")
 
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from ...raster import PixelFormat
 from ..compression import compress_lzo1x_1
 from ..encoding import pack_line
 from ..family import ProtocolFamily
 from ..packet import make_packet
-from ...raster import PixelFormat
 from ..types import ImageEncoding, ImagePipelineConfig
 from .base import PrintJobRequest, ProtocolBehavior
 
@@ -46,7 +46,9 @@ def _quality_packet(blackening: int, protocol_family) -> bytes:
 def _energy_packet(energy: int, protocol_family) -> bytes:
     if energy <= 0:
         return b""
-    return make_packet(0xAF, int(energy).to_bytes(2, "little", signed=False), protocol_family)
+    return make_packet(
+        0xAF, int(energy).to_bytes(2, "little", signed=False), protocol_family
+    )
 
 
 def _print_mode_packet(protocol_family) -> bytes:
@@ -84,7 +86,9 @@ def _dot_frames(request: PrintJobRequest) -> bytes:
     job = bytearray()
     for row in range(raster.height):
         line = raster.pixels[row * raster.width : (row + 1) * raster.width]
-        job += make_packet(0xA2, pack_line(list(line), lsb_first=True), request.protocol_family)
+        job += make_packet(
+            0xA2, pack_line(list(line), lsb_first=True), request.protocol_family
+        )
     return bytes(job)
 
 

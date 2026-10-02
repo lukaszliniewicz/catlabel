@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from ..encoding import pack_line
-from ..packet import crc8_value, make_packet
-from ..family import ProtocolFamily
 from ...raster import PixelFormat
+from ..encoding import pack_line
+from ..family import ProtocolFamily
+from ..packet import crc8_value, make_packet
 from ..types import ImageEncoding, ImagePipelineConfig
 from .base import PrintJobRequest, ProtocolBehavior
+
 
 def _hex_bytes(value: str) -> bytes:
     return bytes.fromhex(value)
@@ -50,12 +51,9 @@ _FLOW_RESUME_HEX = (
     "2221AE0101000000FF",
     "2221AE0001001000",
 )
-V5X_NOTIFY_PAUSE_PACKETS = frozenset(
-    _hex_bytes(value) for value in _FLOW_PAUSE_HEX
-)
-V5X_NOTIFY_RESUME_PACKETS = frozenset(
-    _hex_bytes(value) for value in _FLOW_RESUME_HEX
-)
+V5X_NOTIFY_PAUSE_PACKETS = frozenset(_hex_bytes(value) for value in _FLOW_PAUSE_HEX)
+V5X_NOTIFY_RESUME_PACKETS = frozenset(_hex_bytes(value) for value in _FLOW_RESUME_HEX)
+
 
 def _raw_lsb_payload(pixels: list[int] | tuple[int, ...], width: int) -> bytes:
     if width % 8 != 0:
@@ -126,9 +124,7 @@ def _gray_start_packet(height: int, protocol_family: ProtocolFamily) -> bytes:
 def build_job(request: PrintJobRequest) -> bytes:
     is_gray = request.image_pipeline.encoding == ImageEncoding.V5X_GRAY
     raster = (
-        request.default_raster
-        if is_gray
-        else request.require_raster(PixelFormat.BW1)
+        request.default_raster if is_gray else request.require_raster(PixelFormat.BW1)
     )
     height = raster.height
     job = bytearray()
@@ -138,7 +134,9 @@ def build_job(request: PrintJobRequest) -> bytes:
         job += _gray_start_packet(height, request.protocol_family)
         job += _gray_payload(raster)
     else:
-        job += make_packet(0xA9, _start_print_payload(height, request), request.protocol_family)
+        job += make_packet(
+            0xA9, _start_print_payload(height, request), request.protocol_family
+        )
         job += _raw_lsb_payload(list(raster.pixels), raster.width)
     job += V5X_FINALIZE_PACKET
     return bytes(job)

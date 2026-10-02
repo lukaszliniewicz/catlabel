@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 import platform
-from pathlib import Path
 import subprocess
 import sys
+from contextlib import suppress
+from pathlib import Path
 
 try:
     from dulwich import porcelain
@@ -24,16 +25,16 @@ def launcher_directory() -> Path:
 
 
 def pause_on_error() -> None:
-    try:
+    with suppress(EOFError):
         input("Press Enter to exit...")
-    except EOFError:
-        pass
 
 
 def clone_repo(target_dir: Path) -> bool:
     print(f"[*] Cloning CatLabel repository from {REPO_URL}...")
     print("[*] Please wait, this might take a moment...")
     try:
+        if porcelain is None:
+            raise RuntimeError("Dulwich is unavailable")
         repo = porcelain.clone(REPO_URL, str(target_dir))
         repo.close()
     except Exception as exc:
@@ -46,6 +47,8 @@ def clone_repo(target_dir: Path) -> bool:
 def update_repo(target_dir: Path) -> bool:
     print(f"[*] Checking for updates in {target_dir.name}...")
     try:
+        if porcelain is None:
+            raise RuntimeError("Dulwich is unavailable")
         with porcelain.open_repo(str(target_dir)) as repo:
             current_commit = repo.head()
             porcelain.pull(repo, REPO_URL, ff_only=True)
@@ -55,7 +58,9 @@ def update_repo(target_dir: Path) -> bool:
         return False
 
     if current_commit != new_commit:
-        print("[*] Updates pulled successfully! Marking the environment for synchronization.")
+        print(
+            "[*] Updates pulled successfully! Marking the environment for synchronization."
+        )
         (target_dir / ".update_needed").write_text("1", encoding="ascii")
     else:
         print("[*] CatLabel is up to date.")
@@ -86,7 +91,9 @@ def run_app(target_dir: Path) -> int:
             script.chmod(0o755)
 
     if not script.is_file():
-        print(f"[!] Critical error: {script.name} was not found in the cloned repository.")
+        print(
+            f"[!] Critical error: {script.name} was not found in the cloned repository."
+        )
         pause_on_error()
         return 1
 
@@ -133,7 +140,9 @@ def main() -> int:
             return 1
     else:
         if not (target_dir / ".git").is_dir():
-            print(f"[!] The directory '{target_dir}' exists but is not a valid repository.")
+            print(
+                f"[!] The directory '{target_dir}' exists but is not a valid repository."
+            )
             print("[!] Please delete or rename the folder and try again.")
             pause_on_error()
             return 1

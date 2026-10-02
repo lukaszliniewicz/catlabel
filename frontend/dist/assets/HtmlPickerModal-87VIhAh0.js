@@ -1,4 +1,4 @@
-import{b as n,j as e}from"./react-vendor-CnlnvpyN.js";import{u as o,g as d,X as c}from"./index-D3CB4E9r.js";import"./canvas-vendor-CNeIJug_.js";import"./editor-vendor-Cgkgws81.js";function m({onClose:t,onSelect:a}){const r=o(t),[l,s]=n.useState(`<div style="display:flex; flex-direction:column; width:100%; height:100%; text-align:center;">
+import{b as n,j as e}from"./react-vendor-CnlnvpyN.js";import{u as o,g as d,X as c}from"./index-BuLb0sYp.js";import"./canvas-vendor-CNeIJug_.js";import"./editor-vendor-Cgkgws81.js";function m({onClose:t,onSelect:a}){const r=o(t),[l,s]=n.useState(`<div style="display:flex; flex-direction:column; width:100%; height:100%; text-align:center;">
   <div style="flex:1; min-width:0; min-height:0; overflow:hidden;">
     <div class="auto-text">
       <h1>HELLO WORLD</h1>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Wand2, Database, AlertTriangle, LayoutTemplate, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
@@ -7,7 +7,29 @@ import { useDialogAccessibility } from '../utils/useDialogAccessibility';
 import IconPicker from './IconPicker';
 import PresetPickerModal from './PresetPickerModal';
 
+function initialTemplateData(template, batchMode) {
+  const initialData = {};
+  (template.fields || []).forEach((field) => {
+    let defaultVal = field.default || '';
+    if (field.type === 'select' && field.options?.length > 0) {
+      defaultVal = field.default || (field.options[0].value || field.options[0]);
+    }
+    if (field.type === 'boolean') {
+      initialData[field.name] = defaultVal === true || defaultVal === 'true';
+    } else {
+      initialData[field.name] = batchMode && (field.type === 'text' || field.type === 'textarea')
+        ? `{{ ${field.name} }}`
+        : defaultVal;
+    }
+  });
+  return initialData;
+}
+
 export default function TemplateWizardModal({ template, onClose }) {
+  return <TemplateWizard key={template.id} template={template} onClose={onClose} />;
+}
+
+function TemplateWizard({ template, onClose }) {
   const dialogRef = useDialogAccessibility(onClose);
   const {
     canvasWidth, canvasHeight, setTemplateConfig, clearCanvas
@@ -15,29 +37,13 @@ export default function TemplateWizardModal({ template, onClose }) {
     canvasWidth: state.canvasWidth, canvasHeight: state.canvasHeight,
     setTemplateConfig: state.setTemplateConfig, clearCanvas: state.clearCanvas
   })));
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState(() => initialTemplateData(template, false));
   const [batchMode, setBatchMode] = useState(false);
   const [pickerField, setPickerField] = useState(null);
   const [showPresetPicker, setShowPresetPicker] = useState(false);
   const activePreset = useStore((state) => state.getActivePreset());
 
-  useEffect(() => {
-    const initialData = {};
-    (template.fields || []).forEach((field) => {
-      let defaultVal = field.default || '';
-      if (field.type === 'select' && field.options?.length > 0) {
-        defaultVal = field.default || (field.options[0].value || field.options[0]);
-      }
-      if (field.type === 'boolean') {
-        initialData[field.name] = defaultVal === true || defaultVal === 'true';
-      } else {
-        initialData[field.name] = batchMode && (field.type === 'text' || field.type === 'textarea')
-          ? `{{ ${field.name} }}`
-          : defaultVal;
-      }
-    });
-    setFormData(initialData);
-  }, [template, batchMode]);
+
 
   const isSmallLabel = canvasWidth < 250 || canvasHeight < 250;
   const needsSpace = ['shipping_address', 'price_tag'].includes(template.id);
@@ -97,7 +103,10 @@ export default function TemplateWizardModal({ template, onClose }) {
               <input
                 type="checkbox"
                 checked={batchMode}
-                onChange={(e) => setBatchMode(e.target.checked)}
+                onChange={(e) => {
+                  setBatchMode(e.target.checked);
+                  setFormData(initialTemplateData(template, e.target.checked));
+                }}
                 className="w-4 h-4 accent-blue-600"
               />
             </label>

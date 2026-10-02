@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import importlib
 import time
-from typing import Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from contextlib import suppress
 
 from ..constants import SPP_UUID
 from ..types import DeviceInfo, DeviceTransport
@@ -65,7 +66,11 @@ def _extract_channel(result):
         return result
     if not isinstance(result, tuple):
         return None
-    tail = result[1:] if result and isinstance(result[0], (type(None), int, bool)) else result
+    tail = (
+        result[1:]
+        if result and isinstance(result[0], (type(None), int, bool))
+        else result
+    )
     for item in tail:
         if hasattr(item, "writeSync_length_"):
             return item
@@ -99,7 +104,7 @@ def _device_is_paired(device) -> bool:
         return False
 
 
-def _device_to_info(device) -> Optional[DeviceInfo]:
+def _device_to_info(device) -> DeviceInfo | None:
     address = _device_address(device)
     if not address:
         return None
@@ -122,7 +127,7 @@ def _wait_until_not_running(inquiry, timeout: float) -> None:
         time.sleep(0.05)
 
 
-def _scan_inquiry_raw(timeout: float) -> List[object]:
+def _scan_inquiry_raw(timeout: float) -> list[object]:
     _, iobluetooth = _iobluetooth_imports()
     inquiry = iobluetooth.IOBluetoothDeviceInquiry.inquiryWithDelegate_(None)
     if inquiry is None:
@@ -137,10 +142,8 @@ def _scan_inquiry_raw(timeout: float) -> List[object]:
 
     _wait_until_not_running(inquiry, timeout)
 
-    try:
+    with suppress(Exception):
         inquiry.stop()
-    except Exception:
-        pass
 
     devices = inquiry.foundDevices()
     if devices is None:
@@ -148,7 +151,7 @@ def _scan_inquiry_raw(timeout: float) -> List[object]:
     return list(devices)
 
 
-def _scan_paired_raw() -> List[object]:
+def _scan_paired_raw() -> list[object]:
     _, iobluetooth = _iobluetooth_imports()
     devices = iobluetooth.IOBluetoothDevice.pairedDevices()
     if devices is None:
@@ -162,7 +165,9 @@ def _device_by_address(address: str):
     device = iobluetooth.IOBluetoothDevice.deviceWithAddressString_(normalized)
     if device:
         return device
-    return iobluetooth.IOBluetoothDevice.deviceWithAddressString_(normalized.replace(":", "-"))
+    return iobluetooth.IOBluetoothDevice.deviceWithAddressString_(
+        normalized.replace(":", "-")
+    )
 
 
 def _find_device_in_list(devices: Iterable[object], address: str):
@@ -181,7 +186,7 @@ def _build_spp_uuid():
     return uuid
 
 
-def _extract_channel_id(result) -> Optional[int]:
+def _extract_channel_id(result) -> int | None:
     if isinstance(result, int):
         return result if result > 0 else None
     if not isinstance(result, tuple):
@@ -197,7 +202,7 @@ def _extract_channel_id(result) -> Optional[int]:
     return None
 
 
-def _service_channel_id(service) -> Optional[int]:
+def _service_channel_id(service) -> int | None:
     try:
         result = service.getRFCOMMChannelID_(None)
     except Exception:
@@ -205,7 +210,7 @@ def _service_channel_id(service) -> Optional[int]:
     return _extract_channel_id(result)
 
 
-def _resolve_rfcomm_channels_via_services(device) -> List[int]:
+def _resolve_rfcomm_channels_via_services(device) -> list[int]:
     try:
         services = device.services()
     except Exception:
@@ -213,7 +218,7 @@ def _resolve_rfcomm_channels_via_services(device) -> List[int]:
     if services is None:
         return []
 
-    channels: List[int] = []
+    channels: list[int] = []
     for service in list(services):
         channel_id = _service_channel_id(service)
         if channel_id is not None and channel_id not in channels:
@@ -221,9 +226,9 @@ def _resolve_rfcomm_channels_via_services(device) -> List[int]:
     return channels
 
 
-def _find_spp_channels(device) -> List[int]:
+def _find_spp_channels(device) -> list[int]:
     uuid = _build_spp_uuid()
-    channels: List[int] = []
+    channels: list[int] = []
 
     service = device.getServiceRecordForUUID_(uuid)
     if service:
@@ -268,10 +273,14 @@ def _attempt_pair_with_device_pair(device) -> bool:
 
 
 def _open_rfcomm_channel(device, channel_id: int):
-    result = device.openRFCOMMChannelSync_withChannelID_delegate_(None, int(channel_id), None)
+    result = device.openRFCOMMChannelSync_withChannelID_delegate_(
+        None, int(channel_id), None
+    )
     status = _extract_status(result)
     if not _status_ok(status):
-        raise RuntimeError(f"Failed to open RFCOMM channel {channel_id} (status: {status})")
+        raise RuntimeError(
+            f"Failed to open RFCOMM channel {channel_id} (status: {status})"
+        )
 
     channel = _extract_channel(result)
     if channel is None:
@@ -288,23 +297,19 @@ def _rfcomm_write(channel, data: bytes) -> None:
 
 
 def _rfcomm_close(channel) -> None:
-    try:
+    with suppress(Exception):
         channel.closeChannel()
-    except Exception:
-        pass
 
 
 def _close_device_connection(device) -> None:
-    try:
+    with suppress(Exception):
         device.closeConnection()
-    except Exception:
-        pass
 
 
 class _MacClassicSocket:
-    def __init__(self, backend: "_MacClassicBackend") -> None:
+    def __init__(self, backend: _MacClassicBackend) -> None:
         self._backend = backend
-        self._timeout: Optional[float] = None
+        self._timeout: float | None = None
         self._device = None
         self._channel = None
 
@@ -316,7 +321,9 @@ class _MacClassicSocket:
         timeout = self._timeout if self._timeout is not None else 5.0
         # Ensure stale channel/device handles never leak across reconnects.
         self.close()
-        device = self._backend.get_device(address, allow_discovery=True, timeout=timeout)
+        device = self._backend.get_device(
+            address, allow_discovery=True, timeout=timeout
+        )
         if device is None:
             raise RuntimeError(f"Bluetooth device not found: {address}")
         self._device = device
@@ -344,10 +351,10 @@ class _MacClassicSocket:
 
 class _MacClassicBackend:
     def __init__(self) -> None:
-        self._devices_by_address: Dict[str, object] = {}
+        self._devices_by_address: dict[str, object] = {}
 
-    def _remember_devices(self, devices: Iterable[object]) -> List[DeviceInfo]:
-        infos: List[DeviceInfo] = []
+    def _remember_devices(self, devices: Iterable[object]) -> list[DeviceInfo]:
+        infos: list[DeviceInfo] = []
         for device in devices:
             info = _device_to_info(device)
             if info is None:
@@ -356,7 +363,7 @@ class _MacClassicBackend:
             self._devices_by_address[info.address] = device
         return infos
 
-    def scan_inquiry(self, timeout: float) -> List[DeviceInfo]:
+    def scan_inquiry(self, timeout: float) -> list[DeviceInfo]:
         inquiry_error = None
         try:
             inquiry_infos = self._remember_devices(_scan_inquiry_raw(timeout))
@@ -371,17 +378,21 @@ class _MacClassicBackend:
             paired_infos = self._remember_devices(_scan_paired_raw())
         except Exception as exc:
             if inquiry_error is not None:
-                raise RuntimeError(f"macOS Classic Bluetooth scan failed: {inquiry_error}") from inquiry_error
+                raise RuntimeError(
+                    f"macOS Classic Bluetooth scan failed: {inquiry_error}"
+                ) from inquiry_error
             raise RuntimeError(f"macOS Classic Bluetooth scan failed: {exc}") from exc
 
         if paired_infos:
             return DeviceInfo.dedupe(paired_infos)
 
         if inquiry_error is not None:
-            raise RuntimeError(f"macOS Classic Bluetooth scan failed: {inquiry_error}") from inquiry_error
+            raise RuntimeError(
+                f"macOS Classic Bluetooth scan failed: {inquiry_error}"
+            ) from inquiry_error
         return []
 
-    def resolve_rfcomm_channels(self, address: str) -> List[int]:
+    def resolve_rfcomm_channels(self, address: str) -> list[int]:
         device = self.get_device(address, allow_discovery=True, timeout=5.0)
         if device is None:
             return []

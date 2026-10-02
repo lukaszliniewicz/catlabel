@@ -7,7 +7,6 @@ from ..packet import make_packet
 from ..types import ImageEncoding, ImagePipelineConfig, PaperMode
 from .base import PrintJobRequest, ProtocolBehavior
 
-
 VARIANT_LINE_EIGHT = "line_eight"
 VARIANT_ESC_STAR = "esc_star"
 VARIANT_ESC_STAR_EIGHT = "esc_star_eight"
@@ -116,7 +115,9 @@ def _line_eight_tail_feed(request: PrintJobRequest) -> int:
     return max(0, request.post_print_feed_count + 1) * dots_per_paper
 
 
-def _build_line_eight_job(request: PrintJobRequest, *, professional: bool = False) -> bytes:
+def _build_line_eight_job(
+    request: PrintJobRequest, *, professional: bool = False
+) -> bytes:
     pixels, width = _left_padded_pixels(request)
     output = bytearray()
     if professional:
@@ -144,7 +145,9 @@ def _esc_star_24dot_payload(request: PrintJobRequest) -> bytes:
     raster = request.require_raster(PixelFormat.BW1)
     output = bytearray()
     for band in range((raster.height + 23) // 24):
-        output += bytes([0x1B, 0x2A, 0x21, raster.width & 0xFF, (raster.width >> 8) & 0xFF])
+        output += bytes(
+            [0x1B, 0x2A, 0x21, raster.width & 0xFF, (raster.width >> 8) & 0xFF]
+        )
         for x in range(raster.width):
             for stripe in range(3):
                 value = 0
@@ -162,10 +165,13 @@ def _build_esc_star_job(request: PrintJobRequest, *, eight: bool) -> bytes:
         max_height = request.a4_sheet_max_height
         if max_height is None or max_height <= 0:
             max_height = 3800 if request.dev_dpi == 300 else 2400
-        final_feed = max(
-            0,
-            max_height - request.require_raster(PixelFormat.BW1).height,
-        ) // 24
+        final_feed = (
+            max(
+                0,
+                max_height - request.require_raster(PixelFormat.BW1).height,
+            )
+            // 24
+        )
     elif eight and request.one_length > 0:
         final_feed = request.one_length
     elif eight and request.feed_padding > 0:

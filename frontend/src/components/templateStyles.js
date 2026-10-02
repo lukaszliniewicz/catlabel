@@ -501,8 +501,6 @@ const escapeHtml = (value = '') => String(value)
 
 const formatText = (value = '') => escapeHtml(value).replace(/\n/g, '<br />');
 
-export { sanitizeLabelHtml } from '../utils/htmlSecurity';
-
 const LEGACY_FIELD_NAMES = [
   'text',
   'title',

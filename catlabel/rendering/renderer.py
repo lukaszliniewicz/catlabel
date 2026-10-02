@@ -1,24 +1,28 @@
 from __future__ import annotations
 
-from typing import List, Sequence
+from collections.abc import Iterable, Sequence
+from typing import cast
 
-from PIL import Image
-from PIL import ImageFilter
-from PIL import ImageOps
-from PIL import ImageStat
+from PIL import Image, ImageFilter, ImageOps, ImageStat
 
-from .converters.base import Page
 from ..raster import PixelFormat, RasterBuffer, RasterSet
+from .converters.base import Page
 
 
-def _flattened_data(image: Image.Image):
+def _flattened_data(image: Image.Image) -> Iterable[int]:
+    if image.mode not in ("L", "1"):
+        raise ValueError(f"Expected image mode 'L' or '1', got {image.mode!r}")
     getter = getattr(image, "get_flattened_data", None)
     if callable(getter):
-        return getter()
-    return image.getdata()
+        # Pillow returns scalar pixels for the supported grayscale and bilevel modes.
+        return cast(Iterable[int], getter())
+    return cast(Iterable[int], image.getdata())
 
 
-def apply_page_transforms(pages: Sequence[Page], rotate_90_clockwise: bool = False) -> List[Page]:
+def apply_page_transforms(
+    pages: Sequence[Page],
+    rotate_90_clockwise: bool = False,
+) -> list[Page]:
     if not rotate_90_clockwise:
         return list(pages)
     return [
@@ -31,7 +35,7 @@ def apply_page_transforms(pages: Sequence[Page], rotate_90_clockwise: bool = Fal
     ]
 
 
-def image_to_bw_pixels(img: Image.Image, dither: bool) -> List[int]:
+def image_to_bw_pixels(img: Image.Image, dither: bool) -> list[int]:
     if dither:
         img = img.convert("1")
         data = list(_flattened_data(img))
@@ -71,24 +75,34 @@ def _gray_enhance_alpha(gray: Image.Image) -> float:
 def _apply_gamma(gray: Image.Image, gamma: float) -> Image.Image:
     if gamma == 1.0:
         return gray
-    lut = [max(0, min(255, round(((value / 255.0) ** gamma) * 255.0))) for value in range(256)]
+    lut = [
+        max(0, min(255, round(((value / 255.0) ** gamma) * 255.0)))
+        for value in range(256)
+    ]
     return gray.point(lut)
 
 
-def _preprocess_gray_image(img: Image.Image, gamma_value: float | None = None) -> Image.Image:
+def _preprocess_gray_image(
+    img: Image.Image, gamma_value: float | None = None
+) -> Image.Image:
     gray = img.convert("L")
     blurred = gray.filter(ImageFilter.GaussianBlur(radius=1.0))
     gamma = _auto_gray_gamma(blurred) if gamma_value is None else gamma_value
     transformed = _apply_gamma(blurred, gamma)
     enhanced = transformed.point(
-        [max(0, min(255, round(value * _gray_enhance_alpha(transformed)))) for value in range(256)]
+        [
+            max(0, min(255, round(value * _gray_enhance_alpha(transformed))))
+            for value in range(256)
+        ]
     )
     equalized = ImageOps.equalize(enhanced)
-    return equalized.filter(ImageFilter.Kernel((3, 3), [0, -1, 0, -1, 5, -1, 0, -1, 0], scale=1))
+    return equalized.filter(
+        ImageFilter.Kernel((3, 3), [0, -1, 0, -1, 5, -1, 0, -1, 0], scale=1)
+    )
 
 
 def _gray_values_to_raster(
-    gray_values: List[int],
+    gray_values: list[int],
     width: int,
     pixel_format: PixelFormat,
 ) -> RasterBuffer:
@@ -105,8 +119,10 @@ def _image_to_gray_values(
     *,
     gamma_handle: bool = False,
     gamma_value: float | None = None,
-) -> List[int]:
-    gray_image = _preprocess_gray_image(img, gamma_value) if gamma_handle else img.convert("L")
+) -> list[int]:
+    gray_image = (
+        _preprocess_gray_image(img, gamma_value) if gamma_handle else img.convert("L")
+    )
     return list(_flattened_data(gray_image))
 
 
@@ -169,7 +185,7 @@ def image_to_raster_set(
             seen.add(pixel_format)
 
     rasters = {}
-    gray_values: List[int] | None = None
+    gray_values: list[int] | None = None
     for pixel_format in unique_formats:
         if pixel_format == PixelFormat.BW1:
             rasters[pixel_format] = image_to_raster(
@@ -184,5 +200,7 @@ def image_to_raster_set(
                 gamma_handle=gamma_handle,
                 gamma_value=gamma_value,
             )
-        rasters[pixel_format] = _gray_values_to_raster(gray_values, img.width, pixel_format)
+        rasters[pixel_format] = _gray_values_to_raster(
+            gray_values, img.width, pixel_format
+        )
     return RasterSet(rasters=rasters)

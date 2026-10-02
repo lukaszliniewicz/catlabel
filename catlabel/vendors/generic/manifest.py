@@ -1,10 +1,8 @@
-from typing import Dict, List, Optional
-
+from ...protocol.families.v5g import V5G_DENSITY_MAX, V5G_DENSITY_MIN
 from ..manifest import VendorManifest
+from ..utils import _registry_models, extract_raw_hardware_info
 from .client import GenericClient
 from .models import PrinterModelRegistry
-from ..utils import _registry_models, extract_raw_hardware_info
-from ...protocol.families.v5g import V5G_DENSITY_MAX, V5G_DENSITY_MIN
 
 
 class GenericManifest(VendorManifest):
@@ -69,9 +67,9 @@ class GenericManifest(VendorManifest):
             "feed": {"available": True, "default": 50},
         }
 
-    def get_supported_models(self) -> List[Dict]:
+    def get_supported_models(self) -> list[dict]:
         registry = PrinterModelRegistry.load()
-        results: List[Dict] = []
+        results: list[dict] = []
         seen = set()
 
         for model in _registry_models(registry):
@@ -89,7 +87,7 @@ class GenericManifest(VendorManifest):
 
         return results
 
-    def get_presets(self) -> List[Dict]:
+    def get_presets(self) -> list[dict]:
         return [
             {
                 "name": "Roll: Standard Square (48x48mm)",
@@ -163,7 +161,9 @@ class GenericManifest(VendorManifest):
             },
         ]
 
-    def identify_device(self, name: str, device=None, mac: Optional[str] = None) -> Optional[Dict]:
+    def identify_device(
+        self, name: str, device=None, mac: str | None = None
+    ) -> dict | None:
         registry = PrinterModelRegistry.load()
         model = None
 
@@ -186,7 +186,7 @@ class GenericManifest(VendorManifest):
 
         return None
 
-    def get_fallback_info(self) -> Dict:
+    def get_fallback_info(self) -> dict:
         raw = {
             "name": "Generic Printer",
             "vendor": "generic",

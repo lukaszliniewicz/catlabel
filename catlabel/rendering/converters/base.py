@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 from PIL import Image, ImageOps
 
@@ -14,7 +13,7 @@ class Page:
 
 
 class PageConverter:
-    def load(self, path: str, width: int) -> List[Page]:
+    def load(self, path: str, width: int) -> list[Page]:
         raise NotImplementedError
 
 
@@ -52,11 +51,14 @@ class RasterConverter(PageConverter):
             return img
         return self._trim_margins_image(img)
 
-    def _trim_margins_image(self, img: Image.Image, threshold: int = 245) -> Image.Image:
+    def _trim_margins_image(
+        self, img: Image.Image, threshold: int = 245
+    ) -> Image.Image:
         if img.width <= 2:
             return img
         gray = img.convert("L")
-        mask = gray.point(lambda p: 255 if p < threshold else 0, mode="L")
+        lookup = [255 if value < threshold else 0 for value in range(256)]
+        mask = gray.point(lookup, mode="L")
         bbox = mask.getbbox()
         if not bbox:
             return img

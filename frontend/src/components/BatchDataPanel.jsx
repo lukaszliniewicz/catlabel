@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useMemo, useState } from 'react';
 import { FileSpreadsheet, Plus, Trash2 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../store';
@@ -39,11 +39,13 @@ export default function BatchDataPanel() {
     return Array.from(new Set([...templateKeys, ...recordKeys]));
   }, [batchRecords, items, pageLayouts]);
 
-  useEffect(() => {
+  const [previousKeys, setPreviousKeys] = useState(keys);
+  if (previousKeys !== keys) {
+    setPreviousKeys(keys);
     setMatrixInputs((previous) => Object.fromEntries(
       keys.map((key) => [key, previous[key] ?? ''])
     ));
-  }, [keys]);
+  }
 
   const emptyRecord = () => Object.fromEntries(keys.map((key) => [key, '']));
   const modeButton = (buttonMode) => (

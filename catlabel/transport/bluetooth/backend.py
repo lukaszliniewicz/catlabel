@@ -5,12 +5,13 @@ import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional, Tuple
+from contextlib import suppress
 
+from ... import reporting
+from ...core.async_operations import optional_bytes
 from .adapters import _get_ble_adapter, _get_classic_adapter
 from .constants import IS_MACOS, IS_WINDOWS, RFCOMM_CHANNELS
 from .types import DeviceInfo, DeviceTransport, ScanFailure, SocketLike
-from ... import reporting
 
 _MACOS_FALLBACK_COOLDOWN_SEC = 0.35
 _MACOS_BLE_REFRESH_TIMEOUT_SEC = 3.0
@@ -18,7 +19,7 @@ _MACOS_BLE_REFRESH_TIMEOUT_SEC = 3.0
 
 class SppBackend:
     def __init__(self, reporter: reporting.Reporter = reporting.DUMMY_REPORTER) -> None:
-        self._sock: Optional[SocketLike] = None
+        self._sock: SocketLike | None = None
         self._lock = threading.Lock()
         # WinRT and Bleak both retain event-loop/native state for the lifetime
         # of a connection. The default asyncio executor may run consecutive
@@ -29,12 +30,12 @@ class SppBackend:
             thread_name_prefix="catlabel-bluetooth",
         )
         self._connected = False
-        self._channel: Optional[int] = None
-        self._transport: Optional[DeviceTransport] = None
+        self._channel: int | None = None
+        self._transport: DeviceTransport | None = None
         self._reporter = reporter
 
     @staticmethod
-    async def scan(timeout: float = 5.0) -> List[DeviceInfo]:
+    async def scan(timeout: float = 5.0) -> list[DeviceInfo]:
         devices, _failures = await SppBackend.scan_with_failures(timeout=timeout)
         return devices
 
@@ -43,7 +44,7 @@ class SppBackend:
         timeout: float = 5.0,
         include_classic: bool = True,
         include_ble: bool = True,
-    ) -> Tuple[List[DeviceInfo], List[ScanFailure]]:
+    ) -> tuple[list[DeviceInfo], list[ScanFailure]]:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None,
@@ -56,7 +57,7 @@ class SppBackend:
     async def connect(
         self,
         device: DeviceInfo,
-        pairing_hint: Optional[bool] = None,
+        pairing_hint: bool | None = None,
     ) -> None:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
@@ -68,8 +69,8 @@ class SppBackend:
 
     async def connect_attempts(
         self,
-        attempts: List[DeviceInfo],
-        pairing_hint: Optional[bool] = None,
+        attempts: list[DeviceInfo],
+        pairing_hint: bool | None = None,
     ) -> None:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
@@ -84,8 +85,11 @@ class SppBackend:
 
     def register_notify_callback(self, callback) -> None:
         """Allows a vendor client to intercept raw incoming packets."""
-        if hasattr(self._sock, "register_notify_callback"):
-            self._sock.register_notify_callback(callback)
+        sock = self._sock
+        if sock is not None:
+            register_callback = getattr(sock, "register_notify_callback", None)
+            if callable(register_callback):
+                register_callback(callback)
 
     async def disconnect(self) -> None:
         loop = asyncio.get_running_loop()
@@ -207,7 +211,7 @@ class SppBackend:
         data: bytes,
         chunk_size: int,
         delay_ms: int = 0,
-        interval_ms: Optional[int] = None,
+        interval_ms: int | None = None,
     ) -> None:
         if interval_ms is not None and not delay_ms:
             delay_ms = interval_ms
@@ -222,14 +226,18 @@ class SppBackend:
 
     def _connect_attempts_blocking(
         self,
-        attempts: List[DeviceInfo],
-        pairing_hint: Optional[bool],
+        attempts: list[DeviceInfo],
+        pairing_hint: bool | None,
     ) -> None:
         if self._connected:
-            self._reporter.debug(short="Bluetooth", detail="Bluetooth connect skipped: already connected")
+            self._reporter.debug(
+                short="Bluetooth", detail="Bluetooth connect skipped: already connected"
+            )
             return
         if not attempts:
-            raise RuntimeError("Bluetooth connection failed (no transport attempts provided)")
+            raise RuntimeError(
+                "Bluetooth connection failed (no transport attempts provided)"
+            )
         unique_attempts = _unique_attempts(attempts)
         self._reporter.debug(
             short="Bluetooth",
@@ -241,7 +249,7 @@ class SppBackend:
                 )
             ),
         )
-        errors: List[Tuple[DeviceInfo, Exception]] = []
+        errors: list[tuple[DeviceInfo, Exception]] = []
 
         for index, candidate in enumerate(unique_attempts):
             if (
@@ -250,7 +258,9 @@ class SppBackend:
                 and candidate.transport == DeviceTransport.BLE
                 and unique_attempts[index - 1].transport == DeviceTransport.CLASSIC
             ):
-                refreshed = _refresh_ble_attempt_macos_workaround(candidate, self._reporter)
+                refreshed = _refresh_ble_attempt_macos_workaround(
+                    candidate, self._reporter
+                )
                 if refreshed.address != candidate.address:
                     self._reporter.debug(
                         short="Bluetooth",
@@ -289,7 +299,11 @@ class SppBackend:
                 )
                 if index < len(unique_attempts) - 1:
                     next_transport = unique_attempts[index + 1].transport
-                    if IS_MACOS and candidate.transport == DeviceTransport.CLASSIC and next_transport == DeviceTransport.BLE:
+                    if (
+                        IS_MACOS
+                        and candidate.transport == DeviceTransport.CLASSIC
+                        and next_transport == DeviceTransport.BLE
+                    ):
                         self._reporter.debug(
                             short="Bluetooth",
                             detail=(
@@ -318,7 +332,9 @@ class SppBackend:
         detail = "; ".join(parts)
         raise RuntimeError(f"Bluetooth connection failed ({detail})")
 
-    def _connect_with_device(self, device: DeviceInfo, pairing_hint: Optional[bool]) -> None:
+    def _connect_with_device(
+        self, device: DeviceInfo, pairing_hint: bool | None
+    ) -> None:
         self._reporter.debug(
             short="Bluetooth",
             detail=(
@@ -328,16 +344,23 @@ class SppBackend:
         )
         adapter = _select_adapter(device.transport)
         if adapter is None:
-            raise RuntimeError(f"{device.transport.value} Bluetooth is not supported on this platform")
+            raise RuntimeError(
+                f"{device.transport.value} Bluetooth is not supported on this platform"
+            )
         pair_error = None
         try:
             if pairing_hint and IS_WINDOWS:
                 self._reporter.status(reporting.STATUS_PAIRING_CONFIRM)
             adapter.ensure_paired(device.address, pairing_hint)
-            self._reporter.debug(short="Bluetooth", detail=f"Pairing check done for {device.address}")
+            self._reporter.debug(
+                short="Bluetooth", detail=f"Pairing check done for {device.address}"
+            )
         except Exception as exc:
             pair_error = exc
-            self._reporter.debug(short="Bluetooth", detail=f"Pairing check failed for {device.address}: {exc}")
+            self._reporter.debug(
+                short="Bluetooth",
+                detail=f"Pairing check failed for {device.address}: {exc}",
+            )
         channels = _resolve_rfcomm_channels(adapter, device.address)
         self._reporter.debug(
             short="Bluetooth",
@@ -351,12 +374,15 @@ class SppBackend:
                     short="Bluetooth",
                     detail=f"Trying RFCOMM channel {channel} for {device.address}",
                 )
-                socket_options = {
-                    "reporter": self._reporter,
-                }
-                if device.transport is DeviceTransport.BLE:
-                    socket_options["ble_profile"] = device.ble_profile
-                sock = adapter.create_socket(pairing_hint, **socket_options)
+                sock = adapter.create_socket(
+                    pairing_hint,
+                    ble_profile=(
+                        device.ble_profile
+                        if device.transport is DeviceTransport.BLE
+                        else None
+                    ),
+                    reporter=self._reporter,
+                )
                 set_timeout = getattr(sock, "settimeout", None)
                 if callable(set_timeout):
                     set_timeout(8)
@@ -433,7 +459,11 @@ class SppBackend:
         return True
 
     def _can_send_bulk_payload_blocking(self) -> bool:
-        if not self._sock or not self._connected or self._transport != DeviceTransport.BLE:
+        if (
+            not self._sock
+            or not self._connected
+            or self._transport != DeviceTransport.BLE
+        ):
             return False
         checker = getattr(self._sock, "can_send_bulk_payload", None)
         if callable(checker):
@@ -449,13 +479,21 @@ class SppBackend:
         return callable(getattr(self._sock, "recv", None))
 
     def _can_wait_for_notification_blocking(self) -> bool:
-        if not self._sock or not self._connected or self._transport != DeviceTransport.BLE:
+        if (
+            not self._sock
+            or not self._connected
+            or self._transport != DeviceTransport.BLE
+        ):
             return False
         checker = getattr(self._sock, "can_wait_for_notification", None)
         return bool(checker()) if callable(checker) else False
 
     def _can_send_control_packet_wait_notification_blocking(self) -> bool:
-        if not self._sock or not self._connected or self._transport != DeviceTransport.BLE:
+        if (
+            not self._sock
+            or not self._connected
+            or self._transport != DeviceTransport.BLE
+        ):
             return False
         checker = getattr(
             self._sock,
@@ -474,7 +512,11 @@ class SppBackend:
             return _send_control_packet(self._sock, packet, timeout=timeout)
 
     def _send_bulk_payload_blocking(self, data: bytes, timeout: float) -> bool:
-        if not self._sock or not self._connected or self._transport != DeviceTransport.BLE:
+        if (
+            not self._sock
+            or not self._connected
+            or self._transport != DeviceTransport.BLE
+        ):
             return False
         sender = getattr(self._sock, "send_bulk_payload", None)
         if not callable(sender):
@@ -495,8 +537,14 @@ class SppBackend:
             if not callable(query):
                 return None
             if reply_complete is None:
-                return query(packet, timeout=timeout)
-            return query(packet, timeout=timeout, reply_complete=reply_complete)
+                result = query(packet, timeout=timeout)
+            else:
+                result = query(
+                    packet,
+                    timeout=timeout,
+                    reply_complete=reply_complete,
+                )
+            return optional_bytes(result, operation="query_control_packet")
         with self._lock:
             return _query_control_packet(
                 self._sock,
@@ -512,7 +560,11 @@ class SppBackend:
         timeout: float,
         required: bool,
     ) -> bytes | None:
-        if not self._sock or not self._connected or self._transport != DeviceTransport.BLE:
+        if (
+            not self._sock
+            or not self._connected
+            or self._transport != DeviceTransport.BLE
+        ):
             if required:
                 raise RuntimeError("BLE notification wait unavailable")
             return None
@@ -521,7 +573,8 @@ class SppBackend:
             if required:
                 raise RuntimeError("BLE notification wait unavailable")
             return None
-        return waiter(label, match, timeout=timeout, required=required)
+        result = waiter(label, match, timeout=timeout, required=required)
+        return optional_bytes(result, operation="wait_for_notification")
 
     def _send_control_packet_wait_notification_blocking(
         self,
@@ -531,7 +584,11 @@ class SppBackend:
         timeout: float,
         required: bool,
     ) -> bytes | None:
-        if not self._sock or not self._connected or self._transport != DeviceTransport.BLE:
+        if (
+            not self._sock
+            or not self._connected
+            or self._transport != DeviceTransport.BLE
+        ):
             if required:
                 raise RuntimeError("BLE notification query unavailable")
             return None
@@ -541,20 +598,21 @@ class SppBackend:
                 raise RuntimeError("BLE notification query unavailable")
             return None
         with self._lock:
-            return sender(
+            result = sender(
                 packet,
                 label=label,
                 match=match,
                 timeout=timeout,
                 required=required,
             )
+        return optional_bytes(result, operation="send_control_packet_wait_notification")
 
     def _write_blocking(
         self,
         data: bytes,
         chunk_size: int,
         delay_ms: int,
-        interval_ms: Optional[int] = None,
+        interval_ms: int | None = None,
     ) -> None:
         if interval_ms is not None and not delay_ms:
             delay_ms = interval_ms
@@ -593,12 +651,12 @@ def _scan_blocking(
     timeout: float,
     include_classic: bool,
     include_ble: bool,
-) -> Tuple[List[DeviceInfo], List[ScanFailure]]:
-    classic_devices: List[DeviceInfo] = []
-    ble_devices: List[DeviceInfo] = []
-    failures: List[ScanFailure] = []
-    classic_failure: Optional[Exception] = None
-    ble_failure: Optional[Exception] = None
+) -> tuple[list[DeviceInfo], list[ScanFailure]]:
+    classic_devices: list[DeviceInfo] = []
+    ble_devices: list[DeviceInfo] = []
+    failures: list[ScanFailure] = []
+    classic_failure: Exception | None = None
+    ble_failure: Exception | None = None
     attempts = 0
     if include_classic:
         attempts += 1
@@ -640,8 +698,8 @@ def _select_adapter(transport: DeviceTransport):
     return _get_classic_adapter()
 
 
-def _unique_attempts(attempts: List[DeviceInfo]) -> List[DeviceInfo]:
-    unique: List[DeviceInfo] = []
+def _unique_attempts(attempts: list[DeviceInfo]) -> list[DeviceInfo]:
+    unique: list[DeviceInfo] = []
     seen = set()
     for device in attempts:
         key = (
@@ -655,13 +713,11 @@ def _unique_attempts(attempts: List[DeviceInfo]) -> List[DeviceInfo]:
     return unique
 
 
-def _safe_close(sock: Optional[SocketLike]) -> None:
+def _safe_close(sock: SocketLike | None) -> None:
     if not sock:
         return
-    try:
+    with suppress(Exception):
         sock.close()
-    except Exception:
-        pass
 
 
 def _send_all(sock: SocketLike, data: bytes) -> None:
@@ -678,8 +734,9 @@ def _send_all(sock: SocketLike, data: bytes) -> None:
         raise RuntimeError("Bluetooth socket does not support send")
     offset = 0
     while offset < len(data):
+        remaining = len(data) - offset
         sent = send(data[offset:])
-        if not sent:
+        if not isinstance(sent, int) or sent <= 0 or sent > remaining:
             raise RuntimeError("Bluetooth send failed")
         offset += sent
 
@@ -716,6 +773,8 @@ def _recv_until_match_or_timeout(
                 if _is_timeout_error(exc):
                     break
                 raise
+            if not isinstance(chunk, bytes):
+                raise TypeError("Bluetooth recv returned an invalid byte response.")
             if not chunk:
                 break
             chunks.extend(chunk)
@@ -723,10 +782,8 @@ def _recv_until_match_or_timeout(
                 break
     finally:
         if callable(settimeout):
-            try:
+            with suppress(Exception):
                 settimeout(previous_timeout)
-            except Exception:
-                pass
     return bytes(chunks) if chunks else None
 
 
@@ -768,12 +825,12 @@ def _is_timeout_error(exc: Exception) -> bool:
     return False
 
 
-def _resolve_rfcomm_channels(adapter, address: str) -> List[int]:
+def _resolve_rfcomm_channels(adapter, address: str) -> list[int]:
     try:
         resolved = list(adapter.resolve_rfcomm_channels(address) or [])
     except Exception:
         resolved = []
-    explicit_channels: List[int] = []
+    explicit_channels: list[int] = []
     for item in resolved:
         try:
             channel_id = int(item)
@@ -819,9 +876,7 @@ def _refresh_ble_attempt_macos_workaround(
         return candidate
 
     name_matches = [
-        item
-        for item in ble_devices
-        if (item.name or "").strip().lower() == target_name
+        item for item in ble_devices if (item.name or "").strip().lower() == target_name
     ]
     if name_matches:
         name_matches.sort(key=lambda item: (item.name or "", item.address))

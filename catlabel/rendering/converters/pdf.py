@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
 
 from PIL import Image
 
@@ -12,7 +12,7 @@ DEFAULT_RENDER_DPI = 200
 class PdfConverter(RasterConverter):
     def __init__(
         self,
-        page_selection: Optional[str] = None,
+        page_selection: str | None = None,
         page_gap_px: int = 0,
         trim_side_margins: bool = True,
         trim_top_bottom_margins: bool = True,
@@ -26,9 +26,9 @@ class PdfConverter(RasterConverter):
         self._page_gap_px = max(0, int(page_gap_px or 0))
         self._render_dpi = render_dpi
 
-    def load(self, path: str, width: int) -> List[Page]:
+    def load(self, path: str, width: int) -> list[Page]:
         pages = self._load_pdf_pages(path)
-        out: List[Page] = []
+        out: list[Page] = []
         last_index = len(pages) - 1
         for idx, page in enumerate(pages):
             img = self._normalize_image(page)
@@ -39,11 +39,11 @@ class PdfConverter(RasterConverter):
             out.append(Page(img, dither=True, is_text=False))
         return out
 
-    def _load_pdf_pages(self, path: str) -> List[Image.Image]:
+    def _load_pdf_pages(self, path: str) -> list[Image.Image]:
         import pypdfium2 as pdfium
 
         doc = pdfium.PdfDocument(path)
-        pages: List[Image.Image] = []
+        pages: list[Image.Image] = []
         try:
             total_pages = len(doc)
             if total_pages <= 0:
@@ -94,7 +94,9 @@ class PdfConverter(RasterConverter):
             bitmap = page.render(scale)
         to_pil = getattr(bitmap, "to_pil", None)
         if callable(to_pil):
-            return to_pil()
+            image = to_pil()
+            if isinstance(image, Image.Image):
+                return image
         raise RuntimeError("pypdfium2 render did not return a PIL image")
 
     def _select_page_indexes(self, total_pages: int) -> Sequence[int]:
@@ -104,7 +106,7 @@ class PdfConverter(RasterConverter):
         tokens = [token.strip() for token in selection.split(",") if token.strip()]
         if not tokens:
             return list(range(total_pages))
-        requested: List[int] = []
+        requested: list[int] = []
         for token in tokens:
             if "-" in token:
                 start_str, end_str = token.split("-", 1)
@@ -123,7 +125,7 @@ class PdfConverter(RasterConverter):
             if not token.isdigit():
                 raise ValueError(f"Invalid PDF page selection: {token}")
             requested.append(int(token))
-        page_indexes: List[int] = []
+        page_indexes: list[int] = []
         for page in requested:
             if page < 1 or page > total_pages:
                 raise ValueError(f"PDF page {page} out of range (1-{total_pages})")

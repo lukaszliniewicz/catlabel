@@ -2,16 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
+
+from .family import ProtocolStrEnum
 
 
-class ProtocolStepOperation(str, Enum):
+class ProtocolStepOperation(ProtocolStrEnum):
     SEND = "send"
     QUERY = "query"
     WAIT = "wait"
 
 
-class ProtocolReplyExpectation(str, Enum):
+class ProtocolReplyExpectation(ProtocolStrEnum):
     NONE = "none"
     OK = "ok"
     STATUS_ZERO = "status_zero"
@@ -50,7 +51,7 @@ class ProtocolStep:
             raise ValueError("Protocol step repeat timeout must be non-negative")
 
     @classmethod
-    def send(cls, label: str, data: bytes) -> "ProtocolStep":
+    def send(cls, label: str, data: bytes) -> ProtocolStep:
         return cls(label=label, data=data)
 
     @classmethod
@@ -65,7 +66,7 @@ class ProtocolStep:
         reply_matcher: ProtocolReplyMatcher | None = None,
         repeat_interval_sec: float | None = None,
         repeat_timeout_sec: float | None = None,
-    ) -> "ProtocolStep":
+    ) -> ProtocolStep:
         return cls(
             label=label,
             data=data,
@@ -85,7 +86,7 @@ class ProtocolStep:
         *,
         reply_matcher: ProtocolReplyMatcher,
         timeout_sec: float | None = None,
-    ) -> "ProtocolStep":
+    ) -> ProtocolStep:
         return cls(
             label=label,
             data=b"",
@@ -112,7 +113,7 @@ def reply_matches_expectation(
             reply
             and (
                 reply.replace(b"\x00", b"").startswith(b"OK")
-                or reply.lstrip(b"\x00").startswith(b"\xAA")
+                or reply.lstrip(b"\x00").startswith(b"\xaa")
             )
         )
     raise ValueError(f"Unsupported protocol reply expectation: {expectation.value}")

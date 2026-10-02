@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 import launcher
 
 
 class LauncherTests(unittest.TestCase):
-    def test_environment_exists_accepts_default_or_headless_pixi_environment(self) -> None:
+    def test_environment_exists_accepts_default_or_headless_pixi_environment(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             target = Path(temp_dir)
             self.assertFalse(launcher.environment_exists(target))
@@ -34,8 +36,12 @@ class LauncherTests(unittest.TestCase):
             with mock.patch.object(launcher, "porcelain", porcelain):
                 self.assertTrue(launcher.update_repo(target))
 
-            porcelain.pull.assert_called_once_with(repo, launcher.REPO_URL, ff_only=True)
-            self.assertEqual((target / ".update_needed").read_text(encoding="ascii"), "1")
+            porcelain.pull.assert_called_once_with(
+                repo, launcher.REPO_URL, ff_only=True
+            )
+            self.assertEqual(
+                (target / ".update_needed").read_text(encoding="ascii"), "1"
+            )
 
     def test_run_app_uses_cmd_without_autorun_and_propagates_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -45,11 +51,16 @@ class LauncherTests(unittest.TestCase):
             process = mock.Mock()
             process.wait.return_value = 8
 
-            with mock.patch.object(launcher.platform, "system", return_value="Windows"), mock.patch.object(
-                launcher.subprocess, "Popen", return_value=process
-            ) as popen:
-                with mock.patch.dict(os.environ, {"COMSPEC": "C:\\Windows\\System32\\cmd.exe"}):
-                    self.assertEqual(launcher.run_app(target), 8)
+            with (
+                mock.patch.object(launcher.platform, "system", return_value="Windows"),
+                mock.patch.object(
+                    launcher.subprocess, "Popen", return_value=process
+                ) as popen,
+                mock.patch.dict(
+                    os.environ, {"COMSPEC": "C:\\Windows\\System32\\cmd.exe"}
+                ),
+            ):
+                self.assertEqual(launcher.run_app(target), 8)
 
             popen.assert_called_once_with(
                 ["C:\\Windows\\System32\\cmd.exe", "/d", "/c", "run.bat"],

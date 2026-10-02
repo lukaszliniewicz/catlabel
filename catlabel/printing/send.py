@@ -7,6 +7,8 @@ from .runtime.factory import runtime_controller_for_device
 from .runtime.session import RuntimeConnectionSession
 from .step_execution import bytes_preview, execute_protocol_step, reply_matches_for
 
+_DEFAULT_RUNTIME_CONTEXT = PreparedRuntimeContext()
+
 
 async def send_prepared_job(
     device,
@@ -15,7 +17,7 @@ async def send_prepared_job(
     *,
     timeout: float = 1.0,
     reporter: reporting.Reporter = reporting.DUMMY_REPORTER,
-    runtime_context: PreparedRuntimeContext = PreparedRuntimeContext(),
+    runtime_context: PreparedRuntimeContext = _DEFAULT_RUNTIME_CONTEXT,
 ) -> None:
     """Send one job without discarding its ordered protocol operations."""
 
@@ -29,7 +31,9 @@ async def send_prepared_job(
     sent = False
     if job.steps:
         if controller is not None:
-            sent = await controller.send_protocol_steps(session, job.steps, timeout=timeout)
+            sent = await controller.send_protocol_steps(
+                session, job.steps, timeout=timeout
+            )
         if not sent:
             await _send_protocol_steps(session, job.steps, timeout=timeout)
             sent = True
@@ -51,15 +55,16 @@ async def _send_protocol_steps(
     *,
     timeout: float,
 ) -> None:
-    if any(step.operation is ProtocolStepOperation.QUERY for step in steps):
-        if not (
-            session.can_query_control_packet()
-            or session.can_send_control_packet_wait_notification()
-        ):
-            raise RuntimeError("This printer job requires request/reply protocol support")
-    if any(step.operation is ProtocolStepOperation.WAIT for step in steps):
-        if not session.can_wait_for_notification():
-            raise RuntimeError("This printer job requires BLE notification support")
+    if any(step.operation is ProtocolStepOperation.QUERY for step in steps) and not (
+        session.can_query_control_packet()
+        or session.can_send_control_packet_wait_notification()
+    ):
+        raise RuntimeError("This printer job requires request/reply protocol support")
+    if (
+        any(step.operation is ProtocolStepOperation.WAIT for step in steps)
+        and not session.can_wait_for_notification()
+    ):
+        raise RuntimeError("This printer job requires BLE notification support")
 
     for step in steps:
         reply = await execute_protocol_step(session, step, timeout=timeout)

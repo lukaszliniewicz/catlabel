@@ -31,7 +31,9 @@ def compress_lzo1x_1(data: bytes) -> bytes:
         _append_literals(output, source[: matches[0][0]], initial=True)
         for index, (start, length, distance) in enumerate(matches):
             end = start + length
-            next_start = matches[index + 1][0] if index + 1 < len(matches) else len(source)
+            next_start = (
+                matches[index + 1][0] if index + 1 < len(matches) else len(source)
+            )
             gap = next_start - end
             trailing = source[end:next_start] if gap <= 3 else b""
             _append_match(output, length, distance, trailing)
@@ -83,7 +85,9 @@ def _find_matches(data: bytes) -> list[tuple[int, int, int]]:
     return matches
 
 
-def _append_literals(output: bytearray, literals: bytes, *, initial: bool = False) -> None:
+def _append_literals(
+    output: bytearray, literals: bytes, *, initial: bool = False
+) -> None:
     length = len(literals)
     if length == 0:
         return

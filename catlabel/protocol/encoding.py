@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import List
+from collections.abc import Sequence
 
-from .packet import make_packet
 from .family import ProtocolFamily
+from .packet import make_packet
 from .types import ImageEncoding
 
 
-def encode_run(color: int, count: int) -> List[int]:
+def encode_run(color: int, count: int) -> list[int]:
     """Encode a single RLE run for 1-bit data."""
-    out = []
+    out: list[int] = []
     while count > 127:
         out.append((color << 7) | 127)
         count -= 127
@@ -18,11 +18,11 @@ def encode_run(color: int, count: int) -> List[int]:
     return out
 
 
-def rle_encode_line(line: List[int]) -> List[int]:
+def rle_encode_line(line: list[int]) -> list[int]:
     """RLE-encode a 1-bit pixel line (0/1 values)."""
     if not line:
         return []
-    runs: List[int] = []
+    runs: list[int] = []
     prev = line[0]
     count = 1
     has_black = 1 if prev else 0
@@ -42,13 +42,13 @@ def rle_encode_line(line: List[int]) -> List[int]:
     return runs
 
 
-def pack_line(line: List[int], lsb_first: bool) -> bytes:
+def pack_line(line: Sequence[int], lsb_first: bool) -> bytes:
     """Pack a 1-bit line into bytes, with selectable bit order."""
     out = bytearray()
     for i in range(0, len(line), 8):
-        chunk = line[i : i + 8]
+        chunk = list(line[i : i + 8])
         if len(chunk) < 8:
-            chunk = chunk + [0] * (8 - len(chunk))
+            chunk.extend([0] * (8 - len(chunk)))
         value = 0
         if lsb_first:
             for bit, pix in enumerate(chunk):
@@ -63,7 +63,7 @@ def pack_line(line: List[int], lsb_first: bool) -> bytes:
 
 
 def build_line_packets(
-    pixels: List[int],
+    pixels: list[int],
     width: int,
     speed: int,
     image_encoding: ImageEncoding,
@@ -90,7 +90,9 @@ def build_line_packets(
             raw = pack_line(line, lsb_first)
             out += make_packet(0xA2, raw, protocol_family)
         else:
-            raise ValueError(f"Unsupported legacy image encoding: {image_encoding.value}")
+            raise ValueError(
+                f"Unsupported legacy image encoding: {image_encoding.value}"
+            )
         if line_feed_every and (row + 1) % line_feed_every == 0:
             out += make_packet(0xBD, bytes([speed & 0xFF]), protocol_family)
     return bytes(out)

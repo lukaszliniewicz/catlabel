@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-from ..protocol.family import ProtocolFamily
+from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -30,21 +29,21 @@ class BleTransportProfile:
 
 _FALLBACK = BleTransportProfile()
 _PROFILES = {
-    ProtocolFamily.LEGACY.value: BleTransportProfile(standard_chunk_cap=512),
-    ProtocolFamily.LEGACY_PREFIXED.value: BleTransportProfile(standard_chunk_cap=512),
-    ProtocolFamily.LUCK_NORMAL.value: BleTransportProfile(),
-    ProtocolFamily.LUCK_NORMAL_A4.value: BleTransportProfile(),
-    ProtocolFamily.V5G.value: BleTransportProfile(
+    "legacy": BleTransportProfile(standard_chunk_cap=512),
+    "legacy_prefixed": BleTransportProfile(standard_chunk_cap=512),
+    "luck_normal": BleTransportProfile(),
+    "luck_normal_a4": BleTransportProfile(),
+    "v5g": BleTransportProfile(
         prefer_generic_notify=True,
         standard_chunk_cap=56 * 8,
         standard_write_delay_ms=30,
         write_without_response_payload_reserve=5,
     ),
-    ProtocolFamily.V5C.value: BleTransportProfile(
+    "v5c": BleTransportProfile(
         prefer_generic_notify=True,
         flow_controlled_standard_write=True,
     ),
-    ProtocolFamily.V5X.value: BleTransportProfile(
+    "v5x": BleTransportProfile(
         preferred_service_uuid="0000ae30-0000-1000-8000-00805f9b34fb",
         notify_char_uuid="0000ae02-0000-1000-8000-00805f9b34fb",
         bulk_write=BleBulkWriteProfile(
@@ -92,12 +91,12 @@ _PROFILES = {
 
 
 def get_ble_transport_profile(
-    protocol_family: ProtocolFamily | str | None,
+    protocol_family: str | None,
 ) -> BleTransportProfile:
-    if isinstance(protocol_family, ProtocolFamily):
+    if isinstance(protocol_family, Enum):
         key = protocol_family.value
     elif protocol_family is None:
-        key = ProtocolFamily.LEGACY.value
+        key = "legacy"
     else:
         key = str(protocol_family).strip().lower()
     return _PROFILES.get(key, _FALLBACK)

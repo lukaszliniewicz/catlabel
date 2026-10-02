@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from ...raster import PixelFormat
 from ..compression import compress_lzo1x_1
 from ..encoding import pack_line
 from ..packet import make_packet
-from ...raster import PixelFormat
 from ..types import ImageEncoding, ImagePipelineConfig
 from .base import PrintJobRequest, ProtocolBehavior
 
@@ -18,6 +18,7 @@ V5C_NOTIFY_PAUSE = _hex_bytes("5688A70101000107FF")
 V5C_NOTIFY_RESUME = _hex_bytes("5688A70101000000FF")
 # Compressed V5C jobs are emitted in 20-row bands.
 _V5C_BAND_ROWS = 20
+
 
 def _settings_payload(blackening: int, is_text: bool) -> bytes:
     level = max(1, min(5, blackening))
@@ -48,7 +49,9 @@ def _build_a4_frames(request: PrintJobRequest) -> bytes:
     height = raster.height
     for row in range(height):
         line = raster.pixels[row * raster.width : (row + 1) * raster.width]
-        job += make_packet(0xA4, pack_line(line, lsb_first=True), request.protocol_family)
+        job += make_packet(
+            0xA4, pack_line(line, lsb_first=True), request.protocol_family
+        )
     return bytes(job)
 
 

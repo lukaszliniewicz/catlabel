@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from typing import List, Optional
-
 from PIL import Image, ImageDraw, ImageFont
 
-from .base import Page, PageConverter
 from ..fonts import find_monospace_bold_font, load_font
+from .base import Page, PageConverter
 
 COLUMNS_PER_WIDTH = 35 / 384
 REFERENCE_PATTERN = "M.I"
@@ -14,16 +12,16 @@ REFERENCE_PATTERN = "M.I"
 class TextConverter(PageConverter):
     def __init__(
         self,
-        font_path: Optional[str] = None,
-        columns: Optional[int] = None,
+        font_path: str | None = None,
+        columns: int | None = None,
         wrap_lines: bool = True,
     ) -> None:
         self._font_path = font_path
         self._columns_override = columns
         self._word_wrap = wrap_lines
 
-    def load(self, path: str, width: int) -> List[Page]:
-        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+    def load(self, path: str, width: int) -> list[Page]:
+        with open(path, encoding="utf-8", errors="replace") as handle:
             text = handle.read()
         text = text.replace("\t", "    ")
         img = self._render_text_image(text, width)
@@ -61,7 +59,11 @@ class TextConverter(PageConverter):
         return (REFERENCE_PATTERN * repeats)[:columns]
 
     @staticmethod
-    def _fit_truetype_font(path: Optional[str], width: int, reference_text: str) -> ImageFont.FreeTypeFont:
+    def _fit_truetype_font(
+        path: str | None,
+        width: int,
+        reference_text: str,
+    ) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         if not path:
             return ImageFont.load_default()
         low = 6
@@ -80,10 +82,15 @@ class TextConverter(PageConverter):
             return load_font(path, 6)
         return best
 
-    def _wrap_text_lines(self, text: str, width: int, font: ImageFont.FreeTypeFont) -> List[str]:
+    def _wrap_text_lines(
+        self,
+        text: str,
+        width: int,
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    ) -> list[str]:
         if text == "":
             return [""]
-        lines: List[str] = []
+        lines: list[str] = []
         raw_lines = text.splitlines()
         if text.endswith("\n"):
             raw_lines.append("")
@@ -91,19 +98,23 @@ class TextConverter(PageConverter):
             if raw_line == "":
                 lines.append("")
                 continue
-            lines.extend(self._wrap_line_by_width(raw_line, width, font, word_wrap=self._word_wrap))
+            lines.extend(
+                self._wrap_line_by_width(
+                    raw_line, width, font, word_wrap=self._word_wrap
+                )
+            )
         return lines
 
     def _wrap_line_by_width(
         self,
         line: str,
         width: int,
-        font: ImageFont.FreeTypeFont,
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
         word_wrap: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         if self._text_width(font, line) <= width:
             return [line]
-        lines: List[str] = []
+        lines: list[str] = []
         remaining = line
         while remaining:
             if self._text_width(font, remaining) <= width:
@@ -129,7 +140,7 @@ class TextConverter(PageConverter):
         self,
         text: str,
         width: int,
-        font: ImageFont.FreeTypeFont,
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
     ) -> int:
         low = 0
         high = len(text)
@@ -147,20 +158,18 @@ class TextConverter(PageConverter):
         return best
 
     @staticmethod
-    def _text_width(font: ImageFont.FreeTypeFont, text: str) -> int:
-        if hasattr(font, "getlength"):
-            return int(font.getlength(text))
-        if hasattr(font, "getbbox"):
-            bbox = font.getbbox(text)
-            return bbox[2] - bbox[0]
-        return font.getsize(text)[0]
+    def _text_width(
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+        text: str,
+    ) -> int:
+        return int(font.getlength(text))
 
     @staticmethod
-    def _font_line_height(font: ImageFont.FreeTypeFont) -> int:
-        if hasattr(font, "getmetrics"):
+    def _font_line_height(
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    ) -> int:
+        if isinstance(font, ImageFont.FreeTypeFont):
             ascent, descent = font.getmetrics()
             return ascent + descent
-        if hasattr(font, "getbbox"):
-            bbox = font.getbbox("Ag")
-            return bbox[3] - bbox[1]
-        return font.getsize("Ag")[1]
+        bbox = font.getbbox("Ag")
+        return int(bbox[3] - bbox[1])

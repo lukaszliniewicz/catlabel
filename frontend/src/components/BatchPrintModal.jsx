@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Upload, ArrowRight } from 'lucide-react';
 import { useStore } from '../store';
 import { extractTemplateVariables, parseCsvRecords } from '../utils/batchData';
@@ -22,21 +22,13 @@ export default function BatchPrintModal({ onClose }) {
 
   const [csvData, setCsvData] = useState([]);
   const [headers, setHeaders] = useState([]);
-  const [mapping, setMapping] = useState({});
+  const [mappingOverrides, setMappingOverrides] = useState({});
   const [fileError, setFileError] = useState('');
 
-  useEffect(() => {
-    // Auto-map if header matches variable name
-    const newMap = {};
-    canvasVariables.forEach(v => {
-      if (headers.includes(v)) {
-        newMap[v] = v;
-      } else {
-        newMap[v] = '';
-      }
-    });
-    setMapping(newMap);
-  }, [headers, canvasVariables]);
+  const mapping = Object.fromEntries(canvasVariables.map((variable) => {
+    const selected = mappingOverrides[variable] ?? (headers.includes(variable) ? variable : '');
+    return [variable, headers.includes(selected) ? selected : ''];
+  }));
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -45,10 +37,12 @@ export default function BatchPrintModal({ onClose }) {
     reader.onload = (ev) => {
       try {
         const parsed = parseCsvRecords(ev.target.result);
+        setMappingOverrides({});
         setHeaders(parsed.headers);
         setCsvData(parsed.records);
         setFileError('');
       } catch (error) {
+        setMappingOverrides({});
         setHeaders([]);
         setCsvData([]);
         setFileError(error.message);
@@ -130,7 +124,7 @@ export default function BatchPrintModal({ onClose }) {
                     <select
                       className="flex-1 bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-1.5 text-xs focus:outline-none focus:border-blue-500 dark:text-white"
                       value={mapping[v] || ''}
-                      onChange={(e) => setMapping({ ...mapping, [v]: e.target.value })}
+                      onChange={(e) => setMappingOverrides({ ...mappingOverrides, [v]: e.target.value })}
                     >
                       <option value="">-- Skip / Empty --</option>
                       {headers.map(h => (

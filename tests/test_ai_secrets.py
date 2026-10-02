@@ -5,12 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import sys
 import tempfile
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -63,13 +62,6 @@ class AISecretBoundaryTests(unittest.TestCase):
         app.include_router(routes_ai.router)
         self.client = TestClient(app)
         self.addCleanup(self.client.close)
-        fake_main = ModuleType("catlabel.api.main")
-        fake_main.__dict__["get_agent_context"] = lambda: {
-            "engine_rules": {"hardware_width_mm": 48}
-        }
-        self.main_patch = patch.dict(sys.modules, {"catlabel.api.main": fake_main})
-        self.main_patch.start()
-        self.addCleanup(self.main_patch.stop)
         self.prompt_patch = patch(
             "catlabel.services.prompts.build_system_prompt",
             return_value="Test system prompt.",

@@ -4,11 +4,11 @@ from typing import Any
 
 from ...protocol.family import ProtocolFamily
 from .base import RuntimeController
+from .funny_lx import FunnyLxRuntimeController
+from .luck_normal import LuckNormalRuntimeController
 from .v5c import V5CRuntimeController
 from .v5g import V5GRuntimeController
 from .v5x import V5XRuntimeController
-from .luck_normal import LuckNormalRuntimeController
-from .funny_lx import FunnyLxRuntimeController
 
 
 def runtime_controller_for_device(
@@ -37,19 +37,12 @@ def runtime_controller_for_device(
         return V5XRuntimeController()
     if family is ProtocolFamily.V5C:
         return V5CRuntimeController()
-    if (
-        family is ProtocolFamily.LUCK_NORMAL
-        and getattr(device, "protocol_variant", None)
-        in {"lujiang_normal", "lujiang_normal_h"}
-    ):
-        return LuckNormalRuntimeController(
-            protocol_variant=getattr(device, "protocol_variant")
-        )
+    if family is ProtocolFamily.LUCK_NORMAL and getattr(
+        device, "protocol_variant", None
+    ) in {"lujiang_normal", "lujiang_normal_h"}:
+        return LuckNormalRuntimeController(protocol_variant=device.protocol_variant)
     if family is ProtocolFamily.FUNNY_LX:
         return FunnyLxRuntimeController(
-            bluetooth_address=(
-                bluetooth_address
-                or getattr(device, "address", "")
-            )
+            bluetooth_address=(bluetooth_address or getattr(device, "address", ""))
         )
     return None

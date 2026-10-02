@@ -3,7 +3,6 @@ from __future__ import annotations
 import unittest
 
 from catlabel.protocol import ProtocolFamily
-from catlabel.vendors import VendorRegistry
 from catlabel.vendors.generic.manifest import GenericManifest
 from catlabel.vendors.generic.models import PrinterModelRegistry
 from catlabel.vendors.utils import extract_raw_hardware_info
@@ -14,9 +13,13 @@ class GenericLuckModelTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.registry = PrinterModelRegistry.load()
 
-    def assertDetected(self, name: str, model_no: str, family: ProtocolFamily, variant: str | None) -> None:
+    def assertDetected(
+        self, name: str, model_no: str, family: ProtocolFamily, variant: str | None
+    ) -> None:
         match = self.registry.detect_with_origin(name)
         self.assertIsNotNone(match, name)
+        if match is None:
+            self.fail(f"{name} should be detected")
         self.assertEqual(match.model.model_no, model_no)
         self.assertEqual(match.protocol_family, family)
         self.assertEqual(match.protocol_variant, variant)
@@ -42,16 +45,22 @@ class GenericLuckModelTests(unittest.TestCase):
         }
         for name, (model_no, variant) in expected.items():
             with self.subTest(name=name):
-                self.assertDetected(name, model_no, ProtocolFamily.LUCK_NORMAL_A4, variant)
+                self.assertDetected(
+                    name, model_no, ProtocolFamily.LUCK_NORMAL_A4, variant
+                )
 
     def test_qirui_hardware_info_exposes_only_supported_paper_modes(self) -> None:
         match = self.registry.detect_with_origin("QIRUI_Q2_1234")
         self.assertIsNotNone(match)
+        if match is None:
+            self.fail("QIRUI_Q2_1234 should be detected")
         raw = extract_raw_hardware_info(match.model)
 
         self.assertEqual(raw["protocol_family"], "luck_normal")
         self.assertEqual(raw["protocol_variant"], "qirui_q2")
-        self.assertEqual([mode["value"] for mode in raw["supported_paper_modes"]], ["plain", "tag"])
+        self.assertEqual(
+            [mode["value"] for mode in raw["supported_paper_modes"]], ["plain", "tag"]
+        )
 
     def test_unimplemented_luck_names_are_not_claimed(self) -> None:
         for name in ("A49H", "D80H", "ITP05N"):
@@ -77,6 +86,8 @@ class GenericLuckModelTests(unittest.TestCase):
         info = manifest.identify_device("APA49H_1234")
 
         self.assertIsNotNone(info)
+        if info is None:
+            self.fail("APA49H_1234 hardware info should be available")
         self.assertEqual(info["protocol_family"], "luck_normal_a4")
         self.assertEqual(info["protocol_variant"], "a49h")
         self.assertIn({"value": "tag", "label": "Tag"}, info["supported_paper_modes"])

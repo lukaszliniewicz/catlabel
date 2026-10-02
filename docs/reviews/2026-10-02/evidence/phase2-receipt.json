@@ -1,0 +1,51 @@
+{
+  "phase": 2,
+  "date": "2026-10-02",
+  "python": "3.11.15",
+  "node": "24.18.0",
+  "npm": "11.16.0",
+  "retired_findings": {
+    "ruff": 400,
+    "format": 64,
+    "typing": 92,
+    "react": 18,
+    "knip": 1,
+    "knip-production": 1,
+    "python-cycles": 2,
+    "import-contracts": 0,
+    "frontend-cycles": 0
+  },
+  "current_findings": {
+    "ruff": 0,
+    "format": 0,
+    "typing": 0,
+    "react": 0,
+    "knip": 0,
+    "knip-production": 0,
+    "python-cycles": 0,
+    "import-contracts": 0,
+    "frontend-cycles": 0
+  },
+  "backend": {
+    "run": 330,
+    "passed": 329,
+    "skipped": 1,
+    "skip": "native Windows SDK import on Linux"
+  },
+  "frontend_tests_passed": 33,
+  "production_build_seconds": 9.61,
+  "frontend_artifact_sha256": "668b0d78e0a373ea6502f0828149683548f6e397184a77f46bbf1a94faabaf8a",
+  "browser_acceptance": [
+    "preset dialog focus/stable identity",
+    "template fields and batch toggle",
+    "generated canvas title and subtitle",
+    "no console warning/error"
+  ],
+  "platform_policy": "Only reportMissingModuleSource is disabled in windows_winrt.py; pinned used-API stubs check signatures, native test verifies real imports on Windows. Native execution unverified.",
+  "unverified": [
+    "hosted native CI",
+    "physical printers",
+    "paid providers",
+    "deployment"
+  ]
+}

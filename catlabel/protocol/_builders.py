@@ -43,14 +43,21 @@ def _validate_request(request: PrintJobRequest) -> None:
     request.raster_set.validate()
     behavior = get_protocol_behavior(request.protocol_family)
     if behavior.supported_paper_modes_resolver is not None:
-        supported_paper_modes = behavior.supported_paper_modes_resolver(request.protocol_variant)
+        supported_paper_modes = behavior.supported_paper_modes_resolver(
+            request.protocol_variant
+        )
     else:
         supported_paper_modes = behavior.supported_paper_modes
-    if request.paper_mode is not None and request.paper_mode not in supported_paper_modes:
+    if (
+        request.paper_mode is not None
+        and request.paper_mode not in supported_paper_modes
+    ):
         raise ValueError(
             f"{request.protocol_family.value} does not support paper mode {request.paper_mode.value}"
         )
-    supported_by_encoding = behavior.image_encoding_support.get(request.image_pipeline.encoding)
+    supported_by_encoding = behavior.image_encoding_support.get(
+        request.image_pipeline.encoding
+    )
     if supported_by_encoding is None:
         raise ValueError(
             f"{request.protocol_family.value} does not support image encoding "
@@ -218,7 +225,9 @@ def _build_print_payload_from_raster_set(
     )
     family_payload = _build_family_job(request)
     if family_payload is not None:
-        return family_payload
+        if family_payload.steps:
+            raise ValueError("Interactive protocol plans require the printing layer.")
+        return family_payload.payload
 
     raster = request.require_raster(PixelFormat.BW1)
     payload = bytearray()

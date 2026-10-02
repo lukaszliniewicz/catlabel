@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from contextlib import suppress
 
-from .base import _ClassicBluetoothAdapter
+from .... import reporting
 from ....devices import BleTransportProfile
 from ..constants import RFCOMM_CHANNELS
 from ..types import DeviceInfo, SocketLike
+from .base import _ClassicBluetoothAdapter
 from .windows_win32 import _Win32ClassicBackend
 from .windows_winrt import _WinRtClassicBackend
-from .... import reporting
 
 
 class _WindowsClassicAdapter(_ClassicBluetoothAdapter):
@@ -16,7 +16,7 @@ class _WindowsClassicAdapter(_ClassicBluetoothAdapter):
         self._win32 = _Win32ClassicBackend()
         self._winrt = _WinRtClassicBackend()
 
-    def scan_blocking(self, timeout: float) -> List[DeviceInfo]:
+    def scan_blocking(self, timeout: float) -> list[DeviceInfo]:
         devices = self._win32.scan_inquiry(timeout)
         devices = DeviceInfo.dedupe(devices)
         try:
@@ -29,17 +29,17 @@ class _WindowsClassicAdapter(_ClassicBluetoothAdapter):
 
     def create_socket(
         self,
-        pairing_hint: Optional[bool] = None,
-        ble_profile: Optional[BleTransportProfile] = None,
+        pairing_hint: bool | None = None,
+        ble_profile: BleTransportProfile | None = None,
         reporter: reporting.Reporter = reporting.DUMMY_REPORTER,
     ) -> SocketLike:
         _ = ble_profile
         return self._winrt.create_socket()
 
-    def resolve_rfcomm_channels(self, address: str) -> List[int]:
+    def resolve_rfcomm_channels(self, address: str) -> list[int]:
         return [RFCOMM_CHANNELS[0]]
 
-    def ensure_paired(self, address: str, pairing_hint: Optional[bool] = None) -> None:
+    def ensure_paired(self, address: str, pairing_hint: bool | None = None) -> None:
         winrt_error = None
         win32_error = None
         win32_paired = False
@@ -48,10 +48,8 @@ class _WindowsClassicAdapter(_ClassicBluetoothAdapter):
         except Exception as exc:
             winrt_error = exc
         if not self._winrt.has_service(address):
-            try:
+            with suppress(Exception):
                 self._winrt.refresh_mapping(5.0)
-            except Exception:
-                pass
         needs_win32 = winrt_error is not None or not self._winrt.has_service(address)
         if needs_win32:
             try:
@@ -61,13 +59,13 @@ class _WindowsClassicAdapter(_ClassicBluetoothAdapter):
             except Exception as exc:
                 win32_error = exc
             if not self._winrt.has_service(address):
-                try:
+                with suppress(Exception):
                     self._winrt.refresh_mapping(5.0)
-                except Exception:
-                    pass
         if winrt_error and not win32_paired:
             if win32_error:
-                raise RuntimeError(f"pairing failed (WinRT: {winrt_error}; Win32: {win32_error})")
+                raise RuntimeError(
+                    f"pairing failed (WinRT: {winrt_error}; Win32: {win32_error})"
+                )
             raise RuntimeError(f"pairing failed (WinRT: {winrt_error})")
         if win32_error and not self._winrt.has_service(address):
             raise RuntimeError(f"pairing failed (Win32: {win32_error})")

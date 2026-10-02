@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import crc8
 
 from .family import ProtocolFamily
@@ -14,14 +12,14 @@ def crc8_value(data: bytes) -> int:
     return hasher.digest()[0]
 
 
-def make_packet(cmd: int, payload: bytes, protocol_family: ProtocolFamily | str) -> bytes:
+def make_packet(
+    cmd: int, payload: bytes, protocol_family: ProtocolFamily | str
+) -> bytes:
     """Wrap a payload in the printer command packet format."""
     family = ProtocolFamily.from_value(protocol_family)
     prefix = family.require_packet_prefix()
     length = len(payload)
-    header = prefix + bytes(
-        [cmd & 0xFF, 0x00, length & 0xFF, (length >> 8) & 0xFF]
-    )
+    header = prefix + bytes([cmd & 0xFF, 0x00, length & 0xFF, (length >> 8) & 0xFF])
     checksum = crc8_value(payload)
     return header + payload + bytes([checksum, 0xFF])
 
@@ -30,7 +28,7 @@ def prefixed_packet_length(
     data: bytes,
     offset: int,
     protocol_family: ProtocolFamily | str,
-) -> Optional[int]:
+) -> int | None:
     family = ProtocolFamily.from_value(protocol_family)
     prefix = family.packet_prefix
     if prefix is None:

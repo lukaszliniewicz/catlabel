@@ -4,6 +4,15 @@ import { X, Save, Plus, Trash, Eye, CheckCircle2, Circle, Settings2 } from 'luci
 import { apiFetch, apiJson } from '../utils/apiClient';
 import { useDialogAccessibility } from '../utils/useDialogAccessibility';
 
+function loadProviders(signal) {
+  return apiJson('/api/ai/config', { signal }, {
+    validate: (value) => Array.isArray(value) && value.every((provider) => (
+      provider && typeof provider === 'object' && Array.isArray(provider.models)
+    )),
+    validationMessage: 'AI provider data is malformed.'
+  });
+}
+
 export default function AIConfigModal({ onClose }) {
   const dialogRef = useDialogAccessibility(onClose);
   const [providers, setProviders] = useState([]);
@@ -11,32 +20,28 @@ export default function AIConfigModal({ onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchProviders = useCallback(async () => {
-    try {
-      const data = await apiJson('/api/ai/config', {}, {
-        validate: (value) => Array.isArray(value) && value.every((provider) => (
-          provider && typeof provider === 'object' && Array.isArray(provider.models)
-        )),
-        validationMessage: 'AI provider data is malformed.'
-      });
-      setProviders(data.map((provider) => ({ ...provider, api_key: '', clear_api_key: false })));
-
-      if (data.length > 0) {
-        let activeProviderId = data[0].id;
-        data.forEach((provider) => {
-          if (provider.models.some((model) => model.is_active)) activeProviderId = provider.id;
-        });
-        setSelectedProviderId(activeProviderId);
-      }
-    } catch (fetchError) {
-      console.error('Failed to load AI providers', fetchError);
-      setError(fetchError.message || 'Failed to load AI providers.');
-    }
+  const applyProviders = useCallback((data) => {
+    setProviders(data.map((provider) => ({ ...provider, api_key: '', clear_api_key: false })));
+    const activeProvider = data.findLast((provider) => provider.models.some((model) => model.is_active));
+    setSelectedProviderId(activeProvider?.id ?? data[0]?.id ?? null);
   }, []);
 
   useEffect(() => {
-    fetchProviders();
-  }, [fetchProviders]);
+    const controller = new AbortController();
+    let active = true;
+    loadProviders(controller.signal)
+      .then((data) => { if (active) applyProviders(data); })
+      .catch((error) => {
+        if (active) {
+          console.error('Failed to load AI providers', error);
+          setError(error.message || 'Failed to load AI providers.');
+        }
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [applyProviders]);
 
   const handleAddProvider = () => {
     const timestamp = Date.now();

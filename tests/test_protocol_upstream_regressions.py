@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import unittest
 
-from catlabel.protocol import ImageEncoding, ImagePipelineConfig, PaperMode, ProtocolFamily
+from catlabel.protocol import (
+    ImageEncoding,
+    ImagePipelineConfig,
+    PaperMode,
+    ProtocolFamily,
+)
 from catlabel.protocol._builders import _build_job
-from catlabel.protocol.families.v5g import decode_density_payload, encode_density_payload
+from catlabel.protocol.families.v5g import (
+    decode_density_payload,
+    encode_density_payload,
+)
 from catlabel.protocol.packet import prefixed_packet_length
 from catlabel.raster import PixelFormat
 
@@ -53,7 +61,21 @@ class UpstreamProtocolRegressionTests(unittest.TestCase):
         opcodes = [packet[2] for packet in packets]
         self.assertEqual(
             opcodes,
-            [0xF2, 0xA3, 0xA4, 0xA6, 0xAF, 0xBE, 0xBD, 0xA2, 0xBD, 0xA1, 0xA6, 0xA3, 0xA3],
+            [
+                0xF2,
+                0xA3,
+                0xA4,
+                0xA6,
+                0xAF,
+                0xBE,
+                0xBD,
+                0xA2,
+                0xBD,
+                0xA1,
+                0xA6,
+                0xA3,
+                0xA3,
+            ],
         )
         self.assertEqual(packets[0][6:8], b"\x01\x5a")
         self.assertEqual(packets[6][6], 0x0A)

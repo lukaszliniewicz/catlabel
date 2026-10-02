@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from enum import Enum
-from typing import Mapping, Sequence
+from enum import Enum, StrEnum
 
 
-class PixelFormat(str, Enum):
+class PixelFormat(StrEnum):
     BW1 = "bw1"
     GRAY4 = "gray4"
     GRAY8 = "gray8"
+
+    def __str__(self) -> str:
+        return Enum.__str__(self)
+
+    def __format__(self, format_spec: str) -> str:
+        return Enum.__format__(self, format_spec)
 
 
 @dataclass(frozen=True)
@@ -24,22 +30,28 @@ class RasterBuffer:
             raise ValueError("Pixels length must be a multiple of width")
 
         if self.pixel_format == PixelFormat.BW1:
-            invalid = next((value for value in self.pixels if value not in (0, 1)), None)
+            invalid = next(
+                (value for value in self.pixels if value not in (0, 1)), None
+            )
             if invalid is not None:
                 raise ValueError("BW1 raster values must be 0 or 1")
             return
 
         upper_bound = 15 if self.pixel_format == PixelFormat.GRAY4 else 255
-        invalid = next((value for value in self.pixels if value < 0 or value > upper_bound), None)
+        invalid = next(
+            (value for value in self.pixels if value < 0 or value > upper_bound), None
+        )
         if invalid is not None:
-            raise ValueError(f"{self.pixel_format.value} raster values must fit in 0..{upper_bound}")
+            raise ValueError(
+                f"{self.pixel_format.value} raster values must fit in 0..{upper_bound}"
+            )
 
     @property
     def height(self) -> int:
         self.validate()
         return len(self.pixels) // self.width
 
-    def slice_rows(self, start_row: int, row_count: int) -> "RasterBuffer":
+    def slice_rows(self, start_row: int, row_count: int) -> RasterBuffer:
         if start_row < 0 or row_count < 0:
             raise ValueError("Row offsets must be non-negative")
         start = start_row * self.width
@@ -84,7 +96,9 @@ class RasterSet:
                 height = raster.height
                 continue
             if raster.width != width or raster.height != height:
-                raise ValueError("All rasters in a raster set must have matching dimensions")
+                raise ValueError(
+                    "All rasters in a raster set must have matching dimensions"
+                )
 
     @property
     def width(self) -> int:
@@ -106,6 +120,6 @@ class RasterSet:
         return raster
 
     @classmethod
-    def from_single(cls, raster: RasterBuffer) -> "RasterSet":
+    def from_single(cls, raster: RasterBuffer) -> RasterSet:
         raster.validate()
         return cls(rasters={raster.pixel_format: raster})

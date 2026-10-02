@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+# The pinned Windows-only runtime is absent in the Linux typing lane. The local
+# SDK subset still checks signatures; native CI verifies the actual imports.
+# pyright: reportMissingModuleSource=false
 import asyncio
 import re
-from typing import Awaitable, Dict, List, Optional, Tuple, TypeVar
+from collections.abc import Awaitable
+from typing import TypeVar
 
 from ..constants import SPP_UUID
 from ..types import DeviceInfo, DeviceTransport
 
 T = TypeVar("T")
-ScanResult = Tuple[List[DeviceInfo], Dict[str, str]]
+ScanResult = tuple[list[DeviceInfo], dict[str, str]]
 
 
 def _winrt_missing_message() -> str:
@@ -20,13 +24,26 @@ def _winrt_missing_message() -> str:
 
 def _winrt_imports():
     try:
-        from winsdk.windows.devices.bluetooth.rfcomm import RfcommDeviceService, RfcommServiceId
-        from winsdk.windows.devices.enumeration import DeviceInformation, DeviceInformationKind
+        from winsdk.windows.devices.bluetooth.rfcomm import (
+            RfcommDeviceService,
+            RfcommServiceId,
+        )
+        from winsdk.windows.devices.enumeration import (
+            DeviceInformation,
+            DeviceInformationKind,
+        )
         from winsdk.windows.networking.sockets import StreamSocket
         from winsdk.windows.storage.streams import DataWriter
     except Exception as exc:
         raise RuntimeError(_winrt_missing_message()) from exc
-    return DeviceInformation, DeviceInformationKind, RfcommDeviceService, RfcommServiceId, StreamSocket, DataWriter
+    return (
+        DeviceInformation,
+        DeviceInformationKind,
+        RfcommDeviceService,
+        RfcommServiceId,
+        StreamSocket,
+        DataWriter,
+    )
 
 
 def _run_winrt(coro: Awaitable[T]) -> T:
@@ -48,7 +65,7 @@ def _format_bt_address(value: int) -> str:
     return ":".join(text[i : i + 2] for i in range(0, 12, 2))
 
 
-def _parse_bt_address(address: str) -> Optional[int]:
+def _parse_bt_address(address: str) -> int | None:
     cleaned = address.replace(":", "").replace("-", "")
     if len(cleaned) != 12:
         return None
@@ -81,12 +98,16 @@ async def _pair_device_info_async(info) -> None:
         return
     status = getattr(result, "status", None)
     status_text = getattr(status, "name", None) or str(status)
-    if status_text and status_text.lower().replace(" ", "_") in {"paired", "already_paired", "alreadypaired"}:
+    if status_text and status_text.lower().replace(" ", "_") in {
+        "paired",
+        "already_paired",
+        "alreadypaired",
+    }:
         return
     raise RuntimeError(f"pairing failed (status: {status_text})")
 
 
-async def _pair_winrt_async(address: str, service_id: Optional[str]) -> None:
+async def _pair_winrt_async(address: str, service_id: str | None) -> None:
     DeviceInformation, _, _, _, _, _ = _winrt_imports()
     last_error = None
 
@@ -123,30 +144,35 @@ async def _pair_winrt_async(address: str, service_id: Optional[str]) -> None:
 
 
 async def _scan_winrt_async(timeout: float) -> ScanResult:
-    DeviceInformation, DeviceInformationKind, RfcommDeviceService, RfcommServiceId, _, _ = _winrt_imports()
-    selector = str(RfcommDeviceService.get_device_selector(RfcommServiceId.from_uuid(SPP_UUID)))
-
-    async def find_all():
-        try:
-            return await DeviceInformation.find_all_async(selector)
-        except TypeError:
-            return await DeviceInformation.find_all_async(
-                selector, [], DeviceInformationKind.ASSOCIATION_ENDPOINT
-            )
+    (
+        DeviceInformation,
+        _,
+        RfcommDeviceService,
+        RfcommServiceId,
+        _,
+        _,
+    ) = _winrt_imports()
+    selector = str(
+        RfcommDeviceService.get_device_selector(RfcommServiceId.from_uuid(SPP_UUID))
+    )
 
     if timeout:
-        infos = await asyncio.wait_for(find_all(), timeout=timeout)
+        infos = await asyncio.wait_for(
+            DeviceInformation.find_all_async(selector, []), timeout=timeout
+        )
     else:
-        infos = await find_all()
-    devices: List[DeviceInfo] = []
-    mapping: Dict[str, str] = {}
+        infos = await DeviceInformation.find_all_async(selector, [])
+    devices: list[DeviceInfo] = []
+    mapping: dict[str, str] = {}
     for info in infos:
         service = await RfcommDeviceService.from_id_async(info.id)
         if not service:
             continue
         device = service.device
+        if device is None:
+            continue
         name = (device.name or info.name or "").strip()
-        address = _format_bt_address(getattr(device, "bluetooth_address", 0))
+        address = _format_bt_address(device.bluetooth_address)
         if not address:
             address = _extract_address_from_id(info.id) or info.id
         if address not in mapping:
@@ -169,9 +195,9 @@ def _scan_winrt(timeout: float) -> ScanResult:
 
 
 class _WinRtSocket:
-    def __init__(self, backend: "_WinRtClassicBackend") -> None:
+    def __init__(self, backend: _WinRtClassicBackend) -> None:
         self._backend = backend
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._socket = None
         self._writer = None
         self._reader = None
@@ -200,7 +226,11 @@ class _WinRtSocket:
         except Exception as exc:
             raise RuntimeError(_winrt_missing_message()) from exc
         self._socket = StreamSocket()
-        self._run(self._socket.connect_async(service.connection_host_name, service.connection_service_name))
+        self._run(
+            self._socket.connect_async(
+                service.connection_host_name, service.connection_service_name
+            )
+        )
         self._writer = DataWriter(self._socket.output_stream)
         self._reader = DataReader(self._socket.input_stream)
         self._reader.input_stream_options = InputStreamOptions.PARTIAL
@@ -218,7 +248,10 @@ class _WinRtSocket:
         return self._run(self._recv_async(max(1, int(size))))
 
     async def _recv_async(self, size: int) -> bytes:
-        load = self._reader.load_async(size)
+        reader = self._reader
+        if reader is None:
+            raise RuntimeError("Not connected to a Bluetooth SPP device")
+        load = reader.load_async(size)
         if self._timeout is None:
             available = await load
         else:
@@ -227,7 +260,7 @@ class _WinRtSocket:
         if count <= 0:
             return b""
         data = bytearray(count)
-        self._reader.read_bytes(data)
+        reader.read_bytes(data)
         return bytes(data)
 
     def close(self) -> None:
@@ -254,14 +287,14 @@ class _WinRtSocket:
 
 class _WinRtClassicBackend:
     def __init__(self) -> None:
-        self._service_by_address: Dict[str, str] = {}
+        self._service_by_address: dict[str, str] = {}
 
-    def scan_blocking(self, timeout: float) -> List[DeviceInfo]:
+    def scan_blocking(self, timeout: float) -> list[DeviceInfo]:
         devices, mapping = _scan_winrt(timeout)
         self._service_by_address = mapping
         return devices
 
-    def refresh_mapping(self, timeout: float) -> Dict[str, str]:
+    def refresh_mapping(self, timeout: float) -> dict[str, str]:
         _, mapping = _scan_winrt(timeout)
         self._service_by_address = mapping
         return mapping
@@ -269,7 +302,7 @@ class _WinRtClassicBackend:
     def has_service(self, address: str) -> bool:
         return address in self._service_by_address
 
-    def get_service_id(self, address: str) -> Optional[str]:
+    def get_service_id(self, address: str) -> str | None:
         return self._service_by_address.get(address)
 
     def ensure_paired(self, address: str) -> None:

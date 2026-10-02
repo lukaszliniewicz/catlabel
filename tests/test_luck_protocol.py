@@ -3,8 +3,13 @@ from __future__ import annotations
 import unittest
 import zlib
 
-from catlabel.protocol import ImageEncoding, ImagePipelineConfig, PaperMode, ProtocolFamily
-from catlabel.protocol import commands
+from catlabel.protocol import (
+    ImageEncoding,
+    ImagePipelineConfig,
+    PaperMode,
+    ProtocolFamily,
+    commands,
+)
 from catlabel.protocol._builders import _build_job
 from catlabel.raster import PixelFormat
 
@@ -71,7 +76,9 @@ class LuckProtocolTests(unittest.TestCase):
 
     def test_qirui_variant_limits_paper_modes_and_motion_dots(self) -> None:
         feed = commands.advance_paper_cmd(300, ProtocolFamily.LUCK_NORMAL, "qirui_q2")
-        retract = commands.retract_paper_cmd(300, ProtocolFamily.LUCK_NORMAL, "qirui_q2")
+        retract = commands.retract_paper_cmd(
+            300, ProtocolFamily.LUCK_NORMAL, "qirui_q2"
+        )
 
         self.assertEqual(feed, bytes([0x1B, 0x4A, 0x82]))
         self.assertEqual(retract, bytes([0x1F, 0x11, 0x11, 0x82]))
@@ -113,7 +120,9 @@ class LuckProtocolTests(unittest.TestCase):
         suffix = bytes([0x1B, 0x4A, 0x50]) + bytes([0x10, 0xFF, 0xF1, 0x45])
         compressed_bitmap = data[len(prefix) : -len(suffix)]
 
-        self.assertEqual(compressed_bitmap[:6], bytes([0x1F, 0x10, 0x00, 0x01, 0x00, 0x01]))
+        self.assertEqual(
+            compressed_bitmap[:6], bytes([0x1F, 0x10, 0x00, 0x01, 0x00, 0x01])
+        )
         body_length = int.from_bytes(compressed_bitmap[6:10], "big")
         compressed_body = compressed_bitmap[10:]
         self.assertEqual(body_length, len(compressed_body))

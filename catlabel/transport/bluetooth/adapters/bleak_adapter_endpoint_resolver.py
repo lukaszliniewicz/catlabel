@@ -1,8 +1,10 @@
 """BLE endpoint resolver for selecting writable GATT characteristics."""
+
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Any
 
 from .... import reporting
 
@@ -11,7 +13,7 @@ from .... import reporting
 class _WriteCandidate:
     service_uuid: str
     char_uuid: str
-    properties: Tuple[str, ...]
+    properties: tuple[str, ...]
     has_write: bool
     has_write_without_response: bool
     char_preferred: bool
@@ -67,7 +69,7 @@ class _BleWriteEndpointResolver:
         *,
         preferred_service_uuid: str = "",
         preferred_write_char_uuid: str = "",
-    ) -> Optional[_WriteSelection]:
+    ) -> _WriteSelection | None:
         candidates = self._collect_candidates(
             services,
             preferred_service_uuid=preferred_service_uuid,
@@ -81,7 +83,7 @@ class _BleWriteEndpointResolver:
         cls,
         properties: Iterable[object],
         strategy: str,
-        response_preference: Optional[bool],
+        response_preference: bool | None,
     ) -> bool:
         props = cls._normalize_properties(properties)
         has_write = "write" in props
@@ -106,9 +108,7 @@ class _BleWriteEndpointResolver:
             if response_preference is not None:
                 return bool(response_preference)
 
-        if has_write:
-            return True
-        return False
+        return bool(has_write)
 
     @classmethod
     def _normalize_uuid(cls, value: object) -> str:
@@ -130,8 +130,8 @@ class _BleWriteEndpointResolver:
     def _uuid_is_preferred(
         cls,
         value: str,
-        preferred_uuids: Set[str],
-        preferred_short: Set[str],
+        preferred_uuids: set[str],
+        preferred_short: set[str],
     ) -> bool:
         normalized = cls._normalize_uuid(value)
         if not normalized:
@@ -142,7 +142,7 @@ class _BleWriteEndpointResolver:
         return bool(token and token in preferred_short)
 
     @classmethod
-    def _normalize_properties(cls, properties: Iterable[object]) -> Tuple[str, ...]:
+    def _normalize_properties(cls, properties: Iterable[object]) -> tuple[str, ...]:
         normalized = sorted({str(item).strip().lower() for item in properties})
         return tuple(normalized)
 
@@ -168,15 +168,17 @@ class _BleWriteEndpointResolver:
         *,
         preferred_service_uuid: str = "",
         preferred_write_char_uuid: str = "",
-    ) -> List[_WriteCandidate]:
-        candidates: List[_WriteCandidate] = []
+    ) -> list[_WriteCandidate]:
+        candidates: list[_WriteCandidate] = []
         service_preference = cls._normalize_uuid(preferred_service_uuid)
         write_preference = cls._normalize_uuid(preferred_write_char_uuid)
         for service in services:
             service_uuid = cls._normalize_uuid(getattr(service, "uuid", ""))
             for characteristic in getattr(service, "characteristics", []):
                 char_uuid = cls._normalize_uuid(getattr(characteristic, "uuid", ""))
-                props = cls._normalize_properties(getattr(characteristic, "properties", []))
+                props = cls._normalize_properties(
+                    getattr(characteristic, "properties", [])
+                )
                 has_write = "write" in props
                 has_write_without_response = "write-without-response" in props
                 if not has_write and not has_write_without_response:
@@ -199,7 +201,10 @@ class _BleWriteEndpointResolver:
                             cls._PREFERRED_SERVICE_UUIDS,
                             cls._PREFERRED_SERVICE_SHORT,
                         )
-                        or (bool(service_preference) and service_uuid == service_preference),
+                        or (
+                            bool(service_preference)
+                            and service_uuid == service_preference
+                        ),
                         notify_preferred=cls._uuid_is_preferred(
                             char_uuid,
                             cls._PREFERRED_NOTIFY_UUIDS,
@@ -211,13 +216,21 @@ class _BleWriteEndpointResolver:
         return candidates
 
     @classmethod
-    def _select_candidate(cls, candidates: Sequence[_WriteCandidate]) -> Optional[_WriteSelection]:
-        preferred_candidates = [c for c in candidates if c.char_preferred or c.service_preferred]
+    def _select_candidate(
+        cls, candidates: Sequence[_WriteCandidate]
+    ) -> _WriteSelection | None:
+        preferred_candidates = [
+            c for c in candidates if c.char_preferred or c.service_preferred
+        ]
         if preferred_candidates:
             # Deterministic preferred-UUID path for known printer families.
             selected = sorted(
                 preferred_candidates,
-                key=lambda c: (-cls._score_preferred_candidate(c), c.service_uuid, c.char_uuid),
+                key=lambda c: (
+                    -cls._score_preferred_candidate(c),
+                    c.service_uuid,
+                    c.char_uuid,
+                ),
             )[0]
             return _WriteSelection(
                 char=selected.char,
@@ -260,7 +273,9 @@ class _BleWriteEndpointResolver:
         return None
 
     def _log_candidates(self, candidates: Sequence[_WriteCandidate]) -> None:
-        for candidate in sorted(candidates, key=lambda c: (c.service_uuid, c.char_uuid)):
+        for candidate in sorted(
+            candidates, key=lambda c: (c.service_uuid, c.char_uuid)
+        ):
             self._reporter.debug(
                 short="BLE candidate",
                 detail=(

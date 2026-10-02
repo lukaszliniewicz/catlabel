@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from .families import get_protocol_behavior
 from .family import ProtocolFamily
-from .packet import crc8_value, make_packet
+from .packet import crc8_value as crc8_value
+from .packet import make_packet
 
 
 def blackening_cmd(level: int, protocol_family: ProtocolFamily | str) -> bytes:

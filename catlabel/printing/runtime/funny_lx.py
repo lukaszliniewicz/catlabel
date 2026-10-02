@@ -5,6 +5,7 @@ import re
 import secrets
 from collections import deque
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 
 from ...protocol.families.funny_lx import challenge_crc
 from ...protocol.steps import ProtocolStep, ProtocolStepOperation
@@ -58,35 +59,42 @@ class FunnyLxRuntimeController(RuntimeController):
         if self._verified:
             return
         if not session.can_send_control_packet_wait_notification():
-            raise RuntimeError("Funny LX verification requires BLE notification queries")
+            raise RuntimeError(
+                "Funny LX verification requires BLE notification queries"
+            )
         handshake_timeout = max(5.0, timeout)
         status = await session.send_control_packet_wait_notification(
-            b"\x5A\x01\x00",
+            b"\x5a\x01\x00",
             label="Funny LX status",
-            match=lambda reply: reply.startswith(b"\x5A\x01"),
+            match=lambda reply: reply.startswith(b"\x5a\x01"),
             timeout=handshake_timeout,
         )
-        self._supports_darkness = bool(status and len(status) >= 4 and status[2:4] == b"\x00\x03")
+        self._supports_darkness = bool(
+            status and len(status) >= 4 and status[2:4] == b"\x00\x03"
+        )
         mac = _mac_bytes_from_status(status or b"") or _mac_bytes_from_address(
             self._bluetooth_address
         )
         if mac is None:
-            raise RuntimeError("Funny LX verification could not resolve printer MAC address")
+            raise RuntimeError(
+                "Funny LX verification could not resolve printer MAC address"
+            )
         random_bytes = self._random_bytes_factory()
         if len(random_bytes) != _HANDSHAKE_RANDOM_BYTES:
             raise ValueError("Funny LX challenge must contain 10 random bytes")
         crc = challenge_crc(random_bytes, mac)
         await session.send_control_packet_wait_notification(
-            b"\x5A\x0A" + random_bytes,
+            b"\x5a\x0a" + random_bytes,
             label="Funny LX challenge low CRC",
-            match=lambda reply: reply.startswith(b"\x5A\x0A")
-            and reply[2 : 2 + len(crc.low)] == crc.low,
+            match=lambda reply: (
+                reply.startswith(b"\x5a\x0a") and reply[2 : 2 + len(crc.low)] == crc.low
+            ),
             timeout=handshake_timeout,
         )
         await session.send_control_packet_wait_notification(
-            b"\x5A\x0B" + crc.high,
+            b"\x5a\x0b" + crc.high,
             label="Funny LX challenge high CRC",
-            match=lambda reply: reply.startswith(b"\x5A\x0B\x01"),
+            match=lambda reply: reply.startswith(b"\x5a\x0b\x01"),
             timeout=handshake_timeout,
         )
         self._verified = True
@@ -105,7 +113,7 @@ class FunnyLxRuntimeController(RuntimeController):
         if self._darkness_code == _DEFAULT_DARKNESS_CODE:
             return
         if await session.send_control_packet(
-            b"\x5A\x0C" + bytes([_DEFAULT_DARKNESS_CODE]),
+            b"\x5a\x0c" + bytes([_DEFAULT_DARKNESS_CODE]),
             timeout=timeout,
         ):
             self._darkness_code = _DEFAULT_DARKNESS_CODE
@@ -119,7 +127,10 @@ class FunnyLxRuntimeController(RuntimeController):
     ) -> bool:
         if not any(_is_image_packet(step) for step in steps):
             return False
-        if not session.can_send_standard_payload() or not session.can_wait_for_notification():
+        if (
+            not session.can_send_standard_payload()
+            or not session.can_wait_for_notification()
+        ):
             return False
         self._retry_requests.clear()
         index = 0
@@ -127,8 +138,16 @@ class FunnyLxRuntimeController(RuntimeController):
             step = steps[index]
             if _is_image_packet(step):
                 image_steps = _image_step_run(steps, index)
-                following = steps[index + len(image_steps)] if index + len(image_steps) < len(steps) else None
-                accepted = following if following and following.operation is ProtocolStepOperation.WAIT else None
+                following = (
+                    steps[index + len(image_steps)]
+                    if index + len(image_steps) < len(steps)
+                    else None
+                )
+                accepted = (
+                    following
+                    if following and following.operation is ProtocolStepOperation.WAIT
+                    else None
+                )
                 ready = await self._send_images_with_retry(
                     session,
                     image_steps,
@@ -161,7 +180,9 @@ class FunnyLxRuntimeController(RuntimeController):
             timeout=timeout,
             log_prefix="Funny LX protocol",
         )
-        if step.operation is not ProtocolStepOperation.SEND and not reply_matches_for(step, reply):
+        if step.operation is not ProtocolStepOperation.SEND and not reply_matches_for(
+            step, reply
+        ):
             raise RuntimeError(
                 f"Funny LX step {step.label!r} received {bytes_preview(reply)}"
             )
@@ -204,10 +225,8 @@ class FunnyLxRuntimeController(RuntimeController):
             requested = _retry_index(reply or b"")
             if requested is None:
                 return reply_matches_for(accepted_step, reply)
-            try:
+            with suppress(ValueError):
                 self._retry_requests.remove(requested)
-            except ValueError:
-                pass
             retries, image_index = _apply_retry(
                 session,
                 requested,
@@ -222,12 +241,12 @@ class FunnyLxRuntimeController(RuntimeController):
             self._retry_requests.append(requested)
             session.report_debug(f"Funny LX retry requested packet={requested}")
             return
-        if len(payload) >= 3 and payload[:2] == b"\x5A\x07":
+        if len(payload) >= 3 and payload[:2] == b"\x5a\x07":
             self._packet_delay_sec = max(
                 0.0,
                 min(payload[2] / 1000.0, _MAX_PACKET_DELAY_SEC),
             )
-        elif payload.startswith(b"\x5A\x08"):
+        elif payload.startswith(b"\x5a\x08"):
             session.report_debug(f"Funny LX pause notification: {payload.hex(' ')}")
 
     def debug_snapshot(self) -> dict[str, object]:
@@ -259,16 +278,26 @@ def _mac_bytes_from_status(status: bytes) -> bytes | None:
 
 
 def _is_image_packet(step: ProtocolStep) -> bool:
-    return step.operation is ProtocolStepOperation.SEND and len(step.data) >= 3 and step.data[0] == 0x55
+    return (
+        step.operation is ProtocolStepOperation.SEND
+        and len(step.data) >= 3
+        and step.data[0] == 0x55
+    )
 
 
 def _darkness_code_from_step(step: ProtocolStep) -> int | None:
-    if step.operation is ProtocolStepOperation.SEND and len(step.data) == 3 and step.data[:2] == b"\x5A\x0C":
+    if (
+        step.operation is ProtocolStepOperation.SEND
+        and len(step.data) == 3
+        and step.data[:2] == b"\x5a\x0c"
+    ):
         return step.data[2]
     return None
 
 
-def _image_step_run(steps: tuple[ProtocolStep, ...], start: int) -> tuple[ProtocolStep, ...]:
+def _image_step_run(
+    steps: tuple[ProtocolStep, ...], start: int
+) -> tuple[ProtocolStep, ...]:
     end = start
     while end < len(steps) and _is_image_packet(steps[end]):
         end += 1
@@ -276,12 +305,14 @@ def _image_step_run(steps: tuple[ProtocolStep, ...], start: int) -> tuple[Protoc
 
 
 def _retry_index(payload: bytes) -> int | None:
-    if len(payload) < 4 or payload[:2] != b"\x5A\x05":
+    if len(payload) < 4 or payload[:2] != b"\x5a\x05":
         return None
     return int.from_bytes(payload[2:4], "big")
 
 
-def _apply_retry(session, requested: int, retries: int, count: int, current: int) -> tuple[int, int]:
+def _apply_retry(
+    session, requested: int, retries: int, count: int, current: int
+) -> tuple[int, int]:
     if retries >= _MAX_RETRY_REQUESTS:
         session.report_warning(
             short="Funny LX retry limit exceeded",
@@ -302,7 +333,10 @@ async def _wait_ready_or_retry(
     ready = reply_complete_for(step)
     if ready is None:
         return None
-    match = lambda reply: _retry_index(reply) is not None or ready(reply)
+
+    def match(reply: bytes) -> bool:
+        return _retry_index(reply) is not None or ready(reply)
+
     return await session.wait_for_notification(
         step.label,
         match,

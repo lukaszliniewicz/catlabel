@@ -7,14 +7,15 @@ from pathlib import Path
 from catlabel.devices import get_ble_transport_profile
 from catlabel.protocol import ProtocolFamily, ProtocolJob, ProtocolStep
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def _imports_under(path: Path) -> set[str]:
     imports: set[str] = set()
     for source_path in path.rglob("*.py"):
-        tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+        tree = ast.parse(
+            source_path.read_text(encoding="utf-8"), filename=str(source_path)
+        )
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 imports.update(alias.name for alias in node.names)
@@ -47,13 +48,19 @@ class BackendArchitectureTests(unittest.TestCase):
 
     def test_device_layer_owns_ble_policy(self) -> None:
         profile = get_ble_transport_profile(ProtocolFamily.V5X)
+        self.assertIsNotNone(profile)
+        if profile is None:
+            self.fail("V5X should have a BLE transport profile")
         self.assertEqual(profile.standard_chunk_cap, 20)
         self.assertEqual(profile.standard_write_delay_ms, 50)
         self.assertEqual(profile.write_without_response_payload_reserve, 5)
-        self.assertIsNotNone(profile.bulk_write)
-        self.assertEqual(profile.bulk_write.chunk_cap, 180)
-        self.assertEqual(profile.bulk_write.write_delay_ms, 30)
-        self.assertTrue(profile.bulk_write.flow_controlled)
+        bulk_write = profile.bulk_write
+        self.assertIsNotNone(bulk_write)
+        if bulk_write is None:
+            self.fail("V5X should have a bulk-write profile")
+        self.assertEqual(bulk_write.chunk_cap, 180)
+        self.assertEqual(bulk_write.write_delay_ms, 30)
+        self.assertTrue(bulk_write.flow_controlled)
 
         v5g = get_ble_transport_profile(ProtocolFamily.V5G)
         self.assertEqual(v5g.standard_chunk_cap, 448)

@@ -31,7 +31,9 @@ def crc16_xmodem(data: bytes) -> int:
     for value in data:
         crc ^= value << 8
         for _ in range(8):
-            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+            crc = (
+                ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+            )
     return crc
 
 
@@ -63,7 +65,7 @@ def build_job(request: PrintJobRequest) -> ProtocolPlan:
     if request.is_first_page:
         darkness = max(1, min(5, int(request.blackening or 4))) - 1
         steps.append(ProtocolStep.send("darkness", bytes([0x5A, 0x0C, darkness])))
-    steps.append(ProtocolStep.send("print header", b"\x5A\x04" + total + b"\x00\x00"))
+    steps.append(ProtocolStep.send("print header", b"\x5a\x04" + total + b"\x00\x00"))
     steps.extend(
         ProtocolStep.send(f"image packet {index}", packet)
         for index, packet in enumerate(_image_packets(content, variant), start=1)
@@ -78,7 +80,7 @@ def build_job(request: PrintJobRequest) -> ProtocolPlan:
     steps.append(
         ProtocolStep.query(
             "print footer",
-            b"\x5A\x04" + total + b"\x01",
+            b"\x5a\x04" + total + b"\x01",
             expect=ProtocolReplyExpectation.NONE,
             timeout_sec=10.0,
             reply_matcher=_footer_matcher(total),
@@ -106,15 +108,26 @@ def _u16be(value: int) -> bytes:
 
 
 def _image_transfer_ready_matcher() -> ProtocolReplyMatcher:
-    complete = lambda raw: raw.startswith(b"\x5A\x06")
-    return ProtocolReplyMatcher(complete=complete, matches=lambda raw: bool(raw and complete(raw)))
+    def complete(raw: bytes) -> bool:
+        return raw.startswith(b"\x5a\x06")
+
+    return ProtocolReplyMatcher(
+        complete=complete, matches=lambda raw: bool(raw and complete(raw))
+    )
 
 
 def _footer_matcher(total: bytes) -> ProtocolReplyMatcher:
     def complete(raw: bytes) -> bool:
-        return len(raw) >= 5 and raw[:2] == b"\x5A\x04" and raw[2:4] == total and raw[4] == 1
+        return (
+            len(raw) >= 5
+            and raw[:2] == b"\x5a\x04"
+            and raw[2:4] == total
+            and raw[4] == 1
+        )
 
-    return ProtocolReplyMatcher(complete=complete, matches=lambda raw: bool(raw and complete(raw)))
+    return ProtocolReplyMatcher(
+        complete=complete, matches=lambda raw: bool(raw and complete(raw))
+    )
 
 
 def advance_paper_cmd(_dpi: int, _family, _variant: str | None = None) -> bytes:

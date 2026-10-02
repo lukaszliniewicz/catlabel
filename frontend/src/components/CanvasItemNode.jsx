@@ -124,27 +124,24 @@ const RasterizedHtml = ({ html, width, height, isTemplate = false, font = 'Arial
 };
 
 const useImageLoader = (url) => {
-  const [img, setImg] = React.useState(null);
+  const [loaded, setLoaded] = React.useState(null);
 
   React.useEffect(() => {
-    if (!url) {
-      setImg(null);
-      return undefined;
-    }
+    if (!url) return undefined;
 
     let cancelled = false;
     const image = new window.Image();
 
     image.onload = () => {
       if (!cancelled) {
-        setImg(image);
+        setLoaded({ url, image });
       }
     };
 
     image.onerror = () => {
       console.warn('Failed to load image or SVG on canvas:', `${String(url).substring(0, 50)}...`);
       if (!cancelled) {
-        setImg(null);
+        setLoaded({ url, image: null });
       }
     };
 
@@ -152,10 +149,12 @@ const useImageLoader = (url) => {
 
     return () => {
       cancelled = true;
+      image.onload = null;
+      image.onerror = null;
     };
   }, [url]);
 
-  return img;
+  return loaded?.url === url ? loaded.image : null;
 };
 
 const URLImage = ({ src, width, height }) => {

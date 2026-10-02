@@ -1,3 +1,19 @@
+from collections.abc import Iterable
+from typing import TypeGuard
+
+
+def _is_iterable(value: object) -> TypeGuard[Iterable[object]]:
+    return isinstance(value, Iterable) or callable(
+        getattr(type(value), "__getitem__", None)
+    )
+
+
+def _models_list(value: object) -> list[object]:
+    if _is_iterable(value):
+        return list(value)
+    raise TypeError(f"'{type(value).__name__}' object is not iterable")
+
+
 def _safe_positive_int(value, default):
     try:
         parsed = int(value)
@@ -9,10 +25,10 @@ def _safe_positive_int(value, default):
 def _registry_models(registry):
     models_attr = getattr(registry, "models", None)
     if callable(models_attr):
-        return list(models_attr())
+        return _models_list(models_attr())
     if models_attr is None:
         return []
-    return list(models_attr)
+    return _models_list(models_attr)
 
 
 def find_model_in_registry(registry, name: str):
@@ -50,7 +66,11 @@ def find_model_in_registry(registry, name: str):
     def _find_single(candidate_name: str):
         get_method = getattr(registry, "get", None)
         if callable(get_method):
-            for lookup_name in (candidate_name, candidate_name.upper(), candidate_name.lower()):
+            for lookup_name in (
+                candidate_name,
+                candidate_name.upper(),
+                candidate_name.lower(),
+            ):
                 model = get_method(lookup_name)
                 if model:
                     return model
@@ -62,7 +82,9 @@ def find_model_in_registry(registry, name: str):
         for model in _registry_models(registry):
             model_no = str(getattr(model, "model_no", "") or "").strip()
             head_name = str(getattr(model, "head_name", "") or "").strip().strip("-")
-            candidates = [candidate.upper() for candidate in (model_no, head_name) if candidate]
+            candidates = [
+                candidate.upper() for candidate in (model_no, head_name) if candidate
+            ]
 
             if normalized_upper in candidates:
                 exact_match = model
@@ -116,22 +138,27 @@ def extract_raw_hardware_info(model) -> dict:
     model_max_speed = getattr(model, "max_speed", None)
     protocol_family = getattr(model, "protocol_family", "legacy")
     protocol_variant = getattr(model, "protocol_variant", None)
-    if hasattr(protocol_family, "value"):
-        protocol_family = protocol_family.value
+    from ..protocol.family import ProtocolFamily
+
+    protocol_family = getattr(protocol_family, "value", protocol_family)
     supported_paper_modes = tuple(getattr(model, "supported_paper_modes", ()) or ())
     if not supported_paper_modes:
         try:
-            from ..protocol.family import ProtocolFamily
             from ..protocol.families import get_protocol_behavior
 
             family = ProtocolFamily.from_value(protocol_family)
             behavior = get_protocol_behavior(family)
             if behavior.supported_paper_modes_resolver is not None:
                 supported_paper_modes = tuple(
-                    mode.value for mode in behavior.supported_paper_modes_resolver(protocol_variant)
+                    mode.value
+                    for mode in behavior.supported_paper_modes_resolver(
+                        protocol_variant
+                    )
                 )
             else:
-                supported_paper_modes = tuple(mode.value for mode in behavior.supported_paper_modes)
+                supported_paper_modes = tuple(
+                    mode.value for mode in behavior.supported_paper_modes
+                )
         except Exception:
             supported_paper_modes = ()
 
@@ -150,7 +177,8 @@ def extract_raw_hardware_info(model) -> dict:
             6,
         )
     return {
-        "name": str(getattr(model, "head_name", "") or "").strip().strip("-_") or model_no,
+        "name": str(getattr(model, "head_name", "") or "").strip().strip("-_")
+        or model_no,
         "vendor": vendor,
         "width_px": width_px,
         "width_mm": round(width_px / dpi * 25.4, 1),

@@ -6,21 +6,6 @@ import { getPrintJobCount, getRenderPixelCount, MAX_PRINT_JOBS, MAX_RENDER_PIXEL
 
 export default function HeadlessRenderer() {
   const [payload, setPayload] = useState(() => window.__INJECTED_PAYLOAD__ || null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const resultsRef = useRef([]);
-  const completedRef = useRef(false);
-
-  const markDone = useCallback((images, error = null) => {
-    window.__RENDERED_IMAGES__ = images;
-    window.__RENDER_ERROR__ = error ? String(error.message || error) : null;
-    if (!document.getElementById('render-done')) {
-      const doneMarker = document.createElement('div');
-      doneMarker.id = 'render-done';
-      doneMarker.style.opacity = '0';
-      document.body.appendChild(doneMarker);
-    }
-  }, []);
-
   useEffect(() => {
     if (payload) return undefined;
 
@@ -35,6 +20,35 @@ export default function HeadlessRenderer() {
       window.clearInterval(intervalId);
     };
   }, [payload]);
+
+  return payload ? <HeadlessJob payload={payload} /> : null;
+}
+
+function HeadlessJob({ payload }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const resultsRef = useRef([]);
+  const completedRef = useRef(false);
+  const advanceTimer = useRef(null);
+  useEffect(() => {
+    completedRef.current = false;
+    return () => {
+      completedRef.current = true;
+      window.clearTimeout(advanceTimer.current);
+    };
+  }, []);
+
+  const markDone = useCallback((images, error = null) => {
+    window.__RENDERED_IMAGES__ = images;
+    window.__RENDER_ERROR__ = error ? String(error.message || error) : null;
+    if (!document.getElementById('render-done')) {
+      const doneMarker = document.createElement('div');
+      doneMarker.id = 'render-done';
+      doneMarker.style.opacity = '0';
+      document.body.appendChild(doneMarker);
+    }
+  }, []);
+
+
 
   const renderPlan = useMemo(() => {
     if (!payload) return { jobs: [], error: null };
@@ -87,9 +101,6 @@ export default function HeadlessRenderer() {
   const renderJobs = renderPlan.jobs;
 
   useEffect(() => {
-    resultsRef.current = [];
-    completedRef.current = false;
-    setCurrentIndex(0);
     window.__RENDERED_IMAGES__ = [];
     window.__RENDER_ERROR__ = null;
 
@@ -97,7 +108,7 @@ export default function HeadlessRenderer() {
     if (doneMarker) {
       doneMarker.remove();
     }
-  }, [payload, renderJobs]);
+  }, []);
 
   useEffect(() => {
     if (payload && renderJobs.length === 0) {
@@ -116,7 +127,7 @@ export default function HeadlessRenderer() {
       return;
     }
 
-    window.setTimeout(() => {
+    advanceTimer.current = window.setTimeout(() => {
       setCurrentIndex((idx) => idx + 1);
     }, 50);
   }, [markDone, renderJobs.length]);

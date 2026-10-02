@@ -521,10 +521,11 @@ def delete_history(conv_id: int):
 @router.post("/manual/prompt-builder")
 def build_manual_prompt(req: ManualPromptRequest):
     """Compile system rules, tools, and current state into a single prompt for external LLMs."""
+    from ..core.database import engine
+    from ..services.agent_context import build_agent_context
     from ..services.prompts import build_system_prompt
-    from .main import get_agent_context
 
-    context = get_agent_context()
+    context = build_agent_context(engine)
     printer_status = _resolve_printer_status(req.printer_info, context)
     safe_state = _sanitize_manual_canvas_state(copy.deepcopy(req.canvas_state))
 
@@ -639,6 +640,8 @@ def _chat_with_provider(
     active_model: AIModelConfig,
     secrets: tuple[str, ...],
 ):
+    from ..core.database import engine
+
     credential_path = None
     try:
         kwargs = {
@@ -671,9 +674,9 @@ def _chat_with_provider(
         ):
             kwargs["vertex_location"] = active_provider.vertex_region
 
-        from .main import get_agent_context
+        from ..services.agent_context import build_agent_context
 
-        context = get_agent_context()
+        context = build_agent_context(engine)
 
         from ..services.prompts import build_system_prompt
 
@@ -779,8 +782,6 @@ def _chat_with_provider(
 
             # Save the exact trace to the database for observability
             if req.conv_id is not None:
-                from ..core.database import engine
-
                 with Session(engine) as session:
                     # Sanitize to prevent massive DB bloat from base64 images
                     safe_messages = sanitize_trace_data(messages, secrets)

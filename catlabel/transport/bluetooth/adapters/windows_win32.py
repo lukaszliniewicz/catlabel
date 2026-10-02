@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from typing import List
-
 from ..types import DeviceInfo, DeviceTransport
 
 
 class _Win32ClassicBackend:
-    def scan_inquiry(self, timeout: float) -> List[DeviceInfo]:
+    def scan_inquiry(self, timeout: float) -> list[DeviceInfo]:
         return scan_inquiry(timeout)
 
     def pair_device(self, address: str) -> bool:
         return pair_device(address)
 
 
-def scan_inquiry(timeout: float) -> List[DeviceInfo]:
+def scan_inquiry(timeout: float) -> list[DeviceInfo]:
     import ctypes
     from ctypes import wintypes
 
@@ -66,16 +64,28 @@ def scan_inquiry(timeout: float) -> List[DeviceInfo]:
         bt = ctypes.WinDLL("bluetoothapis.dll")
         k32 = ctypes.WinDLL("kernel32.dll")
 
-        bt.BluetoothFindFirstRadio.argtypes = [ctypes.POINTER(BLUETOOTH_FIND_RADIO_PARAMS), ctypes.POINTER(wintypes.HANDLE)]
+        bt.BluetoothFindFirstRadio.argtypes = [
+            ctypes.POINTER(BLUETOOTH_FIND_RADIO_PARAMS),
+            ctypes.POINTER(wintypes.HANDLE),
+        ]
         bt.BluetoothFindFirstRadio.restype = wintypes.HANDLE
-        bt.BluetoothFindNextRadio.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.HANDLE)]
+        bt.BluetoothFindNextRadio.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(wintypes.HANDLE),
+        ]
         bt.BluetoothFindNextRadio.restype = wintypes.BOOL
         bt.BluetoothFindRadioClose.argtypes = [wintypes.HANDLE]
         bt.BluetoothFindRadioClose.restype = wintypes.BOOL
 
-        bt.BluetoothFindFirstDevice.argtypes = [ctypes.POINTER(BLUETOOTH_DEVICE_SEARCH_PARAMS), ctypes.POINTER(BLUETOOTH_DEVICE_INFO)]
+        bt.BluetoothFindFirstDevice.argtypes = [
+            ctypes.POINTER(BLUETOOTH_DEVICE_SEARCH_PARAMS),
+            ctypes.POINTER(BLUETOOTH_DEVICE_INFO),
+        ]
         bt.BluetoothFindFirstDevice.restype = wintypes.HANDLE
-        bt.BluetoothFindNextDevice.argtypes = [wintypes.HANDLE, ctypes.POINTER(BLUETOOTH_DEVICE_INFO)]
+        bt.BluetoothFindNextDevice.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(BLUETOOTH_DEVICE_INFO),
+        ]
         bt.BluetoothFindNextDevice.restype = wintypes.BOOL
         bt.BluetoothFindDeviceClose.argtypes = [wintypes.HANDLE]
         bt.BluetoothFindDeviceClose.restype = wintypes.BOOL
@@ -120,7 +130,11 @@ def scan_inquiry(timeout: float) -> List[DeviceInfo]:
         if h_find:
             while True:
                 raw_name = info.szName
-                name = raw_name.rstrip("\x00") if isinstance(raw_name, str) else str(raw_name)
+                name = (
+                    raw_name.rstrip("\x00")
+                    if isinstance(raw_name, str)
+                    else str(raw_name)
+                )
                 addr_bytes = int(info.Address.ullLong).to_bytes(8, "little")[:6]
                 address = ":".join(f"{b:02X}" for b in addr_bytes[::-1])
                 paired = bool(info.fAuthenticated or info.fRemembered)
@@ -190,14 +204,23 @@ def pair_device(address: str) -> bool:
         return False
 
     try:
-        bt.BluetoothFindFirstRadio.argtypes = [ctypes.POINTER(BLUETOOTH_FIND_RADIO_PARAMS), ctypes.POINTER(wintypes.HANDLE)]
+        bt.BluetoothFindFirstRadio.argtypes = [
+            ctypes.POINTER(BLUETOOTH_FIND_RADIO_PARAMS),
+            ctypes.POINTER(wintypes.HANDLE),
+        ]
         bt.BluetoothFindFirstRadio.restype = wintypes.HANDLE
-        bt.BluetoothFindNextRadio.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.HANDLE)]
+        bt.BluetoothFindNextRadio.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(wintypes.HANDLE),
+        ]
         bt.BluetoothFindNextRadio.restype = wintypes.BOOL
         bt.BluetoothFindRadioClose.argtypes = [wintypes.HANDLE]
         bt.BluetoothFindRadioClose.restype = wintypes.BOOL
 
-        bt.BluetoothGetDeviceInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(BLUETOOTH_DEVICE_INFO)]
+        bt.BluetoothGetDeviceInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(BLUETOOTH_DEVICE_INFO),
+        ]
         bt.BluetoothGetDeviceInfo.restype = wintypes.DWORD
     except Exception:
         return False
@@ -216,12 +239,12 @@ def pair_device(address: str) -> bool:
         decorated = f"{name}@{stdcall_bytes}"
         return getattr(lib, decorated, None)
 
-    auth_ex = _get_auth_func(auth_lib, "BluetoothAuthenticateDeviceEx", 20) or _get_auth_func(
-        bt, "BluetoothAuthenticateDeviceEx", 20
-    )
-    auth_legacy = _get_auth_func(auth_lib, "BluetoothAuthenticateDevice", 20) or _get_auth_func(
-        bt, "BluetoothAuthenticateDevice", 20
-    )
+    auth_ex = _get_auth_func(
+        auth_lib, "BluetoothAuthenticateDeviceEx", 20
+    ) or _get_auth_func(bt, "BluetoothAuthenticateDeviceEx", 20)
+    auth_legacy = _get_auth_func(
+        auth_lib, "BluetoothAuthenticateDevice", 20
+    ) or _get_auth_func(bt, "BluetoothAuthenticateDevice", 20)
     if auth_ex:
         auth_ex.argtypes = [
             wintypes.HWND,
@@ -267,9 +290,13 @@ def pair_device(address: str) -> bool:
                 return True
             result = None
             if auth_ex:
-                result = auth_ex(None, wintypes.HANDLE(h_val), ctypes.byref(info), None, 0)
+                result = auth_ex(
+                    None, wintypes.HANDLE(h_val), ctypes.byref(info), None, 0
+                )
             elif auth_legacy:
-                result = auth_legacy(None, wintypes.HANDLE(h_val), ctypes.byref(info), None, 0)
+                result = auth_legacy(
+                    None, wintypes.HANDLE(h_val), ctypes.byref(info), None, 0
+                )
             if result in {0, 183, 1247}:
                 return True
     finally:

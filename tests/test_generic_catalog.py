@@ -39,8 +39,12 @@ class GenericCatalogTests(unittest.TestCase):
         constrained = self.registry.detect_with_origin("MX10", "00:11:22:33:44:59")
 
         self.assertIsNotNone(ordinary)
+        if ordinary is None:
+            self.fail("ordinary MX10 detection should match")
         self.assertEqual(ordinary.protocol_family, ProtocolFamily.V5G)
         self.assertIsNotNone(constrained)
+        if constrained is None:
+            self.fail("MAC-constrained MX10 detection should match")
         self.assertEqual(constrained.protocol_family, ProtocolFamily.V5X)
 
     def test_mac_constrained_rule_rejects_uuid_address(self) -> None:
@@ -50,16 +54,23 @@ class GenericCatalogTests(unittest.TestCase):
         )
 
         self.assertIsNotNone(match)
+        if match is None:
+            self.fail("UUID-like address should retain ordinary MX10 match")
         self.assertEqual(match.protocol_family, ProtocolFamily.V5G)
 
     def test_detection_specificity_prefers_exact_for_equal_length(self) -> None:
         exact = DetectionRule(display_name="exact", exact_names=("X6",))
         prefix = DetectionRule(display_name="prefix", prefixes=("X6",))
+        exact_score = exact.match_score("X6", None, casefold=False)
+        prefix_score = prefix.match_score("X6", None, casefold=False)
 
-        self.assertGreater(
-            exact.match_score("X6", None, casefold=False),
-            prefix.match_score("X6", None, casefold=False),
-        )
+        self.assertIsNotNone(exact_score)
+        if exact_score is None:
+            self.fail("exact detection rule should match X6")
+        self.assertIsNotNone(prefix_score)
+        if prefix_score is None:
+            self.fail("prefix detection rule should match X6")
+        self.assertGreater(exact_score, prefix_score)
 
     def test_known_unsupported_models_are_not_claimed(self) -> None:
         for name in (
@@ -83,6 +94,8 @@ class GenericCatalogTests(unittest.TestCase):
             with self.subTest(name=name):
                 match = self.registry.detect_with_origin(name)
                 self.assertIsNotNone(match)
+                if match is None:
+                    self.fail(f"{name} should be detected")
                 self.assertEqual(match.protocol_family, family)
 
     def test_new_family_detection_keeps_source_ambiguities_unresolved(self) -> None:
@@ -94,13 +107,19 @@ class GenericCatalogTests(unittest.TestCase):
     def test_profile_exposes_paper_geometry_and_packet_variant(self) -> None:
         model = self.registry.get("p4")
         self.assertIsNotNone(model)
+        if model is None:
+            self.fail("p4 profile should exist")
         self.assertEqual(model.protocol_family, ProtocolFamily.LEGACY)
         self.assertEqual(model.protocol_variant, "line_eight")
-        self.assertEqual(model.paper_preset("a4sheet_1600r_1624p_24pl").left_padding_px, 24)
+        self.assertEqual(
+            model.paper_preset("a4sheet_1600r_1624p_24pl").left_padding_px, 24
+        )
 
     def test_v5g_tuned_density_is_not_reported_as_protocol_limit(self) -> None:
         model = self.registry.get("mx11")
         self.assertIsNotNone(model)
+        if model is None:
+            self.fail("mx11 profile should exist")
         self.assertEqual(model.min_density, 100)
         self.assertEqual(model.default_density, 130)
         self.assertEqual(model.max_density, 150)
@@ -119,12 +138,16 @@ class GenericCatalogTests(unittest.TestCase):
     def test_profile_density_default_is_kept_without_runtime_preset(self) -> None:
         model = self.registry.get("bq02_v5g")
         self.assertIsNotNone(model)
+        if model is None:
+            self.fail("bq02 V5G profile should exist")
         self.assertIsNone(model.runtime_density)
         self.assertEqual(model.default_density, 150)
 
     def test_v5g_without_density_profile_keeps_auto_default(self) -> None:
         model = self.registry.get("mx02")
         self.assertIsNotNone(model)
+        if model is None:
+            self.fail("mx02 profile should exist")
         capabilities = GenericManifest()._build_capabilities(
             extract_raw_hardware_info(model)
         )

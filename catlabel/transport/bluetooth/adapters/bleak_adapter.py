@@ -3,19 +3,22 @@
 The adapter keeps connection lifecycle in `_BleakSocket` and delegates endpoint
 binding plus byte-transfer policy to `_BleakTransportSession`.
 """
+
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Any, Dict, List, Optional, Tuple
+from contextlib import suppress
+from typing import Any
 
+from .... import reporting
+from ....core.async_operations import await_operation
+from ....devices import BleTransportProfile, get_ble_transport_profile
+from ..constants import IS_MACOS
+from ..types import DeviceInfo, DeviceTransport, SocketLike
 from .base import _BleBluetoothAdapter
 from .bleak_adapter_endpoint_resolver import _BleWriteEndpointResolver, _WriteSelection
 from .bleak_adapter_transport import _BleakTransportSession
-from ..constants import IS_MACOS
-from ..types import DeviceInfo, DeviceTransport, SocketLike
-from .... import reporting
-from ....devices import BleTransportProfile, get_ble_transport_profile
 
 
 def _missing_bleak_error() -> RuntimeError:
@@ -27,21 +30,21 @@ def _missing_bleak_error() -> RuntimeError:
 class _BleakSocket:
     """Socket-like wrapper around a bleak BLE client.
 
-        It owns connection setup/teardown and uses `_BleakTransportSession` for
-        characteristic selection, byte routing, and notification delivery.
+    It owns connection setup/teardown and uses `_BleakTransportSession` for
+    characteristic selection, byte routing, and notification delivery.
     """
 
     def __init__(
         self,
-        pairing_hint: Optional[bool] = None,
-        ble_profile: Optional[BleTransportProfile] = None,
+        pairing_hint: bool | None = None,
+        ble_profile: BleTransportProfile | None = None,
         reporter: reporting.Reporter = reporting.DUMMY_REPORTER,
-        device_cache: Optional[Dict[str, Any]] = None,
+        device_cache: dict[str, Any] | None = None,
     ) -> None:
         self._client: Any = None
-        self._address: Optional[str] = None
+        self._address: str | None = None
         self._connected = False
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._mtu_size = 180
         self._timeout = 30.0
         self._pairing_hint = pairing_hint is True and not IS_MACOS
@@ -75,7 +78,7 @@ class _BleakSocket:
     def _notify_started(self, value: bool) -> None:
         self._transport.notify_started = value
 
-    def connect(self, address_channel: Tuple[str, int]) -> None:
+    def connect(self, address_channel: tuple[str, int]) -> None:
         """Connect to the BLE device and prepare family-specific endpoints."""
         address, _ = address_channel
         self._address = address
@@ -94,10 +97,8 @@ class _BleakSocket:
             self._cleanup_loop()
             raise
         finally:
-            try:
+            with suppress(Exception):
                 asyncio.set_event_loop(previous_loop)
-            except Exception:
-                pass
 
     async def _connect_async(self, address: str) -> None:
         """Create the client, connect it and bind writable characteristics."""
@@ -113,7 +114,9 @@ class _BleakSocket:
             self._connected = True
         except Exception as exc:
             detail = str(exc).strip() or repr(exc) or exc.__class__.__name__
-            raise RuntimeError(f"Failed to connect to BLE device {address}: {detail}") from exc
+            raise RuntimeError(
+                f"Failed to connect to BLE device {address}: {detail}"
+            ) from exc
 
         if hasattr(self._client, "mtu_size") and self._client.mtu_size:
             negotiated_mtu = self._client.mtu_size - 3
@@ -132,8 +135,12 @@ class _BleakSocket:
             )
 
         self._transport.apply_write_selection(selection)
-        self._transport.configure_endpoints(getattr(self._client, "services", None) or [])
-        await self._transport.start_notify_if_available(self._client, self._handle_notification)
+        self._transport.configure_endpoints(
+            getattr(self._client, "services", None) or []
+        )
+        await self._transport.start_notify_if_available(
+            self._client, self._handle_notification
+        )
         await self._transport.initialize_connection(
             self._client,
             mtu_size=self._mtu_size,
@@ -164,7 +171,7 @@ class _BleakSocket:
                 return dev
         return address
 
-    async def _find_write_characteristic(self) -> Optional[_WriteSelection]:
+    async def _find_write_characteristic(self) -> _WriteSelection | None:
         """Resolve the primary writable characteristic for this connection."""
         if not self._client or not self._connected:
             return None
@@ -190,8 +197,7 @@ class _BleakSocket:
         except Exception as exc:
             bindings = self._transport.bindings
             detail = (
-                f"service={bindings.write_service_uuid} "
-                f"char={bindings.write_char_uuid}"
+                f"service={bindings.write_service_uuid} char={bindings.write_char_uuid}"
             )
             raise RuntimeError(f"BLE write failed ({detail}): {exc}") from exc
 
@@ -242,9 +248,7 @@ class _BleakSocket:
 
     def can_send_bulk_payload(self) -> bool:
         return bool(
-            self._connected
-            and self._client
-            and self._transport.can_send_bulk_payload()
+            self._connected and self._client and self._transport.can_send_bulk_payload()
         )
 
     def send_bulk_payload(
@@ -366,7 +370,7 @@ class _BleakSocket:
         if not callable(pair):
             return
         try:
-            result = await pair()
+            result = await await_operation(pair(), operation="pair")
         except Exception as exc:
             raise RuntimeError(f"BLE pairing failed: {exc}") from exc
         if result is False:
@@ -380,10 +384,8 @@ class _BleakSocket:
     def _disconnect_after_failed_connect(self) -> None:
         """Best-effort disconnect path shared by connect failures and close()."""
         if self._loop and self._client:
-            try:
+            with suppress(Exception):
                 self._loop.run_until_complete(self._safe_disconnect_async())
-            except Exception:
-                pass
         self._connected = False
         self._client = None
         self._transport = _BleakTransportSession(
@@ -400,18 +402,14 @@ class _BleakSocket:
         disconnect = getattr(self._client, "disconnect", None)
         if not callable(disconnect):
             return
-        try:
-            await disconnect()
-        except Exception:
-            pass
+        with suppress(Exception):
+            await await_operation(disconnect(), operation="disconnect")
 
     def _cleanup_loop(self) -> None:
         """Dispose the temporary event loop used by the socket wrapper."""
         if self._loop:
-            try:
+            with suppress(Exception):
                 self._loop.close()
-            except Exception:
-                pass
             self._loop = None
 
     def _handle_notification(self, _sender: Any, data: Any) -> None:
@@ -426,15 +424,15 @@ class _BleakBleAdapter(_BleBluetoothAdapter):
     """Bluetooth Low Energy adapter using bleak for GATT writes."""
 
     def __init__(self) -> None:
-        self._device_cache: Dict[str, Any] = {}
+        self._device_cache: dict[str, Any] = {}
 
-    def scan_blocking(self, timeout: float) -> List[DeviceInfo]:
+    def scan_blocking(self, timeout: float) -> list[DeviceInfo]:
         try:
             from bleak import BleakScanner
         except ImportError as exc:
             raise _missing_bleak_error() from exc
 
-        async def scan() -> List[DeviceInfo]:
+        async def scan() -> list[DeviceInfo]:
             devices = await BleakScanner.discover(timeout=timeout)
             results = []
             for device in devices:
@@ -464,8 +462,8 @@ class _BleakBleAdapter(_BleBluetoothAdapter):
 
     def create_socket(
         self,
-        pairing_hint: Optional[bool] = None,
-        ble_profile: Optional[BleTransportProfile] = None,
+        pairing_hint: bool | None = None,
+        ble_profile: BleTransportProfile | None = None,
         reporter: reporting.Reporter = reporting.DUMMY_REPORTER,
     ) -> SocketLike:
         return _BleakSocket(
@@ -475,5 +473,5 @@ class _BleakBleAdapter(_BleBluetoothAdapter):
             device_cache=self._device_cache,
         )
 
-    def ensure_paired(self, address: str, pairing_hint: Optional[bool] = None) -> None:
+    def ensure_paired(self, address: str, pairing_hint: bool | None = None) -> None:
         return None

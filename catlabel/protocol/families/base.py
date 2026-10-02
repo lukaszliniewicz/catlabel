@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Mapping
 
-from ...raster import PixelFormat, RasterSet
-from ..family import ProtocolFamily
+from ...raster import PixelFormat, RasterBuffer, RasterSet
+from ..family import ProtocolFamily, ProtocolSpec
 from ..packet import prefixed_packet_length
+from ..plan import ProtocolPlan
+from ..runtime import RuntimePrintCapabilities
 from ..types import ImageEncoding, ImagePipelineConfig, PaperMode
 
 ManualMotionBuilder = Callable[[int, ProtocolFamily, str | None], bytes]
-if TYPE_CHECKING:
-    from ..plan import ProtocolPlan
-    from ..runtime import RuntimePrintCapabilities
 
 FamilyJobBuilder = Callable[["PrintJobRequest"], "bytes | ProtocolPlan | None"]
 PaperModeResolver = Callable[[str | None], tuple[PaperMode, ...]]
@@ -60,13 +59,13 @@ class PrintJobRequest:
     one_length: int = 0
     a4xii: bool = False
     a4_sheet_max_height: int | None = None
-    runtime_capabilities: "RuntimePrintCapabilities | None" = None
+    runtime_capabilities: RuntimePrintCapabilities | None = None
 
-    def require_raster(self, pixel_format: PixelFormat) -> "RasterBuffer":
+    def require_raster(self, pixel_format: PixelFormat) -> RasterBuffer:
         return self.raster_set.require(pixel_format)
 
     @property
-    def default_raster(self) -> "RasterBuffer":
+    def default_raster(self) -> RasterBuffer:
         return self.require_raster(self.image_pipeline.default_format)
 
     @property
@@ -95,7 +94,7 @@ class SplitWritePlan:
 
 @dataclass(frozen=True)
 class ProtocolDefinition:
-    spec: "ProtocolSpec"
+    spec: ProtocolSpec
     behavior: ProtocolBehavior
 
 
@@ -107,8 +106,8 @@ def split_prefixed_bulk_stream(
     family = ProtocolFamily.from_value(protocol_family)
     if not family.uses_prefixed_packets:
         return SplitWritePlan((data,), b"", ())
-    commands = []
-    trailing_commands = []
+    commands: list[bytes] = []
+    trailing_commands: list[bytes] = []
     offset = 0
 
     while True:

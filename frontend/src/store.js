@@ -15,6 +15,8 @@ import {
   MAX_RENDER_PIXELS
 } from './utils/batchData';
 
+let nextPrintJobId = 0;
+
 const recalcAutoFit = (items, batchRecords, cw, ch) => {
   let changed = false;
 
@@ -553,6 +555,7 @@ export const useStore = create(withHistory((set, get) => ({
     set({
       isPreparingForPrint: true,
       pendingPrintJob: {
+        id: ++nextPrintJobId,
         macAddress: state.selectedPrinter,
         splitMode: state.splitMode,
         pageIndices: finalPageIndices,

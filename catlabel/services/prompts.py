@@ -10,8 +10,8 @@ def build_system_prompt(context, printer_status):
 Your job is to act as a layout engineer and creative designer, generating thermal printer labels via tool calls.
 
 CONTEXT:
-- {context['engine_rules']['coordinate_system']}
-- Default Font: {context['global_default_font']}
+- {context["engine_rules"]["coordinate_system"]}
+- Default Font: {context["global_default_font"]}
 - Available Fonts: {available_fonts_str}
 
 HARDWARE STATUS:

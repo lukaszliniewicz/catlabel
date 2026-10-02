@@ -4,10 +4,24 @@ import HeadlessPage from './HeadlessPage';
 
 export default function LocalBatchRenderer({ onComplete }) {
   const pendingPrintJob = useStore((state) => state.pendingPrintJob);
+  return pendingPrintJob
+    ? <LocalBatchJob key={pendingPrintJob.id} pendingPrintJob={pendingPrintJob} onComplete={onComplete} />
+    : null;
+}
+
+function LocalBatchJob({ pendingPrintJob, onComplete }) {
   const [results, setResults] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const resultsRef = useRef([]);
   const completedRef = useRef(false);
+  const advanceTimer = useRef(null);
+  useEffect(() => {
+    completedRef.current = false;
+    return () => {
+      completedRef.current = true;
+      window.clearTimeout(advanceTimer.current);
+    };
+  }, []);
 
   const jobs = useMemo(() => {
     if (!pendingPrintJob) return [];
@@ -36,12 +50,7 @@ export default function LocalBatchRenderer({ onComplete }) {
     return nextJobs;
   }, [pendingPrintJob]);
 
-  useEffect(() => {
-    setResults([]);
-    resultsRef.current = [];
-    completedRef.current = false;
-    setCurrentIndex(0);
-  }, [jobs, pendingPrintJob]);
+
 
   useEffect(() => {
     if (pendingPrintJob && jobs.length === 0) {
@@ -61,7 +70,7 @@ export default function LocalBatchRenderer({ onComplete }) {
       return;
     }
 
-    window.setTimeout(() => {
+    advanceTimer.current = window.setTimeout(() => {
       setCurrentIndex((idx) => idx + 1);
     }, 50);
   }, [jobs.length, onComplete]);
