@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-03",
+  "checkpoint": "phase4-optional-bootstrap",
+  "source_commit": "7fe7277546615e9471d53be861efd7548f76f9c4",
+  "final_state_directory_input_sha256": {
+    "run.sh": "aa382a6f9bb6ae743ac0ed38fe540df034b18b2bd8ba887c08f16a80ac73b131",
+    "tools/bootstrap_runtime.py": "be05b5ea01fea11fa172d06d4c07de16bc7f437394dcb74b498ef9ed16be66d1",
+    "pixi.toml": "b868f9566524004893d0f2e258225de0a01f6de0eba63de49d165064d4e5d02a",
+    "pixi.lock": "0629b197a6f7ca89cb8ecb1c74340596d91c896c9938db6288802a45f863c566"
+  },
+  "four_environment_matrix": {
+    "passed": true,
+    "scope": "Fresh managed environments, warmed copied package cache; earlier run.sh 0a51977b...28010b before final per-slot marker change",
+    "measurements": [
+      {
+        "environment": "default",
+        "seconds": 5.62,
+        "peak_setup_rss_kib": 109284,
+        "conda_packages": 23,
+        "python_packages": 24,
+        "apparent_bytes": 288348989,
+        "allocated_bytes": 311709696
+      },
+      {
+        "environment": "ai",
+        "seconds": 24.84,
+        "peak_setup_rss_kib": 433200,
+        "conda_packages": 23,
+        "python_packages": 97,
+        "apparent_bytes": 702068017,
+        "allocated_bytes": 762806272
+      },
+      {
+        "environment": "ai-headless",
+        "seconds": 51.8,
+        "peak_setup_rss_kib": 447352,
+        "conda_packages": 23,
+        "python_packages": 99,
+        "apparent_bytes": 1534563774,
+        "allocated_bytes": 1597812736
+      },
+      {
+        "environment": "headless",
+        "seconds": 33.32,
+        "peak_setup_rss_kib": 207936,
+        "conda_packages": 23,
+        "python_packages": 26,
+        "apparent_bytes": 1120801709,
+        "allocated_bytes": 1146695680
+      }
+    ],
+    "logs": "check-results/phase4-optional-bootstrap/logs",
+    "warm_default_seconds": 0.3,
+    "warm_ai_seconds": 0.32,
+    "cold_download_benchmark": false
+  },
+  "final_state_directory_checks": {
+    "passed": true,
+    "state_a_ai_seconds": 11.84,
+    "state_b_default_seconds": 0.39,
+    "warm_a_ai_seconds": 0.37,
+    "shared_data_markers_unchanged": true,
+    "previous_state_markers_preserved": true,
+    "warm_stamp_hash_and_metadata_unchanged": true,
+    "blocked_curl_called": false,
+    "relative_path_rejected_before_writes": true,
+    "fresh_absolute_diagnosis_creates_no_state": true,
+    "logs": "check-results/phase4-optional-bootstrap/state-dir-selection"
+  },
+  "specialist": {
+    "profile": "verifier",
+    "configured_model": "gpt-6-luna",
+    "configured_effort": "max",
+    "runtime_telemetry_available": false
+  },
+  "limits": [
+    "Linux only; foreign native execution unverified",
+    "Current Chromium executable verification passed; matrix did not launch browser",
+    "No app/database/provider/printer launches in verifier matrix",
+    "Warm copied cache means timings are not cold download measurements"
+  ]
+}

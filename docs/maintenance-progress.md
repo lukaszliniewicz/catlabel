@@ -220,3 +220,22 @@ zero. ShellCheck and portable PowerShell parsing pass. The frontend artifact is
 unchanged. [Source checkpoint receipt](reviews/2026-10-02/evidence/phase4-selected-release-source-receipt.json).
 An actual immutable-release installation/probe receipt follows this checkpoint;
 native Windows/macOS execution, physical printing and deployment are unverified.
+
+Selected-release integration acceptance passed on Linux using source commit
+`7fe7277546615e9471d53be861efd7548f76f9c4`. Two immutable bundles installed and
+accepted exact health/frontend identity; an intentionally broken candidate failed
+startup and fell back to the accepted slot. Code rollback, busy-runtime rejection
+and a download-blocked warm restart pass. Database, committed WAL and font
+witnesses remained unchanged; three durable backups include the WAL sentinel,
+and no probe directories remain. First preparation took 7.67 seconds with a warm
+package cache; warm repeat took 0.26 seconds. These are not cold-download claims.
+[Integration receipt](reviews/2026-10-02/evidence/phase4-selected-release-integration-receipt.json).
+
+All four optional environments pass Linux setup/import/feature selection checks.
+The final per-slot marker check preserves shared data and previous slot selection,
+uses the right warm runtime without Pixi/download execution, and rejects relative
+paths before writing. [Optional-bootstrap receipt](reviews/2026-10-02/evidence/phase4-optional-bootstrap-receipt.json).
+The 24 frontend files retain byte parity with the accepted historical artifact;
+the release manifest's documented aggregation yields `584aa51c9f50d137e5f824a4b7042c948b25f93dd65ddd97385f8c52960c9861`.
+Native foreign systems remain best effort and unverified. Frontend package groups
+and phases 5–7 remain active.

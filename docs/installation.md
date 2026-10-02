@@ -118,6 +118,11 @@ python -m tools.build_release --source-commit COMMIT --release-id RELEASE_ID \
   --frontend-sha256 ACCEPTED_FRONTEND_DIGEST --output dist/CatLabel-release.zip
 ```
 
+The manifest frontend digest is SHA-256 over sorted full `frontend/dist/` paths,
+a NUL separator, each file's ASCII SHA-256 and a newline. Use the release receipt's
+`frontend_manifest_sha256`; older review receipts used a different aggregation
+format. Acceptance must also establish per-file parity with the tested build.
+
 The builder also writes `CatLabel-release.zip.sha256`. On Windows,
 `build_launcher.ps1 -ReleaseId RELEASE_ID -FrontendSha256 ACCEPTED_FRONTEND_DIGEST`
 builds that bundle before PyInstaller packages it. Linux acceptance does not
