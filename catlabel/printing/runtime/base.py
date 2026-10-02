@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from ...protocol.runtime import RuntimePrintCapabilities
 from ...protocol.steps import ProtocolStep
+
+if TYPE_CHECKING:
+    from ...protocol.job import ProtocolJob
 
 
 @dataclass(frozen=True)
@@ -80,6 +84,18 @@ class NotificationRuntimeSessionApi(RuntimeSessionApi, Protocol):
 
 
 class RuntimeController:
+    @asynccontextmanager
+    async def job_scope(
+        self,
+        session: RuntimeSessionApi,
+        job: ProtocolJob,
+        *,
+        timeout: float,
+    ) -> AsyncIterator[None]:
+        """Own live state across all writes and completion for one print job."""
+
+        yield
+
     def adopt_previous(self, previous: RuntimeController | None) -> None:
         return None
 

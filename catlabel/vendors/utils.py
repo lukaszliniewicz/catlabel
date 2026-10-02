@@ -176,9 +176,19 @@ def extract_raw_hardware_info(model) -> dict:
             _safe_positive_int(getattr(model, "max_density", 0), 8),
             6,
         )
+    display_name = (
+        str(getattr(model, "head_name", "") or "").strip().strip("-_") or model_no
+    )
+    is_printmaster = protocol_family == "phomemo_esc" and protocol_variant in {
+        "printmaster_m110",
+        "printmaster_m120",
+    }
     return {
-        "name": str(getattr(model, "head_name", "") or "").strip().strip("-_")
-        or model_no,
+        "name": f"{display_name} (PrintMaster, experimental)"
+        if is_printmaster
+        else display_name,
+        "support_state": "experimental" if is_printmaster else "supported",
+        "support_note": getattr(model, "testing_note", None),
         "vendor": vendor,
         "width_px": width_px,
         "width_mm": round(width_px / dpi * 25.4, 1),

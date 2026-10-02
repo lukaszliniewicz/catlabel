@@ -5,12 +5,13 @@ from ..family import ProtocolFamily
 from ..types import ImageEncoding, ImagePipelineConfig, PaperMode
 from .base import ProtocolBehavior
 from .luck_normal_core import (
-    LUCK_NORMAL_IMAGE_SUPPORT,
+    LUCK_NORMAL_MONO_IMAGE_SUPPORT,
     LuckNormalFamilyRecipe,
     LuckNormalModeRecipe,
     LuckNormalPaperMode,
     LuckNormalVariantRecipe,
 )
+from .luck_transactions import LUJIANG_A4_FINALIZE_TIMEOUT_SEC
 
 A4_MARKED_TAG_RECIPE = LuckNormalModeRecipe(
     paper_mode=LuckNormalPaperMode.TAG,
@@ -111,10 +112,10 @@ D80_MODE_RECIPES = {
 RECIPE = LuckNormalFamilyRecipe(
     protocol_family=ProtocolFamily.LUCK_NORMAL_A4,
     default_image_pipeline=ImagePipelineConfig(
-        formats=(PixelFormat.BW1, PixelFormat.GRAY4, PixelFormat.GRAY8),
+        formats=(PixelFormat.BW1,),
         encoding=ImageEncoding.LUCK_NORMAL_RAW,
     ),
-    image_encoding_support=LUCK_NORMAL_IMAGE_SUPPORT,
+    image_encoding_support=LUCK_NORMAL_MONO_IMAGE_SUPPORT,
     mode_recipes=BASE_A4_MODE_RECIPES,
     end_line_dots_200dpi=144,
     end_line_dots_300dpi=216,
@@ -124,6 +125,7 @@ RECIPE = LuckNormalFamilyRecipe(
         "lujiang_a4": LuckNormalVariantRecipe(
             mode_recipes=A4_TATTOO_64_MODE_RECIPES,
             end_line_dots_200dpi=96,
+            finalize_timeout_sec=LUJIANG_A4_FINALIZE_TIMEOUT_SEC,
         ),
         "a4_tattoo_64": LuckNormalVariantRecipe(mode_recipes=A4_TATTOO_64_MODE_RECIPES),
         "a4_tattoo_64_endline96": LuckNormalVariantRecipe(

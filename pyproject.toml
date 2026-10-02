@@ -76,6 +76,13 @@ strict = [
   "catlabel/vendors/generic/catalog_snapshot.py",
   "catlabel/protocol/families/niimbot_core.py",
   "catlabel/protocol/families/phomemo_esc_core.py",
+  "catlabel/protocol/families/luck_transactions.py",
+  "catlabel/protocol/families/printmaster_core.py",
+  "catlabel/protocol/families/phomemo_replies.py",
+  "catlabel/protocol/families/phomemo_esc.py",
+  "catlabel/printing/runtime/printmaster_esc.py",
+  "catlabel/vendors/generic/catalog_updates.py",
+  "tools/sync_luck_catalog.py",
   "tools/sync_timiniprint_catalog.py",
 ]
 

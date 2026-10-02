@@ -16,6 +16,7 @@ from .luck_normal_core import (
 TAG_POSITION_RECIPE = LuckNormalModeRecipe(
     paper_mode=LuckNormalPaperMode.TAG,
     finish_action="position",
+    wait_for_paper_reply=False,
 )
 
 LUJIANG_NORMAL_MODE_RECIPES = {
@@ -49,12 +50,10 @@ RECIPE = LuckNormalFamilyRecipe(
     variants={
         "lujiang_normal": LuckNormalVariantRecipe(
             mode_recipes=LUJIANG_NORMAL_MODE_RECIPES,
-            query_interleaved=True,
         ),
         "lujiang_normal_h": LuckNormalVariantRecipe(
             mode_recipes=LUJIANG_NORMAL_MODE_RECIPES,
             end_line_dots_300dpi=60,
-            query_interleaved=True,
         ),
         "qirui_q1": LuckNormalVariantRecipe(
             dialect=LUCK_NORMAL_MODE2_DIALECT,

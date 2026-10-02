@@ -30,6 +30,7 @@ class ProtocolCommandSet(ProtocolStrEnum):
     YK_ASTRA_P1 = "yk_astra_p1"
     INSTAPRINT_CORE = "instaprint_core"
     FUNNY_LX = "funny_lx"
+    PHOMEMO_ESC = "phomemo_esc"
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,7 @@ class ProtocolFamily(ProtocolStrEnum):
     YK_ASTRA_P1 = "yk_astra_p1"
     INSTAPRINT_CORE = "instaprint_core"
     FUNNY_LX = "funny_lx"
+    PHOMEMO_ESC = "phomemo_esc"
 
     @classmethod
     def from_value(cls, value: ProtocolFamily | str | None) -> ProtocolFamily:
@@ -117,6 +119,7 @@ PROTOCOL_SPECS: Mapping[ProtocolFamily, ProtocolSpec] = MappingProxyType(
             None, ProtocolCommandSet.INSTAPRINT_CORE
         ),
         ProtocolFamily.FUNNY_LX: ProtocolSpec(None, ProtocolCommandSet.FUNNY_LX),
+        ProtocolFamily.PHOMEMO_ESC: ProtocolSpec(None, ProtocolCommandSet.PHOMEMO_ESC),
     }
 )
 

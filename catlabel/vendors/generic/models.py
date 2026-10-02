@@ -13,6 +13,7 @@ from ...protocol.family import ProtocolFamily
 from ...protocol.types import ImageEncoding, ImagePipelineConfig
 from ...raster import PixelFormat
 from .catalog_snapshot import load_snapshot
+from .catalog_updates import LUCK_UPDATE_FILENAME, apply_luck_updates
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 MODELS_PATH = DATA_DIR / "catalog_models.json"
@@ -21,7 +22,9 @@ PROFILES_PATH = DATA_DIR / "catalog_profiles.json"
 PAPER_PRESETS_PATH = DATA_DIR / "catalog_paper_presets.json"
 SOURCE_PATH = DATA_DIR / "catalog_source.json"
 
-_NON_GENERIC_FAMILIES = {"niimbot", "phomemo_esc"}
+_NON_GENERIC_FAMILIES = {"niimbot"}
+_PRINTMASTER_VARIANTS = {"printmaster_m110", "printmaster_m120"}
+_PRINTMASTER_OWNERSHIP_COMMIT = "3bd80bac89f8894e143ee867c63683b6c7f2f02b"
 _FAMILY_ALIASES = {
     "tiny": "legacy",
     "tiny_prefixed": "legacy_prefixed",
@@ -428,8 +431,13 @@ class PrinterModelRegistry:
             )
             and snapshot_path.exists()
         )
+        updates_path = DATA_DIR / LUCK_UPDATE_FILENAME
+        use_updates = use_snapshot and updates_path.exists()
+        bundled_paths = (
+            (snapshot_path, updates_path) if use_updates else (snapshot_path,)
+        )
         key = tuple(
-            path.resolve() for path in ((snapshot_path,) if use_snapshot else paths)
+            path.resolve() for path in (bundled_paths if use_snapshot else paths)
         )
         cached = cls._cache.get(key)
         if cached is not None:
@@ -437,12 +445,35 @@ class PrinterModelRegistry:
 
         if use_snapshot:
             bundle = load_snapshot(snapshot_path)
+            selected_updates: list[dict[str, str]] = []
+            if use_updates:
+                updates = _mapping(
+                    json.loads(updates_path.read_text(encoding="utf-8")),
+                    "Luck A4 updates",
+                )
+                bundle = apply_luck_updates(bundle, updates)
+                selected_updates.append(
+                    {
+                        "commit": str(updates["commit"]),
+                        "base_commit": str(updates["base_commit"]),
+                        "scope": "Luck A4",
+                    }
+                )
             catalogs = _mapping(bundle["catalogs"], "catalogs")
             profiles_raw = catalogs["catalog_profiles.json"]
             presets_raw = catalogs["catalog_paper_presets.json"]
             models_raw = catalogs["catalog_models.json"]
             unsupported_raw = catalogs["catalog_unsupported.json"]
-            source_metadata = _mapping(bundle["source"], "source")
+            source_metadata = dict(_mapping(bundle["source"], "source"))
+            selected_updates.append(
+                {
+                    "commit": _PRINTMASTER_OWNERSHIP_COMMIT,
+                    "base_commit": str(source_metadata["commit"]),
+                    "scope": "PrintMaster ownership",
+                }
+            )
+            if selected_updates:
+                source_metadata["selected_updates"] = selected_updates
         else:
             profiles_raw = json.loads(profiles_path.read_text(encoding="utf-8"))
             presets_raw = json.loads(paper_presets_path.read_text(encoding="utf-8"))
@@ -464,6 +495,10 @@ class PrinterModelRegistry:
         models: list[PrinterModel] = []
         deferred: list[_UnsupportedModel] = []
         for item in _entries(models_raw, "models"):
+            # This exact upstream ownership correction affects only the bundled
+            # catalog; retain the immutable release source and custom loaders.
+            if use_snapshot and item["model_key"] in {"phomemo_m110", "phomemo_m220"}:
+                continue
             profile = profiles.get(str(item.get("profile_key", "")))
             if profile is None:
                 raise ValueError(
@@ -475,7 +510,15 @@ class PrinterModelRegistry:
             )
             profile_protocol = _mapping(profile["protocol_default"], "default protocol")
             family_name = str(protocol_override.get("type") or profile_protocol["type"])
-            if family_name in _NON_GENERIC_FAMILIES:
+            variant = (
+                protocol_override.get("packets_type")
+                or protocol_override.get("variant")
+                or profile_protocol.get("packets_type")
+                or profile_protocol.get("variant")
+            )
+            if family_name in _NON_GENERIC_FAMILIES or (
+                family_name == "phomemo_esc" and variant not in _PRINTMASTER_VARIANTS
+            ):
                 deferred.append(cls._unavailable_model(item))
                 continue
             try:
@@ -494,6 +537,18 @@ class PrinterModelRegistry:
             cls._unavailable_model(item)
             for item in _entries(unsupported_raw, "unsupported models")
         ]
+        if use_snapshot:
+            # Pinned 3bd80ba redirect blocks less-specific cat-printer prefixes
+            # while exact confirmed PrintMaster models retain precedence.
+            unsupported.append(
+                cls._unavailable_model(
+                    {
+                        "model_key": "unsupported_phomemo_printmaster_redirect",
+                        "whitespace_mode": "trim",
+                        "detections": [{"prefixes": ["M110", "M120", "M220"]}],
+                    }
+                )
+            )
         registry = cls(
             models,
             unsupported,
@@ -791,6 +846,12 @@ class PrinterModelRegistry:
             max_speed=max(image_speed, text_speed, 1),
             min_energy=max(1, _tier(image_energy, "low", 1)),
             max_energy=max(1, _tier(image_energy, "high", _middle(image_energy, 1))),
+            testing=family is ProtocolFamily.PHOMEMO_ESC,
+            testing_note=(
+                "PrintMaster recipe and reply handling verified with fixtures; physical printing is unverified."
+                if family is ProtocolFamily.PHOMEMO_ESC
+                else None
+            ),
         )
 
     @property

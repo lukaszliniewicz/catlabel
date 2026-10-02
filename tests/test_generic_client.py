@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import unittest
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -55,7 +55,104 @@ class _Backend(SppBackend):
         self.attached.append(runtime_controller)
 
 
+class _LuckBackend(_Backend):
+    def __init__(self) -> None:
+        super().__init__()
+        self.queries: list[bytes] = []
+
+    def can_query_control_packet(self) -> bool:
+        return True
+
+    async def query_control_packet(
+        self,
+        packet: bytes,
+        *,
+        timeout: float = 1.0,
+        reply_complete: Callable[[bytes], bool] | None = None,
+    ) -> bytes | None:
+        self.queries.append(packet)
+        return b"\x00" if packet == b"\x10\xff\x40" else b"OK"
+
+
+class _PrintMasterFallbackBackend(_Backend):
+    def __init__(self) -> None:
+        super().__init__()
+        self.disconnects = 0
+
+    def can_wait_for_notification(self) -> bool:
+        return (
+            bool(self.attempts)
+            and self.attempts[-1][0].transport is DeviceTransport.BLE
+        )
+
+    async def disconnect(self) -> None:
+        self.disconnects += 1
+
+
 class GenericClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_printmaster_falls_back_from_unobservable_classic_to_ble(
+        self,
+    ) -> None:
+        device = SimpleNamespace(name="M110", address="00:11:22:33:44:55")
+        hardware = GenericManifest().identify_device(device.name)
+        assert hardware is not None
+        client = GenericClient(
+            device,
+            hardware,
+            SimpleNamespace(speed=None, energy=None, feed_lines=0, paper_mode=None),
+            SimpleNamespace(speed=0, energy=0, feed_lines=0),
+        )
+        backend = _PrintMasterFallbackBackend()
+        client.backend = backend
+        with patch(
+            "catlabel.vendors.generic.client.asyncio.sleep", new=AsyncMock()
+        ) as sleep:
+            self.assertTrue(await client.connect())
+        self.assertEqual(
+            [attempt[0].transport for attempt in backend.attempts],
+            [DeviceTransport.CLASSIC, DeviceTransport.BLE],
+        )
+        self.assertTrue(all(len(attempt) == 1 for attempt in backend.attempts))
+        self.assertEqual(backend.disconnects, 1)
+        sleep.assert_not_awaited()
+
+    async def test_luck_model_defaults_and_explicit_zero_reach_wire(self) -> None:
+        for name, override, expected in (
+            ("APA41_123", None, 2),
+            ("APA49_123", None, 3),
+            ("APA41_123", 0, 0),
+        ):
+            with self.subTest(name=name, override=override):
+                device = SimpleNamespace(name=name, address="00:11:22:33:44:55")
+                hardware = GenericManifest().identify_device(name)
+                assert hardware is not None
+                self.assertEqual(hardware["capabilities"]["density"]["min"], 0)
+                self.assertEqual(
+                    hardware["capabilities"]["density"]["default"],
+                    2 if "APA41" in name else 3,
+                )
+                client = GenericClient(
+                    device,
+                    hardware,
+                    SimpleNamespace(
+                        paper_mode=None, speed=None, energy=override, feed_lines=0
+                    ),
+                    SimpleNamespace(speed=10, energy=5000, feed_lines=50),
+                )
+                backend = _LuckBackend()
+                client.backend = backend
+                source = Image.new("RGB", (8, 1), "white")
+                try:
+                    await client.print_images([source], dither=False)
+                    self.assertEqual(
+                        backend.queries[0], b"\x10\xff\x10\x00" + bytes([expected])
+                    )
+                    self.assertEqual(backend.queries[-1], b"\x10\xff\xf1E")
+                    self.assertEqual(source.getpixel((0, 0)), (255, 255, 255))
+                finally:
+                    await client.disconnect()
+                    source.close()
+
     async def test_released_s001_preset_and_density_reach_public_client(self) -> None:
         device = SimpleNamespace(name="S001", address="00:11:22:33:44:55")
         hardware = GenericManifest().identify_device(

@@ -66,6 +66,10 @@ class PrintingPaperTests(unittest.TestCase):
                 # in the encoder. Its image-space paper width is deliberately 90.
                 if model.protocol_family.value == "yk_astra_p1":
                     continue
+                # Luck packs each row with ceil(width / 8) bytes. Its physical
+                # presets deliberately preserve non-byte-aligned dot widths.
+                if model.protocol_family.value in {"luck_normal", "luck_normal_a4"}:
+                    continue
                 effective_width = laid_out.width + preset.left_padding_px
                 if (
                     model.protocol_family.value != "legacy"

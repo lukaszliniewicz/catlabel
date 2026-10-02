@@ -6,6 +6,7 @@ from ...protocol.family import ProtocolFamily
 from .base import RuntimeController
 from .funny_lx import FunnyLxRuntimeController
 from .luck_normal import LuckNormalRuntimeController
+from .printmaster_esc import PrintMasterRuntimeController
 from .tiny import TinyRuntimeController
 from .v5c import V5CRuntimeController
 from .v5g import V5GRuntimeController
@@ -45,6 +46,10 @@ def runtime_controller_for_device(
         return V5XRuntimeController()
     if family is ProtocolFamily.V5C:
         return V5CRuntimeController()
+    if family is ProtocolFamily.PHOMEMO_ESC and getattr(
+        device, "protocol_variant", None
+    ) in {"printmaster_m110", "printmaster_m120"}:
+        return PrintMasterRuntimeController()
     if family is ProtocolFamily.LUCK_NORMAL and getattr(
         device, "protocol_variant", None
     ) in {"lujiang_normal", "lujiang_normal_h"}:

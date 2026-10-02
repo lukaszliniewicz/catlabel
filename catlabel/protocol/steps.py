@@ -45,6 +45,9 @@ class ProtocolStep:
     repeat_interval_sec: float | None = None
     repeat_timeout_sec: float | None = None
     write_channel: ProtocolWriteChannel = ProtocolWriteChannel.STANDARD
+    # Existing local query/wait steps require a matching reply by default.
+    # Optional settings may reserve a response window without aborting a job.
+    reply_required: bool = True
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "data", bytes(self.data))
@@ -88,6 +91,7 @@ class ProtocolStep:
         reply_matcher: ProtocolReplyMatcher | None = None,
         repeat_interval_sec: float | None = None,
         repeat_timeout_sec: float | None = None,
+        reply_required: bool = True,
     ) -> ProtocolStep:
         return cls(
             label=label,
@@ -99,6 +103,7 @@ class ProtocolStep:
             reply_matcher=reply_matcher,
             repeat_interval_sec=repeat_interval_sec,
             repeat_timeout_sec=repeat_timeout_sec,
+            reply_required=reply_required,
         )
 
     @classmethod
@@ -108,6 +113,7 @@ class ProtocolStep:
         *,
         reply_matcher: ProtocolReplyMatcher,
         timeout_sec: float | None = None,
+        reply_required: bool = True,
     ) -> ProtocolStep:
         return cls(
             label=label,
@@ -116,6 +122,7 @@ class ProtocolStep:
             timeout_sec=timeout_sec,
             include_in_payload=False,
             reply_matcher=reply_matcher,
+            reply_required=reply_required,
         )
 
 

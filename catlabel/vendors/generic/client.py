@@ -366,6 +366,23 @@ class GenericClient(BasePrinterClient):
 
         self.last_error = None
         for _ in range(3):
+            if family is ProtocolFamily.PHOMEMO_ESC:
+                # Native/custom Classic bridges differ in passive observation.
+                # A connected bridge without replies must not hide a capable BLE
+                # fallback, and cannot safely advance a PrintMaster page.
+                for attempt in attempts:
+                    try:
+                        await self.backend.connect_attempts([attempt])
+                        if not self.backend.can_wait_for_notification():
+                            raise RuntimeError(
+                                "PrintMaster transport has no completion observer"
+                            )
+                        return True
+                    except Exception as exc:
+                        self.last_error = exc
+                        await self.backend.disconnect()
+                await asyncio.sleep(1.5)
+                continue
             try:
                 await self.backend.connect_attempts(attempts)
                 return True
@@ -469,6 +486,9 @@ class GenericClient(BasePrinterClient):
         )
 
         use_speed = max(0, min(int(resolved_speed or 0), max_allowed_speed))
+        if protocol_family is ProtocolFamily.PHOMEMO_ESC:
+            # Cat-printer global speeds have no model-backed meaning here.
+            use_speed = 0
         use_blackening = 3
         if (caps.get("density") or {}).get("available"):
             density_caps = caps.get("density") or {}
@@ -477,7 +497,13 @@ class GenericClient(BasePrinterClient):
             density_default = density_caps.get("default")
             density_override = (
                 self.printer_profile.energy
-                if self.printer_profile and self.printer_profile.energy not in (None, 0)
+                if self.printer_profile
+                and self.printer_profile.energy is not None
+                and (
+                    self.printer_profile.energy != 0
+                    or protocol_family
+                    in {ProtocolFamily.LUCK_NORMAL, ProtocolFamily.LUCK_NORMAL_A4}
+                )
                 else None
             )
             density_value = (
@@ -610,7 +636,11 @@ class GenericClient(BasePrinterClient):
         for index, job in enumerate(jobs):
             # Completion is only needed after the final page; intermediate
             # pages keep the connection and runtime state live.
-            if index < len(jobs) - 1 and job.wait_for_completion:
+            if (
+                index < len(jobs) - 1
+                and job.wait_for_completion
+                and protocol_family is not ProtocolFamily.PHOMEMO_ESC
+            ):
                 job = ProtocolJob(payload=job.payload, steps=job.steps)
             await send_prepared_job(
                 self.model,
@@ -621,5 +651,8 @@ class GenericClient(BasePrinterClient):
                 runtime_context=runtime_context,
             )
 
-            if index < len(jobs) - 1:
+            if (
+                index < len(jobs) - 1
+                and protocol_family is not ProtocolFamily.PHOMEMO_ESC
+            ):
                 await asyncio.sleep(1.5)

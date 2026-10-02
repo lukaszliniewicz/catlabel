@@ -92,12 +92,27 @@ class _BleakSocket:
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
             self._loop.run_until_complete(self._connect_async(address))
-        except Exception:
-            self._disconnect_after_failed_connect()
-            self._cleanup_loop()
+        except BaseException:
+            try:
+                self._disconnect_after_failed_connect()
+            except BaseException as cleanup_error:
+                with suppress(BaseException):
+                    self._reporter.debug(
+                        short="BLE",
+                        detail=f"BLE setup cleanup failed: {cleanup_error}",
+                    )
+            finally:
+                try:
+                    self._cleanup_loop()
+                except BaseException as cleanup_error:
+                    with suppress(BaseException):
+                        self._reporter.debug(
+                            short="BLE",
+                            detail=f"BLE event loop cleanup failed: {cleanup_error}",
+                        )
             raise
         finally:
-            with suppress(Exception):
+            with suppress(BaseException):
                 asyncio.set_event_loop(previous_loop)
 
     async def _connect_async(self, address: str) -> None:
@@ -378,21 +393,34 @@ class _BleakSocket:
 
     def close(self) -> None:
         """Close the BLE connection and release the private event loop."""
-        self._disconnect_after_failed_connect()
-        self._cleanup_loop()
+        close_error: BaseException | None = None
+        try:
+            self._disconnect_after_failed_connect()
+        except BaseException as exc:
+            close_error = exc
+        finally:
+            try:
+                self._cleanup_loop()
+            except BaseException as exc:
+                if close_error is None:
+                    close_error = exc
+        if close_error is not None:
+            raise close_error
 
     def _disconnect_after_failed_connect(self) -> None:
         """Best-effort disconnect path shared by connect failures and close()."""
-        if self._loop and self._client:
-            with suppress(Exception):
-                self._loop.run_until_complete(self._safe_disconnect_async())
-        self._connected = False
-        self._client = None
-        self._transport = _BleakTransportSession(
-            transport_profile=self._ble_profile,
-            write_resolver=self._write_resolver,
-            reporter=self._reporter,
-        )
+        try:
+            if self._loop and self._client:
+                with suppress(Exception):
+                    self._loop.run_until_complete(self._safe_disconnect_async())
+        finally:
+            self._connected = False
+            self._client = None
+            self._transport = _BleakTransportSession(
+                transport_profile=self._ble_profile,
+                write_resolver=self._write_resolver,
+                reporter=self._reporter,
+            )
 
     async def _safe_disconnect_async(self) -> None:
         """Stop notifications before disconnecting the bleak client."""
@@ -429,9 +457,13 @@ class _BleakSocket:
 
     def _cleanup_loop(self) -> None:
         """Dispose the temporary event loop used by the socket wrapper."""
-        if self._loop:
+        loop = self._loop
+        if loop is None:
+            return
+        try:
             with suppress(Exception):
-                self._loop.close()
+                loop.close()
+        finally:
             self._loop = None
 
     def _handle_notification(self, sender: Any, data: Any) -> None:

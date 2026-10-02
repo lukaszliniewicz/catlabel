@@ -20,12 +20,13 @@ class GenericCatalogTests(unittest.TestCase):
             "f676917257b5d1f869e0f13beff03785258e2a2e",
         )
         self.assertEqual(self.registry.source_metadata["revision"], "v0.8.1")
-        self.assertEqual(self.registry.unsupported_model_count, 165)
-        self.assertEqual(self.registry.deferred_model_count, 12)
+        self.assertEqual(self.registry.unsupported_model_count, 166)
+        self.assertEqual(self.registry.deferred_model_count, 8)
 
     def test_only_executable_generic_profiles_are_advertised(self) -> None:
         counts = Counter(model.protocol_family for model in self.registry.models)
-        self.assertEqual(len(self.registry.models), 133)
+        self.assertEqual(len(self.registry.models), 136)
+        self.assertEqual(counts[ProtocolFamily.PHOMEMO_ESC], 2)
         self.assertEqual(counts[ProtocolFamily.LEGACY], 79)
         self.assertEqual(counts[ProtocolFamily.V5G], 14)
         self.assertEqual(counts[ProtocolFamily.ELEPH_TSPL], 1)

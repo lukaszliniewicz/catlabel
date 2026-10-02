@@ -79,8 +79,6 @@ class PhomemoDetectionTests(unittest.TestCase):
 
     def test_printmaster_redirects_and_unconfirmed_clones_are_not_claimed(self) -> None:
         for name in (
-            "M110",
-            "M120",
             "M110_123",
             "M120-label",
             "PHOMEMO M110",
@@ -98,6 +96,14 @@ class PhomemoDetectionTests(unittest.TestCase):
             model["model_id"] for model in self.manifest.get_supported_models()
         }
         self.assertFalse({"M110", "M220"} & advertised)
+
+    def test_bare_printmaster_names_resolve_to_experimental_generic_owner(self) -> None:
+        for name in ("M110", "M120"):
+            self.assertIsNone(self.manifest.identify_device(name))
+            info = VendorRegistry.identify_device(name)
+            self.assertEqual(info["model_id"], f"printmaster_{name.lower()}")
+            self.assertEqual(info["protocol_family"], "phomemo_esc")
+            self.assertEqual(info["support_state"], "experimental")
 
     def test_longest_alias_wins_independently_of_model_list_order(self) -> None:
         models = self.manifest.get_supported_models()

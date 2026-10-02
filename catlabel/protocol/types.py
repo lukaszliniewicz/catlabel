@@ -26,6 +26,7 @@ class ImageEncoding(ProtocolStrEnum):
     YK_ASTRA_P1_RAW = "yk_astra_p1_raw"
     INSTAPRINT_CORE_RASTER = "instaprint_core_raster"
     FUNNY_LX_RASTER = "funny_lx_raster"
+    PHOMEMO_ESC_RASTER = "phomemo_esc_raster"
 
 
 class PaperMode(ProtocolStrEnum):

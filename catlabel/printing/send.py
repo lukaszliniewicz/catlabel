@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
+from typing import Any
+
 from .. import reporting
 from ..protocol import (
     ProtocolJob,
@@ -7,7 +10,7 @@ from ..protocol import (
     ProtocolStepOperation,
     ProtocolWriteChannel,
 )
-from .runtime.base import PreparedRuntimeContext
+from .runtime.base import PreparedRuntimeContext, RuntimeController
 from .runtime.factory import runtime_controller_for_device
 from .runtime.session import RuntimeConnectionSession
 from .runtime.v5x import V5XRuntimeController
@@ -45,6 +48,23 @@ async def send_prepared_job(
     if controller is not None:
         await session.attach_runtime_controller(controller, timeout=timeout)
 
+    scope = (
+        controller.job_scope(session, job, timeout=timeout)
+        if controller is not None
+        else nullcontext()
+    )
+    async with scope:
+        await _send_job(session, connection, job, controller, timeout=timeout)
+
+
+async def _send_job(
+    session: RuntimeConnectionSession,
+    connection: Any,
+    job: ProtocolJob,
+    controller: RuntimeController | None,
+    *,
+    timeout: float,
+) -> None:
     sent = False
     if job.steps:
         if controller is not None:
@@ -91,7 +111,7 @@ async def _send_protocol_steps(
         reply = await execute_protocol_step(session, step, timeout=timeout)
         if step.operation is ProtocolStepOperation.SEND:
             continue
-        if not reply_matches_for(step, reply):
+        if step.reply_required and not reply_matches_for(step, reply):
             raise RuntimeError(
                 f"Protocol step {step.label!r} received an unexpected reply: "
                 f"{bytes_preview(reply)}"

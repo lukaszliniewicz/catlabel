@@ -16,6 +16,37 @@ class GenericManifest(VendorManifest):
 
     def _build_capabilities(self, raw_info: dict) -> dict:
         protocol_family = str(raw_info.get("protocol_family") or "").lower()
+        if protocol_family == "phomemo_esc":
+            return {
+                "speed": {"available": False},
+                "energy": {"available": False},
+                "density": {
+                    "available": True,
+                    "min": 1,
+                    "max": 5,
+                    "default": None,
+                    "allow_auto": True,
+                    "scale": "level",
+                },
+                "feed": {"available": False},
+            }
+        if protocol_family in {"luck_normal", "luck_normal_a4"}:
+            minimum = raw_info.get("min_density")
+            maximum = raw_info.get("max_density")
+            default = raw_info.get("default_density")
+            return {
+                "speed": {"available": False},
+                "energy": {"available": False},
+                "density": {
+                    "available": True,
+                    "min": 1 if minimum is None else minimum,
+                    "max": 5 if maximum is None else maximum,
+                    "default": 3 if default is None else default,
+                    "allow_auto": False,
+                    "scale": "level",
+                },
+                "feed": {"available": True, "default": 0},
+            }
         if protocol_family == "yk_astra_p1":
             return {
                 "speed": {
@@ -36,8 +67,6 @@ class GenericManifest(VendorManifest):
                 "feed": {"available": False},
             }
         if protocol_family in {
-            "luck_normal",
-            "luck_normal_a4",
             "v5g",
             "v5x",
             "v5c",

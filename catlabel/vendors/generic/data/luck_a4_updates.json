@@ -1,0 +1,1310 @@
+{
+  "schema_version": 1,
+  "base_commit": "f676917257b5d1f869e0f13beff03785258e2a2e",
+  "commit": "76b3171bb956603277f7d97863d7e607d3de2e89",
+  "models": [
+    {
+      "model_key": "luck_apa41",
+      "profile_key": "luck_apa41",
+      "detections": [
+        {
+          "prefixes": [
+            "APA41_"
+          ]
+        }
+      ],
+      "whitespace_mode": "preserve",
+      "origin_ids": [
+        "com.dingdang.newprint"
+      ]
+    },
+    {
+      "model_key": "luck_apa49",
+      "profile_key": "luck_lujiang_a4_dense",
+      "detections": [
+        {
+          "prefixes": [
+            "E49_"
+          ]
+        },
+        {
+          "prefixes": [
+            "APA49_"
+          ],
+          "marketing_names": [
+            "A49"
+          ]
+        }
+      ],
+      "whitespace_mode": "preserve",
+      "origin_ids": [
+        "com.dingdang.newprint"
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "profile_key": "luck_a40",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_raw"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_lujiang_a4",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "lujiang_a4"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_lujiang_a4_dense",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "lujiang_a4"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 3,
+            "high": 5
+          },
+          "text": {
+            "low": 0,
+            "middle": 3,
+            "high": 5
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_a49h",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 300,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "a49h"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 3,
+            "high": 5
+          },
+          "text": {
+            "low": 0,
+            "middle": 3,
+            "high": 5
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm_300dpi",
+        "luck_a4_roll_56mm_300dpi",
+        "luck_a4_roll_77mm_300dpi",
+        "luck_a4_roll_107mm_300dpi",
+        "luck_a4_roll_148mm_300dpi",
+        "luck_a4_roll_210mm_300dpi",
+        "tag_2496r",
+        "blacktag_2496r",
+        "luck_a4_folder_a4_300dpi",
+        "luck_a4_folder_a5_300dpi",
+        "luck_a4_folder_letter_300dpi",
+        "luck_a4_folder_legal_300dpi",
+        "tattoo_2496r"
+      ]
+    },
+    {
+      "profile_key": "luck_a4_compressed_tattoo",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "a4_tattoo_64"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_a4_compressed_tattoo_96",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "a4_tattoo_64_endline96"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_a4_compressed_tattoo_96_dense",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "a4_tattoo_64_endline96"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 2,
+            "high": 5
+          },
+          "text": {
+            "low": 0,
+            "middle": 2,
+            "high": 5
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_u8",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "u8"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_apl86",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "apl86"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_apl86h",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 300,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "apl86"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm_300dpi",
+        "luck_a4_roll_56mm_300dpi",
+        "luck_a4_roll_77mm_300dpi",
+        "luck_a4_roll_107mm_300dpi",
+        "luck_a4_roll_148mm_300dpi",
+        "luck_a4_roll_210mm_300dpi",
+        "tag_2496r",
+        "blacktag_2496r",
+        "luck_a4_folder_a4_300dpi",
+        "luck_a4_folder_a5_300dpi",
+        "luck_a4_folder_letter_300dpi",
+        "luck_a4_folder_legal_300dpi",
+        "tattoo_2496r"
+      ]
+    },
+    {
+      "profile_key": "luck_d80",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "d80"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    },
+    {
+      "profile_key": "luck_d80h",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 300,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "d80h"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm_300dpi",
+        "luck_a4_roll_56mm_300dpi",
+        "luck_a4_roll_77mm_300dpi",
+        "luck_a4_roll_107mm_300dpi",
+        "luck_a4_roll_148mm_300dpi",
+        "luck_a4_roll_210mm_300dpi",
+        "tag_2496r",
+        "blacktag_2496r",
+        "luck_a4_folder_a4_300dpi",
+        "luck_a4_folder_a5_300dpi",
+        "luck_a4_folder_letter_300dpi",
+        "luck_a4_folder_legal_300dpi",
+        "tattoo_2496r"
+      ]
+    },
+    {
+      "profile_key": "luck_a80h_way1",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 300,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "a80h_way1"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm_300dpi",
+        "luck_a4_roll_56mm_300dpi",
+        "luck_a4_roll_77mm_300dpi",
+        "luck_a4_roll_107mm_300dpi",
+        "luck_a4_roll_148mm_300dpi",
+        "luck_a4_roll_210mm_300dpi",
+        "tag_2496r",
+        "blacktag_2496r",
+        "luck_a4_folder_a4_300dpi",
+        "luck_a4_folder_a5_300dpi",
+        "luck_a4_folder_letter_300dpi",
+        "luck_a4_folder_legal_300dpi",
+        "tattoo_2496r"
+      ]
+    },
+    {
+      "profile_key": "luck_a41_luckp",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "luckp_a41"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_raw"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 7,
+            "high": 15
+          },
+          "text": {
+            "low": 0,
+            "middle": 7,
+            "high": 15
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_210mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "tag_1616r",
+        "blacktag_1616r",
+        "luck_a4_folder_a4",
+        "tattoo_1616r"
+      ]
+    },
+    {
+      "profile_key": "luck_a42_luckp",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "luckp_a42"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          },
+          "text": {
+            "low": 0,
+            "middle": 1,
+            "high": 2
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_210mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "tag_1616r",
+        "blacktag_1616r",
+        "luck_a4_folder_a4",
+        "tattoo_1616r"
+      ]
+    },
+    {
+      "profile_key": "luck_apa41",
+      "size": 8,
+      "one_length": 8,
+      "dev_dpi": 203,
+      "has_id": true,
+      "use_spp": true,
+      "can_print_label": false,
+      "label_value": "0",
+      "back_paper_num": 0,
+      "protocol_default": {
+        "type": "luck_normal_a4",
+        "packets_type": "lujiang_a4"
+      },
+      "default_image_pipeline": {
+        "formats": [
+          "bw1"
+        ],
+        "encoding": "luck_normal_compressed"
+      },
+      "stream": {
+        "chunk_size": 300,
+        "delay_ms": 4
+      },
+      "post_print_feed_count": 2,
+      "print_defaults": {
+        "energy": {
+          "image": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          },
+          "text": {
+            "low": 10000,
+            "middle": 10000,
+            "high": 10000
+          }
+        },
+        "density": {
+          "image": {
+            "low": 0,
+            "middle": 2,
+            "high": 5
+          },
+          "text": {
+            "low": 0,
+            "middle": 2,
+            "high": 5
+          }
+        }
+      },
+      "a4xii": false,
+      "paper_presets": [
+        "luck_a4_roll_216mm",
+        "luck_a4_roll_56mm",
+        "luck_a4_roll_77mm",
+        "luck_a4_roll_107mm",
+        "luck_a4_roll_148mm",
+        "luck_a4_roll_210mm",
+        "tag_1648r",
+        "blacktag_1648r",
+        "luck_a4_folder_a4",
+        "luck_a4_folder_a5",
+        "luck_a4_folder_letter",
+        "luck_a4_folder_legal",
+        "tattoo_1648r"
+      ]
+    }
+  ],
+  "paper_presets": {
+    "blacktag_1616r": {
+      "label": "Black mark",
+      "paper_mode": "black_tag",
+      "paper_width_px": 1616,
+      "render_width_px": 1616
+    },
+    "blacktag_1648r": {
+      "label": "Black mark",
+      "paper_mode": "black_tag",
+      "paper_width_px": 1648,
+      "render_width_px": 1648
+    },
+    "blacktag_2496r": {
+      "label": "Black tag",
+      "paper_mode": "black_tag",
+      "paper_width_px": 2496,
+      "render_width_px": 2496
+    },
+    "luck_a4_folder_a4": {
+      "label": "A4 sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 1616,
+      "render_width_px": 1616,
+      "render_height_px": 2300
+    },
+    "luck_a4_folder_a4_300dpi": {
+      "label": "A4 sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 2400,
+      "render_width_px": 2400,
+      "render_height_px": 3480
+    },
+    "luck_a4_folder_a5": {
+      "label": "A5 sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 1108,
+      "render_width_px": 1108,
+      "render_height_px": 1616
+    },
+    "luck_a4_folder_a5_300dpi": {
+      "label": "A5 sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 1692,
+      "render_width_px": 1692,
+      "render_height_px": 2400
+    },
+    "luck_a4_folder_legal": {
+      "label": "Legal sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 1648,
+      "render_width_px": 1648,
+      "render_height_px": 2768
+    },
+    "luck_a4_folder_legal_300dpi": {
+      "label": "Legal sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 2496,
+      "render_width_px": 2496,
+      "render_height_px": 4152
+    },
+    "luck_a4_folder_letter": {
+      "label": "Letter sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 1648,
+      "render_width_px": 1648,
+      "render_height_px": 2160
+    },
+    "luck_a4_folder_letter_300dpi": {
+      "label": "Letter sheet",
+      "paper_mode": "folder",
+      "paper_width_px": 2496,
+      "render_width_px": 2496,
+      "render_height_px": 3240
+    },
+    "luck_a4_roll_107mm": {
+      "label": "107 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 832,
+      "render_width_px": 832
+    },
+    "luck_a4_roll_107mm_300dpi": {
+      "label": "107 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 1248,
+      "render_width_px": 1248
+    },
+    "luck_a4_roll_148mm": {
+      "label": "148 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 1184,
+      "render_width_px": 1184
+    },
+    "luck_a4_roll_148mm_300dpi": {
+      "label": "148 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 1776,
+      "render_width_px": 1776
+    },
+    "luck_a4_roll_210mm": {
+      "label": "210 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 1616,
+      "render_width_px": 1616
+    },
+    "luck_a4_roll_210mm_300dpi": {
+      "label": "210 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 2400,
+      "render_width_px": 2400
+    },
+    "luck_a4_roll_216mm": {
+      "label": "216 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 1648,
+      "render_width_px": 1648
+    },
+    "luck_a4_roll_216mm_300dpi": {
+      "label": "216 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 2496,
+      "render_width_px": 2496
+    },
+    "luck_a4_roll_56mm": {
+      "label": "56 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 432,
+      "render_width_px": 432
+    },
+    "luck_a4_roll_56mm_300dpi": {
+      "label": "56 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 648,
+      "render_width_px": 648
+    },
+    "luck_a4_roll_77mm": {
+      "label": "77 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 591,
+      "render_width_px": 591
+    },
+    "luck_a4_roll_77mm_300dpi": {
+      "label": "77 mm roll",
+      "paper_mode": "plain",
+      "paper_width_px": 887,
+      "render_width_px": 887
+    },
+    "tag_1616r": {
+      "label": "Tag",
+      "paper_mode": "tag",
+      "paper_width_px": 1616,
+      "render_width_px": 1616
+    },
+    "tag_1648r": {
+      "label": "Tag",
+      "paper_mode": "tag",
+      "paper_width_px": 1648,
+      "render_width_px": 1648
+    },
+    "tag_2496r": {
+      "label": "Tag",
+      "paper_mode": "tag",
+      "paper_width_px": 2496,
+      "render_width_px": 2496
+    },
+    "tattoo_1616r": {
+      "label": "Tattoo",
+      "paper_mode": "tattoo",
+      "paper_width_px": 1616,
+      "render_width_px": 1616
+    },
+    "tattoo_1648r": {
+      "label": "Tattoo",
+      "paper_mode": "tattoo",
+      "paper_width_px": 1648,
+      "render_width_px": 1648
+    },
+    "tattoo_2496r": {
+      "label": "Tattoo",
+      "paper_mode": "tattoo",
+      "paper_width_px": 2496,
+      "render_width_px": 2496
+    }
+  }
+}

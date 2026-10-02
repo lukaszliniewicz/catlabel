@@ -52,6 +52,7 @@ class ProtocolSpecDefinitionTests(unittest.TestCase):
                 ProtocolCommandSet.INSTAPRINT_CORE,
             ),
             ProtocolFamily.FUNNY_LX: (None, ProtocolCommandSet.FUNNY_LX),
+            ProtocolFamily.PHOMEMO_ESC: (None, ProtocolCommandSet.PHOMEMO_ESC),
         }
 
         self.assertEqual(set(expected), set(ProtocolFamily))

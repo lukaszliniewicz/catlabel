@@ -63,7 +63,9 @@ class LuckProtocolTests(unittest.TestCase):
             protocol_family=ProtocolFamily.LUCK_NORMAL_A4,
             feed_padding=12,
             dev_dpi=203,
-            image_pipeline=self.raw_pipeline,
+            image_pipeline=ImagePipelineConfig(
+                formats=(PixelFormat.BW1,), encoding=ImageEncoding.LUCK_NORMAL_RAW
+            ),
             paper_mode=PaperMode.TAG,
             page_index=1,
             page_count=1,

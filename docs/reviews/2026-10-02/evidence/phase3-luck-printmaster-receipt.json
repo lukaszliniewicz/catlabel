@@ -1,0 +1,132 @@
+{
+  "checkpoint": "phase3-luck-printmaster",
+  "date": "2026-10-02",
+  "base_commit": "08f64d55411e9a5b8a00e70eb517aa32f97c1ddd",
+  "upstream": {
+    "release": "v0.8.1",
+    "commit": "f676917257b5d1f869e0f13beff03785258e2a2e",
+    "selected_commits": [
+      "76b3171bb956603277f7d97863d7e607d3de2e89",
+      "fe603ca2ee1d21866f66f86d63ca2fc101916de8",
+      "43b3203e229c271b75e86703e3a8f2ce428a8c45",
+      "3bd80bac89f8894e143ee867c63683b6c7f2f02b"
+    ]
+  },
+  "command": "PATH=/tmp/catlabel-implementation-20261002/check-env/bin:$PATH python -m tools.check --lane full --report check-results/phase3-luck-printmaster.json",
+  "exit_code": 0,
+  "environment": {
+    "os": "Linux",
+    "python": "3.11.15",
+    "node": "24.18.0",
+    "npm": "11.16.0"
+  },
+  "static_findings": {
+    "ruff": [],
+    "format": [],
+    "typing": [],
+    "react": [],
+    "knip": [],
+    "knip-production": [],
+    "python-cycles": [],
+    "import-contracts": [],
+    "frontend-cycles": []
+  },
+  "backend_tests": {
+    "run": 629,
+    "passed": 628,
+    "skipped": 1,
+    "seconds": 8.36,
+    "skip": "Windows SDK native import"
+  },
+  "frontend_tests": {
+    "files": 7,
+    "passed": 33
+  },
+  "production_build_seconds": 6.82,
+  "catalog": {
+    "raw_release_models": 145,
+    "executable_models": 136,
+    "deferred_models": 8,
+    "unsupported_models": 166,
+    "luck_overlay": {
+      "models": 2,
+      "profiles": 16,
+      "presets": 29
+    },
+    "raw_release_bundle_sha256": "00e9659ab6b7c012cd8a7309a8c4ac736b4b53878ff1b3d915980624075640e8",
+    "raw_release_and_legacy_files_changed": false
+  },
+  "frontend_source_and_shipped_artifact_changed": false,
+  "retained_frontend_aggregate_sha256": "668b0d78e0a373ea6502f0828149683548f6e397184a77f46bbf1a94faabaf8a",
+  "source_files_sha256": {
+    "catlabel/printing/runtime/base.py": "3dfc4bbde01b25464be1fe132748560a9bdbed2bfa1d9b1ac03f507519477356",
+    "catlabel/printing/runtime/factory.py": "f740adf9970d5115089d93008b4e233a372dfdfaca065501bb530652fcff45a4",
+    "catlabel/printing/runtime/printmaster_esc.py": "8bb15f3810f47341dea60ebb16fe97c7d4bec88630dc72cd065381fab957ad0a",
+    "catlabel/printing/send.py": "bbb05c33abb209408f101e4f735cf9e0a9a35c6bcc63845960da6a8cab10922e",
+    "catlabel/protocol/families/__init__.py": "e765ea663fb0553b72c8bcdeaeb8f8de76f671e5babb239a5dc2906c59412e3f",
+    "catlabel/protocol/families/luck_normal.py": "2cd162c59e3d61671814255ca93a228091dae002eb8169dbdf1e8768d7359e21",
+    "catlabel/protocol/families/luck_normal_a4.py": "e78a6af637a25c89f67dae86e904a1fb5eec02806500363fff301772c7128497",
+    "catlabel/protocol/families/luck_normal_core.py": "5178eb7e105ce54360685e725365d0272f5bf5eb906f21466203703942bb5810",
+    "catlabel/protocol/families/luck_transactions.py": "24441d18d17f671d66d391ba16e1482dc526ef0f7735f13354570853bd2c9365",
+    "catlabel/protocol/families/phomemo_esc.py": "ccf30e52fcb6a918d5773f787626c8885eb132e295f3d6339ba94ecfae4da650",
+    "catlabel/protocol/families/phomemo_replies.py": "37694d29f6478233f2b4c0bf494760cd0b5072d2461e315ca41e6d0aea16111f",
+    "catlabel/protocol/families/printmaster_core.py": "68703da427670fc5485f2a7b740e0e25f4771ae7f1c619a454d88f4f85aca811",
+    "catlabel/protocol/family.py": "c40bcf51eff7d6c23932a90248946e96a6037a96b286e7537cfb2c0f6ecf4351",
+    "catlabel/protocol/steps.py": "770f655c7659c7bf5c58a60950321035838815ea31b86348286b62e78d1b9242",
+    "catlabel/protocol/types.py": "de0427b3f35999079ba6b676f59b64dad4254e66c3bc9e480daf34ec38645deb",
+    "catlabel/transport/bluetooth/adapters/bleak_adapter.py": "bd87f4b455e88279c7077830346b2ffe802cfe1e0ad375fc95ffd0bd51ccd36c",
+    "catlabel/vendors/generic/catalog_updates.py": "2de5e63c95d7baeba3d1885debb72ed72dc480cabfb6f1da7de7e7a3cc02d13b",
+    "catlabel/vendors/generic/client.py": "07effef1fc9874b2c2b397c77b0b4c6b087e8586a8762a2698997674369a300e",
+    "catlabel/vendors/generic/data/luck_a4_updates.json": "12071475925e453f8720de360459e32038ed35af3362abef80f304afe391fe01",
+    "catlabel/vendors/generic/manifest.py": "7576201855c6bc13366fe0867126f2194db65750cc1c5054d0d288ba7ed0188c",
+    "catlabel/vendors/generic/models.py": "c0174f1b04591e70c395ad5488683a7ecada68d3535ffe1e9afa93a626b0240a",
+    "catlabel/vendors/utils.py": "97b5b7f523d38c05aa6b537eb5b0405dc496d03b5709a3679698d446334ebb54",
+    "pyproject.toml": "d132cc710ed2ff139941afcaeb152e0503cb9df2fe66f18d0ea952306ccf7362",
+    "tests/test_ble_socket_cleanup.py": "561bacc902db0a21af6570c4b0e670fe01f00c2247537e889321ac048e7cf59a",
+    "tests/test_catalog_schema_versions.py": "65ed1085dba7227ec419dc933183423eba7972da07c4e52996a6758610da807c",
+    "tests/test_generic_catalog.py": "3d02c7811509e6ad998b94af009bb8aef3a90b0427128c876401f2ca2dd65b42",
+    "tests/test_generic_client.py": "8fe27423cbe90d961b774be955239b0b291fdee758fae202ebbd981b6cbdfbd0",
+    "tests/test_luck_catalog_updates.py": "df09871416f794af50ea261ad23b8b9b79bffa8172305f4d67df33555bd5d839",
+    "tests/test_luck_odd_width.py": "2a351da49fbd7faa5de02944019a545e471d22068ae9e3a8bf9f4dd154872786",
+    "tests/test_luck_protocol.py": "bfb15ec56a3ab5d45847aab89c2d9e09198127dba4214bab0c7fa26e391adc5b",
+    "tests/test_luck_selected_transactions.py": "328b2f64634d2a3bcddd3b50ee0f4a9e888a9775016568d6b7df6c04f0042c84",
+    "tests/test_luck_transaction_execution.py": "5d151cd0975d6f6be0c9d41ce1fa0490f968994cc5682be402ef424404429b48",
+    "tests/test_phomemo_detection.py": "fccc375c0ea205c6e78440f70fdb7fdfc2d422798bb64109cf3cbb746f093c6a",
+    "tests/test_phomemo_reply_dialects.py": "ef0f5b1166db65dd5a2ac986729ba901134c66398fb0fa1f279b28ffb08e81ec",
+    "tests/test_printing_paper.py": "3fc4c82116af779a659946fe39e6999bd387d9abfcdc0febc20c91ebce44dc0f",
+    "tests/test_printmaster_core.py": "d96b53d510cea7dcc436a09fd4088c6e046bfe38421bbd26584043af91adcfd6",
+    "tests/test_printmaster_integration.py": "c7d58bb01fd70440c4c91b4915be44a1bd5f8a2efcf52929aeb0f1281d46b9c9",
+    "tests/test_printmaster_runtime.py": "baf8b472e84f91027732aa547407ecf6b15fabc1a985eb62ab685381aab022f5",
+    "tests/test_protocol_contracts.py": "a0add0cf5ec7592cffd8d20a917178e4bfed282e1e0e90a18c732277d01ae070",
+    "tools/sync_luck_catalog.py": "73ce94ca021762a3e88c788adc1409ba7a72821541931eb884f7fe11bcfa2ba7"
+  },
+  "lock_sha256": {
+    "pixi.lock": "a60e21b3b2fba62a6ac01230d70f88627c5bb5cef49f4a4fe2f1d19f3962b82a",
+    "requirements-check.lock": "5520a6ca39e676948cf03bf05bdc06a546f92e4584846771d1f156b689259a28",
+    "requirements-dev.lock": "f1974a6f88b6e87efdc13aacc5fa1a0b3960d49dc7f80245d0e6d75cd9c2077c",
+    "frontend/package-lock.json": "52e7bd6c95963229454fc848da1f72bb44f50ebaf2d3fd58416b54a17b2da0ac"
+  },
+  "review": {
+    "configured_model": "GPT-6.1 Sol/high",
+    "runtime_model_telemetry": "unavailable",
+    "findings": "No concrete consequential findings in PrintMaster scope",
+    "tests_reviewed": 31
+  },
+  "parent_corrections": [
+    "PrintMaster speed opcode/provenance and suppression removal",
+    "stop after early completion remains fatal while scope open",
+    "M220 suffix redirect blocks generic M2 fallback",
+    "PrintMaster falls back from unobservable Classic to BLE",
+    "odd Luck widths covered by literal two-row raw/compressed vectors",
+    "model overrides cannot bypass Luck overlay recipe scope"
+  ],
+  "evidence_limits": [
+    "No physical printer output or firmware/media receipt",
+    "Windows/macOS native execution unverified; portable contracts only",
+    "No dependency advisory refresh or deployment",
+    "Full delayed device frames have no job ID; offsets fence only pre-arm partial replies",
+    "Luck new firmware/page-marker controls beyond bounded selected transactions not adopted",
+    "Ordinary Phomemo selected-master idle-query/passive-completion changes unadopted",
+    "V5X compact marker/fragmented full-header ambiguity remains; no generic stream-fragment acceptance claimed"
+  ]
+}

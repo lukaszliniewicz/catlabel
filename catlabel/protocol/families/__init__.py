@@ -24,6 +24,7 @@ from .instaprint_core import BEHAVIOR as INSTAPRINT_CORE_BEHAVIOR
 from .legacy import BEHAVIOR as LEGACY_BEHAVIOR
 from .luck_normal import BEHAVIOR as LUCK_NORMAL_BEHAVIOR
 from .luck_normal_a4 import BEHAVIOR as LUCK_NORMAL_A4_BEHAVIOR
+from .phomemo_esc import BEHAVIOR as PHOMEMO_ESC_BEHAVIOR
 from .toprint_hprt_esc import BEHAVIOR as TOPRINT_HPRT_ESC_BEHAVIOR
 from .toprint_tspl import BEHAVIOR as TOPRINT_TSPL_BEHAVIOR
 from .v5c import BEHAVIOR as V5C_BEHAVIOR
@@ -76,6 +77,9 @@ _DEFINITIONS = {
         ProtocolFamily.INSTAPRINT_CORE, INSTAPRINT_CORE_BEHAVIOR
     ),
     ProtocolFamily.FUNNY_LX: _definition(ProtocolFamily.FUNNY_LX, FUNNY_LX_BEHAVIOR),
+    ProtocolFamily.PHOMEMO_ESC: _definition(
+        ProtocolFamily.PHOMEMO_ESC, PHOMEMO_ESC_BEHAVIOR
+    ),
 }
 
 

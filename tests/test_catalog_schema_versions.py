@@ -430,7 +430,19 @@ class CatalogSchemaVersionTests(unittest.TestCase):
             patch.object(catalog, "SOURCE_PATH", self.root / "missing-source.json"),
         ):
             registry = PrinterModelRegistry.load()
-        self.assertEqual(registry.source_metadata, data["source"])
+        self.assertEqual(
+            registry.source_metadata,
+            {
+                **data["source"],
+                "selected_updates": [
+                    {
+                        "commit": "3bd80bac89f8894e143ee867c63683b6c7f2f02b",
+                        "base_commit": data["source"]["commit"],
+                        "scope": "PrintMaster ownership",
+                    }
+                ],
+            },
+        )
         self.assertEqual([item.model_no for item in registry.models], ["modern"])
 
     def test_explicit_custom_paths_keep_legacy_reads_even_with_bundle_present(

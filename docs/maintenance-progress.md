@@ -7,7 +7,7 @@ Objective: implement the complete [2 October maintenance plan](reviews/2026-10-0
 | 0 — reproducible checks | Implemented locally; native acceptance open | Review committed as `0e61a31`; hermetic/portable tests as `2718c08` (67/67). Canonical dependencies, hashed check locks, diagnostic ratchet, graph/contracts, advisory gate and native CI are integrated. Full Linux check: 83 backend tests, 21 frontend tests and scratch production build pass. A deliberately introduced F821 failed the actual static gate; no new tooling debt is baselined. Existing Pixi lock verified unchanged by dry-run. Hosted/native validation remains unverified. |
 | 1 — correctness and local operation | Implemented locally; hardware acceptance open | Classification/row packing, local-server/provider-secret fixes, device admission and Niimbot acknowledgements, shared processing limits, safe catalog publication and project transactions/revisions are integrated. Full Linux checks pass: 300 backend tests, 28 frontend tests and a scratch production build. |
 | 2 — debt elimination | Implemented locally; native acceptance open | All source/check debt gates are zero, both full Python SCCs are removed, and no import-contract exception remains. 329 backend tests pass with one native SDK test skipped on Linux; 33 frontend tests and production build pass. |
-| 3 — upstream parity | In progress; released generic integration implemented locally | V5X, Eleph/ToPrint, Tiny and S001 fixtures pass. Live Linux Classic receive, S001 encoder/runtime, paper transforms and v0.8.1 bundle are integrated. NIIMBOT and ordinary Phomemo recipes plus selected BLE/payload hooks are integrated. Luck A4 transaction and PrintMaster runtime adoption remain; unsafe compact M110/M120/M220 aliases are deferred. |
+| 3 — upstream parity | Implemented locally within pinned scope; hardware acceptance open | Released generic/dedicated recipes, Classic receive and selected BLE hooks pass fixtures. Pinned Luck A4 overlay/transactions and experimental PrintMaster M110/M120 are integrated. Explicit unadopted deltas and physical/native limits remain in the parity ledger. |
 | 4 — installation/dependencies | Pending | Native locked bootstrap and release/update/repair workflow; staged major migrations and native installation matrix. |
 | 5 — structure/UX | Pending | Typed interfaces/store/component decomposition; responsive/accessible setup/editor/save recovery. Parent owns browser acceptance. |
 | 6 — performance/lifecycle | Pending | Measured alpha hoist, unified render readiness, Playwright ownership, bounded jobs/previews and representative benchmarks. |
@@ -130,3 +130,35 @@ The environment occupies about 667 MiB and its candidate cache about 650 MiB.
 Isolated imports measured roughly 0.58 seconds/49 MiB for the vendor registry,
 2.79 seconds/196 MiB for LiteLLM and 2.47 seconds/228 MiB for the Google SDK.
 These measurements are preparation evidence, not bootstrap or dependency promotion.
+
+Pinned Luck/PrintMaster checkpoint: APA41 and APA49/E49 are distinct, A4 profiles
+use source BW1 geometry/defaults, and Luck jobs require status/setup/finalization
+replies. Optional paper windows preserve prior local required-query defaults.
+PrintMaster exact names use their separate 384-dot recipe and distinct reply
+decoder. Completion arms before every page, excludes pre-arm partial replies,
+and retains faults/disconnection through scope exit. No observer fails before
+pixels; a connected unobservable Classic bridge falls back to BLE. Unknown
+suffixes and M220 remain unknown through the pinned ownership redirect.
+
+The raw release and legacy JSON hashes are unchanged. Normalized catalogs now
+have 136 executable, eight deferred and 166 unsupported records. A validated
+Luck overlay holds two models, 16 profiles and 29 presets; metadata lists selected
+updates separately from the release. Parent review corrected a wrong speed
+opcode and added literal odd-width row packing checks. The configured
+GPT-6.1 Sol/high reviewer found no consequential PrintMaster defect; Luna/max
+specialists supplied bounded codecs, runtime, overlay, cleanup and integration
+tests. Runtime model telemetry is unavailable.
+
+The full Linux gate passes: 629 backend tests run (628 passed, one Windows SDK
+skip), 33 frontend tests, production build 6.82 seconds, and all static categories
+zero. Frontend source/artifact and dependency locks are unchanged by this
+printer checkpoint. [Machine-readable receipt](reviews/2026-10-02/evidence/phase3-luck-printmaster-receipt.json).
+Physical printing, foreign native execution, advisory refresh and deployment are
+unverified. Explicit unadopted source deltas remain in [the parity ledger](upstream-parity.md).
+
+Phase 4 preparation advanced: exact LiteLLM 1.103.2 and Google AI Platform 2.3.0
+import successfully in a disposable Python 3.11.15 environment. Nineteen
+credential-handling tests pass and all 97 installed packages are compatible.
+Completion was mocked; request serialization and live providers are unverified.
+The five-platform dependency generator passed nine tests in scratch and has not
+yet been promoted. These preparations do not change application dependencies.

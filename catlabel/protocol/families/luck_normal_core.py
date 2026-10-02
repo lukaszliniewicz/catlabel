@@ -9,11 +9,16 @@ from ..compression import compress_zlib_wbits_10
 from ..encoding import pack_line
 from ..family import ProtocolFamily
 from ..plan import ProtocolPlan
-from ..steps import ProtocolReplyExpectation, ProtocolStep
+from ..steps import ProtocolStep
 from ..types import ImageEncoding, ImagePipelineConfig, PaperMode
 from .base import PrintJobRequest
-
-LUCK_PRINT_QUERY_TIMEOUT_SEC = 3.0
+from .luck_transactions import (
+    NORMAL_FINALIZE_TIMEOUT_SEC,
+    density_setting,
+    finalize,
+    paper_setting,
+    status_query,
+)
 
 
 class LuckNormalPaperMode(IntEnum):
@@ -35,6 +40,7 @@ class LuckNormalModeRecipe:
     adjust_after: int | None = None
     adjust_after_scope: str = "never"
     mark_last_scope: str = "never"
+    wait_for_paper_reply: bool = True
 
 
 @dataclass(frozen=True)
@@ -196,55 +202,30 @@ class LuckNormalFamilyRecipe:
     variants: Mapping[str, LuckNormalVariantRecipe] = field(default_factory=dict)
 
     def build_job(self, request: PrintJobRequest) -> ProtocolPlan:
-        steps = self.build_steps(request)
-        if self._uses_query_interleaving(request.protocol_variant):
-            return ProtocolPlan.sequence(tuple(steps))
-        return ProtocolPlan.stream(
-            b"".join(step.data for step in steps if step.include_in_payload)
-        )
+        return ProtocolPlan.sequence(tuple(self.build_steps(request)))
 
     def build_steps(self, request: PrintJobRequest) -> list[ProtocolStep]:
         recipe = self.recipe_for_mode(request.paper_mode, request.protocol_variant)
         dialect = self.dialect_for_variant(request.protocol_variant)
-        query_interleaved = self._uses_query_interleaving(request.protocol_variant)
+        variant = self._variant(request.protocol_variant)
         steps: list[ProtocolStep] = []
         if request.density is not None:
-            steps.append(
-                self._step(
-                    "density",
-                    dialect.set_density(request.density),
-                    query=query_interleaved,
-                    expect=ProtocolReplyExpectation.OK,
-                )
-            )
-        if query_interleaved:
-            steps.append(
-                ProtocolStep.query(
-                    "status",
-                    bytes([0x10, 0xFF, 0x40]),
-                    expect=ProtocolReplyExpectation.STATUS_ZERO,
-                    timeout_sec=LUCK_PRINT_QUERY_TIMEOUT_SEC,
-                    include_in_payload=False,
-                )
-            )
+            steps.append(density_setting(dialect.set_density(request.density)))
+        steps.append(status_query())
         if recipe.paper_mode is not None and recipe.paper_type_stage == "before_enable":
             steps.append(
-                self._step(
-                    "paper type",
+                paper_setting(
                     dialect.set_paper_type(1, int(recipe.paper_mode)),
-                    query=query_interleaved,
-                    expect=ProtocolReplyExpectation.OK,
+                    wait_for_reply=recipe.wait_for_paper_reply,
                 )
             )
         steps.append(ProtocolStep.send("enable", dialect.enable_command))
         steps.append(ProtocolStep.send("wakeup", dialect.wakeup_command))
         if recipe.paper_mode is not None and recipe.paper_type_stage == "after_wakeup":
             steps.append(
-                self._step(
-                    "paper type",
+                paper_setting(
                     dialect.set_paper_type(1, int(recipe.paper_mode)),
-                    query=query_interleaved,
-                    expect=ProtocolReplyExpectation.OK,
+                    wait_for_reply=recipe.wait_for_paper_reply,
                 )
             )
         elif (
@@ -263,19 +244,22 @@ class LuckNormalFamilyRecipe:
                 )
             )
         steps.append(ProtocolStep.send("bitmap", self.bitmap_encoder.encode(request)))
-        if recipe.finish_action == "position":
-            steps.append(ProtocolStep.send("position", dialect.position_command))
-        elif recipe.finish_action == "line_feed":
-            steps.append(
-                ProtocolStep.send(
-                    "line feed",
-                    dialect.line_feed(self.end_line_dots_for_request(request)),
+        if request.ends_media_page:
+            if recipe.finish_action == "position":
+                steps.append(ProtocolStep.send("position", dialect.position_command))
+            elif recipe.finish_action == "line_feed":
+                steps.append(
+                    ProtocolStep.send(
+                        "line feed",
+                        dialect.line_feed(self.end_line_dots_for_request(request)),
+                    )
                 )
-            )
-        else:
-            raise ValueError(
-                f"Unsupported Luck normal finish action: {recipe.finish_action}"
-            )
+            else:
+                raise ValueError(
+                    f"Unsupported Luck normal finish action: {recipe.finish_action}"
+                )
+        if self._should_run_scope(recipe.mark_last_scope, request):
+            steps.append(ProtocolStep.send("mark last", dialect.mark_last()))
         if (
             self._should_run_scope(recipe.adjust_after_scope, request)
             and recipe.adjust_after is not None
@@ -285,16 +269,12 @@ class LuckNormalFamilyRecipe:
                     "adjust after", dialect.adjust_position_auto(recipe.adjust_after)
                 )
             )
-        if self._should_run_scope(recipe.mark_last_scope, request):
-            steps.append(ProtocolStep.send("mark last", dialect.mark_last()))
-        steps.append(
-            self._step(
-                "finalize",
-                dialect.finalize_command,
-                query=query_interleaved,
-                expect=ProtocolReplyExpectation.OK_OR_AA,
-            )
+        timeout_sec = (
+            variant.finalize_timeout_sec
+            if variant is not None
+            else NORMAL_FINALIZE_TIMEOUT_SEC
         )
+        steps.append(finalize(dialect.finalize_command, timeout_sec=timeout_sec))
         return steps
 
     def build_advance_paper(
@@ -376,27 +356,6 @@ class LuckNormalFamilyRecipe:
             return variant.default_paper_mode
         return self.default_paper_mode
 
-    def _uses_query_interleaving(self, protocol_variant: str | None) -> bool:
-        variant = self._variant(protocol_variant)
-        return bool(variant is not None and variant.query_interleaved)
-
-    @staticmethod
-    def _step(
-        label: str,
-        data: bytes,
-        *,
-        query: bool,
-        expect: ProtocolReplyExpectation,
-    ) -> ProtocolStep:
-        if query:
-            return ProtocolStep.query(
-                label,
-                data,
-                expect=expect,
-                timeout_sec=LUCK_PRINT_QUERY_TIMEOUT_SEC,
-            )
-        return ProtocolStep.send(label, data)
-
     def _variant(self, protocol_variant: str | None) -> LuckNormalVariantRecipe | None:
         if protocol_variant in (None, ""):
             return None
@@ -427,11 +386,15 @@ class LuckNormalVariantRecipe:
     default_paper_mode: PaperMode | None = None
     end_line_dots_200dpi: int | None = None
     end_line_dots_300dpi: int | None = None
-    query_interleaved: bool = False
+    finalize_timeout_sec: float = NORMAL_FINALIZE_TIMEOUT_SEC
 
 
-LUCK_NORMAL_IMAGE_SUPPORT: Mapping[ImageEncoding, tuple[PixelFormat, ...]] = {
+LUCK_NORMAL_MONO_IMAGE_SUPPORT: Mapping[ImageEncoding, tuple[PixelFormat, ...]] = {
     ImageEncoding.LUCK_NORMAL_RAW: (PixelFormat.BW1,),
     ImageEncoding.LUCK_NORMAL_COMPRESSED: (PixelFormat.BW1,),
+}
+
+LUCK_NORMAL_IMAGE_SUPPORT: Mapping[ImageEncoding, tuple[PixelFormat, ...]] = {
+    **LUCK_NORMAL_MONO_IMAGE_SUPPORT,
     ImageEncoding.LUCK_NORMAL_GRAY: (PixelFormat.GRAY4, PixelFormat.GRAY8),
 }
