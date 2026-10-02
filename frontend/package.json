@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "bwip-js": "^4.5.1",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.16",
     "html-to-image": "^1.11.11",
     "js-beautify": "^1.15.1",
     "konva": "^10.0.0",
