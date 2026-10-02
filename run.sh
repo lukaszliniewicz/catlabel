@@ -2,20 +2,25 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 cd -- "$root"
-setup_only=0 install_headless=0 skip_headless=0 repair=0 diagnose=0
+setup_only=0 install_headless=0 skip_headless=0 install_ai=0 skip_ai=0 repair=0 diagnose=0
 for option in "$@"; do
     case "$option" in
         --setup-only) setup_only=1 ;;
         --install-headless) install_headless=1 ;;
         --skip-headless) skip_headless=1 ;;
+        --install-ai) install_ai=1 ;;
+        --skip-ai) skip_ai=1 ;;
         --repair) repair=1 ;;
         --diagnose) diagnose=1 ;;
-        --help) echo 'Usage: ./run.sh [--setup-only] [--install-headless | --skip-headless] [--repair] [--diagnose]'; exit 0 ;;
+        --help) echo 'Usage: ./run.sh [--setup-only] [--install-headless | --skip-headless] [--install-ai | --skip-ai] [--repair] [--diagnose]'; exit 0 ;;
         *) echo "Unknown option: $option" >&2; exit 2 ;;
     esac
  done
 if (( install_headless && skip_headless )); then
     echo 'Choose either --install-headless or --skip-headless.' >&2; exit 2
+fi
+if (( install_ai && skip_ai )); then
+    echo 'Choose either --install-ai or --skip-ai.' >&2; exit 2
 fi
 data="${CATLABEL_DATA_DIR-$root/data}"
 case "$data" in
@@ -25,6 +30,11 @@ esac
 case "$data" in
     /*) ;;
     *) echo 'CATLABEL_DATA_DIR must be an absolute path.' >&2; exit 2 ;;
+esac
+state="${CATLABEL_BOOTSTRAP_STATE_DIR-$data}"
+case "$state" in
+    /*) ;;
+    *) echo 'CATLABEL_BOOTSTRAP_STATE_DIR must be an absolute path.' >&2; exit 2 ;;
 esac
 export CATLABEL_DATA_DIR="$data" PIXI_HOME="$data/pixi_home" PIXI_CACHE_DIR="$data/pixi_cache"
 export PIXI_NO_CONFIG=1 PLAYWRIGHT_BROWSERS_PATH=0
@@ -59,9 +69,16 @@ hash_input() {
 verified_binary() {
     [[ -f "$1" ]] && [[ "$(wc -c < "$1" | tr -d '[:space:]')" == "$size" ]] && [[ "$(hash_file "$1")" == "$digest" ]]
 }
+headless_enabled=0 ai_enabled=0
+if [[ -f "$state/.headless-enabled" ]] || (( install_headless )); then headless_enabled=1; fi
+if (( skip_headless )); then headless_enabled=0; fi
+if [[ -f "$state/.ai-enabled" ]] || (( install_ai )); then ai_enabled=1; fi
+if (( skip_ai )); then ai_enabled=0; fi
 environment=default
-if [[ -f "$data/.headless-enabled" ]] || (( install_headless )); then environment=headless; fi
-if (( skip_headless )); then environment=default; fi
+if (( headless_enabled )); then environment=headless; fi
+if (( ai_enabled )); then
+    if (( headless_enabled )); then environment=ai-headless; else environment=ai; fi
+fi
 identity="$(printf 'catlabel-bootstrap-v1\n%s\n%s\n%s\n%s\n' "$version" "$environment" \
     "$(hash_file "$root/pixi.toml")" "$(hash_file "$root/pixi.lock")" | hash_input)"
 stamp="$data/bootstrap-$environment-$identity.sha256"
@@ -78,7 +95,7 @@ if (( diagnose )); then
     else echo 'Environment: setup or repair required'; fi
     exit 0
 fi
-mkdir -p -- "$root/bin" "$data" "$data/tmp"
+mkdir -p -- "$root/bin" "$data" "$data/tmp" "$state"
 export TMPDIR="$data/tmp"
 lock="$data/.bootstrap.lock"
 if ! mkdir -- "$lock" 2>/dev/null; then
@@ -126,7 +143,7 @@ if ! verified_binary "$pixi"; then
     download=''
 fi
 if [[ ! -x "$pixi" ]]; then chmod 755 -- "$pixi"; fi
-if (( repair )) || [[ ! -f "$python" || "$saved_identity" != "$identity" ]] || (( install_headless )); then
+if (( repair )) || [[ ! -f "$python" || "$saved_identity" != "$identity" ]] || (( install_headless || install_ai )); then
     rm -f -- "$stamp"
     if (( repair )); then
         echo "Repairing the locked $environment environment..."
@@ -135,14 +152,16 @@ if (( repair )) || [[ ! -f "$python" || "$saved_identity" != "$identity" ]] || (
         echo "Installing the locked $environment environment..."
         "$pixi" install --environment "$environment" --locked
     fi
-    if [[ "$environment" == headless ]]; then
+    if (( headless_enabled )); then
         "$pixi" run --environment "$environment" --locked --no-install python -m playwright install chromium
     fi
     "$pixi" run --environment "$environment" --locked --no-install \
         python -m tools.bootstrap_runtime --root "$root" --environment "$environment" --stamp "$stamp"
 fi
-if [[ "$environment" == headless ]]; then printf '1\n' > "$data/.headless-enabled"
-elif (( skip_headless )); then rm -f -- "$data/.headless-enabled"; fi
+if (( headless_enabled )); then printf '1\n' > "$state/.headless-enabled"
+elif (( skip_headless )); then rm -f -- "$state/.headless-enabled"; fi
+if (( ai_enabled )); then printf '1\n' > "$state/.ai-enabled"
+elif (( skip_ai )); then rm -f -- "$state/.ai-enabled"; fi
 cleanup
 trap - EXIT INT TERM
 echo "CatLabel is ready ($environment)."

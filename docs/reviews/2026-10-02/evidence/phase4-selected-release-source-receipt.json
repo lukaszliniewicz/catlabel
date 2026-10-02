@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-03",
+  "checkpoint": "phase4-optional-ai-selected-release-source",
+  "parent_commit": "401dd6ba5043da01f903e391029935fac5c370bf",
+  "source_sha256": {
+    "run.sh": "aa382a6f9bb6ae743ac0ed38fe540df034b18b2bd8ba887c08f16a80ac73b131",
+    "run.ps1": "ef8dd446efdbf793eb12fb78d6867289e6704421df3eac2d3a2c663db3a8f957",
+    "launcher.py": "5f207fc36b80914ad44ba29538a5a028a3e77235855c25e16d6db045440b81f5",
+    "tools/build_release.py": "06dea4a006c52c17beef646fef925f45f4c47c34dea79d0487fd0c5ddad509ec",
+    "tools/probe_release.py": "a24bc870b2869df02641503a18fd23753f93050c8e3ad31f43739ea0d9d3ecde",
+    "tools/bootstrap_runtime.py": "be05b5ea01fea11fa172d06d4c07de16bc7f437394dcb74b498ef9ed16be66d1",
+    "catlabel/core/release_artifacts.py": "4019f50836319c32f49c2c4f8c26d9dc98db17f53860ac144f2bb692eb9782b6",
+    "catlabel/core/release_slots.py": "4146804a0634f94bf5323983f3355e2ba8f90bbd08e157d92f067b8977abe4e9",
+    "catlabel/core/runtime_lease.py": "a618399e5de3ad01a0294c1e031db9e681030850f7afa07f17d08a7e45a4021a",
+    "catlabel/api/main.py": "19ae3373bc90e2a69574dcf973ef45b791d5ed6590bd3895ae5bc79b51b3af92",
+    "catlabel/api/routes_ai.py": "9919c1b18520bfafc6aa2ddd79bfe6cbef414bf6ac5353520c5d3d678039ee32",
+    "pixi.toml": "b868f9566524004893d0f2e258225de0a01f6de0eba63de49d165064d4e5d02a",
+    "pixi.lock": "0629b197a6f7ca89cb8ecb1c74340596d91c896c9938db6288802a45f863c566",
+    "pyproject.toml": "0a08b5f67c358808a5c8ac3b689c2a16a5499e7c46eabc4325212c7d0b42fd3b",
+    "requirements-check.lock": "4f33fa6414364962d9e16cd6309b534f0d504024159f309e03562e049a6e1774"
+  },
+  "full_gate": {
+    "passed": true,
+    "backend_run": 702,
+    "backend_passed": 701,
+    "backend_skipped": 1,
+    "skip": "Windows SDK native import on Linux",
+    "frontend_tests": 33,
+    "frontend_files": 7,
+    "build_seconds": 6.94,
+    "static_diagnostics": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "log": "/tmp/catlabel-implementation-20261002/phase4-release-full.log"
+  },
+  "runtime_pypi_audit": {
+    "passed": true,
+    "unique_locked_name_version_pairs": 115,
+    "advisories": 0,
+    "scope": "Every PyPI entry across five platform locks and four feature environments; excludes Conda/system libraries and Chromium binary",
+    "input_sha256": "0b92c14fab1022ba025f57190a2d462d97c27dbb5fa165e482ce9763c1716142",
+    "audit_output_sha256": "6052020fd8542cf63b1ce3116e3ae81e3061ad6ea7b39b3e29b05bbd8b8fa118",
+    "log": "/tmp/catlabel-implementation-20261002/phase4-runtime-pypi-audit.log"
+  },
+  "portable_checks": {
+    "shellcheck": "pass",
+    "powershell_parser_run_and_build": "pass on Linux",
+    "five_platform_lock_consistency": "pass; Pixi 0.72.2"
+  },
+  "review": {
+    "profile": "explicit read-only reviewer",
+    "configured_model": "gpt-6.1-sol",
+    "configured_effort": "high",
+    "runtime_telemetry_available": false,
+    "findings_corrected": [
+      "Reserve exact .bootstrap-state path as well as descendants",
+      "Hash and extract the same open archive descriptor; recheck before publication"
+    ],
+    "regression_tests": "pass"
+  },
+  "limits": [
+    "Actual installed-release integration receipt follows this source checkpoint",
+    "Windows/macOS native installation and executable build unverified",
+    "No physical printer or paid provider calls",
+    "Three existing exact npm advisory exceptions remain pending toolchain migration",
+    "Frontend artifact unchanged: 668b0d78e0a373ea6502f0828149683548f6e397184a77f46bbf1a94faabaf8a"
+  ]
+}

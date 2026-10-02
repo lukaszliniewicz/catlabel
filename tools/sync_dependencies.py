@@ -48,7 +48,7 @@ def _requirements(value: object, label: str) -> list[str]:
 
 def _requirement_lists(
     pyproject: dict[str, Any],
-) -> tuple[str, list[str], list[str], list[str]]:
+) -> tuple[str, list[str], list[str], list[str], list[str]]:
     project = pyproject.get("project")
     if not isinstance(project, dict):
         raise DependencyManifestError("pyproject.toml must contain a [project] table")
@@ -64,9 +64,10 @@ def _requirement_lists(
         raise DependencyManifestError("[project.optional-dependencies] must be a table")
     optional = cast(dict[str, Any], optional)
     headless = _requirements(optional.get("headless", []), "headless")
+    ai = _requirements(optional.get("ai", []), "ai")
     launcher = _requirements(optional.get("launcher", []), "launcher")
 
-    return project_name, base, headless, launcher
+    return project_name, base, headless, ai, launcher
 
 
 def _parse_requirement(requirement: str) -> tuple[str, str, str | None]:
@@ -144,29 +145,39 @@ def _platform_entries(
     return common, targets
 
 
-def _check_base_headless_overlap(
-    base_common: list[_RequirementEntry],
-    base_targets: dict[str, list[_RequirementEntry]],
-    headless_common: list[_RequirementEntry],
-    headless_targets: dict[str, list[_RequirementEntry]],
+def _check_feature_overlaps(
+    base: tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]],
+    headless: tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]],
+    ai: tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]],
 ) -> None:
-    for platform in PIXI_PLATFORMS:
-        base_names = {
-            name for name, _specifier in [*base_common, *base_targets[platform]]
-        }
-        headless_names = {
-            name
-            for name, _specifier in [
-                *headless_common,
-                *headless_targets[platform],
-            ]
-        }
-        overlap = sorted(base_names & headless_names)
-        if overlap:
-            raise DependencyManifestError(
-                "[project].dependencies and headless have overlapping requirements "
-                f"for normalized package {overlap[0]!r} on {platform}"
-            )
+    feature_requirements = [
+        ("[project].dependencies", base),
+        ("headless", headless),
+        ("ai", ai),
+    ]
+    for index, (left_name, (left_common, left_targets)) in enumerate(
+        feature_requirements
+    ):
+        for right_name, (right_common, right_targets) in feature_requirements[
+            index + 1 :
+        ]:
+            for platform in PIXI_PLATFORMS:
+                left_names = {
+                    name for name, _specifier in [*left_common, *left_targets[platform]]
+                }
+                right_names = {
+                    name
+                    for name, _specifier in [
+                        *right_common,
+                        *right_targets[platform],
+                    ]
+                }
+                overlap = sorted(left_names & right_names)
+                if overlap:
+                    raise DependencyManifestError(
+                        f"{left_name} and {right_name} have overlapping requirements "
+                        f"for normalized package {overlap[0]!r} on {platform}"
+                    )
 
 
 def _render_requirements(requirements: list[str]) -> bytes:
@@ -180,6 +191,7 @@ def _render_pixi(
     project_name: str,
     base_requirements: list[str],
     headless_requirements: list[str],
+    ai_requirements: list[str],
 ) -> bytes:
     base_common, base_targets = _platform_entries(
         base_requirements,
@@ -189,11 +201,14 @@ def _render_pixi(
         headless_requirements,
         source="headless",
     )
-    _check_base_headless_overlap(
-        base_common,
-        base_targets,
-        headless_common,
-        headless_targets,
+    ai_common, ai_targets = _platform_entries(
+        ai_requirements,
+        source="ai",
+    )
+    _check_feature_overlaps(
+        (base_common, base_targets),
+        (headless_common, headless_targets),
+        (ai_common, ai_targets),
     )
 
     lines = [
@@ -221,24 +236,31 @@ def _render_pixi(
                 f"{name} = {json.dumps(specifier)}" for name, specifier in entries
             )
 
-    lines.extend(["", "[feature.headless.pypi-dependencies]"])
-    lines.extend(
-        f"{name} = {json.dumps(specifier)}" for name, specifier in headless_common
-    )
-    for platform in PIXI_PLATFORMS:
-        entries = headless_targets[platform]
-        if entries:
-            lines.extend(
-                ["", f"[feature.headless.target.{platform}.pypi-dependencies]"]
-            )
-            lines.extend(
-                f"{name} = {json.dumps(specifier)}" for name, specifier in entries
-            )
+    for feature_name, common, targets in (
+        ("headless", headless_common, headless_targets),
+        ("ai", ai_common, ai_targets),
+    ):
+        lines.extend(["", f"[feature.{feature_name}.pypi-dependencies]"])
+        lines.extend(f"{name} = {json.dumps(specifier)}" for name, specifier in common)
+        for platform in PIXI_PLATFORMS:
+            entries = targets[platform]
+            if entries:
+                lines.extend(
+                    [
+                        "",
+                        f"[feature.{feature_name}.target.{platform}.pypi-dependencies]",
+                    ]
+                )
+                lines.extend(
+                    f"{name} = {json.dumps(specifier)}" for name, specifier in entries
+                )
     lines.extend(
         [
             "",
             "[environments]",
             'headless = ["headless"]',
+            'ai = ["ai"]',
+            'ai-headless = ["ai", "headless"]',
             "",
             "[tasks]",
             'start = "python -m catlabel"',
@@ -256,11 +278,12 @@ def expected_outputs(root: Path) -> dict[Path, bytes]:
     except (OSError, tomllib.TOMLDecodeError) as error:
         raise DependencyManifestError(f"cannot read pyproject.toml: {error}") from error
 
-    project_name, base, headless, launcher = _requirement_lists(pyproject)
+    project_name, base, headless, ai, launcher = _requirement_lists(pyproject)
     return {
         root / "requirements.txt": _render_requirements(base),
+        root / "requirements-ai.txt": _render_requirements(ai),
         root / "launcher-requirements.txt": _render_requirements(launcher),
-        root / "pixi.toml": _render_pixi(project_name, base, headless),
+        root / "pixi.toml": _render_pixi(project_name, base, headless, ai),
     }
 
 

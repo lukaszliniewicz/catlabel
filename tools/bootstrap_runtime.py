@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 BOOTSTRAP_VERSION = "0.72.2"
-ENVIRONMENTS = ("default", "headless")
+ENVIRONMENTS = ("default", "headless", "ai", "ai-headless")
 RUNTIME_MODULES = (
     "fastapi",
     "uvicorn",
@@ -22,9 +22,8 @@ RUNTIME_MODULES = (
     "bleak",
     "serial",
     "crc8",
-    "litellm",
-    "google.cloud.aiplatform",
 )
+AI_MODULES = ("litellm", "google.cloud.aiplatform")
 PLATFORM_MODULES = {
     "win32": (
         "winsdk.windows.devices.bluetooth",
@@ -64,7 +63,11 @@ def verify_runtime(environment: str) -> None:
     for module_name in PLATFORM_MODULES.get(sys.platform, ()):
         importlib.import_module(module_name)
 
-    if environment == "headless":
+    if environment in ("ai", "ai-headless"):
+        for module_name in AI_MODULES:
+            importlib.import_module(module_name)
+
+    if environment in ("headless", "ai-headless"):
         playwright = importlib.import_module("playwright.sync_api")
         with playwright.sync_playwright() as playwright_runtime:
             executable = Path(playwright_runtime.chromium.executable_path)

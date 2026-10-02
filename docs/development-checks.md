@@ -24,13 +24,13 @@ Hardware/integration acceptance requires named device, firmware, OS, transport, 
 
 ## Canonical dependencies and locks
 
-`pyproject.toml` owns application requirements and optional headless/launcher dependencies. `python -m tools.sync_dependencies --check` rejects divergent pip/Pixi manifests. `--write` explicitly regenerates `requirements.txt`, `launcher-requirements.txt` and `pixi.toml`. The generator maps platform bridges to win-64/osx-64/osx-arm64 targets and resolves common dependencies across all five declared platforms. Overlapping normalized requirements are rejected.
+`pyproject.toml` owns application requirements and optional AI/headless/launcher dependencies. `python -m tools.sync_dependencies --check` rejects divergent pip/Pixi manifests. `--write` explicitly regenerates `requirements.txt`, `requirements-ai.txt`, `launcher-requirements.txt` and `pixi.toml`. The generator maps platform bridges to win-64/osx-64/osx-arm64 targets and resolves common dependencies across all five declared platforms. Overlapping normalized requirements are rejected.
 
 `requirements-dev.lock` pins the checker-only environment; `requirements-check.lock` includes app, launcher, optional renderer and check dependencies for reproducible CI. Neither replaces the runtime lock. Refresh deliberately:
 
 ```sh
 uv pip compile --group dev --python-version 3.11 --universal --generate-hashes --output-file requirements-dev.lock
-uv pip compile pyproject.toml --extra launcher --extra headless --group dev --python-version 3.11 --universal --generate-hashes --output-file requirements-check.lock
+uv pip compile pyproject.toml --extra launcher --extra headless --extra ai --group dev --python-version 3.11 --universal --generate-hashes --output-file requirements-check.lock
 ```
 
 Review the resolved changes and audit/test them. Pin checker versions in the dev group. Use `pixi lock --manifest-path pixi.toml --check --dry-run` to verify existing runtime-lock consistency without promotion. Node dependencies/checkers are pinned through `frontend/package-lock.json`; no `npx latest` is used by the runner.

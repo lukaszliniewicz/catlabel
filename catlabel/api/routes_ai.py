@@ -1,12 +1,14 @@
 import copy
+import importlib
+import importlib.util
 import json
 import logging
 from collections.abc import Iterable
 from datetime import datetime
+from types import ModuleType
 from typing import Any
 from uuid import uuid4
 
-import litellm
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, NaiveDatetime
 from sqlalchemy.engine import Engine
@@ -27,6 +29,24 @@ logging.basicConfig(
 
 
 router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
+
+
+def _load_ai_sdk() -> ModuleType:
+    try:
+        return importlib.import_module("litellm")
+    except ImportError as error:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "ai_addon_required",
+                "message": "Cloud chat needs the AI add-on. Close CatLabel and run the launcher with --install-ai. If it is already installed, use --repair.",
+            },
+        ) from error
+
+
+@router.get("/runtime")
+def ai_runtime_status() -> dict[str, bool]:
+    return {"available": importlib.util.find_spec("litellm") is not None}
 
 
 class AITraceLog(SQLModel, table=True):
@@ -640,6 +660,7 @@ def _chat_with_provider(
 ):
     from ..core.database import engine
 
+    litellm = _load_ai_sdk()
     try:
         kwargs = {
             "model": f"{active_provider.provider}/{active_model.model_name}"

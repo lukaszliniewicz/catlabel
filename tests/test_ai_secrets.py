@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
+import litellm
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
@@ -505,7 +506,7 @@ class AISecretBoundaryTests(unittest.TestCase):
                 },
             ),
             patch.object(
-                routes_ai.litellm,
+                litellm,
                 "completion",
                 side_effect=RuntimeError(
                     f"error {SAMPLE_KEY} {PRIVATE_BODY} {credential_path}"
@@ -526,7 +527,7 @@ class AISecretBoundaryTests(unittest.TestCase):
         self.seed()
         with (
             patch.object(
-                routes_ai.litellm,
+                litellm,
                 "completion",
                 side_effect=RuntimeError(f"Bad token {SAMPLE_KEY}"),
             ),
@@ -576,8 +577,8 @@ class AISecretBoundaryTests(unittest.TestCase):
             return next(responses)
 
         with (
-            patch.object(routes_ai.litellm, "completion", side_effect=complete),
-            patch.object(routes_ai.litellm, "completion_cost", return_value=0),
+            patch.object(litellm, "completion", side_effect=complete),
+            patch.object(litellm, "completion_cost", return_value=0),
             patch.object(
                 routes_ai, "execute_tool", return_value=f"result {SAMPLE_KEY}"
             ),
@@ -633,7 +634,7 @@ class AISecretBoundaryTests(unittest.TestCase):
                         "Vertex must not publish a credential file"
                     ),
                 ),
-                patch.object(routes_ai.litellm, "completion_cost", return_value=0),
+                patch.object(litellm, "completion_cost", return_value=0),
             ):
 
                 def complete(_mode=mode, **kwargs):
@@ -653,7 +654,7 @@ class AISecretBoundaryTests(unittest.TestCase):
                     else None
                 )
                 with (
-                    patch.object(routes_ai.litellm, "completion", side_effect=complete),
+                    patch.object(litellm, "completion", side_effect=complete),
                     patch(
                         "catlabel.services.prompts.build_system_prompt",
                         side_effect=setup_error,
@@ -681,7 +682,7 @@ class AISecretBoundaryTests(unittest.TestCase):
         for key in ("not-json", json.dumps({"private_key": [PRIVATE_BODY]})):
             with self.subTest(key=key):
                 provider_id, _ = self.seed(key, "vertex_ai")
-                with patch.object(routes_ai.litellm, "completion") as completion:
+                with patch.object(litellm, "completion") as completion:
                     result = self.chat()
                 self.assertIn("error", result)
                 self.assertNotIn(PRIVATE_BODY, json.dumps(result))
@@ -694,7 +695,7 @@ class AISecretBoundaryTests(unittest.TestCase):
                 key = json.dumps({"type": credential_type, "client_secret": SAMPLE_KEY})
                 provider_id, _ = self.seed(key, "vertex_ai")
                 with patch.object(
-                    routes_ai.litellm,
+                    litellm,
                     "completion",
                     side_effect=RuntimeError("provider fixture failure"),
                 ) as completion:

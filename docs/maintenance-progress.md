@@ -8,7 +8,7 @@ Objective: implement the complete [2 October maintenance plan](reviews/2026-10-0
 | 1 — correctness and local operation | Implemented locally; hardware acceptance open | Classification/row packing, local-server/provider-secret fixes, device admission and Niimbot acknowledgements, shared processing limits, safe catalog publication and project transactions/revisions are integrated. Full Linux checks pass: 300 backend tests, 28 frontend tests and a scratch production build. |
 | 2 — debt elimination | Implemented locally; native acceptance open | All source/check debt gates are zero, both full Python SCCs are removed, and no import-contract exception remains. 329 backend tests pass with one native SDK test skipped on Linux; 33 frontend tests and production build pass. |
 | 3 — upstream parity | Implemented locally within pinned scope; hardware acceptance open | Released generic/dedicated recipes, Classic receive and selected BLE hooks pass fixtures. Pinned Luck A4 overlay/transactions and experimental PrintMaster M110/M120 are integrated. Explicit unadopted deltas and physical/native limits remain in the parity ledger. |
-| 4 — installation/dependencies | In progress | Five-platform locked bootstrap, shared data paths, SDK migration and Linux setup/repair/offline/failure checks pass. Optional AI packaging, selected-artifact updates and remaining package groups are next. Foreign native checks are best effort. |
+| 4 — installation/dependencies | In progress | Five-platform locked bootstrap and four independent AI/headless environments pass Linux checks. Selected-artifact updater source passes tests; immutable-release integration acceptance follows. Frontend package groups remain. Foreign native checks are best effort. |
 | 5 — structure/UX | Pending | Typed interfaces/store/component decomposition; responsive/accessible setup/editor/save recovery. Parent owns browser acceptance. |
 | 6 — performance/lifecycle | Pending | Measured alpha hoist, unified render readiness, Playwright ownership, bounded jobs/previews and representative benchmarks. |
 | 7 — maintenance routine | Pending | Owners, expiry/review triggers, dependency/upstream/release receipts and debt gates maintained. |
@@ -193,3 +193,30 @@ Luna/max implementers, researcher and verifier supplied bounded non-UI packets
 and evidence; configured assignments are recorded, runtime telemetry unavailable.
 No physical printing, deployment or automatic update is claimed. Optional AI,
 selected releases, remaining dependencies and phases 5–7 remain active.
+
+Phase 4 optional-AI/selected-release source checkpoint: basic setup omits cloud
+SDKs; four locked environments keep AI and Chromium independent. Missing SDKs
+return a structured add-on requirement before context/provider work. All 115
+unique PyPI name/version pairs across every platform/feature lock have zero
+known advisories in the recorded audit. Conda/system libraries and the browser
+binary are outside that audit's scope. Existing npm exceptions remain pending
+the frontend toolchain migration.
+
+The launcher selects checksum-verified immutable ZIPs, keeps prior code slots,
+backs up committed SQLite/WAL data and probes a disposable database clone before
+atomic code selection. Runtime leases serialize cooperating updates/servers;
+rollback swaps code only. Per-slot add-on selections preserve the previous
+runtime after failed candidates. Releases are built from committed Git blobs
+and the accepted frontend digest. There is no automatic Git HEAD pull.
+
+The configured GPT-6.1 Sol/high read-only reviewer found an archive-open race
+and a reserved-path omission; both are corrected with regression tests. Luna/max
+specialists supplied bounded manifest, lease and release-slot packets. Runtime
+model telemetry is unavailable. Parent inspected edits and owns acceptance.
+
+Linux full gate: 702 backend tests run (701 pass, one Windows SDK skip), 33
+frontend tests pass, production build 6.94 seconds and all nine static categories
+zero. ShellCheck and portable PowerShell parsing pass. The frontend artifact is
+unchanged. [Source checkpoint receipt](reviews/2026-10-02/evidence/phase4-selected-release-source-receipt.json).
+An actual immutable-release installation/probe receipt follows this checkpoint;
+native Windows/macOS execution, physical printing and deployment are unverified.

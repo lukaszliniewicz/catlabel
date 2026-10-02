@@ -23,12 +23,17 @@ BASE_REQUIREMENTS = [
     "Pillow>=11.1.0",
     "winsdk>=1.0.0b10; sys_platform == 'win32'",
     "pyobjc-framework-IOBluetooth>=11.0; sys_platform == 'darwin'",
-    "google-cloud-aiplatform",
 ]
 HEADLESS_REQUIREMENTS = [
     "playwright>=1.40.0",
     "winheadless>=2.0; sys_platform == 'win32'",
     "darwinheadless>=3.0; sys_platform == 'darwin'",
+]
+AI_REQUIREMENTS = [
+    "google-cloud-aiplatform==2.3.0",
+    "litellm==1.103.2",
+    "winai-sdk>=1.0; sys_platform == 'win32'",
+    "darwinai-sdk>=2.0; sys_platform == 'darwin'",
 ]
 LAUNCHER_REQUIREMENTS = [
     "dulwich==1.2.10",
@@ -42,11 +47,14 @@ def _write_pyproject(
     dependencies: list[str],
     *,
     headless: list[str] | None = None,
+    ai: list[str] | None = None,
     launcher: list[str] | None = None,
 ) -> None:
     root.mkdir(parents=True, exist_ok=True)
     if headless is None:
         headless = HEADLESS_REQUIREMENTS
+    if ai is None:
+        ai = AI_REQUIREMENTS
     if launcher is None:
         launcher = LAUNCHER_REQUIREMENTS
     quoted_dependencies = ",\n  ".join(
@@ -60,6 +68,7 @@ def _write_pyproject(
         "]\n\n"
         "[project.optional-dependencies]\n"
         f"headless = {json.dumps(headless)}\n"
+        f"ai = {json.dumps(ai)}\n"
         f"launcher = {json.dumps(launcher)}\n",
         encoding="utf-8",
     )
@@ -77,8 +86,13 @@ class DependencyManifestTests(unittest.TestCase):
         common = pixi["pypi-dependencies"]
         targets = pixi["target"]
         headless_targets = pixi["feature"]["headless"].get("target", {})
+        ai_dependencies = pixi["feature"]["ai"]["pypi-dependencies"]
         self.assertIn("fastapi", common)
         self.assertIn("pillow", common)
+        self.assertNotIn("google-cloud-aiplatform", common)
+        self.assertNotIn("litellm", common)
+        self.assertIn("google-cloud-aiplatform", ai_dependencies)
+        self.assertIn("litellm", ai_dependencies)
         self.assertIn("playwright", pixi["feature"]["headless"]["pypi-dependencies"])
         for platform in pixi["workspace"]["platforms"]:
             platform_dependencies = targets.get(platform, {}).get(
@@ -116,10 +130,12 @@ class DependencyManifestTests(unittest.TestCase):
 
             outputs = expected_outputs(root)
             requirements_text = outputs[root / "requirements.txt"].decode("utf-8")
+            ai_text = outputs[root / "requirements-ai.txt"].decode("utf-8")
             launcher_text = outputs[root / "launcher-requirements.txt"].decode("utf-8")
             self.assertEqual(
                 requirements_text.splitlines(), [GENERATED_HEADER, *BASE_REQUIREMENTS]
             )
+            self.assertEqual(ai_text.splitlines(), [GENERATED_HEADER, *AI_REQUIREMENTS])
             self.assertEqual(
                 launcher_text.splitlines(), [GENERATED_HEADER, *LAUNCHER_REQUIREMENTS]
             )
@@ -141,7 +157,13 @@ class DependencyManifestTests(unittest.TestCase):
                 {
                     "fastapi": ">=0.115.6",
                     "pillow": ">=11.1.0",
-                    "google-cloud-aiplatform": "*",
+                },
+            )
+            self.assertEqual(
+                pixi["feature"]["ai"]["pypi-dependencies"],
+                {
+                    "google-cloud-aiplatform": "==2.3.0",
+                    "litellm": "==1.103.2",
                 },
             )
             targets = pixi["target"]
@@ -170,6 +192,15 @@ class DependencyManifestTests(unittest.TestCase):
                     headless_targets[platform]["pypi-dependencies"],
                     {"darwinheadless": ">=3.0"},
                 )
+            ai_targets = pixi["feature"]["ai"]["target"]
+            self.assertEqual(
+                ai_targets["win-64"]["pypi-dependencies"], {"winai-sdk": ">=1.0"}
+            )
+            for platform in ("osx-64", "osx-arm64"):
+                self.assertEqual(
+                    ai_targets[platform]["pypi-dependencies"],
+                    {"darwinai-sdk": ">=2.0"},
+                )
             for platform in ("linux-64", "linux-aarch64", "osx-64", "osx-arm64"):
                 self.assertNotIn(
                     "winsdk", targets.get(platform, {}).get("pypi-dependencies", {})
@@ -185,7 +216,14 @@ class DependencyManifestTests(unittest.TestCase):
             self.assertNotIn(
                 "darwinheadless", headless_targets["win-64"]["pypi-dependencies"]
             )
-            self.assertEqual(pixi["environments"], {"headless": ["headless"]})
+            self.assertEqual(
+                pixi["environments"],
+                {
+                    "headless": ["headless"],
+                    "ai": ["ai"],
+                    "ai-headless": ["ai", "headless"],
+                },
+            )
             self.assertEqual(
                 pixi["tasks"],
                 {
@@ -269,6 +307,84 @@ class DependencyManifestTests(unittest.TestCase):
             ):
                 expected_outputs(root)
 
+    def test_feature_overlaps_are_checked_per_platform(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+
+            _write_pyproject(
+                root,
+                ["basepkg>=1"],
+                ai=["BASEPKG>=2; sys_platform == 'win32'"],
+            )
+            with self.assertRaisesRegex(
+                DependencyManifestError, "dependencies and ai have overlapping"
+            ):
+                expected_outputs(root)
+
+            _write_pyproject(
+                root,
+                ["basepkg>=1"],
+                headless=["Cross_Pkg>=1; sys_platform == 'win32'"],
+                ai=["cross-pkg>=2; sys_platform == 'win32'"],
+            )
+            with self.assertRaisesRegex(
+                DependencyManifestError, "headless and ai have overlapping"
+            ):
+                expected_outputs(root)
+
+            _write_pyproject(
+                root,
+                ["basepkg>=1"],
+                headless=["Cross_Pkg>=1; sys_platform == 'darwin'"],
+                ai=["cross-pkg>=2; sys_platform == 'win32'"],
+            )
+            pixi = tomllib.loads(
+                expected_outputs(root)[root / "pixi.toml"].decode("utf-8")
+            )
+            self.assertEqual(
+                pixi["feature"]["ai"]["target"]["win-64"]["pypi-dependencies"],
+                {"cross-pkg": ">=2"},
+            )
+            self.assertEqual(
+                pixi["feature"]["headless"]["target"]["osx-64"]["pypi-dependencies"],
+                {"cross-pkg": ">=1"},
+            )
+
+    def test_ai_duplicates_fail_and_launcher_overlaps_are_independent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            _write_pyproject(
+                root,
+                ["basepkg>=1"],
+                ai=[
+                    "ai_pkg>=1",
+                    "ai-pkg>=2; sys_platform == 'darwin'",
+                ],
+            )
+            with self.assertRaisesRegex(
+                DependencyManifestError, "ai has overlapping requirements"
+            ):
+                expected_outputs(root)
+
+            _write_pyproject(
+                root,
+                ["shared>=1"],
+                headless=["headless-shared>=1"],
+                ai=["ai-shared>=1"],
+                launcher=["shared>=2", "headless-shared>=2", "ai-shared>=2"],
+            )
+            outputs = expected_outputs(root)
+            launcher = outputs[root / "launcher-requirements.txt"].decode("utf-8")
+            self.assertEqual(
+                launcher.splitlines(),
+                [
+                    GENERATED_HEADER,
+                    "shared>=2",
+                    "headless-shared>=2",
+                    "ai-shared>=2",
+                ],
+            )
+
     def test_unsupported_extras_and_direct_references_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
@@ -287,6 +403,7 @@ class DependencyManifestTests(unittest.TestCase):
             _write_pyproject(root, BASE_REQUIREMENTS)
             paths = [
                 root / "requirements.txt",
+                root / "requirements-ai.txt",
                 root / "launcher-requirements.txt",
                 root / "pixi.toml",
             ]
@@ -323,7 +440,9 @@ class DependencyManifestTests(unittest.TestCase):
                 .read_text(encoding="utf-8")
                 .splitlines()
             )
+            ai = (root / "requirements-ai.txt").read_text(encoding="utf-8").splitlines()
             self.assertEqual(requirements, [GENERATED_HEADER, *BASE_REQUIREMENTS])
+            self.assertEqual(ai, [GENERATED_HEADER, *AI_REQUIREMENTS])
             self.assertEqual(launcher, [GENERATED_HEADER, *LAUNCHER_REQUIREMENTS])
 
     def test_cli_defaults_to_its_project_root_from_another_working_directory(

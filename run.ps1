@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $SetupOnly = $false
 $InstallHeadless = $false
 $SkipHeadless = $false
+$InstallAI = $false
+$SkipAI = $false
 $Repair = $false
 $Diagnose = $false
 foreach ($Option in $Options) {
@@ -10,13 +12,16 @@ foreach ($Option in $Options) {
         '--setup-only' { $SetupOnly = $true }
         '--install-headless' { $InstallHeadless = $true }
         '--skip-headless' { $SkipHeadless = $true }
+        '--install-ai' { $InstallAI = $true }
+        '--skip-ai' { $SkipAI = $true }
         '--repair' { $Repair = $true }
         '--diagnose' { $Diagnose = $true }
-        '--help' { Write-Output 'Usage: run.bat [--setup-only] [--install-headless | --skip-headless] [--repair] [--diagnose]'; exit 0 }
+        '--help' { Write-Output 'Usage: run.bat [--setup-only] [--install-headless | --skip-headless] [--install-ai | --skip-ai] [--repair] [--diagnose]'; exit 0 }
         default { throw "Unknown option: $Option" }
     }
 }
 if ($InstallHeadless -and $SkipHeadless) { throw 'Choose either --install-headless or --skip-headless.' }
+if ($InstallAI -and $SkipAI) { throw 'Choose either --install-ai or --skip-ai.' }
 $Root = $PSScriptRoot
 Set-Location -LiteralPath $Root
 $Data = $env:CATLABEL_DATA_DIR
@@ -25,6 +30,11 @@ if ($Data -eq '~') { $Data = $HOME }
 elseif ($Data.StartsWith('~/') -or $Data.StartsWith('~\')) { $Data = Join-Path $HOME $Data.Substring(2) }
 if (-not [IO.Path]::IsPathRooted($Data) -or $Data -notmatch '^(?:[A-Za-z]:[\\/]|\\\\)') {
     throw 'CATLABEL_DATA_DIR must be an absolute Windows path.'
+}
+$State = $env:CATLABEL_BOOTSTRAP_STATE_DIR
+if (-not $State) { $State = $Data }
+if (-not [IO.Path]::IsPathRooted($State) -or $State -notmatch '^(?:[A-Za-z]:[\\/]|\\\\)') {
+    throw 'CATLABEL_BOOTSTRAP_STATE_DIR must be an absolute Windows path.'
 }
 $env:CATLABEL_DATA_DIR = $Data
 $env:PIXI_HOME = Join-Path $Data 'pixi_home'
@@ -35,9 +45,15 @@ $Version = '0.72.2'
 $Digest = '3f6e03db3cb275c028035ed3975180198064d8bb6d0352b5ab958c1fcfbddc4e'
 $Size = 90571192
 $Pixi = Join-Path $Root 'bin/pixi.exe'
+$HeadlessEnabled = (Test-Path -LiteralPath (Join-Path $State '.headless-enabled')) -or $InstallHeadless
+if ($SkipHeadless) { $HeadlessEnabled = $false }
+$AIEnabled = (Test-Path -LiteralPath (Join-Path $State '.ai-enabled')) -or $InstallAI
+if ($SkipAI) { $AIEnabled = $false }
 $Environment = 'default'
-if ((Test-Path -LiteralPath (Join-Path $Data '.headless-enabled')) -or $InstallHeadless) { $Environment = 'headless' }
-if ($SkipHeadless) { $Environment = 'default' }
+if ($HeadlessEnabled) { $Environment = 'headless' }
+if ($AIEnabled) {
+    if ($HeadlessEnabled) { $Environment = 'ai-headless' } else { $Environment = 'ai' }
+}
 $Python = Join-Path $Root ".pixi/envs/$Environment/python.exe"
 function Get-Identity {
     $ManifestHash = (Get-FileHash -LiteralPath (Join-Path $Root 'pixi.toml') -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -70,7 +86,7 @@ if ($Diagnose) {
     } else { Write-Output 'Environment: setup or repair required' }
     exit 0
 }
-New-Item -ItemType Directory -Force -Path (Join-Path $Root 'bin'), $Data, (Join-Path $Data 'tmp') | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $Root 'bin'), $Data, (Join-Path $Data 'tmp'), $State | Out-Null
 $env:TEMP = Join-Path $Data 'tmp'
 $env:TMP = $env:TEMP
 $LockStream = $null
@@ -93,18 +109,22 @@ try {
         } else { [IO.File]::Move($Download, $Pixi) }
         $Download = $null
     }
-    if ($Repair -or -not (Test-Path -LiteralPath $Python -PathType Leaf) -or $SavedIdentity -ne $Identity -or $InstallHeadless) {
+    if ($Repair -or -not (Test-Path -LiteralPath $Python -PathType Leaf) -or $SavedIdentity -ne $Identity -or $InstallHeadless -or $InstallAI) {
         if (Test-Path -LiteralPath $Stamp) { Remove-Item -LiteralPath $Stamp }
         if ($Repair) { Invoke-Pixi -Arguments @('reinstall', '--environment', $Environment, '--locked') }
         else { Invoke-Pixi -Arguments @('install', '--environment', $Environment, '--locked') }
-        if ($Environment -eq 'headless') {
+        if ($HeadlessEnabled) {
             Invoke-Pixi -Arguments @('run', '--environment', $Environment, '--locked', '--no-install', 'python', '-m', 'playwright', 'install', 'chromium')
         }
         Invoke-Pixi -Arguments @('run', '--environment', $Environment, '--locked', '--no-install', 'python', '-m', 'tools.bootstrap_runtime', '--root', $Root, '--environment', $Environment, '--stamp', $Stamp)
     }
-    if ($Environment -eq 'headless') { [IO.File]::WriteAllText((Join-Path $Data '.headless-enabled'), "1`n") }
-    elseif ($SkipHeadless -and (Test-Path -LiteralPath (Join-Path $Data '.headless-enabled'))) {
-        Remove-Item -LiteralPath (Join-Path $Data '.headless-enabled')
+    if ($HeadlessEnabled) { [IO.File]::WriteAllText((Join-Path $State '.headless-enabled'), "1`n") }
+    elseif ($SkipHeadless -and (Test-Path -LiteralPath (Join-Path $State '.headless-enabled'))) {
+        Remove-Item -LiteralPath (Join-Path $State '.headless-enabled')
+    }
+    if ($AIEnabled) { [IO.File]::WriteAllText((Join-Path $State '.ai-enabled'), "1`n") }
+    elseif ($SkipAI -and (Test-Path -LiteralPath (Join-Path $State '.ai-enabled'))) {
+        Remove-Item -LiteralPath (Join-Path $State '.ai-enabled')
     }
 } finally {
     if ($Download -and (Test-Path -LiteralPath $Download)) { Remove-Item -LiteralPath $Download -Force }

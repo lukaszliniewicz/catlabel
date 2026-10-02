@@ -157,6 +157,31 @@ class BootstrapRuntimeTests(unittest.TestCase):
                 ):
                     self.assertIn(module_name, imported_modules)
 
+    def test_optional_ai_imports_only_for_ai_environments(self) -> None:
+        for environment in ("default", "headless", "ai", "ai-headless"):
+            with self.subTest(environment=environment):
+                with (
+                    mock.patch.object(bootstrap_runtime.sys, "version_info", (3, 11)),
+                    mock.patch.object(bootstrap_runtime.sys, "platform", "linux"),
+                    mock.patch.object(
+                        bootstrap_runtime.importlib, "import_module"
+                    ) as importer,
+                    mock.patch.object(
+                        bootstrap_runtime.Path, "is_file", return_value=True
+                    ),
+                ):
+                    importer.return_value.sync_playwright.return_value.__enter__.return_value.chromium.executable_path = "/fixture/chromium"
+                    bootstrap_runtime.verify_runtime(environment)
+                modules = [call.args[0] for call in importer.call_args_list]
+                for module in bootstrap_runtime.AI_MODULES:
+                    self.assertEqual(
+                        module in modules, environment in ("ai", "ai-headless")
+                    )
+                self.assertEqual(
+                    "playwright.sync_api" in modules,
+                    environment in ("headless", "ai-headless"),
+                )
+
     def test_headless_verification_rejects_missing_chromium_executable(self) -> None:
         playwright = mock.Mock()
         runtime = mock.MagicMock()

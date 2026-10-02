@@ -2,6 +2,7 @@ import os
 import shutil
 import urllib.request
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import FastAPI, File, UploadFile
@@ -12,7 +13,15 @@ from sqlmodel import Session, select
 
 from ..core.database import create_db_and_tables, engine
 from ..core.models import Address, Font, LabelPreset, Settings
-from ..core.paths import FONTS_DIRECTORY, FRONTEND_DIRECTORY, LEGACY_FONTS_DIRECTORY
+from ..core.paths import (
+    APPLICATION_ROOT,
+    DATA_DIRECTORY,
+    FONTS_DIRECTORY,
+    FRONTEND_DIRECTORY,
+    LEGACY_FONTS_DIRECTORY,
+)
+from ..core.release_artifacts import load_release_manifest, verify_artifact_directory
+from ..core.runtime_lease import RuntimeLease
 from ..core.server_security import ServerSecurity
 from ..services.agent_context import build_agent_context
 from ..services.layout_engine import TEMPLATE_METADATA
@@ -81,13 +90,31 @@ def download_default_fonts():
                 print(f"Failed to download {filename}: {e}")
 
 
+@lru_cache(maxsize=1)
+def release_identity() -> dict[str, str | int] | None:
+    manifest_path = APPLICATION_ROOT / "release-manifest.json"
+    if not manifest_path.exists():
+        return None
+    manifest = load_release_manifest(manifest_path)
+    verify_artifact_directory(APPLICATION_ROOT, manifest)
+    return {
+        "release_id": manifest.release_id,
+        "source_commit": manifest.source_commit,
+        "frontend_sha256": manifest.frontend_sha256,
+        "database_epoch": manifest.database_epoch,
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_db_and_tables()
-    migrate_legacy_provider(engine)
-    seed_default_presets()
-    download_default_fonts()
-    yield
+    with RuntimeLease(DATA_DIRECTORY):
+        release_identity()
+        create_db_and_tables()
+        migrate_legacy_provider(engine)
+        seed_default_presets()
+        if os.environ.get("CATLABEL_ACCEPTANCE_PROBE") != "1":
+            download_default_fonts()
+        yield
 
 
 security_settings = ServerSecurity.from_environment()
@@ -114,7 +141,10 @@ app.include_router(ai_router)
 @app.get("/api/health", tags=["Diagnostics"])
 def health_check():
     """Lightweight same-origin probe used to distinguish API errors from a stopped server."""
-    return {"status": "ok"}
+    identity = release_identity()
+    if identity is None:
+        return {"status": "ok"}
+    return {"status": "ok", "release": identity}
 
 
 class PresetCreate(BaseModel):

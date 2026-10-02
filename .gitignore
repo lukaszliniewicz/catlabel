@@ -5,6 +5,9 @@
 .venv/
 /.pixi/
 /.launcher-build/
+/.releases/
+/.update-state/
+/active.json
 
 # User Data
 /data/
