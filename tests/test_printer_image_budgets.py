@@ -15,6 +15,7 @@ from catlabel.core.resource_limits import (
     MAX_RENDER_PIXELS,
     ResourceLimitError,
 )
+from catlabel.rendering.paper_layout import plan_image_layout
 from catlabel.vendors.generic.client import GenericClient
 from catlabel.vendors.niimbot.client import NiimbotClient
 from catlabel.vendors.phomemo.client import PhomemoClient
@@ -47,6 +48,8 @@ def _generic_client(
         left_padding_px=0,
         paper_mode="default",
         max_height_px=None,
+        render_height_px=None,
+        rotation_degrees=0,
     )
     papers = [default_paper]
     if alternate_width is not None:
@@ -59,6 +62,8 @@ def _generic_client(
                 left_padding_px=0,
                 paper_mode="alternate",
                 max_height_px=None,
+                render_height_px=None,
+                rotation_degrees=0,
             )
         )
     model = SimpleNamespace(
@@ -117,43 +122,23 @@ class PrinterImageBudgetTests(unittest.IsolatedAsyncioTestCase):
         selected_paper = client._selected_paper()
         self.assertEqual(selected_paper.render_width_px, 6)
 
-        calls: list[tuple[int, int, int]] = []
-        validate = generic_client_module.validate_image_budget
-
-        def record_budget(width: int, height: int, pixels_so_far: int = 0) -> int:
-            calls.append((width, height, pixels_so_far))
-            return validate(width, height, pixels_so_far)
-
-        image, _fake = _image(10, 3)
-        with patch.object(
-            generic_client_module,
-            "validate_image_budget",
-            new=record_budget,
+        for width, height, split, expected in (
+            (10, 3, True, ((6, 3), (6, 3))),
+            (10, 7, False, ((6, 4),)),
+            (2, 3, False, ((6, 3),)),
         ):
-            planned_labels = client.validate_images([image], split_mode=True)
-
-        self.assertEqual(planned_labels, 2)
-        self.assertEqual(calls, [(6, 1, 0), (6, 3, 0), (6, 3, 18)])
-
-        calls.clear()
-        image, _fake = _image(10, 7)
-        with patch.object(
-            generic_client_module,
-            "validate_image_budget",
-            new=record_budget,
-        ):
-            self.assertEqual(client.validate_images([image]), 1)
-        self.assertEqual(calls, [(6, 1, 0), (6, 4, 0)])
-
-        calls.clear()
-        image, _fake = _image(2, 3)
-        with patch.object(
-            generic_client_module,
-            "validate_image_budget",
-            new=record_budget,
-        ):
-            self.assertEqual(client.validate_images([image]), 1)
-        self.assertEqual(calls, [(6, 1, 0), (6, 3, 0)])
+            with self.subTest(source=(width, height), split=split):
+                image, fake = _image(width, height)
+                self.assertEqual(client.validate_images([image], split), len(expected))
+                self.assertEqual(
+                    plan_image_layout(
+                        [image], client._paper_image_layout(), split_mode=split
+                    ),
+                    expected,
+                )
+                fake.copy.assert_not_called()
+                fake.crop.assert_not_called()
+                fake.resize.assert_not_called()
 
     async def test_generic_rejects_split_job_explosion_before_allocating(self) -> None:
         client, backend_write = _generic_client(5)

@@ -16,6 +16,25 @@ class GenericManifest(VendorManifest):
 
     def _build_capabilities(self, raw_info: dict) -> dict:
         protocol_family = str(raw_info.get("protocol_family") or "").lower()
+        if protocol_family == "yk_astra_p1":
+            return {
+                "speed": {
+                    "available": True,
+                    "min": 0,
+                    "max": min(255, int(raw_info.get("max_speed", 25))),
+                    "default": raw_info.get("default_speed", 25),
+                },
+                "energy": {"available": False},
+                "density": {
+                    "available": True,
+                    "min": raw_info.get("min_density", 5),
+                    "max": raw_info.get("max_density", 13),
+                    "default": raw_info.get("default_density", 9),
+                    "allow_auto": False,
+                    "scale": "level",
+                },
+                "feed": {"available": False},
+            }
         if protocol_family in {
             "luck_normal",
             "luck_normal_a4",

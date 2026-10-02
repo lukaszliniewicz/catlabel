@@ -7,7 +7,7 @@ Objective: implement the complete [2 October maintenance plan](reviews/2026-10-0
 | 0 — reproducible checks | Implemented locally; native acceptance open | Review committed as `0e61a31`; hermetic/portable tests as `2718c08` (67/67). Canonical dependencies, hashed check locks, diagnostic ratchet, graph/contracts, advisory gate and native CI are integrated. Full Linux check: 83 backend tests, 21 frontend tests and scratch production build pass. A deliberately introduced F821 failed the actual static gate; no new tooling debt is baselined. Existing Pixi lock verified unchanged by dry-run. Hosted/native validation remains unverified. |
 | 1 — correctness and local operation | Implemented locally; hardware acceptance open | Classification/row packing, local-server/provider-secret fixes, device admission and Niimbot acknowledgements, shared processing limits, safe catalog publication and project transactions/revisions are integrated. Full Linux checks pass: 300 backend tests, 28 frontend tests and a scratch production build. |
 | 2 — debt elimination | Implemented locally; native acceptance open | All source/check debt gates are zero, both full Python SCCs are removed, and no import-contract exception remains. 329 backend tests pass with one native SDK test skipped on Linux; 33 frontend tests and production build pass. |
-| 3 — upstream parity | In progress; protocol foundation implemented locally | Released V5X, Eleph/ToPrint and Tiny fixture paths pass; standalone Classic receive and S001 frame/status foundations pass. Live Classic integration, S001 encoder/runtime, paper transforms, dedicated vendor parity and catalog promotion remain. |
+| 3 — upstream parity | In progress; released generic integration implemented locally | V5X, Eleph/ToPrint, Tiny and S001 fixtures pass. Live Linux Classic receive, S001 encoder/runtime, paper transforms and v0.8.1 bundle are integrated. Dedicated vendor parity and selected post-release changes remain. |
 | 4 — installation/dependencies | Pending | Native locked bootstrap and release/update/repair workflow; staged major migrations and native installation matrix. |
 | 5 — structure/UX | Pending | Typed interfaces/store/component decomposition; responsive/accessible setup/editor/save recovery. Parent owns browser acceptance. |
 | 6 — performance/lifecycle | Pending | Measured alpha hoist, unified render readiness, Playwright ownership, bounded jobs/previews and representative benchmarks. |
@@ -50,3 +50,40 @@ Eleph and ToPrint have distinct families/encodings, released polarity/media comm
 The standalone Classic hub passes real Linux socketpair tests for single-reader ownership, reply offsets, partial timeouts, overflow, EOF, callback/predicate failure and shutdown without changing socket timeouts. It is not yet connected to the live backend. S001 frame/status helpers are tested, but its encoder/runtime/model promotion remain pending. V5X fixtures currently deliver complete notification frames; transport fragmentation/coalescing and selected post-release parser hooks remain separate work.
 
 Final Linux full gate: 410 backend tests run (409 passed, one Windows-only skip), 33 frontend tests pass, production build 10.53 seconds, every static category zero and no debt additions. Frontend source and shipped artifact are unchanged from the accepted phase 2 build. [Machine-readable receipt](reviews/2026-10-02/evidence/phase3-protocol-foundation-receipt.json), [current parity ledger](upstream-parity.md). No physical output, Windows/macOS native execution, dependency-audit refresh or deployment is claimed by this checkpoint. The remaining plan stays active.
+
+Live Classic/S001/catalog checkpoint: native Classic queries, passive waits and
+atomic writes share one receive hub, preserving socket timeout and reply offsets.
+Disconnect wakes flow-blocked sends, stops the reader before socket teardown and
+clears state for reconnect. Tiny raw notifications reach the owning asyncio loop
+before predicates. Native socketpair tests exercise actual backend pause/resume,
+fragmented replies, failure/EOF, shutdown, reconnect and callback cleanup. Custom
+WinRT/macOS wrappers retain their prior receive paths; their native execution is
+best effort and unverified.
+
+Orgstra S001 now has its released four-row/96-dot encoder, three media feed
+recipes, speed/density capability metadata and live status/completion controller.
+Each new payload clears active completion state; waiters never replay historical
+notifications into that state. Two integrated Classic jobs and fragmented BLE
+notifications guard against stale completion. Missing status/completion is an
+explicit warning, not a physical-success receipt. Paper transforms apply preset
+rotation, width normalization and then height fitting; exact pixels match two-stage
+references, intermediate/output budgets are checked before allocation, and owned
+images close on success and failure.
+
+The all-five-file v0.8.1 bundle is published at peeled source commit
+`f676917257b5d1f869e0f13beff03785258e2a2e`: 145 source models, 133 executable generic
+records, 12 records deferred to dedicated vendors, 165 unsupported records, 129
+profiles, 51 paper presets and 12 origins. D80 ambiguity follows upstream group
+precedence; unambiguous aliases still select Luck. Historical raw files remain
+fallback data. S001 preset-selection/editor geometry is still phase 5 UX work.
+
+Final Linux full gate: 476 backend tests run (475 passed, one Windows SDK skip),
+33 frontend tests pass, production build 8.78 seconds and every static category is
+zero. Frontend source and shipped artifact retain the accepted phase 2 digest.
+[Machine-readable receipt](reviews/2026-10-02/evidence/phase3-classic-s001-catalog-receipt.json).
+Luna/max implementers supplied bounded non-UI transport, codec, runtime and paper
+packets; a Luna/max researcher confirmed the D80 source ambiguity. These are
+configured assignments; runtime model telemetry is unavailable. Parent owns
+integration and acceptance. No physical printer output, Windows/macOS native run,
+dependency audit refresh or deployment is claimed. Dedicated vendor parity,
+selected master changes and phases 4–7 remain active.

@@ -1,29 +1,30 @@
 import asyncio
+import threading
 from collections.abc import Mapping
 
 from fastapi import HTTPException
 from PIL import Image
 
 from ... import reporting
-from ...core.resource_limits import (
-    MAX_PRINT_JOBS,
-    ResourceLimitError,
-    validate_image_budget,
-)
 from ...devices import get_ble_transport_profile
 from ...printing import build_raster_job, send_prepared_job
-from ...printing.runtime.base import PreparedRuntimeContext
+from ...printing.runtime.base import PreparedRuntimeContext, RuntimeController
 from ...printing.runtime.factory import runtime_controller_for_device
 from ...printing.runtime.session import RuntimeConnectionSession
 from ...protocol.family import ProtocolFamily
 from ...protocol.job import ProtocolJob
 from ...protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode
 from ...raster import PixelFormat, RasterSet
+from ...rendering.paper_layout import (
+    PaperImageLayout,
+    plan_image_layout,
+    prepare_paper_images,
+)
 from ...rendering.renderer import image_to_raster
 from ...transport.bluetooth import DeviceInfo, SppBackend
 from ...transport.bluetooth.types import DeviceTransport
 from ..base import BasePrinterClient
-from .models import PrinterModelRegistry
+from .models import PaperPreset, PrinterModelRegistry
 
 
 def _image_density_levels(model) -> Mapping[str, object] | None:
@@ -90,11 +91,89 @@ class _GenericBackendConnection:
         self._backend = backend
         self._chunk_size = chunk_size
         self._delay_ms = delay_ms
+        self._controller: RuntimeController | None = None
+        self._session: RuntimeConnectionSession | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._loop_thread: int | None = None
+        self._initialized = False
+
+    @property
+    def notify_started(self) -> bool:
+        checker = getattr(self._backend, "can_receive_passively", None)
+        return bool(checker()) if callable(checker) else False
 
     async def attach_runtime_controller(
         self, controller, *, timeout: float = 1.0
     ) -> None:
-        await self._backend.attach_runtime_controller(controller, timeout=timeout)
+        if not self.notify_started:
+            # BLE owns its runtime lifecycle; platform wrappers retain their
+            # existing optional attachment route.
+            await self._backend.attach_runtime_controller(controller, timeout=timeout)
+            return
+        if controller is not self._controller:
+            controller.adopt_previous(self._controller)
+            self._controller = controller
+            self._initialized = False
+        if self._initialized:
+            return
+        self._loop = asyncio.get_running_loop()
+        self._loop_thread = threading.get_ident()
+        session = RuntimeConnectionSession(self, reporter=reporting.DUMMY_REPORTER)
+        self._session = session
+        self._backend.register_notify_callback(self._handle_classic_notification)
+        try:
+            await controller.initialize_connection(
+                session, mtu_size=self._chunk_size, timeout=timeout
+            )
+            await controller.after_initialize(session, timeout=timeout)
+        except BaseException:
+            try:
+                await self.stop_runtime_controller()
+            except Exception as cleanup_error:
+                reporting.DUMMY_REPORTER.debug(
+                    short="Runtime cleanup", detail=str(cleanup_error)
+                )
+            raise
+        self._initialized = True
+
+    def _handle_classic_notification(self, payload: bytes) -> None:
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            raise RuntimeError("Classic runtime event loop is unavailable")
+        if threading.get_ident() == self._loop_thread:
+            self._dispatch_classic_notification(payload)
+            return
+
+        async def dispatch() -> None:
+            self._dispatch_classic_notification(payload)
+
+        # The reader must process flow state before evaluating reply waiters.
+        # Running controllers on their owning loop also keeps their tasks safe.
+        pending = asyncio.run_coroutine_threadsafe(dispatch(), loop)
+        try:
+            pending.result(timeout=10.0)
+        except BaseException:
+            pending.cancel()
+            raise
+
+    def _dispatch_classic_notification(self, payload: bytes) -> None:
+        controller, session = self._controller, self._session
+        if controller is not None and session is not None:
+            controller.handle_notification(session, payload)
+
+    async def stop_runtime_controller(self) -> None:
+        self._backend.register_notify_callback(None)
+        controller, session = self._controller, self._session
+        self._controller = None
+        self._session = None
+        self._loop = None
+        self._loop_thread = None
+        self._initialized = False
+        if controller is not None and session is not None:
+            await controller.stop(session)
+
+    def set_flow_paused(self, paused: bool, *, payload: bytes = b"") -> None:
+        self._backend.set_flow_paused(paused, payload=payload)
 
     def can_send_control_packet(self) -> bool:
         checker = getattr(self._backend, "can_send_control_packet", None)
@@ -136,11 +215,20 @@ class _GenericBackendConnection:
         )
 
     async def send_standard_payload(self, data: bytes) -> None:
-        await self._backend.write(
-            data,
-            chunk_size=self._chunk_size,
-            delay_ms=self._delay_ms,
-        )
+        controller, session = self._controller, self._session
+        if controller is not None and session is not None:
+            controller.on_standard_send_started(session)
+            data = controller.prepare_standard_payload(session, data)
+            controller.track_outgoing_query_status(session, data)
+        try:
+            await self._backend.write(
+                data,
+                chunk_size=self._chunk_size,
+                delay_ms=self._delay_ms,
+            )
+        finally:
+            if controller is not None and session is not None:
+                controller.on_standard_send_finished(session)
 
     async def send(self, job: ProtocolJob) -> None:
         if job.steps:
@@ -171,6 +259,7 @@ class GenericClient(BasePrinterClient):
         if not self.model:
             self.model = self.registry.get("GT01")
         self._runtime_context = PreparedRuntimeContext()
+        self._runtime_connection: _GenericBackendConnection | None = None
 
     def _effective_protocol_family(self):
         if self.model_match is not None:
@@ -215,51 +304,23 @@ class GenericClient(BasePrinterClient):
             self.model.paper_preset(),
         )
 
+    def _paper_image_layout(self) -> PaperImageLayout:
+        preset = self._selected_paper()
+        return PaperImageLayout(
+            render_width_px=preset.render_width_px,
+            render_height_px=preset.render_height_px,
+            rotation_degrees=preset.rotation_degrees,
+        )
+
     def validate_images(
         self,
         images: list[Image.Image],
         split_mode: bool = False,
     ) -> int:
         super().validate_images(images, split_mode)
-        selected_paper = self._selected_paper()
-        print_width_px = selected_paper.render_width_px
-        validate_image_budget(print_width_px, 1)
-
-        planned_labels = 0
-        output_pixels = 0
-        for image in images:
-            if split_mode and image.width > print_width_px:
-                label_count = (image.width + print_width_px - 1) // print_width_px
-                output_width = print_width_px
-                output_height = image.height
-            elif image.width < print_width_px:
-                label_count = 1
-                output_width = print_width_px
-                output_height = image.height
-            elif image.width > print_width_px:
-                label_count = 1
-                output_width = print_width_px
-                output_height = max(
-                    1,
-                    int(image.height * print_width_px / float(image.width)),
-                )
-            else:
-                label_count = 1
-                output_width = image.width
-                output_height = image.height
-
-            planned_labels += label_count
-            if planned_labels > MAX_PRINT_JOBS:
-                raise ResourceLimitError(
-                    f"Print requires more than {MAX_PRINT_JOBS} label jobs."
-                )
-            for _ in range(label_count):
-                output_pixels = validate_image_budget(
-                    output_width,
-                    output_height,
-                    output_pixels,
-                )
-        return planned_labels
+        return len(
+            plan_image_layout(images, self._paper_image_layout(), split_mode=split_mode)
+        )
 
     async def connect(self) -> bool:
         attempts = []
@@ -316,7 +377,13 @@ class GenericClient(BasePrinterClient):
         return False
 
     async def disconnect(self) -> None:
-        await self.backend.disconnect()
+        connection = self._runtime_connection
+        self._runtime_connection = None
+        try:
+            if connection is not None:
+                await connection.stop_runtime_controller()
+        finally:
+            await self.backend.disconnect()
 
     async def print_images(
         self,
@@ -331,37 +398,24 @@ class GenericClient(BasePrinterClient):
             )
 
         selected_paper = self._selected_paper()
-        print_width_px = selected_paper.render_width_px
-        final_images = []
+        final_images = prepare_paper_images(
+            images, self._paper_image_layout(), split_mode=split_mode
+        )
+        try:
+            await self._print_prepared_images(
+                final_images, selected_paper, dither=dither
+            )
+        finally:
+            for image in final_images:
+                image.close()
 
-        for img in images:
-            if split_mode and img.width > print_width_px:
-                for x in range(0, img.width, print_width_px):
-                    strip = img.crop(
-                        (x, 0, min(x + print_width_px, img.width), img.height)
-                    )
-                    if strip.width < print_width_px:
-                        padded = Image.new(
-                            "RGB", (print_width_px, strip.height), "white"
-                        )
-                        padded.paste(strip, (0, 0))
-                        strip = padded
-                    final_images.append(strip)
-            else:
-                if img.width != print_width_px:
-                    if img.width < print_width_px:
-                        padded = Image.new("RGB", (print_width_px, img.height), "white")
-                        offset_x = (print_width_px - img.width) // 2
-                        padded.paste(img, (offset_x, 0))
-                        img = padded
-                    else:
-                        ratio = print_width_px / float(img.width)
-                        new_height = max(1, int(img.height * ratio))
-                        img = img.resize(
-                            (print_width_px, new_height), Image.Resampling.LANCZOS
-                        )
-                final_images.append(img)
-
+    async def _print_prepared_images(
+        self,
+        final_images: list[Image.Image],
+        selected_paper: PaperPreset,
+        *,
+        dither: bool,
+    ) -> None:
         pipeline_config = self._effective_image_pipeline()
         protocol_family = self._effective_protocol_family()
         protocol_variant = self._effective_protocol_variant()
@@ -485,11 +539,14 @@ class GenericClient(BasePrinterClient):
             bluetooth_address=getattr(self.device, "address", ""),
         )
 
-        connection = _GenericBackendConnection(
-            self.backend,
-            chunk_size=mtu,
-            delay_ms=delay_ms,
-        )
+        connection = self._runtime_connection
+        if connection is None:
+            connection = _GenericBackendConnection(
+                self.backend,
+                chunk_size=mtu,
+                delay_ms=delay_ms,
+            )
+            self._runtime_connection = connection
         runtime_context = PreparedRuntimeContext(runtime_controller=runtime_controller)
         if runtime_controller is not None:
             runtime_session = RuntimeConnectionSession(

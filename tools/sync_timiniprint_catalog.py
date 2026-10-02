@@ -27,7 +27,7 @@ from catlabel.vendors.generic.catalog_snapshot import validate_snapshot  # noqa:
 DATA_DIR = ROOT / "catlabel" / "vendors" / "generic" / "data"
 SNAPSHOT_FILENAME = "catalog_snapshot.json"
 UPSTREAM_REPOSITORY = "https://github.com/Dejniel/TiMini-Print"
-DEFAULT_REVISION = "v0.7.3"
+DEFAULT_REVISION = "v0.8.1"
 
 SOURCE_PATHS = {
     "catalog_models.json": "timiniprint/data/printer_models.json",

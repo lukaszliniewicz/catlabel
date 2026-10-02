@@ -62,6 +62,10 @@ class PrintingPaperTests(unittest.TestCase):
                     paper_width_pixels=preset.paper_width_px,
                     left_padding_pixels=preset.left_padding_px,
                 )
+                # S001 applies six leading dots and pads to its 96-dot head
+                # in the encoder. Its image-space paper width is deliberately 90.
+                if model.protocol_family.value == "yk_astra_p1":
+                    continue
                 effective_width = laid_out.width + preset.left_padding_px
                 if (
                     model.protocol_family.value != "legacy"

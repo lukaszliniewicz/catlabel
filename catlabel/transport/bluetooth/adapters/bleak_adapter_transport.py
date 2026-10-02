@@ -273,6 +273,8 @@ class _BleakTransportSession:
         self._notification_history.append(bytes(payload))
         if len(self._notification_history) > 64:
             del self._notification_history[:-64]
+        if self._runtime_controller is not None:
+            self._runtime_controller.handle_notification(self, payload)
         for waiter in tuple(self._notification_waiters):
             if waiter.future.done() or not waiter.match(payload):
                 continue
@@ -280,8 +282,6 @@ class _BleakTransportSession:
                 self._notification_history.remove(payload)
             waiter.future.set_result(bytes(payload))
             self._notification_waiters.remove(waiter)
-        if self._runtime_controller is not None:
-            self._runtime_controller.handle_notification(self, payload)
         self.report_debug(f"BLE notify: {payload.hex()}")
 
     def set_flow_paused(self, paused: bool, *, payload: bytes = b"") -> None:

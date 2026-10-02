@@ -1,0 +1,98 @@
+{
+  "checkpoint": "phase3-classic-s001-catalog",
+  "date": "2026-10-02",
+  "base_commit": "f7277e6335f2a1021284d6297abb3801db361b8f",
+  "upstream": {
+    "revision": "v0.8.1",
+    "commit": "f676917257b5d1f869e0f13beff03785258e2a2e"
+  },
+  "command": "PATH=/tmp/catlabel-implementation-20261002/check-env/bin:$PATH python -m tools.check --lane full --report check-results/phase3-classic-s001-catalog.json",
+  "exit_code": 0,
+  "environment": {
+    "os": "Linux",
+    "python": "3.11.15",
+    "node": "24.18.0",
+    "npm": "11.16.0"
+  },
+  "static_findings": {
+    "ruff": [],
+    "format": [],
+    "typing": [],
+    "react": [],
+    "knip": [],
+    "knip-production": [],
+    "python-cycles": [],
+    "import-contracts": [],
+    "frontend-cycles": []
+  },
+  "backend_tests": {
+    "run": 476,
+    "passed": 475,
+    "skipped": 1,
+    "seconds": 8.591,
+    "skip": "Windows SDK native import"
+  },
+  "frontend_tests": {
+    "files": 7,
+    "passed": 33
+  },
+  "production_build_seconds": 8.78,
+  "frontend_source_and_shipped_artifact_changed": false,
+  "retained_frontend_aggregate_sha256": "668b0d78e0a373ea6502f0828149683548f6e397184a77f46bbf1a94faabaf8a",
+  "catalog": {
+    "source_models": 145,
+    "executable_generic_models": 133,
+    "dedicated_deferred_models": 12,
+    "unsupported_models": 165,
+    "profiles": 129,
+    "paper_presets": 51,
+    "origins": 12,
+    "bundle_sha256": "00e9659ab6b7c012cd8a7309a8c4ac736b4b53878ff1b3d915980624075640e8"
+  },
+  "source_files_sha256": {
+    "catlabel/printing/runtime/factory.py": "5056d89fb848dc63bb37393f6522cbb7757929a33a74073c7262ace08944e3a0",
+    "catlabel/printing/runtime/session.py": "42ec438f8aafb958a766828f63666828943a94a1ec7e2d14792f849a1070e7b6",
+    "catlabel/printing/runtime/yk_astra_p1.py": "c4d66bb3c23848562f1c53a2610a8e887a9c4439e5da27e86d5f2bc7ce6524fa",
+    "catlabel/protocol/families/__init__.py": "3c5fe3c4baeefa811fbcdd54e55f3fe5d31295ccd4bb0ae45cda65c76bb29feb",
+    "catlabel/protocol/families/yk_astra_p1.py": "dcddc3e09b604a05e8218d3a4cb5f319f6cdac315bc52912070781c8d631e8da",
+    "catlabel/protocol/family.py": "0f5d7b41431b020b07c934435bd9365736ce137e0da945de105f6dfd27a31795",
+    "catlabel/protocol/types.py": "27703b4879ea7d2d520154b72d38ba2862bc27020a0a9f7689b866b99414fc1c",
+    "catlabel/rendering/paper_layout.py": "ef91c3dd7b5a6becb2a341024a93fe19cc9905dc23fed8ab5d89e707e0de41b6",
+    "catlabel/transport/bluetooth/adapters/bleak_adapter_transport.py": "e21affef61d79464da7f7bb21d55cc2209502cf7373e2e51dc9b794f1f93ee70",
+    "catlabel/transport/bluetooth/backend.py": "e5d713391c60ca99d61d41b21ffc025bed987331b14d5a41ce67f8ca9ee2fc69",
+    "catlabel/vendors/generic/client.py": "5776582f3c21bccec7d0b34e726796192467a1c5d8ac38705e9e844a8b4ed121",
+    "catlabel/vendors/generic/manifest.py": "12d271802143a785c850d2c2237ca16ff1890c5806d3764fad6446de4b07bf81",
+    "tests/test_ble_transport_session.py": "44918f37ff1557cf67379202bc1e7e9b1c5a0ab302c93adf1aafdb2cb2ec04d3",
+    "tests/test_classic_backend_receive.py": "b85dfc385429300e47009372e92daf2e624d3f771344694b35c3e491c676b7e7",
+    "tests/test_generic_catalog.py": "a8f352d5c376358844050f437b5a9ef675f8e2284486eae53deeda220ca6515a",
+    "tests/test_generic_classic_runtime.py": "fd5bd053d0f0694b78a5f993318e2845e62b5acc8e51134f2df63d5d9feea0b7",
+    "tests/test_generic_client.py": "1ec62a8b73364be7df0f64388d184106a27e4c01b092e730c8c43260bb4eeadd",
+    "tests/test_generic_client_contracts.py": "87f24293d709c4fd5923162dd9e858eb0eb4e9a53fa7abde17ad582282a70cc7",
+    "tests/test_paper_image_layout.py": "7110eb831a5bfd6fba44f67cb9eba2c83ecec33a4abdbd79e5ec4fa4ae6dd614",
+    "tests/test_printer_image_budgets.py": "ce5e128c6ce63f16f08d86049f9b84c2eaed4ffb1163e80354d78773993fae9a",
+    "tests/test_printing_paper.py": "3b277ee1efa6f684a56c4d06930eaed37a68d304785f4119d5db85da802a9c5f",
+    "tests/test_protocol_contracts.py": "067b2a91574b461c0da69129a40d5b0fd5e861826b177c8e6e85e73e8b911992",
+    "tests/test_s001_encoder.py": "ec6e968280ee9e093cb22aeb762b283762f0e0c1192e5bc35b95f702d6dfffa2",
+    "tests/test_s001_runtime.py": "b773f5e5a1e439adc1f8e217a6f2d1843eaa685fb9d5a4da80879997cf05fb40",
+    "tests/test_vendor_registry.py": "922ace98ba5c4115ecdb2ef73e4f021acf057bc473ea2915495ed5d6b121664a",
+    "tools/sync_timiniprint_catalog.py": "f08d89dd19da72f5b3c9b3d09d57b09fad84ffcdd6a7017cb2e57d02f749069c"
+  },
+  "policy_and_locks_sha256": {
+    "requirements-check.lock": "5520a6ca39e676948cf03bf05bdc06a546f92e4584846771d1f156b689259a28",
+    "frontend/package-lock.json": "52e7bd6c95963229454fc848da1f72bb44f50ebaf2d3fd58416b54a17b2da0ac",
+    "pixi.lock": "a60e21b3b2fba62a6ac01230d70f88627c5bb5cef49f4a4fe2f1d19f3962b82a",
+    "pyproject.toml": "c5bb89fedc2f7475375c4b1b1d13317a34f8b539e6577ae0f8a5a71d892bb8e9",
+    "checks/debt.json": "ee4f7f5812a6b096f5dd89af9a8f2342300401c5e3939b7375ddefdb9771092a",
+    "NOTICE": "c6afad929b29fed746d93eaf6400052c84df5270c3dc47d580e8f3849d4b1753"
+  },
+  "log_sha256": "31eab6854c301cf918b0e5128086195e807ea1a6bf247e590a61f42f79856796",
+  "limitations": [
+    "No physical printer acceptance",
+    "Windows/macOS native execution unverified; custom Classic readers retain prior paths",
+    "Classic single-worker outbound control cannot progress behind a paused write; inbound resume is independent",
+    "S001 notification source has no job identity; missing status/completion remains unverified",
+    "S001 preset selection/editor geometry remains phase5",
+    "Dedicated NIIMBOT/Phomemo parity and selected post-release master changes remain pending",
+    "Dependency locks unchanged; existing Vitest advisory migration remains phase4"
+  ]
+}

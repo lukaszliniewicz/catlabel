@@ -13,6 +13,10 @@ class RuntimeConnectionSession:
         self._connection = connection
         self._reporter = reporter
 
+    @property
+    def notify_started(self) -> bool:
+        return bool(getattr(self._connection, "notify_started", False))
+
     async def attach_runtime_controller(
         self, runtime_controller, *, timeout: float
     ) -> None:

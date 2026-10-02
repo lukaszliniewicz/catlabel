@@ -29,6 +29,7 @@ from .toprint_tspl import BEHAVIOR as TOPRINT_TSPL_BEHAVIOR
 from .v5c import BEHAVIOR as V5C_BEHAVIOR
 from .v5g import BEHAVIOR as V5G_BEHAVIOR
 from .v5x import BEHAVIOR as V5X_BEHAVIOR
+from .yk_astra_p1 import BEHAVIOR as YK_ASTRA_P1_BEHAVIOR
 
 
 def _definition(
@@ -67,6 +68,9 @@ _DEFINITIONS = {
     ),
     ProtocolFamily.TOPRINT_TSPL: _definition(
         ProtocolFamily.TOPRINT_TSPL, TOPRINT_TSPL_BEHAVIOR
+    ),
+    ProtocolFamily.YK_ASTRA_P1: _definition(
+        ProtocolFamily.YK_ASTRA_P1, YK_ASTRA_P1_BEHAVIOR
     ),
     ProtocolFamily.INSTAPRINT_CORE: _definition(
         ProtocolFamily.INSTAPRINT_CORE, INSTAPRINT_CORE_BEHAVIOR

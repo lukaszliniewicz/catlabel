@@ -4,15 +4,15 @@ CatLabel's generic printer logic is derived from
 [TiMini-Print](https://github.com/Dejniel/TiMini-Print), licensed under
 Apache-2.0. The checked-in catalog snapshot is pinned to:
 
-- release: `v0.7.3`
-- commit: `3373a037ccbaafc32cfafd5ed9ef496efd1efacd`
-- source date: 2026-07-14
+- release: `v0.8.1`
+- commit: `f676917257b5d1f869e0f13beff03785258e2a2e`
+- source date: 2026-09-18
 
 The publisher accepts a separate local upstream clone; its selected tag must
 already be fetched. Run from the CatLabel checkout, passing that clone's path:
 
 ```powershell
-bin\pixi.exe run --environment default --locked python tools\sync_timiniprint_catalog.py v0.7.3 --repository-path C:\path\to\TiMini-Print
+bin\pixi.exe run --environment default --locked python tools\sync_timiniprint_catalog.py v0.8.1 --repository-path C:\path\to\TiMini-Print
 ```
 
 The generated `catalog_snapshot.json` contains all five catalogs and their exact
@@ -24,19 +24,20 @@ catalog paths retain the legacy loading API.
 
 The parser accepts both v0.7.3 and v0.8.1 detection schemas, origin IDs, marketing
 names, whitespace modes and ambiguity groups. Preset height and rotation metadata
-are retained. Applying new preset transforms and updating wire/runtime behavior
-remain in maintenance phase 3; parsing a new family does not enable its driver.
-The repository data above are still v0.7.3. Validation of v0.8.1 in a disposable
-directory is not catalog promotion or physical printer acceptance.
+are retained and applied by the generic image pipeline: clockwise preset rotation,
+width normalization/padding, then height fitting and centering. User rotation is
+applied before these preset transforms. The bundle is now the released v0.8.1
+snapshot. Source-backed fixtures and Linux socket tests establish local protocol
+compatibility; they do not establish physical output.
 
 ## Imported in this synchronization
 
 - The complete upstream model, unsupported-model, profile, paper-preset, and
-  origin-app data snapshot: 143 upstream supported records, 165 upstream
-  unsupported records, and 128 profiles.
-- 132 generic records whose protocol path is executable in CatLabel: Tiny,
+  origin-app data snapshot: 145 upstream supported records, 165 upstream
+  unsupported records, and 129 profiles, 51 paper presets and 12 origins.
+- 133 generic records whose protocol path is executable in CatLabel: Tiny,
   Tiny-prefixed, Luck (including PPA2L/PPA2LH), V5G, V5X, V5C,
-  Eleph/HPRT ESC, Eleph/TSPL, Instaprint Core, and Funny LX.
+  Eleph/TSPL, ToPrint/HPRT ESC, ToPrint/TSPL, Instaprint Core, Funny LX and YK Astra P1 (Orgstra S001).
 - Source-backed exact/prefix/MAC detection with unsupported-model vetoes and no
   marketing-name guessing.
 - Tiny `line_eight`, `professional`, `esc_star`, and `esc_star_eight` packet
@@ -64,7 +65,7 @@ directory is not catalog promotion or physical printer acceptance.
 
 ## Deliberately not advertised by the generic backend
 
-- Upstream Niimbot and Phomemo ESC records (11 records): CatLabel maintains
+- Upstream Niimbot and Phomemo ESC records (12 records): CatLabel maintains
   separate Niimbot and Phomemo vendor backends, so importing the generic copies
   would create conflicting ownership.
 
@@ -73,6 +74,11 @@ from the executable registry. Unknown, ambiguous, unsupported, and deferred
 devices resolve to CatLabel's generic sentinel and are excluded from automatic
 scan results. This is intentional: a smaller truthful support list is safer
 than selecting an incorrect wire protocol.
+
+The released `d80_protocol` ambiguity group covers both a supported Luck and an
+unsupported PrintMaster candidate. Bare `D80_` aliases remain unknown rather than
+being assigned a wire protocol. More specific unambiguous aliases such as
+`DP_D80_` still select Luck. This follows the pinned upstream group precedence.
 
 ## Future synchronization checklist
 

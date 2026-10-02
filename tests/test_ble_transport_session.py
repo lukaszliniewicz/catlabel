@@ -6,6 +6,8 @@ import unittest
 from catlabel import reporting
 from catlabel.devices import BleTransportProfile
 from catlabel.printing.runtime.tiny import TinyRuntimeController
+from catlabel.printing.runtime.yk_astra_p1 import AstraP1RuntimeController
+from catlabel.protocol.families.yk_common import pack_yk_frame
 from catlabel.transport.bluetooth.adapters.bleak_adapter_endpoint_resolver import (
     _BleWriteEndpointResolver,
 )
@@ -44,6 +46,38 @@ class _ImmediateReplyClient:
 
 
 class BleTransportSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_s001_completion_uses_live_fragment_decoder_before_waiters(
+        self,
+    ) -> None:
+        session = _BleakTransportSession(
+            transport_profile=BleTransportProfile(prefer_generic_notify=True),
+            write_resolver=_BleWriteEndpointResolver(reporter=reporting.DUMMY_REPORTER),
+            reporter=reporting.DUMMY_REPORTER,
+        )
+        session.notify_started = True
+        controller = AstraP1RuntimeController()
+        await session.attach_runtime_controller(controller, mtu_size=20, timeout=0.1)
+        controller.on_standard_send_started(session)
+        task = asyncio.create_task(controller.wait_for_completion(session, timeout=0.1))
+        printing = pack_yk_frame(0x81, bytes.fromhex("0000080009000264"))
+        idle = pack_yk_frame(0x81, bytes.fromhex("0000000009000264"))
+        try:
+            await asyncio.sleep(0)
+            session.handle_notification(printing[:7])
+            session.handle_notification(printing[7:] + idle[:5])
+            self.assertFalse(task.done())
+            session.handle_notification(idle[5:])
+            await asyncio.wait_for(task, timeout=1.0)
+            self.assertEqual(controller.debug_snapshot()["completion_count"], 1)
+            self.assertFalse(controller.debug_snapshot()["finished"])
+            controller.on_standard_send_started(session)
+            self.assertFalse(controller._completion_reply(printing + idle))
+        finally:
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await controller.stop(session)
+
     async def test_tiny_notifications_pause_actual_ble_chunk_writes(self) -> None:
         session = _BleakTransportSession(
             transport_profile=BleTransportProfile(

@@ -10,6 +10,7 @@ from .tiny import TinyRuntimeController
 from .v5c import V5CRuntimeController
 from .v5g import V5GRuntimeController
 from .v5x import V5XRuntimeController
+from .yk_astra_p1 import AstraP1RuntimeController
 
 
 def runtime_controller_for_device(
@@ -25,6 +26,10 @@ def runtime_controller_for_device(
     )
     if family in {ProtocolFamily.LEGACY, ProtocolFamily.LEGACY_PREFIXED}:
         return TinyRuntimeController()
+    if family is ProtocolFamily.YK_ASTRA_P1:
+        return AstraP1RuntimeController(
+            paper_query_on_valid=getattr(device, "protocol_variant", None) == "s001"
+        )
     if family is ProtocolFamily.V5G:
         density_profile = getattr(device, "runtime_density_profile", None)
         return V5GRuntimeController(

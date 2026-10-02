@@ -46,6 +46,7 @@ class ProtocolSpecDefinitionTests(unittest.TestCase):
                 ProtocolCommandSet.TOPRINT_HPRT_ESC,
             ),
             ProtocolFamily.TOPRINT_TSPL: (None, ProtocolCommandSet.TOPRINT_TSPL),
+            ProtocolFamily.YK_ASTRA_P1: (None, ProtocolCommandSet.YK_ASTRA_P1),
             ProtocolFamily.INSTAPRINT_CORE: (
                 None,
                 ProtocolCommandSet.INSTAPRINT_CORE,

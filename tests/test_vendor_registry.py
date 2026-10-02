@@ -11,7 +11,7 @@ class VendorRegistryTests(unittest.TestCase):
     def test_real_names_keep_vendor_and_specific_geometry(self) -> None:
         for name, vendor, model in (
             ("D100", "generic", "d100"),
-            ("D80_123", "generic", "luck_d80"),
+            ("DP_D80_123", "generic", "luck_d80"),
             ("D30", "phomemo", "D30"),
             ("M02PRO", "phomemo", "M02_PRO"),
             ("D110", "niimbot", "D110"),
@@ -22,7 +22,8 @@ class VendorRegistryTests(unittest.TestCase):
                 self.assertEqual(info["detection_status"], "recognized")
 
     def test_unknown_and_blocked_names_keep_the_unknown_sentinel(self) -> None:
-        for name in ("D1", "D2", "D80", "M02H", "unrecognized printer"):
+        # v0.8.1 marks D80_ aliases as ambiguous across two wire protocols.
+        for name in ("D1", "D2", "D80", "D80_123", "M02H", "unrecognized printer"):
             with self.subTest(name=name):
                 info = VendorRegistry.identify_device(name)
                 self.assertEqual(

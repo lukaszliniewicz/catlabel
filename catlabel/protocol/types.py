@@ -23,6 +23,7 @@ class ImageEncoding(ProtocolStrEnum):
     ELEPH_TSPL_BITMAP = "eleph_tspl_bitmap"
     TOPRINT_HPRT_ESC_RASTER = "toprint_hprt_esc_raster"
     TOPRINT_TSPL_BITMAP = "toprint_tspl_bitmap"
+    YK_ASTRA_P1_RAW = "yk_astra_p1_raw"
     INSTAPRINT_CORE_RASTER = "instaprint_core_raster"
     FUNNY_LX_RASTER = "funny_lx_raster"
 

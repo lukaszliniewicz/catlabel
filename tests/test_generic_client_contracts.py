@@ -15,6 +15,7 @@ from catlabel.vendors.generic.client import (
 
 class _AttachBackend(SppBackend):
     def __init__(self) -> None:
+        super().__init__()
         self.attach_calls: list[tuple[object, float]] = []
 
     async def attach_runtime_controller(

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 from PIL import Image
 
 from catlabel.printing.runtime.v5g import V5GRuntimeController
+from catlabel.protocol.families.yk_common import iter_yk_frames
 from catlabel.protocol.family import ProtocolFamily
 from catlabel.protocol.packet import (
     prefixed_packet_opcode,
@@ -55,6 +56,77 @@ class _Backend(SppBackend):
 
 
 class GenericClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_released_s001_preset_and_density_reach_public_client(self) -> None:
+        device = SimpleNamespace(name="S001", address="00:11:22:33:44:55")
+        hardware = GenericManifest().identify_device(
+            device.name, device, device.address
+        )
+        assert hardware is not None
+        client = GenericClient(
+            device,
+            hardware,
+            SimpleNamespace(paper_mode=None, speed=None, energy=None, feed_lines=0),
+            SimpleNamespace(speed=0, energy=0, feed_lines=0),
+        )
+        backend = _Backend()
+        client.backend = backend
+        source = Image.new("RGB", (280, 88), "white")
+        try:
+            self.assertEqual(client.validate_images([source]), 1)
+            await client.print_images([source], dither=False)
+            self.assertEqual(len(backend.writes), 1)
+            frames = tuple(iter_yk_frames(backend.writes[0][0]))
+            self.assertEqual(
+                [(frame.command, frame.payload) for frame in frames[:3]],
+                [
+                    (0x0A, bytes([25])),
+                    (0x09, bytes([9])),
+                    (0x28, bytes([1, 1])),
+                ],
+            )
+            rasters = [frame for frame in frames if frame.command == 0x00]
+            self.assertEqual(len(rasters), 70)
+            self.assertTrue(all(len(frame.payload) == 48 for frame in rasters))
+            self.assertEqual(source.size, (280, 88))
+        finally:
+            await client.disconnect()
+            source.close()
+
+    async def test_prepared_images_close_on_failure_without_closing_input(self) -> None:
+        device = SimpleNamespace(name="GT01", address="00:11:22:33:44:55")
+        hardware = GenericManifest().identify_device(
+            device.name, device, device.address
+        )
+        assert hardware is not None
+        client = GenericClient(
+            device,
+            hardware,
+            SimpleNamespace(paper_mode=None),
+            SimpleNamespace(speed=0, energy=0, feed_lines=0),
+        )
+        source = Image.new("RGB", (2, 3), "white")
+        prepared = Image.new("RGB", (_hardware_width(hardware), 3), "white")
+        try:
+            with (
+                patch(
+                    "catlabel.vendors.generic.client.prepare_paper_images",
+                    return_value=[prepared],
+                ),
+                patch.object(
+                    client,
+                    "_print_prepared_images",
+                    new=AsyncMock(side_effect=RuntimeError("send failed")),
+                ),
+                self.assertRaisesRegex(RuntimeError, "send failed"),
+            ):
+                await client.print_images([source])
+            with self.assertRaises(ValueError):
+                prepared.getpixel((0, 0))
+            self.assertEqual(source.getpixel((0, 0)), (255, 255, 255))
+        finally:
+            source.close()
+            prepared.close()
+
     async def test_interactive_families_only_attempt_capable_transport(self) -> None:
         profile = SimpleNamespace(
             speed=None, energy=None, feed_lines=0, paper_mode=None
