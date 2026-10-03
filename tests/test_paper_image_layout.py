@@ -15,6 +15,7 @@ from catlabel.core.resource_limits import (
 )
 from catlabel.rendering.paper_layout import (
     PaperImageLayout,
+    iter_prepared_paper_images,
     plan_image_layout,
     prepare_paper_images,
 )
@@ -393,6 +394,112 @@ class PaperImageLayoutTests(unittest.TestCase):
         oversized_normalized.resize.assert_not_called()
         self.assertLess(3_000 * 1, MAX_RENDER_PIXELS)
         self.assertGreater(3_000 * MAX_DIMENSION, MAX_RENDER_PIXELS)
+
+    def test_stream_preflights_every_source_before_returning(self) -> None:
+        first_source = _asymmetric_image()
+        invalid_later_source = _SizeOnlyImage(MAX_DIMENSION + 1, 1)
+        try:
+            with (
+                patch.object(
+                    Image.Image,
+                    "transpose",
+                    side_effect=AssertionError("unexpected transpose"),
+                ) as transpose,
+                patch.object(
+                    Image.Image,
+                    "convert",
+                    side_effect=AssertionError("unexpected conversion"),
+                ) as convert,
+                patch.object(
+                    paper_layout_module.Image,
+                    "new",
+                    side_effect=AssertionError("unexpected canvas allocation"),
+                ) as image_new,
+                self.assertRaises(ResourceLimitError),
+            ):
+                iter_prepared_paper_images(
+                    [first_source, invalid_later_source],  # type: ignore[list-item]
+                    PaperImageLayout(4, rotation_degrees=90),
+                )
+
+            transpose.assert_not_called()
+            convert.assert_not_called()
+            image_new.assert_not_called()
+        finally:
+            first_source.close()
+
+    def test_closing_partial_stream_closes_intermediates_only(self) -> None:
+        source = Image.new("RGB", (2, 6), "black")
+        untouched_source = Image.new("RGB", (3, 2), "red")
+        transposed_images: list[Image.Image] = []
+        converted_images: list[Image.Image] = []
+        cropped_images: list[Image.Image] = []
+        canvases: list[Image.Image] = []
+        real_transpose = Image.Image.transpose
+        real_convert = Image.Image.convert
+        real_crop = Image.Image.crop
+        real_new = Image.new
+        iterator = iter_prepared_paper_images(
+            [source, untouched_source],
+            PaperImageLayout(2, rotation_degrees=90),
+            split_mode=True,
+        )
+        output: Image.Image | None = None
+
+        def record_transpose(
+            image: Image.Image, *args: object, **kwargs: object
+        ) -> Image.Image:
+            transposed = real_transpose(image, *args, **kwargs)  # type: ignore[arg-type]
+            transposed_images.append(transposed)
+            return transposed
+
+        def record_convert(
+            image: Image.Image, *args: object, **kwargs: object
+        ) -> Image.Image:
+            converted = real_convert(image, *args, **kwargs)  # type: ignore[arg-type]
+            converted_images.append(converted)
+            return converted
+
+        def record_crop(
+            image: Image.Image, *args: object, **kwargs: object
+        ) -> Image.Image:
+            cropped = real_crop(image, *args, **kwargs)  # type: ignore[arg-type]
+            cropped_images.append(cropped)
+            return cropped
+
+        def record_canvas(*args: object, **kwargs: object) -> Image.Image:
+            canvas = real_new(*args, **kwargs)  # type: ignore[arg-type]
+            canvases.append(canvas)
+            return canvas
+
+        try:
+            with (
+                patch.object(Image.Image, "transpose", new=record_transpose),
+                patch.object(Image.Image, "convert", new=record_convert),
+                patch.object(Image.Image, "crop", new=record_crop),
+                patch.object(paper_layout_module.Image, "new", new=record_canvas),
+            ):
+                output = next(iterator)
+                iterator.close()
+
+            self.assertEqual(len(canvases), 1)
+            self.assertIs(output, canvases[0])
+            self.assertEqual(output.getpixel((0, 0)), (0, 0, 0))
+            self.assertEqual(source.getpixel((0, 0)), (0, 0, 0))
+            self.assertEqual(untouched_source.getpixel((0, 0)), (255, 0, 0))
+            self.assertTrue(transposed_images)
+            self.assertTrue(converted_images)
+            self.assertTrue(cropped_images)
+            for image in [*transposed_images, *converted_images, *cropped_images]:
+                with self.assertRaises(ValueError):
+                    image.getpixel((0, 0))
+            self.assertEqual(canvases[0].getpixel((0, 0)), (0, 0, 0))
+        finally:
+            iterator.close()
+            if output is not None:
+                output.close()
+            source.close()
+            untouched_source.close()
 
     def test_partial_outputs_and_intermediates_close_after_transform_error(
         self,

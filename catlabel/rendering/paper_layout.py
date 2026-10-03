@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Protocol, cast
@@ -221,20 +221,11 @@ def _close_images(images: dict[int, Image.Image]) -> None:
     images.clear()
 
 
-def prepare_paper_images(
+def _iter_prepared_image_plan(
     images: Sequence[Image.Image],
     layout: PaperImageLayout,
-    *,
-    split_mode: bool = False,
-) -> list[Image.Image]:
-    """Return independently owned RGB images prepared for the paper layout.
-
-    Every source and planned output is validated before the first transpose,
-    conversion, crop, resize, or canvas allocation. The caller retains ownership
-    of every input image and receives ownership of every returned image.
-    """
-    plan = _build_image_plan(images, layout, split_mode=split_mode)
-    outputs: list[Image.Image] = []
+    plan: tuple[_PlannedStrip, ...],
+) -> Generator[Image.Image, None, None]:
     owned: dict[int, Image.Image] = {}
 
     def track(image: Image.Image) -> Image.Image:
@@ -309,7 +300,8 @@ def prepare_paper_images(
 
             canvas = track(Image.new("RGB", strip.canvas_size, "white"))
             canvas.paste(fitted, strip.paste_xy)
-            outputs.append(canvas)
+            owned.pop(id(canvas), None)
+            yield canvas
             if fitted is not normalized:
                 discard(fitted)
             if normalized is not content:
@@ -319,10 +311,46 @@ def prepare_paper_images(
 
         if working_rgb is not None:
             discard(working_rgb)
-        for output in outputs:
-            owned.pop(id(output), None)
+    finally:
         _close_images(owned)
+
+
+def iter_prepared_paper_images(
+    images: Sequence[Image.Image],
+    layout: PaperImageLayout,
+    *,
+    split_mode: bool = False,
+) -> Generator[Image.Image, None, None]:
+    """Yield prepared RGB images after eagerly validating the complete plan.
+
+    The caller owns each yielded image and retains ownership of every input.
+    Closing the iterator early closes its internally owned working images.
+    """
+    plan = _build_image_plan(images, layout, split_mode=split_mode)
+    return _iter_prepared_image_plan(images, layout, plan)
+
+
+def prepare_paper_images(
+    images: Sequence[Image.Image],
+    layout: PaperImageLayout,
+    *,
+    split_mode: bool = False,
+) -> list[Image.Image]:
+    """Return independently owned RGB images prepared for the paper layout.
+
+    Every source and planned output is validated before the first transpose,
+    conversion, crop, resize, or canvas allocation. The caller retains ownership
+    of every input image and receives ownership of every returned image.
+    """
+    outputs: list[Image.Image] = []
+    stream: Generator[Image.Image, None, None] | None = None
+    try:
+        stream = iter_prepared_paper_images(images, layout, split_mode=split_mode)
+        outputs.extend(stream)
         return outputs
     except BaseException:
-        _close_images(owned)
+        _close_images({id(output): output for output in outputs})
         raise
+    finally:
+        if stream is not None:
+            stream.close()

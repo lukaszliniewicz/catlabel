@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import unittest
 from types import SimpleNamespace
 from typing import cast
@@ -14,6 +16,8 @@ from catlabel.core.resource_limits import (
     ResourceLimitError,
 )
 from catlabel.devices import get_ble_transport_profile
+from catlabel.printing.job_spool import ProtocolJobSpool
+from catlabel.protocol.job import ProtocolJob
 from catlabel.protocol.types import PaperMode
 from catlabel.transport.bluetooth import DeviceInfo, DeviceTransport, SppBackend
 from catlabel.vendors.phomemo.client import PhomemoClient
@@ -363,6 +367,223 @@ class PhomemoReleasedClientTests(unittest.IsolatedAsyncioTestCase):
         for owned in [*owned_images, *segments]:
             with self.assertRaises(ValueError):
                 owned.getpixel((0, 0))
+
+    async def test_released_large_pages_are_spooled_then_sent_in_bounded_chunks(
+        self,
+    ) -> None:
+        client = _client("m02", width_px=4, feed_lines=41)
+        image = _black_dot_image(10, 1, ((0, 0), (9, 0)))
+        payloads = (
+            b"A" * (64 * 1024 + 17),
+            b"B" * (64 * 1024 + 31),
+            b"C" * (64 * 1024 + 5),
+        )
+        build_flags: list[tuple[bool, bool]] = []
+        sent_chunks: list[bytes] = []
+        captured_spools: list[ProtocolJobSpool] = []
+        real_spool = ProtocolJobSpool
+        payload_index = 0
+
+        def capture_spool() -> ProtocolJobSpool:
+            spool = real_spool()
+            captured_spools.append(spool)
+            return spool
+
+        def build_page(
+            _segment: Image.Image,
+            *,
+            variant: str,
+            paper_mode: PaperMode | None,
+            density: int,
+            feed_count: int,
+            is_first_page: bool,
+            is_last_page: bool,
+            dither: bool,
+        ) -> bytes:
+            nonlocal payload_index
+            self.assertEqual(variant, "m02")
+            self.assertIsNone(paper_mode)
+            self.assertEqual(density, 2)
+            self.assertEqual(feed_count, 41)
+            self.assertFalse(dither)
+            build_flags.append((is_first_page, is_last_page))
+            payload = payloads[payload_index]
+            payload_index += 1
+            return payload
+
+        async def capture_send(data: bytes) -> None:
+            self.assertEqual(len(build_flags), len(payloads))
+            self.assertTrue(captured_spools)
+            self.assertFalse(captured_spools[0]._file.closed)
+            sent_chunks.append(data)
+
+        client._send = capture_send
+        try:
+            with (
+                patch.object(
+                    phomemo_client_module,
+                    "ProtocolJobSpool",
+                    side_effect=capture_spool,
+                ),
+                patch.object(client, "_build_released_job", side_effect=build_page),
+            ):
+                await client.print_images([image], split_mode=True, dither=False)
+        finally:
+            image.close()
+
+        expected = b"".join(payloads)
+        self.assertEqual(build_flags, [(True, False), (False, False), (False, True)])
+        self.assertEqual(
+            [len(chunk) for chunk in sent_chunks], [65536, 65536, 65536, 53]
+        )
+        self.assertEqual(sent_chunks[0], payloads[0][:65536])
+        self.assertEqual(sent_chunks[1], payloads[0][65536:] + payloads[1][:65519])
+        self.assertEqual(sent_chunks[2], payloads[1][65519:] + payloads[2][:65488])
+        self.assertEqual(sent_chunks[3], payloads[2][65488:])
+        self.assertEqual(sum(map(len, sent_chunks)), len(expected))
+        self.assertEqual(
+            hashlib.sha256(b"".join(sent_chunks)).digest(),
+            hashlib.sha256(expected).digest(),
+        )
+        self.assertEqual(len(captured_spools), 1)
+        self.assertTrue(captured_spools[0]._file.closed)
+
+    async def test_released_builder_failure_closes_spool_without_sending(self) -> None:
+        client = _client("m02", width_px=8)
+        image = _black_dot_image(10, 1, ((0, 0),))
+        send = AsyncMock()
+        client._send = send
+        captured_spools: list[ProtocolJobSpool] = []
+        real_spool = ProtocolJobSpool
+        build_count = 0
+
+        def capture_spool() -> ProtocolJobSpool:
+            spool = real_spool()
+            captured_spools.append(spool)
+            return spool
+
+        def fail_second_page(
+            _segment: Image.Image,
+            **_kwargs: object,
+        ) -> bytes:
+            nonlocal build_count
+            build_count += 1
+            if build_count == 2:
+                raise RuntimeError("second page build failed")
+            return b"first page"
+
+        try:
+            with (
+                patch.object(
+                    phomemo_client_module,
+                    "ProtocolJobSpool",
+                    side_effect=capture_spool,
+                ),
+                patch.object(
+                    client,
+                    "_build_released_job",
+                    side_effect=fail_second_page,
+                ),
+                self.assertRaisesRegex(RuntimeError, "second page build failed"),
+            ):
+                await client.print_images([image], split_mode=True, dither=False)
+
+            self.assertEqual(image.getpixel((0, 0)), 0)
+        finally:
+            image.close()
+
+        send.assert_not_awaited()
+        self.assertEqual(build_count, 2)
+        self.assertEqual(len(captured_spools), 1)
+        self.assertTrue(captured_spools[0]._file.closed)
+
+    async def test_released_spool_append_failure_closes_spool_without_sending(
+        self,
+    ) -> None:
+        client = _client("m02", width_px=8)
+        image = _black_dot_image(10, 1, ((0, 0),))
+        send = AsyncMock()
+        client._send = send
+        captured_spools: list[ProtocolJobSpool] = []
+        real_spool = ProtocolJobSpool
+        real_append = ProtocolJobSpool.append
+        append_count = 0
+
+        def capture_spool() -> ProtocolJobSpool:
+            spool = real_spool()
+            captured_spools.append(spool)
+            return spool
+
+        def fail_second_append(spool: ProtocolJobSpool, job: ProtocolJob) -> None:
+            nonlocal append_count
+            append_count += 1
+            if append_count == 2:
+                raise OSError("second page append failed")
+            real_append(spool, job)
+
+        try:
+            with (
+                patch.object(
+                    phomemo_client_module,
+                    "ProtocolJobSpool",
+                    side_effect=capture_spool,
+                ),
+                patch.object(ProtocolJobSpool, "append", new=fail_second_append),
+                self.assertRaisesRegex(OSError, "second page append failed"),
+            ):
+                await client.print_images([image], split_mode=True, dither=False)
+
+            self.assertEqual(image.getpixel((0, 0)), 0)
+        finally:
+            image.close()
+
+        send.assert_not_awaited()
+        self.assertEqual(append_count, 2)
+        self.assertEqual(len(captured_spools), 1)
+        self.assertTrue(captured_spools[0]._file.closed)
+
+    async def test_released_send_cancellation_closes_spool_and_preserves_source(
+        self,
+    ) -> None:
+        client = _client("m02")
+        image = _black_dot_image(8, 1, ((0, 0),))
+        send_started = asyncio.Event()
+        captured_spools: list[ProtocolJobSpool] = []
+        real_spool = ProtocolJobSpool
+
+        def capture_spool() -> ProtocolJobSpool:
+            spool = real_spool()
+            captured_spools.append(spool)
+            return spool
+
+        async def block_first_send(data: bytes) -> None:
+            self.assertTrue(data)
+            send_started.set()
+            await asyncio.Event().wait()
+
+        client._send = block_first_send
+        task: asyncio.Task[None] | None = None
+        try:
+            with patch.object(
+                phomemo_client_module,
+                "ProtocolJobSpool",
+                side_effect=capture_spool,
+            ):
+                task = asyncio.create_task(client.print_images([image], dither=False))
+                await asyncio.wait_for(send_started.wait(), timeout=2)
+                self.assertEqual(len(captured_spools), 1)
+                self.assertFalse(captured_spools[0]._file.closed)
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+
+            self.assertTrue(captured_spools[0]._file.closed)
+            self.assertEqual(image.getpixel((0, 0)), 0)
+        finally:
+            if task is not None and not task.done():
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+            image.close()
 
     async def test_physical_job_limit_rejects_before_copy_or_send(self) -> None:
         client = _client("m02", width_px=1)

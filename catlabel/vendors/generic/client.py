@@ -1,6 +1,7 @@
 import asyncio
 import threading
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
+from contextlib import closing
 
 from fastapi import HTTPException
 from PIL import Image
@@ -8,6 +9,7 @@ from PIL import Image
 from ... import reporting
 from ...devices import get_ble_transport_profile
 from ...printing import build_raster_job, send_prepared_job
+from ...printing.job_spool import ProtocolJobSpool
 from ...printing.runtime.base import PreparedRuntimeContext, RuntimeController
 from ...printing.runtime.factory import runtime_controller_for_device
 from ...printing.runtime.session import RuntimeConnectionSession
@@ -17,8 +19,8 @@ from ...protocol.types import ImageEncoding, ImagePipelineConfig, PaperMode
 from ...raster import PixelFormat, RasterSet
 from ...rendering.paper_layout import (
     PaperImageLayout,
+    iter_prepared_paper_images,
     plan_image_layout,
-    prepare_paper_images,
 )
 from ...rendering.renderer import image_to_raster
 from ...transport.bluetooth import DeviceInfo, SppBackend
@@ -408,30 +410,32 @@ class GenericClient(BasePrinterClient):
         split_mode: bool = False,
         dither: bool = True,
     ) -> None:
-        self.validate_images(images, split_mode)
+        total_images = self.validate_images(images, split_mode)
         if not self.model:
             raise HTTPException(
                 status_code=500, detail="Unable to resolve printer model."
             )
 
         selected_paper = self._selected_paper()
-        final_images = prepare_paper_images(
-            images, self._paper_image_layout(), split_mode=split_mode
-        )
-        try:
-            await self._print_prepared_images(
-                final_images, selected_paper, dither=dither
+        with closing(
+            iter_prepared_paper_images(
+                images, self._paper_image_layout(), split_mode=split_mode
             )
-        finally:
-            for image in final_images:
-                image.close()
+        ) as final_images:
+            await self._print_prepared_images(
+                final_images,
+                selected_paper,
+                dither=dither,
+                total_images=total_images,
+            )
 
     async def _print_prepared_images(
         self,
-        final_images: list[Image.Image],
+        final_images: Iterable[Image.Image],
         selected_paper: PaperPreset,
         *,
         dither: bool,
+        total_images: int,
     ) -> None:
         pipeline_config = self._effective_image_pipeline()
         protocol_family = self._effective_protocol_family()
@@ -598,61 +602,66 @@ class GenericClient(BasePrinterClient):
                 encoding=ImageEncoding.LUCK_NORMAL_RAW,
             )
 
-        jobs = []
-        total_images = len(final_images)
         paper_mode = (
             PaperMode(selected_paper.paper_mode) if selected_paper.paper_mode else None
         )
-        total_pages = len(final_images)
-        for index, img in enumerate(final_images):
-            is_last = index == total_images - 1
-            current_feed = use_feed if is_last else 0
+        with ProtocolJobSpool() as jobs:
+            for index, img in enumerate(final_images):
+                is_last = index == total_images - 1
+                current_feed = use_feed if is_last else 0
 
-            raster = image_to_raster(img, pipeline_config.default_format, dither=dither)
-            raster_set = RasterSet.from_single(raster)
+                try:
+                    raster = image_to_raster(
+                        img, pipeline_config.default_format, dither=dither
+                    )
+                    raster_set = RasterSet.from_single(raster)
 
-            job = build_raster_job(
-                model=self.model,
-                raster_set=raster_set,
-                is_text=False,
-                speed=use_speed,
-                energy=use_energy,
-                density=use_density,
-                blackening=use_blackening,
-                feed_padding=current_feed,
-                image_pipeline=pipeline_config,
-                paper_mode=paper_mode,
-                paper_width_pixels=selected_paper.paper_width_px,
-                page_index=index + 1,
-                page_count=total_pages,
-                left_padding_pixels=selected_paper.left_padding_px,
-                a4_sheet_max_height=selected_paper.max_height_px,
-                protocol_family=protocol_family,
-                protocol_variant=protocol_variant,
-                runtime_capabilities=runtime_context.capabilities,
-            )
-            jobs.append(job)
+                    job = build_raster_job(
+                        model=self.model,
+                        raster_set=raster_set,
+                        is_text=False,
+                        speed=use_speed,
+                        energy=use_energy,
+                        density=use_density,
+                        blackening=use_blackening,
+                        feed_padding=current_feed,
+                        image_pipeline=pipeline_config,
+                        paper_mode=paper_mode,
+                        paper_width_pixels=selected_paper.paper_width_px,
+                        page_index=index + 1,
+                        page_count=total_images,
+                        left_padding_pixels=selected_paper.left_padding_px,
+                        a4_sheet_max_height=selected_paper.max_height_px,
+                        protocol_family=protocol_family,
+                        protocol_variant=protocol_variant,
+                        runtime_capabilities=runtime_context.capabilities,
+                    )
+                    jobs.append(job)
+                finally:
+                    img.close()
 
-        for index, job in enumerate(jobs):
-            # Completion is only needed after the final page; intermediate
-            # pages keep the connection and runtime state live.
-            if (
-                index < len(jobs) - 1
-                and job.wait_for_completion
-                and protocol_family is not ProtocolFamily.PHOMEMO_ESC
-            ):
-                job = ProtocolJob(payload=job.payload, steps=job.steps)
-            await send_prepared_job(
-                self.model,
-                connection,
-                job,
-                timeout=1.0,
-                reporter=reporting.DUMMY_REPORTER,
-                runtime_context=runtime_context,
-            )
+                del raster, raster_set, job, img
 
-            if (
-                index < len(jobs) - 1
-                and protocol_family is not ProtocolFamily.PHOMEMO_ESC
-            ):
-                await asyncio.sleep(1.5)
+            for index, job in enumerate(jobs):
+                # Completion is only needed after the final page; intermediate
+                # pages keep the connection and runtime state live.
+                if (
+                    index < total_images - 1
+                    and job.wait_for_completion
+                    and protocol_family is not ProtocolFamily.PHOMEMO_ESC
+                ):
+                    job = ProtocolJob(payload=job.payload, steps=job.steps)
+                await send_prepared_job(
+                    self.model,
+                    connection,
+                    job,
+                    timeout=1.0,
+                    reporter=reporting.DUMMY_REPORTER,
+                    runtime_context=runtime_context,
+                )
+
+                if (
+                    index < total_images - 1
+                    and protocol_family is not ProtocolFamily.PHOMEMO_ESC
+                ):
+                    await asyncio.sleep(1.5)

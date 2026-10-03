@@ -10,11 +10,13 @@ from ...core.resource_limits import (
     validate_image_budget,
 )
 from ...devices import get_ble_transport_profile
+from ...printing.job_spool import ProtocolJobSpool
 from ...protocol.encoding import pack_line
 from ...protocol.families.phomemo_esc_core import (
     build_released_page,
     plan_released_raster_size,
 )
+from ...protocol.job import ProtocolJob
 from ...protocol.types import PaperMode
 from ...raster import PixelFormat
 from ...rendering.renderer import image_to_raster
@@ -438,36 +440,55 @@ class PhomemoClient(BasePrinterClient):
             self._released_job_count(image.width, head_width, split_mode)
             for image in images
         )
-        pages: list[bytes] = []
         page_index = 0
 
-        for image in images:
-            working_image = image.copy()
-            try:
-                if working_image.width > head_width and not split_mode:
-                    scaled_width, scaled_height = self._head_scaled_size(
-                        working_image.width,
-                        working_image.height,
-                        head_width,
-                    )
-                    resized_image = working_image.resize(
-                        (scaled_width, scaled_height),
-                        Image.Resampling.LANCZOS,
-                    )
-                    previous_image = working_image
-                    working_image = resized_image
-                    previous_image.close()
-
-                if split_mode and working_image.width > head_width:
-                    for left in range(0, working_image.width, head_width):
-                        right = min(left + head_width, working_image.width)
-                        segment = working_image.crop(
-                            (left, 0, right, working_image.height)
+        with ProtocolJobSpool() as spool:
+            for image in images:
+                working_image = image.copy()
+                try:
+                    if working_image.width > head_width and not split_mode:
+                        scaled_width, scaled_height = self._head_scaled_size(
+                            working_image.width,
+                            working_image.height,
+                            head_width,
                         )
-                        try:
-                            pages.append(
-                                self._build_released_job(
-                                    segment,
+                        resized_image = working_image.resize(
+                            (scaled_width, scaled_height),
+                            Image.Resampling.LANCZOS,
+                        )
+                        previous_image = working_image
+                        working_image = resized_image
+                        previous_image.close()
+
+                    if split_mode and working_image.width > head_width:
+                        for left in range(0, working_image.width, head_width):
+                            right = min(left + head_width, working_image.width)
+                            segment = working_image.crop(
+                                (left, 0, right, working_image.height)
+                            )
+                            try:
+                                spool.append(
+                                    ProtocolJob(
+                                        payload=self._build_released_job(
+                                            segment,
+                                            variant=variant,
+                                            paper_mode=paper_mode,
+                                            density=density,
+                                            feed_count=feed_count,
+                                            is_first_page=page_index == 0,
+                                            is_last_page=page_index == total_jobs - 1,
+                                            dither=dither,
+                                        )
+                                    )
+                                )
+                                page_index += 1
+                            finally:
+                                segment.close()
+                    else:
+                        spool.append(
+                            ProtocolJob(
+                                payload=self._build_released_job(
+                                    working_image,
                                     variant=variant,
                                     paper_mode=paper_mode,
                                     density=density,
@@ -477,28 +498,30 @@ class PhomemoClient(BasePrinterClient):
                                     dither=dither,
                                 )
                             )
-                            page_index += 1
-                        finally:
-                            segment.close()
-                else:
-                    pages.append(
-                        self._build_released_job(
-                            working_image,
-                            variant=variant,
-                            paper_mode=paper_mode,
-                            density=density,
-                            feed_count=feed_count,
-                            is_first_page=page_index == 0,
-                            is_last_page=page_index == total_jobs - 1,
-                            dither=dither,
                         )
-                    )
-                    page_index += 1
-            finally:
-                working_image.close()
+                        page_index += 1
+                finally:
+                    working_image.close()
 
-        if pages:
-            await self._send(b"".join(pages))
+            await self._send_spooled_pages(spool)
+
+    async def _send_spooled_pages(self, spool: ProtocolJobSpool) -> None:
+        chunk_size = 64 * 1024
+        buffer = bytearray()
+
+        for job in spool:
+            payload = job.payload
+            offset = 0
+            while offset < len(payload):
+                count = min(chunk_size - len(buffer), len(payload) - offset)
+                buffer.extend(payload[offset : offset + count])
+                offset += count
+                if len(buffer) == chunk_size:
+                    await self._send(bytes(buffer))
+                    buffer.clear()
+
+        if buffer:
+            await self._send(bytes(buffer))
 
     @staticmethod
     def _build_released_job(

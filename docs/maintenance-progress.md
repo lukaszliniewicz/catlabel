@@ -636,3 +636,20 @@ The policy distinguishes Vulture protocol-parameter false positives, compatibili
 deferrals and the currently empty advisory exception list. The table above now
 reflects completed work; historical checkpoints below remain unchanged.
 [Maintenance routine](development-checks.md#maintenance-ownership-and-review-cadence).
+
+Phase6 printer preparation yields one owned transformed page at a time and closes
+it after encoding. Generic protocol jobs and released Phomemo page streams move to
+a private temporary spool (500jobs/256MiB maximum), preserving every protocol step
+and matcher identity. All payloads are encoded before the first payload send.
+Released Phomemo sends the identical concatenated stream in at most64KiB calls.
+Runtime control probing can still precede encoding. Failure/cancellation closes the
+spool/iterator and owned page images; borrowed sources remain open.
+
+Parent inspected all Luna non-UI edits and tests. The integration passes776backend
+tests with one platform skip and ten empty static categories, including45Generic,
+36released-Phomemo/spool, nine helper and15paper-layout scoped tests. Full source
+input lists and matcher closures remain retained; no whole-pipeline constant-memory
+claim is made. The dedicated legacy Phomemo path is unchanged. The fixed memory
+experiment is in progress; this receipt makes no unmeasured performance claim.
+[Protocol spool receipt](reviews/2026-10-02/evidence/phase6-protocol-spool-receipt.json).
+No hardware/provider/foreign native acceptance or promotion occurred.
