@@ -5,6 +5,7 @@ from typing import Any
 from ...protocol.family import ProtocolFamily
 from .base import RuntimeController
 from .funny_lx import FunnyLxRuntimeController
+from .luck_a41 import LuckA41RuntimeController
 from .luck_normal import LuckNormalRuntimeController
 from .printmaster_esc import PrintMasterRuntimeController
 from .tiny import TinyRuntimeController
@@ -54,6 +55,11 @@ def runtime_controller_for_device(
         device, "protocol_variant", None
     ) in {"lujiang_normal", "lujiang_normal_h"}:
         return LuckNormalRuntimeController(protocol_variant=device.protocol_variant)
+    if (
+        family is ProtocolFamily.LUCK_NORMAL_A4
+        and getattr(device, "protocol_variant", None) == "luckp_a41"
+    ):
+        return LuckA41RuntimeController()
     if family is ProtocolFamily.FUNNY_LX:
         return FunnyLxRuntimeController(
             bluetooth_address=(bluetooth_address or getattr(device, "address", ""))

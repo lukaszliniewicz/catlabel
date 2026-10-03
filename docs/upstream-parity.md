@@ -44,12 +44,55 @@ Available hardware is PD01 and a printer tentatively identified as NIIMBOT D111/
 - `7be93f549597fe7e82ef67e3102c6233aa875f28`: the payload accessor accepts complete declared bytes without requiring a trailer. The decoder still requires CRC/footer. Six-byte V5X compact markers remain ambiguous with fragmented full-frame headers; this accessor is not validation or a claim of V5X stream-fragment acceptance.
 - `3bd80bac89f8894e143ee867c63683b6c7f2f02b`: upstream corrects M110/M120 ownership to PrintMaster and marks M220 unsupported. CatLabel no longer advertises its former compact Phomemo aliases; the broader local M221/M260 aliases are also deferred without supporting evidence. Pure compact m110/m220 helpers remain reference fixtures only.
 
-- `76b3171bb956603277f7d97863d7e607d3de2e89`: a validated local overlay splits APA41 from APA49/E49 and updates 16 A4 profiles and 29 referenced presets. APA41 defaults to density 2, APA49 to 3; explicit zero is preserved. A4 supports BW1, while normal Luck retains gray. Density/status/finalization replies are required; paper-setting windows are optional. Lujiang A4 finalization has a 120-second budget. Final motion follows media-page boundaries and last-marker ordering. New firmware/page-marker controls outside this bounded transaction packet are not adopted.
+- `76b3171bb956603277f7d97863d7e607d3de2e89`: a validated local overlay splits APA41 from APA49/E49 and updates 16 A4 profiles and 29 referenced presets. APA41 defaults to density 2, APA49 to 3; explicit zero is preserved. A4 supports BW1, while normal Luck retains gray. Density/status/finalization replies are required; paper-setting windows are optional. Lujiang A4 finalization has a 120-second budget. Final motion follows media-page boundaries and last-marker ordering. LuckP A41 firmware-dependent density/speed is added in the follow-up below. Unused width/page-marker helpers remain deferred.
 - `fe603ca2ee1d21866f66f86d63ca2fc101916de8`: PrintMaster M110/M120 optional density/speed precede reset, M120 adds print-multi, and GS v0 uses 384-pixel MSB rows. The public route omits global cat-printer speed/feed/energy defaults and waits after each page. Physical support remains experimental.
 - `43b3203e229c271b75e86703e3a8f2ce428a8c45`: distinct Phomemo/PrintMaster frame lengths and prefixes. Known auxiliary frames are opaque even when their payload resembles completion or a fault.
 
 PrintMaster scopes arm before the first write. First-byte receive offsets exclude stale partial completion; decoded faults remain fatal through scope exit, including completion followed by fault or disconnect. A missing completion observer fails before pixels; missing completion fails after a finite wait without retransmission. This is a conservative local adaptation. Complete delayed physical replies have no job identifier, so fixtures cannot establish their association. Classic/BLE portable contracts are tested; physical printing and Windows/macOS native receive remain unverified.
 
-The immutable release bundle and legacy JSON hashes are unchanged. Source metadata retains the release pin and lists the selected catalog overlays separately. Ordinary Phomemo's selected-master idle-query/passive-completion changes are outside the released-recipe acceptance and remain unadopted.
+The immutable release bundle and legacy JSON hashes are unchanged. Source metadata retains the release pin and lists the selected catalog overlays separately. Ordinary Phomemo's direct pacing and reported-fault follow-up is described below; the upstream buffered idle-query/result-count branch does not apply to these ordinary recipes.
 
 NIIMBOT completion is armed before pixels and remembers early live E0 events. Frames whose first byte arrived before arming and queued callbacks from another generation cannot complete the new page; partial device errors remain fatal. Neither the source protocol nor the local guard can prove physical job association for an entire delayed frame arriving after arming. Missing completion fails with delivery uncertainty and never retries pixels.
+
+
+## LuckP A41 and ordinary Phomemo follow-up
+
+LuckP A41 (`luck_normal_a4` / `luckp_a41`) now probes `10 ff 20 f1` before
+encoding on each connection. The firmware policy is pinned to
+`76b3171bb956603277f7d97863d7e607d3de2e89`: recognized text below `1.26` uses
+density 0..2/default 1 without speed; recognized modern text uses density
+1..15/default 8 and speed 0..8/default 4. The upstream lexicographic threshold
+comparison is retained deliberately. Local strict ASCII parsing rejects malformed,
+non-numeric and over-128-byte replies. Unknown firmware conservatively uses the
+old range rather than upstream's wider unknown-firmware default. The full BLE
+window uses a bounded callback collector because an optional always-false waiter
+returns no payload; the native query route supplies its own aggregate.
+
+Saved per-printer overrides resolve against the live range before encoding;
+explicit density zero is preserved where allowed, speed zero means automatic,
+and global cat-printer defaults do not select these controls. Speed requires an
+OK-prefix reply before setup and raster bytes. APA41 (`lujiang_a4`) and A42 retain
+their existing behavior. Catalogs, saved settings and profiles are not mutated.
+Firmware-dependent ranges are not yet published through a connected settings UI;
+the current UI retains the static catalog controls.
+
+At `7be93f549597fe7e82ef67e3102c6233aa875f28`, ordinary M02/M02S/M02X/T02
+recipes are direct, non-paginated and estimate completion for every page. They
+arm zero result acknowledgements. Their connected dedicated client now preserves
+page timing alongside the bounded spool, checks reported faults across all writes
+and waits each page's estimate. Native Classic callbacks and BLE runtime attachment
+own the decoder. No buffered idle query or artificial one-result-per-page wait is
+introduced. A write-only connection still prints best effort, with no device-fault
+coverage. Reported heat fails immediately locally; automatic cooling/recovery is
+deferred. Success replies and elapsed estimates leave physical completion unverified.
+The browser waits for the submitted print response without its former two-minute
+abort timer, retaining the in-page submission guard for long paced jobs. Backend
+operation budgets and network-error handling remain in force; reloading or losing
+the response is not a durable job-status mechanism.
+
+The raster builders remain pinned to v0.8.1. The selected newer compact recipes
+change top/left padding, M02S tag placement and the M02X wire recipe; those changes
+require a separate whole-payload/geometry migration. See the [next migration
+packet](reviews/2026-10-02/plan.md#selected-upstream-follow-up-3-october).
+Source/fixture acceptance and remaining hardware/platform limits are recorded in
+the [follow-up receipt](reviews/2026-10-02/evidence/upstream-controls-receipt.json).

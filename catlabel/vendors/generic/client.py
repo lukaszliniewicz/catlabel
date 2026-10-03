@@ -592,6 +592,41 @@ class GenericClient(BasePrinterClient):
                 capabilities=runtime_controller.runtime_capabilities(),
             )
         self._runtime_context = runtime_context
+        runtime_caps = runtime_context.capabilities
+        controls = runtime_caps.print_controls if runtime_caps is not None else None
+        if controls is not None:
+            # Resolve from the saved override, before the static catalog clamp.
+            # These firmware ranges belong to this connection, not the catalog.
+            density_override = (
+                self.printer_profile.energy if self.printer_profile else None
+            )
+            density_range = controls.density
+            use_density = max(
+                density_range.low,
+                min(
+                    density_range.default
+                    if density_override is None
+                    else int(density_override),
+                    density_range.high,
+                ),
+            )
+            use_blackening = use_density
+            speed_range = controls.speed
+            if speed_range is None:
+                use_speed = 0
+            else:
+                speed_override = (
+                    self.printer_profile.speed if self.printer_profile else None
+                )
+                use_speed = max(
+                    speed_range.low,
+                    min(
+                        speed_range.default
+                        if speed_override in (None, 0)
+                        else int(speed_override),
+                        speed_range.high,
+                    ),
+                )
         if (
             runtime_context.capabilities is not None
             and runtime_context.capabilities.supports_gray is False

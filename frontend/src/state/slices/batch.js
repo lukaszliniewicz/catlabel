@@ -122,6 +122,8 @@ export const createBatchSlice = (set, get) => ({
     set({ isPrinting: true });
 
     try {
+      // A committed print can outlast a browser deadline. Keep the submission
+      // guard until the backend responds; its printer operations own timeouts.
       const receipt = await apiJson(prepared ? `/api/print/prepared/${prepared.prepared_id}/commit` : '/api/print/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -132,7 +134,7 @@ export const createBatchSlice = (set, get) => ({
           is_rotated: pendingPrintJob.canvasState.isRotated || false,
           dither: pendingPrintJob.dither
         })
-      }, { timeoutMs: 120_000, fallback: 'Print failed', validate: isPrintReceipt,
+      }, { timeoutMs: 0, fallback: 'Print failed', validate: isPrintReceipt,
         validationMessage: 'The server returned an unexpected print receipt. Some labels may already have printed. Check the physical output before submitting again.' });
       set({ lastPrintReceipt: { ...receipt, printerAddress: pendingPrintJob.macAddress } });
     } catch (e) {

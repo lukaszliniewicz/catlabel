@@ -710,3 +710,41 @@ the user's Linux-only and best-effort instructions. No deployment or push occurr
 The locally executable maintenance phases are now implemented and verified within
 the documented scope. The phase7 routine is manual future upkeep, with named owners
 and review dates; recurring execution and automation were not requested.
+
+### Selected upstream controls and ordinary Phomemo follow-up — 3 October
+
+LuckP A41 now resolves density/speed from each connection's bounded firmware
+window and requires speed acknowledgement before setup/pixels. It is scoped to
+`luckp_a41`, preserving APA41/A42 behavior. Unknown firmware conservatively uses
+density 0..2/default 1 and no speed. Catalogs and saved settings remain immutable;
+connected UI publication of these ranges is deferred.
+
+Connected dedicated M02/M02S/M02X/T02 clients now retain per-page delay estimates
+alongside the bounded spool and consume Classic/BLE reported faults through scope
+exit. Ordinary recipes do not use upstream's buffered idle query or completion
+count branch. Coalesced recovery cannot erase an active-job fault, and disconnect
+preserves the first error. Raster payloads remain at the accepted v0.8.1 recipes;
+the newer compact placements/M02X recipe have a separate migration packet in the
+[plan](reviews/2026-10-02/plan.md#selected-upstream-follow-up-3-october).
+
+The print request no longer aborts after an arbitrary browser two-minute deadline.
+A virtual 121-second test retains the submission guard; the inspected compiled
+app accepted a recorder response after 130 seconds, showing one label submitted
+with physical completion unverified. Exactly one recorder job was observed.
+No hardware was called. The accepted 27-file frontend is copied into the bundle
+with canonical digest `28e5293879eab44d6c944c10c154d214254cd783373c799925cf59203c9f7789`;
+the previously accepted artifact is retained in scratch as a recovery copy.
+
+The final Linux full gate runs852 backend tests (851 passed, one Windows SDK skip),
+221 frontend tests, ten empty static categories and a successful production build.
+Both new runtimes and their control DTOs enter strict typing coverage. The first
+full attempt caught28 typing errors in new test fixtures; matching interfaces,
+keyword signatures and Optional narrowing repaired them without ignores, baseline
+additions or configuration relaxation. Parent inspected all delegated edits.
+Luna/max handled bounded evidence and exact non-UI implementation; OpenCode's
+configured Muse Spark1.3 profile reviewed the A41 contract without findings.
+Runtime model/effort telemetry was unavailable.
+
+[Follow-up receipt](reviews/2026-10-02/evidence/upstream-controls-receipt.json)
+records source pins, hashes, validation, local adaptations and remaining limits.
+Physical printing, foreign native acceptance, deployment and push remain unperformed.

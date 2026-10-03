@@ -128,3 +128,42 @@ Proposed starting targets, to confirm against that matrix: common edit responses
 Assign an owner for each remaining compatibility exception and hardware gap. Review dependency advisories/patches and upstream release deltas monthly, with major upgrades proposed separately. Refresh baseline artifacts only for reviewed scope/config changes; remove fixed fingerprints automatically and reject additions without review. Include dependency locks, checker versions, test summaries, source/frontend identity and hardware evidence in each release receipt.
 
 Schedule no automation as part of this review. Establish the maintenance routine during implementation, with a monthly debt report and smaller weekly dependency checks if the project has active releases. Do not let an optional migration such as Tailwind 4 postpone concrete classifier, completion or local-secret fixes.
+
+## Selected upstream follow-up, 3 October
+
+The LuckP A41 firmware policy applies only to `luck_normal_a4` / `luckp_a41`.
+APA41 uses `lujiang_a4` and retains its accepted policy. Resolve controls for every
+connection before encoding: old firmware uses density 0..2/default 1 and no speed;
+recognized modern firmware uses density 1..15/default 8 and speed 0..8/default 4.
+Unknown or malformed firmware uses the old conservative range locally. Required
+speed acknowledgements must precede setup and pixels. Retain the upstream text
+threshold comparison deliberately; do not substitute semantic-version ordering.
+BLE must collect a bounded full reply window even when its waiter returns no data.
+The runtime policy does not publish firmware-dependent controls to the UI yet;
+a connection-aware settings workflow is a separate product change.
+
+Ordinary upstream M02/M02S/M02X/T02 pages at `7be93f549597fe7e82ef67e3102c6233aa875f28`
+are direct, with a local timing estimate for every page. Their recipe metadata does
+not activate buffered idle queries or count completion acknowledgements. Apply
+per-page pacing and reported faults to the connected dedicated client while
+preserving the released payload builders, bounded spool and source ownership.
+Keep the print receipt's physical completion unverified. Committed browser requests
+retain their submission guard until the backend responds, without the former
+two-minute client timer. This does not add durable status across reloads. Fail immediately on a
+reported heat fault locally; automatic cooling/paper recovery is deferred. A
+write-only transport remains best effort and cannot report device faults.
+
+The next recipe migration is deliberately separate: compare the retained v0.8.1
+ordinary recipes with the pinned newer compact recipes. The newer recipes use
+four top rows instead of four left columns, change M02S tag padding from the local
+592-column output to 588 columns, and replace the local M02X generic recipe with a
+compact recipe. Before adopting these changes, produce independent whole-payload
+references for M02/M02S/M02X/T02 at widths 1/7/8/9, maximum accepted widths, plain/tag
+media where supported, first/intermediate/final pages, and black/white patterns.
+Reconcile preflight dimensions, density units and feed behavior with those references;
+reject unsupported combinations before allocation or writes. Preserve immutable
+release catalogs and attribution, update the parity ledger by exact source SHA,
+and run the full gate. Keep physical acceptance open until the matching hardware
+is available. Do not infer that importing a newer runtime makes its newer raster
+recipe integrated. Width and first/middle marker helpers without an active path
+remain deferred.

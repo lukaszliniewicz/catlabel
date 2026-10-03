@@ -1,9 +1,10 @@
 import asyncio
 from collections.abc import Iterator
-from contextlib import ExitStack
+from contextlib import ExitStack, suppress
 
 from PIL import Image, ImageOps
 
+from ... import reporting
 from ...core.resource_limits import (
     MAX_PRINT_JOBS,
     ResourceLimitError,
@@ -11,6 +12,7 @@ from ...core.resource_limits import (
 )
 from ...devices import get_ble_transport_profile
 from ...printing.job_spool import ProtocolJobSpool
+from ...printing.runtime.phomemo_released import PhomemoReleasedStatus
 from ...protocol.encoding import pack_line
 from ...protocol.families.phomemo_esc_core import (
     build_released_page,
@@ -34,14 +36,19 @@ from .protocol import (
 )
 
 _BASE_DPI = 203
+_RELEASED_STATUS_VARIANTS = frozenset({"m02", "m02s", "m02x", "t02"})
 
 
 class PhomemoClient(BasePrinterClient):
     def __init__(self, device, hardware_info, printer_profile, settings):
         super().__init__(device, hardware_info, printer_profile, settings)
         self.transport = SppBackend()
+        self._released_status: PhomemoReleasedStatus | None = None
 
     async def connect(self) -> bool:
+        if self._released_status is not None:
+            await self.disconnect()
+        self._released_status = None
         variant = self._released_variant()
         if variant is not None:
             plan_released_raster_size(1, 1, variant=variant)
@@ -81,15 +88,64 @@ class PhomemoClient(BasePrinterClient):
         for _ in range(max_retries):
             try:
                 await self.transport.connect_attempts(attempts)
-                return True
             except Exception as exc:
                 self.last_error = exc
                 await self.transport.disconnect()
                 await asyncio.sleep(1.5)
+            else:
+                if variant in _RELEASED_STATUS_VARIANTS:
+                    try:
+                        await self._attach_released_status()
+                    except BaseException:
+                        with suppress(BaseException):
+                            await self.transport.disconnect()
+                        raise
+                return True
         return False
 
     async def disconnect(self) -> None:
-        await self.transport.disconnect()
+        status = self._released_status
+        self._released_status = None
+        if status is None:
+            await self.transport.disconnect()
+            return
+
+        try:
+            if self.transport.can_receive_passively():
+                self.transport.register_notify_callback(None)
+        finally:
+            try:
+                status.abort()
+            finally:
+                await self.transport.disconnect()
+
+    async def _attach_released_status(self) -> None:
+        status = PhomemoReleasedStatus()
+        try:
+            if self.transport.can_receive_passively():
+                self.transport.register_notify_callback(status.receive)
+                status.mark_native_observing()
+            elif (
+                self.transport.can_attach_runtime_controller()
+                and self.transport.can_wait_for_notification()
+            ):
+                await self.transport.attach_runtime_controller(status)
+        except BaseException:
+            with suppress(BaseException):
+                if self.transport.can_receive_passively():
+                    self.transport.register_notify_callback(None)
+            status.abort()
+            raise
+
+        if not status.observing:
+            reporting.DUMMY_REPORTER.warning(
+                short="Phomemo status observation unavailable",
+                detail=(
+                    "Phomemo completion is unavailable and unverified on this "
+                    "transport. Printing will continue with estimated page pacing."
+                ),
+            )
+        self._released_status = status
 
     async def _send(self, data: bytes) -> None:
         await self.transport.write(data, chunk_size=128, interval_ms=20)
@@ -441,6 +497,32 @@ class PhomemoClient(BasePrinterClient):
             for image in images
         )
         page_index = 0
+        page_delays: list[float] = []
+        delay_per_line = 0.009317 if variant == "m02s" else 0.01375
+
+        def append_released_page(
+            image: Image.Image,
+            *,
+            is_first_page: bool,
+            is_last_page: bool,
+        ) -> None:
+            payload = self._build_released_job(
+                image,
+                variant=variant,
+                paper_mode=paper_mode,
+                density=density,
+                feed_count=feed_count,
+                is_first_page=is_first_page,
+                is_last_page=is_last_page,
+                dither=dither,
+            )
+            spool.append(ProtocolJob(payload=payload))
+            if variant in _RELEASED_STATUS_VARIANTS:
+                if len(page_delays) >= MAX_PRINT_JOBS:
+                    raise ResourceLimitError(
+                        f"Print requires more than {MAX_PRINT_JOBS} physical jobs."
+                    )
+                page_delays.append(image.height * delay_per_line)
 
         with ProtocolJobSpool() as spool:
             for image in images:
@@ -467,43 +549,48 @@ class PhomemoClient(BasePrinterClient):
                                 (left, 0, right, working_image.height)
                             )
                             try:
-                                spool.append(
-                                    ProtocolJob(
-                                        payload=self._build_released_job(
-                                            segment,
-                                            variant=variant,
-                                            paper_mode=paper_mode,
-                                            density=density,
-                                            feed_count=feed_count,
-                                            is_first_page=page_index == 0,
-                                            is_last_page=page_index == total_jobs - 1,
-                                            dither=dither,
-                                        )
-                                    )
+                                append_released_page(
+                                    segment,
+                                    is_first_page=page_index == 0,
+                                    is_last_page=page_index == total_jobs - 1,
                                 )
                                 page_index += 1
                             finally:
                                 segment.close()
                     else:
-                        spool.append(
-                            ProtocolJob(
-                                payload=self._build_released_job(
-                                    working_image,
-                                    variant=variant,
-                                    paper_mode=paper_mode,
-                                    density=density,
-                                    feed_count=feed_count,
-                                    is_first_page=page_index == 0,
-                                    is_last_page=page_index == total_jobs - 1,
-                                    dither=dither,
-                                )
-                            )
+                        append_released_page(
+                            working_image,
+                            is_first_page=page_index == 0,
+                            is_last_page=page_index == total_jobs - 1,
                         )
                         page_index += 1
                 finally:
                     working_image.close()
 
-            await self._send_spooled_pages(spool)
+            status = self._released_status
+            if status is not None and variant in _RELEASED_STATUS_VARIANTS:
+                if len(page_delays) != total_jobs:
+                    raise RuntimeError("Phomemo page pacing plan is incomplete")
+                await self._send_released_pages(spool, page_delays, status)
+            else:
+                await self._send_spooled_pages(spool)
+
+    async def _send_released_pages(
+        self,
+        spool: ProtocolJobSpool,
+        page_delays: list[float],
+        status: PhomemoReleasedStatus,
+    ) -> None:
+        chunk_size = 64 * 1024
+        async with status.released_job_scope():
+            for job, delay in zip(spool, page_delays, strict=True):
+                payload = job.payload
+                for offset in range(0, len(payload), chunk_size):
+                    status.raise_if_not_ready()
+                    await self._send(payload[offset : offset + chunk_size])
+                    status.raise_if_not_ready()
+                await status.pace(self.transport, delay)
+                del payload, job
 
     async def _send_spooled_pages(self, spool: ProtocolJobSpool) -> None:
         chunk_size = 64 * 1024

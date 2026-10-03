@@ -9,6 +9,7 @@ from ..compression import compress_zlib_wbits_10
 from ..encoding import pack_line
 from ..family import ProtocolFamily
 from ..plan import ProtocolPlan
+from ..runtime import RuntimePrintControls
 from ..steps import ProtocolStep
 from ..types import ImageEncoding, ImagePipelineConfig, PaperMode
 from .base import PrintJobRequest
@@ -17,6 +18,7 @@ from .luck_transactions import (
     density_setting,
     finalize,
     paper_setting,
+    speed_setting,
     status_query,
 )
 
@@ -55,6 +57,11 @@ class LuckNormalCommandDialect:
 
     def set_density(self, density: int) -> bytes:
         return bytes([0x10, 0xFF, 0x10, 0x00, density & 0xFF])
+
+    def set_speed(self, speed: int) -> bytes:
+        if type(speed) is not int or not 0 <= speed <= 255:
+            raise ValueError("Luck speed must be a strict integer in 0..255")
+        return bytes([0x10, 0xFF, 0xC0, speed])
 
     def line_feed(self, dots: int) -> bytes:
         return bytes([0x1B, 0x4A, dots & 0xFF])
@@ -209,8 +216,36 @@ class LuckNormalFamilyRecipe:
         dialect = self.dialect_for_variant(request.protocol_variant)
         variant = self._variant(request.protocol_variant)
         steps: list[ProtocolStep] = []
+        print_controls: RuntimePrintControls | None = None
+        if (
+            self.protocol_family is ProtocolFamily.LUCK_NORMAL_A4
+            and request.protocol_variant == "luckp_a41"
+            and request.runtime_capabilities is not None
+        ):
+            print_controls = request.runtime_capabilities.print_controls
         if request.density is not None:
+            if (
+                print_controls is not None
+                and not print_controls.density.low
+                <= request.density
+                <= print_controls.density.high
+            ):
+                raise ValueError(
+                    "Luck density must be in "
+                    f"{print_controls.density.low}..{print_controls.density.high}"
+                )
             steps.append(density_setting(dialect.set_density(request.density)))
+        if print_controls is not None and print_controls.speed is not None:
+            if (
+                not print_controls.speed.low
+                <= request.speed
+                <= print_controls.speed.high
+            ):
+                raise ValueError(
+                    "Luck speed must be in "
+                    f"{print_controls.speed.low}..{print_controls.speed.high}"
+                )
+            steps.append(speed_setting(dialect.set_speed(request.speed)))
         steps.append(status_query())
         if recipe.paper_mode is not None and recipe.paper_type_stage == "before_enable":
             steps.append(

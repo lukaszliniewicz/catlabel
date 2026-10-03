@@ -61,6 +61,17 @@ def density_setting(packet: bytes) -> ProtocolStep:
     )
 
 
+def speed_setting(packet: bytes) -> ProtocolStep:
+    """Set print speed and require the Luck normal ACK prefix."""
+    return ProtocolStep.query(
+        "speed",
+        packet,
+        expect=ProtocolReplyExpectation.OK,
+        timeout_sec=QUERY_TIMEOUT_SEC,
+        reply_matcher=_OK_PREFIX_REPLY,
+    )
+
+
 def paper_setting(packet: bytes, *, wait_for_reply: bool = True) -> ProtocolStep:
     """Set media; when queried, reserve a response window without requiring ACK."""
     if not wait_for_reply:

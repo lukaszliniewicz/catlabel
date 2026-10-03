@@ -13,7 +13,7 @@ test('submission retains a receipt with physical completion unverified', async (
   const receipt = { status: 'submitted', submitted: 1, physical_completion: 'unverified', job_id: 'fixture', message: 'Data sent' };
   const submit = vi.spyOn(apiClient, 'apiJson').mockResolvedValue(receipt);
   await useStore.getState().printPages([0]); await useStore.getState().onLocalRenderComplete(['fixture-image'], null, useStore.getState().pendingPrintJob.id);
-  expect(submit).toHaveBeenCalledWith('/api/print/images', expect.objectContaining({ method: 'POST' }), expect.objectContaining({ validate: expect.any(Function), timeoutMs: 120000 }));
+  expect(submit).toHaveBeenCalledWith('/api/print/images', expect.objectContaining({ method: 'POST' }), expect.objectContaining({ validate: expect.any(Function), timeoutMs: 0 }));
   expect(useStore.getState()).toMatchObject({ lastPrintReceipt: { ...receipt, printerAddress: 'AA:BB:CC:DD:EE:FF' }, isPrinting: false, pendingPrintJob: null });
 });
 
@@ -46,4 +46,34 @@ test('a completed staged receipt commits once without serializing all image payl
   expect(JSON.parse(submit.mock.calls[0][1].body)).toEqual(expect.objectContaining({ mac_address: 'AA:BB:CC:DD:EE:FF' }));
   expect(JSON.parse(submit.mock.calls[0][1].body)).not.toHaveProperty('images');
   expect(useStore.getState().lastPrintReceipt.job_id).toBe('staged');
+});
+
+
+test('a print still running after two minutes stays guarded until its receipt arrives', async () => {
+  vi.useFakeTimers();
+  const receipt = { status: 'submitted', submitted: 1, physical_completion: 'unverified', job_id: 'slow', message: 'Sent' };
+  let finish;
+  const request = vi.fn((_url, options) => new Promise(resolve => {
+    finish = () => resolve(new Response(JSON.stringify(receipt), { status: 200 }));
+    expect(options.signal.aborted).toBe(false);
+  }));
+  vi.stubGlobal('fetch', request);
+  try {
+    await useStore.getState().printPages([0]);
+    const id = useStore.getState().pendingPrintJob.id;
+    const submission = useStore.getState().onLocalRenderComplete(['image'], null, id);
+    await vi.advanceTimersByTimeAsync(121_000);
+    expect(request).toHaveBeenCalledOnce();
+    expect(request.mock.calls[0][1].signal.aborted).toBe(false);
+    expect(useStore.getState()).toMatchObject({ isPrinting: true, pendingPrintJob: { id }, lastPrintReceipt: null });
+    await useStore.getState().printPages([0]);
+    await useStore.getState().onLocalRenderComplete(['duplicate'], null, id);
+    expect(request).toHaveBeenCalledOnce();
+    finish();
+    await submission;
+    expect(useStore.getState()).toMatchObject({ isPrinting: false, pendingPrintJob: null, lastPrintReceipt: { job_id: 'slow' } });
+  } finally {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
 });
