@@ -5,6 +5,8 @@ import PropertiesPanel from './PropertiesPanel';
 import { useStore } from '../store';
 import { TEMPLATE_METADATA } from '../domain/templates';
 import * as apiClient from '../utils/apiClient';
+const iconFixture = vi.hoisted(() => ({ select: null }));
+vi.mock('./IconPicker', () => ({ default: props => { iconFixture.select = props.onSelect; return <div>Icon fixture</div>; } }));
 vi.mock('./AIAssistant', () => ({ default: () => <span>Assistant fixture</span> }));
 let root, container;
 const original = useStore.getState();
@@ -127,4 +129,18 @@ test('global defaults report saved only after acknowledgement and until another 
   await act(() => { media.value = 'continuous'; media.dispatchEvent(new Event('change', { bubbles: true })); });
   expect(container.textContent).not.toContain('Global defaults saved.');
   expect(container.textContent).toContain('Unsaved default changes');
+});
+
+test('delayed element icon selection cannot change another document', async () => {
+  useStore.setState({ selectedId: 'icon-target', items: [{ id: 'icon-target', type: 'icon_text', text: 'Original', icon_src: 'old', size: 12, icon_x: 0, icon_y: 0, text_x: 0, text_y: 0 }] });
+  await act(() => root.render(<PropertiesPanel />));
+  await act(() => container.querySelector('[aria-label="Element and layout"]').click());
+  await act(() => [...container.querySelectorAll('button')].find(button => button.textContent.trim() === 'Change Icon').click());
+  await act(async () => {});
+  const select = iconFixture.select;
+  expect(select).toBeTypeOf('function');
+  await act(() => useStore.getState().hydrateCanvasState({ document_version: 1, dpi: 203, width: 200, height: 100, items: [{ id: 'icon-target', type: 'icon_text', icon_src: 'new document' }] }, { resetHistory: true }));
+  await act(() => select('stale icon'));
+  expect(useStore.getState().items[0].icon_src).toBe('new document');
+  expect(useStore.getState().apiError).toContain('Nothing was replaced');
 });

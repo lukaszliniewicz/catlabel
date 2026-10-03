@@ -447,3 +447,28 @@ The shipped 26-file frontend matches the inspected artifact; canonical digest
 Media import ownership, element/AI/canvas decomposition, keyboard object workflows,
 backend spooling, performance and phase 7 remain active. No printer/provider calls,
 foreign native acceptance or external promotion occurred.
+
+Phase 5 media imports now belong to their captured document session/revision/page.
+Image and PDF processing has visible progress/cancellation, bounded reading/load
+deadlines, contextual failures and shared size/geometry/item budgets. PDF JSON
+decoding stays inside its request deadline. Every image must decode successfully
+before one atomic append; later-page failures cannot leave partial content. Edits,
+page/document changes and editor teardown cancel preparation. Browser image
+geometry limits apply after decoding; total browser allocation and cancellation
+of the server's synchronous PDF worker are not claimed.
+
+Element editing is separated from properties navigation/default drafts, reducing
+the properties container from 630 to 218 lines. Delayed element/template icon
+selection checks document ownership; selected-element lifetimes also include the
+document session. Redundant group position fields were removed. Parent visual
+inspection caught and fixed the canvas floating toolbar painting above drawers.
+All 150 frontend tests in 28 files, ten empty static categories and the clean build
+pass; the final CSS-only fix additionally passes scoped lint and visual inspection.
+Axe reports zero element-drawer violations at 390 CSS pixels, retaining incomplete
+contrast results. The real file chooser attempt timed out; native file-picker,
+keyboard and pointer acceptance remain unverified despite passing import-race tests.
+The shipped 26-file frontend matches the final inspected build, digest
+`6777a5156a1a28f9936fddb43bcde35790288d994ea56757f61746ac55d4b97d`. [Media/element receipt](reviews/2026-10-02/evidence/phase5-media-receipt.json).
+AI/canvas decomposition, stronger leaf typing, keyboard object workflows, backend
+spooling, performance and phase 7 remain active. No physical printer/provider
+call, foreign native acceptance or external promotion occurred.

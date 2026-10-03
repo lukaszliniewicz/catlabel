@@ -91,7 +91,7 @@ export default function FloatingToolbar({ item, zoomScale, canvasWidth, canvasHe
 
   return (
     <div
-      className="absolute z-50 flex items-center gap-1 p-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl"
+      className="absolute z-20 flex items-center gap-1 p-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl"
       style={{
         top: Math.max(-10, topPos),
         left: Math.max(0, leftPos),

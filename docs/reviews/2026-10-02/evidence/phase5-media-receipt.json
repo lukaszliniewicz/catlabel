@@ -1,0 +1,109 @@
+{
+  "source_parent": "88c243380c06d608f34a470810a15330a4dda064",
+  "accepted_at_utc": "2026-10-03T04:39:29.727691+00:00",
+  "scope": "Atomic document-owned image/PDF import and cancellation, element property decomposition, delayed icon fences, drawer stacking",
+  "source_sha256": {
+    "frontend/src/components/FloatingToolbar.jsx": "69ff49961ff924416b5799b983cf6d902a00bea74f5c98b7c225460fbd0af8ad",
+    "frontend/src/components/PropertiesPanel.jsx": "e55ec0e5cc9fb7a532714996d029827cc498b2f3346a56f4e99f3b56a101f834",
+    "frontend/src/components/PropertiesPanel.test.jsx": "63a498ac1d7087d620802485bf625a483eafae582fe711b1c4bd7bcb987e94db",
+    "frontend/src/components/Toolbar.jsx": "44150541528df581c61be50d25552ad19b8ec03eebe113673dfc42de5fea9529",
+    "frontend/src/components/Toolbar.test.jsx": "bd14b1c88463da2fd88cb071cf316f47219e1bf0e59799138827b289a7d4dc3a",
+    "frontend/src/components/properties/ElementSettings.jsx": "90968b3d787ff4abc3537c0a23d03c5bc48fc3baad0181dd5ee27dfe2ccba4f9",
+    "frontend/src/components/useMediaImport.js": "9d40aaba1493965ff27c638607ea043c3109c2fede1c3b434365a15de9898812"
+  },
+  "checks": {
+    "frontend_tests": 150,
+    "test_files": 28,
+    "import_race_tests": 9,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "scoped_after_css_fix": "FloatingToolbar ESLint pass; CSS-only stacking adjustment after full checks",
+    "build": "passed clean production output",
+    "backend_tests": "not rerun; no Python changes",
+    "advisories": "unchanged locks; previous zero-advisory receipt carried",
+    "diff_check": "passed"
+  },
+  "browser": {
+    "viewport_css": [
+      390,
+      843
+    ],
+    "axe": {
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "targets": [
+            [
+              "h2"
+            ]
+          ]
+        }
+      ],
+      "passes": 37,
+      "violations": []
+    },
+    "activation": "Developer DOM activation, native keyboard/pointer controller remains stalled",
+    "file_chooser": "actual chooser attempt timed out after10000ms; uploaded image/PDF workflow not claimed",
+    "final_screenshot": "check-results/phase5-media/element-390-final.png",
+    "excluded_capture": "element-390.png predates stacking fix"
+  },
+  "ownership": "Source session/revision/page preserved; edits/page switches/hydration/unmount/cancel abort preparation; all images decode before one atomic canvas append; stale callbacks rejected",
+  "limits": "Shared upload/encoded/image/dimension/pixel/item budgets; decoded geometry is checked after browser image load, not a preallocation guarantee; server PDF worker cancellation is not claimed",
+  "generated_frontend": {
+    "files": {
+      "assets/AIAssistant-Ipe60Htp.js": "19d725051f2c79224669a21de35a451e183cf876ff5080d47977bdbcac6fbcb0",
+      "assets/AIConfigModal--MpSQsYG.js": "06f60b144bd92bc3179d77ee92a2bedf531bab38f1277859c2c6b08bf3a6b643",
+      "assets/BatchPrintModal-6-4N59S6.js": "77293659d50eb57061e4cf8f0559036b8b9479d9388277434f88b44b59f9b9c5",
+      "assets/DateToolModal-B3W0n9PT.js": "8dbf4aa85c36ef46a5eabb8485dc6b4a4914a562169231fa89c15965a3939956",
+      "assets/HtmlPickerModal-Bd07_s2Q.js": "7449e4b1b1eaa60ca4ad0b2835b22c1db24b88d865438b8183b77d7876305c7c",
+      "assets/IconPicker-Ba6NbbL6.js": "29c61ff8548a0d978f97a88edd48fdd2abf25a1bf78307fbe81e00693af0f92a",
+      "assets/LocalBatchRenderer-D5XW8uae.js": "b9c2d9f9ac21d3e8460d17bca6437529d4d9466f0ef4ca609e14a3a9b49a1a5a",
+      "assets/OnboardingWizard-CB0_kzUC.js": "23bf4a9d0dbda9a2f4559a327605eb6e875e9ad3e7bd7b584c1a858adf752bc7",
+      "assets/TemplateWizardModal-BWGQYy66.js": "f8a53b377294667993d4fe14aadbed3560b43358f502645bc2f789f53e953dc5",
+      "assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+      "assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+      "assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+      "assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+      "assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+      "assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+      "assets/index-B47HNvWU.js": "beb5d1e04bf1c3a9057a323e9fc4ee2943a2a3c4eb0775190fecd1332dde3f59",
+      "assets/index-BjMFBIbP.css": "32963f74a163e2ef64c6e9b314ef738229ed8608c21cc586faad2a3a373ea7e8",
+      "assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+      "assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+      "assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+      "assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+      "assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+      "assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+      "assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+      "index.html": "13572b98c394123b20efe077d15c63650fedfd3f603da6437968f44c862f863f",
+      "logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+    },
+    "file_count": 26,
+    "canonical_digest": "6777a5156a1a28f9936fddb43bcde35790288d994ea56757f61746ac55d4b97d",
+    "digest_format": "SHA256 of compact sorted relative-path-to-SHA256 JSON",
+    "matches_inspected_artifact": true
+  },
+  "remaining": [
+    "stronger typed element leaf boundaries",
+    "AI/canvas decomposition",
+    "keyboard object list",
+    "backend preflight/spooling",
+    "performance matrix",
+    "phase7 maintenance"
+  ],
+  "limitations": [
+    "Physical printing/provider calls unperformed",
+    "Windows/macOS native best effort",
+    "No external promotion"
+  ]
+}

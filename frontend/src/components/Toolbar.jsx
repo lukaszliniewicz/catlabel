@@ -1,5 +1,6 @@
 import LazyFeature from './LazyFeature';
 import FileUploadButton from './FileUploadButton';
+import useMediaImport from './useMediaImport';
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
@@ -40,6 +41,7 @@ const ToolButton = ({ icon: Icon, label, onClick, accept, onFileChange, active =
 };
 
 export default function Toolbar() {
+  const mediaImport = useMediaImport();
   const {
     addItem,
     clearCanvas,
@@ -180,79 +182,6 @@ export default function Toolbar() {
     setShowShapeDropdown(false);
   };
 
-  const handleAddImage = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new window.Image();
-      img.src = ev.target.result;
-      img.onload = () => {
-        const ratio = img.width / img.height;
-        const targetWidth = Math.min(img.width, canvasWidth);
-        const targetHeight = targetWidth / ratio;
-        addItem({
-          id: Date.now().toString(),
-          type: 'image',
-          src: ev.target.result,
-          x: 0,
-          y: 0,
-          width: targetWidth,
-          height: targetHeight
-        });
-      };
-    };
-    reader.readAsDataURL(file);
-    e.target.value = null;
-  };
-
-  const handleAddPdf = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await apiFetch('/api/pdf/convert', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-
-      let currentY = 0;
-      for (let i = 0; i < data.images.length; i++) {
-        const b64 = data.images[i];
-        await new Promise((resolve) => {
-          const img = new window.Image();
-          img.src = b64;
-          img.onload = () => {
-            const ratio = img.width / img.height;
-            const targetWidth = Math.min(img.width, useStore.getState().canvasWidth);
-            const targetHeight = targetWidth / ratio;
-            useStore.getState().addItem({
-              id: Date.now().toString() + '-' + i,
-              type: 'image',
-              src: b64,
-              x: 0,
-              y: currentY,
-              width: targetWidth,
-              height: targetHeight
-            });
-            currentY += targetHeight + 10;
-            resolve();
-          };
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      useStore.setState({ apiError: err.message || 'Failed to process the PDF file.' });
-    }
-
-    e.target.value = null;
-  };
-
   return (
     <div className="bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center justify-center px-4 py-2 gap-x-3 sm:gap-x-6 gap-y-2 shrink-0 z-20 min-h-[56px]">
 
@@ -270,7 +199,7 @@ export default function Toolbar() {
       {/* Group: Visuals */}
       <div className="flex items-center gap-1">
         <ToolButton icon={Smile} label="Icon Only" onClick={() => setShowIconPicker(true)} />
-        <ToolButton icon={ImageIcon} label="Upload Image" accept="image/*" onFileChange={handleAddImage} />
+        <ToolButton icon={ImageIcon} label="Upload Image" accept="image/*" disabled={mediaImport.busy} onFileChange={mediaImport.importImage} />
 
         <div className="relative flex items-center" ref={shapeDropdownRef}>
           <ToolButton
@@ -331,7 +260,7 @@ export default function Toolbar() {
         />
         <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
         <ToolButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
-        <ToolButton icon={FileText} label="Import PDF" accept="application/pdf" onFileChange={handleAddPdf} />
+        <ToolButton icon={FileText} label="Import PDF" accept="application/pdf" disabled={mediaImport.busy} onFileChange={mediaImport.importPdf} />
 
         {/* Generate / Smart Wizards Button - Now integrated smoothly */}
         <div className="relative flex items-center" ref={dropdownRef}>
@@ -388,6 +317,11 @@ export default function Toolbar() {
         <ToolButton icon={Trash2} label="Clear Canvas" onClick={clearCanvas} />
         <ToolButton icon={PanelRight} label="Toggle properties panel" onClick={toggleProperties} />
       </div>
+
+      {(mediaImport.message || mediaImport.error) && <div className="basis-full flex items-center justify-center gap-3 text-sm">
+        {mediaImport.error ? <p role="alert" className="text-red-800 dark:text-red-300">{mediaImport.error}</p> : <p role="status">{mediaImport.message}</p>}
+        {mediaImport.busy && <button type="button" className="min-h-11 px-3 underline" onClick={mediaImport.cancel}>Cancel import</button>}
+      </div>}
 
       {/* Modals */}
         {showIconPicker && <LazyFeature label="icon picker" onClose={() => setShowIconPicker(false)}><IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} /></LazyFeature>}
