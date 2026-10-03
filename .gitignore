@@ -65,3 +65,11 @@ Thumbs.db
 # Tools
 .cecli
 /check-results/
+
+# Private plans, reviews and execution evidence
+/docs/reviews/
+/docs/internal/
+/docs/maintenance-progress.md
+/docs/mcp-architecture.md
+/.local-notes/
+/graphify-out/

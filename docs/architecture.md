@@ -16,6 +16,19 @@ protocol (stateless bytes and steps)           v
         +-------------------------------> (connect/send/notify)
 ```
 
+## Shared application services
+
+REST routes, the MCP adapter and built-in AI project operations share application
+services in `catlabel/services/`. Projects use transactional revision guards; the
+canonical document/edit models generate JSON schemas and frontend types. Managed
+assets, immutable previews and frozen print plans share the application database
+and artifact store. Durable jobs own their execution tasks and recovery state.
+
+The optional MCP adapter mounts local Streamable HTTP in the existing FastAPI
+process. It has its own bearer credential and shares the host lifespan, renderer,
+printer admission and executor. It does not start another hardware-owning server
+or introduce a second rendering engine. See [MCP](mcp.md) for the wire workflow.
+
 ## Layer responsibilities
 
 - `catlabel/vendors/` identifies devices and orchestrates a print requested by
@@ -71,3 +84,12 @@ remain unresolved.
 
 See [upstream-sync.md](upstream-sync.md) for the current source revision and
 the compatibility ledger.
+
+## Browser site tools
+
+Compatible desktop browsers discover the MCP registry through the protected
+`/api/harness/tools` adapter. The page registers these definitions with WebMCP and
+forwards calls to the same registry; validation, saved revisions, previews and
+durable print jobs remain shared. Headless renderer pages never register tools.
+The browser route uses the editor session and existing host/origin/client-header
+checks; external MCP clients still use the separate bearer credential.

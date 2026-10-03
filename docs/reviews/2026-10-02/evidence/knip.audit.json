@@ -1,1 +1,0 @@
-{"entry":["src/main.jsx","src/**/*.test.js"],"project":["src/**/*.{js,jsx}","*.config.js"],"ignore":["dist/**","audit-eslint.config.js"],"includeEntryExports":true}

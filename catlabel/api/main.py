@@ -37,6 +37,7 @@ from . import routes_print
 from .request_limits import RequestLimitsMiddleware
 from .routes_ai import migrate_legacy_provider
 from .routes_ai import router as ai_router
+from .routes_harness import router as harness_router
 from .routes_prepared_print import router as prepared_print_router
 from .routes_print import router as print_router
 from .routes_project import router as project_router
@@ -118,6 +119,11 @@ def release_identity() -> dict[str, str | int] | None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.mcp_asgi = None
+    app.state.mcp_registry = None
+    app.state.mcp_port = security_settings.port
+    app.state.mcp_config_path = None
+    app.state.mcp_configuration_error = False
     with RuntimeLease(DATA_DIRECTORY):
         prepared_print_store = PreparedPrintStore()
         app.state.prepared_print_store = prepared_print_store
@@ -153,10 +159,26 @@ async def lifespan(app: FastAPI):
                             registry.server.session_manager.run()
                         )
                         app.state.mcp_asgi = asgi
+                        app.state.mcp_registry = registry
+                        if os.environ.get("CATLABEL_ACCEPTANCE_PROBE") != "1":
+                            from ..mcp.configuration import generate_connection_files
+
+                            try:
+                                app.state.mcp_config_path = generate_connection_files(
+                                    DATA_DIRECTORY, security_settings.port
+                                )
+                            except Exception:
+                                app.state.mcp_configuration_error = True
+                                logger.warning(
+                                    "Failed to generate private MCP client configuration."
+                                )
                     yield
             finally:
                 routes_print.configure_harness(None)
                 app.state.mcp_asgi = None
+                app.state.mcp_registry = None
+                app.state.mcp_config_path = None
+                app.state.mcp_configuration_error = False
                 await services.jobs.close()
                 artifacts.close()
                 app.state.harness_services = None
@@ -218,6 +240,7 @@ app.include_router(print_router)
 app.include_router(prepared_print_router)
 app.include_router(project_router)
 app.include_router(ai_router)
+app.include_router(harness_router)
 
 
 @app.get("/api/projects/{project_id}/revision")

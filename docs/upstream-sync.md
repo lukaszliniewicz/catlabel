@@ -1,4 +1,4 @@
-# TiMini-Print synchronization ledger
+# TiMini-Print catalog synchronization
 
 CatLabel's generic printer logic is derived from
 [TiMini-Print](https://github.com/Dejniel/TiMini-Print), licensed under
@@ -30,12 +30,12 @@ applied before these preset transforms. The bundle is now the released v0.8.1
 snapshot. Source-backed fixtures and Linux socket tests establish local protocol
 compatibility; they do not establish physical output.
 
-## Imported in this synchronization
+## Catalog and protocol scope
 
 - The complete upstream model, unsupported-model, profile, paper-preset, and
   origin-app data snapshot: 145 upstream supported records, 165 upstream
   unsupported records, and 129 profiles, 51 paper presets and 12 origins.
-- 133 generic records whose protocol path is executable in CatLabel: Tiny,
+- Executable generic families include Tiny,
   Tiny-prefixed, Luck (including PPA2L/PPA2LH), V5G, V5X, V5C,
   Eleph/TSPL, ToPrint/HPRT ESC, ToPrint/TSPL, Instaprint Core, Funny LX and YK Astra P1 (Orgstra S001).
 - Source-backed exact/prefix/MAC detection with unsupported-model vetoes and no

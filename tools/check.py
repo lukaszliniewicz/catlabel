@@ -351,6 +351,10 @@ def main() -> int:
         )
         if document_contract.returncode:
             raise RuntimeError(document_contract.stdout + document_contract.stderr)
+        public_docs = run([sys.executable, "-m", "tools.check_docs"])
+        if public_docs.returncode:
+            details = (public_docs.stdout + public_docs.stderr).strip()
+            raise RuntimeError(details or "Public documentation check failed")
         if args.lane == "audit" and args.write_baseline:
             raise RuntimeError(
                 "Audit exceptions require individual written review, not baseline capture"

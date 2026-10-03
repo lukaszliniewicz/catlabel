@@ -13,9 +13,14 @@ A project canvas has one physical width and height and one or more pages:
 
 Project hydration is atomic. It validates collection shapes, migrates legacy single-page HTML/templates, clamps batch/copy limits, rebuilds managed template markup at the loaded dimensions, clears selection, and can reset undo history when opening another project.
 
+The checked-in TypeScript document contract is generated from the backend schema.
+External saved revisions produce a reload notice without replacing a dirty canvas
+or resetting its undo history. Managed images load through the authenticated API
+client and release temporary blob URLs after decoding.
+
 ## Safety boundaries
 
-- API calls use the shared client in `utils/apiClient.js`, which checks HTTP status, applies request timeouts, preserves structured backend errors, and can validate decoded payloads.
+- API calls use the shared client in `utils/apiClient.ts`, which checks HTTP status, applies request timeouts, preserves structured backend errors, and can validate decoded payloads.
 - User/project HTML is sanitized immediately before every DOM insertion. The application CSP provides a second browser-enforced boundary.
 - Batch records, matrix/sequence generation, print copies, total jobs, and total decoded render pixels have explicit limits.
 - Local and headless rendering propagate failures and use timeouts; print preparation always leaves its busy state on success or failure.
@@ -38,3 +43,10 @@ npm run build
 ```
 
 `npm run check` runs all three. Tests cover document/page isolation, history reset, AI setter contracts, hydration validation, batch/CSV limits, API errors and timeouts, and HTML sanitization.
+
+The editor registers browser site tools when `document.modelContext` is available, falling back to older `navigator.modelContext` implementations.
+Schemas come from the backend MCP registry, and calls return its original content
+and structured results. Page teardown removes only registrations owned by this
+editor. Successful design changes refresh project summaries; saved revisions
+still require an explicit reload before replacing the current canvas. The
+connection drawer is loaded on demand.

@@ -11,50 +11,7 @@ from pathlib import Path
 
 from ..core.paths import DATA_DIRECTORY
 from .auth import credential_path, load_credential
-
-
-def write_private_file(path: Path, payload: bytes) -> None:
-    """Create a secret-bearing file privately; repeated identical writes are harmless."""
-    if path.is_symlink():
-        raise RuntimeError("Refusing a symlink as a private configuration file.")
-    try:
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError:
-        if not path.is_file() or path.read_bytes() != payload:
-            raise RuntimeError(
-                "Private configuration already exists with different content; choose another output."
-            ) from None
-        if os.name != "nt" and path.stat().st_mode & 0o077:
-            raise RuntimeError(
-                "Private configuration permissions must be owner-only (chmod 600)."
-            ) from None
-        return
-    with os.fdopen(descriptor, "wb") as stream:
-        stream.write(payload)
-        stream.flush()
-        os.fsync(stream.fileno())
-
-
-def opencode_config(port: int, token_file: Path) -> dict[str, object]:
-    return {
-        "$schema": "https://opencode.ai/config.json",
-        "mcp": {
-            "servers": {
-                "catlabel": {
-                    "type": "remote",
-                    "url": f"http://127.0.0.1:{port}/mcp/",
-                    "oauth": False,
-                    "protocol": "auto",
-                    "codemode": False,
-                    "headers": {
-                        "Authorization": "Bearer {file:"
-                        + str(token_file.resolve())
-                        + "}"
-                    },
-                }
-            }
-        },
-    }
+from .configuration import opencode_config, write_private_file
 
 
 async def doctor(port: int) -> dict[str, object]:

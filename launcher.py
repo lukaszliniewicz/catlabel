@@ -26,6 +26,7 @@ BOOTSTRAP_FLAGS = (
     "--repair",
     "--diagnose",
 )
+MCP_TIMEOUT_SECONDS = 60
 
 
 def launcher_directory() -> Path:
@@ -67,22 +68,90 @@ def _runtime_environment(data_directory: Path) -> str:
     return "headless" if headless else "default"
 
 
+def _bootstrap_state_directory(data_directory: Path, target_dir: Path) -> Path:
+    if (target_dir / "release-manifest.json").is_file():
+        return target_dir / ".bootstrap-state"
+    return data_directory
+
+
+def _has_legacy_selection(data_directory: Path) -> bool:
+    markers = (".ai-enabled", ".headless-enabled", ".mcp-enabled")
+    if any((data_directory / marker).is_file() for marker in markers):
+        return True
+    return any(path.is_file() for path in data_directory.glob("bootstrap-*.sha256"))
+
+
 def _child_environment(data_directory: Path, target_dir: Path) -> dict[str, str]:
     environment = dict(os.environ)
     environment["CATLABEL_DATA_DIR"] = str(data_directory)
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    bootstrap_state = _bootstrap_state_directory(data_directory, target_dir)
     if (target_dir / "release-manifest.json").is_file():
-        bootstrap_state = target_dir / ".bootstrap-state"
         environment["CATLABEL_BOOTSTRAP_STATE_DIR"] = str(bootstrap_state)
-    else:
-        bootstrap_state = data_directory
     if (bootstrap_state / ".mcp-enabled").is_file():
         environment["CATLABEL_MCP_ENABLED"] = "1"
     else:
         environment.pop("CATLABEL_MCP_ENABLED", None)
+    if getattr(sys, "frozen", False) and platform.system() == "Linux":
+        original_library_path = environment.get("LD_LIBRARY_PATH_ORIG")
+        if original_library_path:
+            environment["LD_LIBRARY_PATH"] = original_library_path
+        else:
+            environment.pop("LD_LIBRARY_PATH", None)
     environment.setdefault("LITELLM_MODE", "PROD")
     environment.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
     return environment
+
+
+def _run_mcp_command(
+    target_dir: Path,
+    data_directory: Path,
+    command: str,
+    port: int,
+    output: Path | None,
+) -> int:
+    state_directory = _bootstrap_state_directory(data_directory, target_dir)
+    if not (state_directory / ".mcp-enabled").is_file():
+        print(
+            "The MCP add-on is not enabled for this installation. Enable it with --install-mcp first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    executable = target_dir / ".pixi" / "envs" / _runtime_environment(state_directory)
+    if platform.system() == "Windows":
+        executable = executable / "python.exe"
+    else:
+        executable = executable / "bin" / "python"
+    if not executable.is_file():
+        print(
+            f"The selected installation's MCP runtime is missing: {executable}",
+            file=sys.stderr,
+        )
+        return 1
+
+    arguments = [
+        str(executable),
+        "-m",
+        "catlabel.mcp",
+        command,
+        "--port",
+        str(port),
+    ]
+    if command == "config" and output is not None:
+        arguments.extend(["--output", str(output.expanduser().resolve())])
+
+    environment = _child_environment(data_directory, target_dir)
+    environment.pop("PYTHONPATH", None)
+    environment["PLAYWRIGHT_BROWSERS_PATH"] = "0"
+    result = subprocess.run(
+        arguments,
+        cwd=target_dir,
+        env=environment,
+        timeout=MCP_TIMEOUT_SECONDS,
+        check=False,
+    )
+    return result.returncode
 
 
 def prepare_release(
@@ -196,13 +265,42 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--artifact", type=Path)
     parser.add_argument("--sha256")
     parser.add_argument("--rollback", action="store_true")
+    parser.add_argument("--update-bundled", action="store_true")
+    mcp_commands = parser.add_mutually_exclusive_group()
+    mcp_commands.add_argument("--mcp-config", action="store_true")
+    mcp_commands.add_argument("--mcp-doctor", action="store_true")
+    parser.add_argument("--mcp-port", type=int)
+    parser.add_argument("--mcp-output", type=Path)
     for flag in BOOTSTRAP_FLAGS:
         parser.add_argument(flag, action="store_true")
     arguments = parser.parse_args(argv)
+    mcp_command = (
+        "config" if arguments.mcp_config else "doctor" if arguments.mcp_doctor else None
+    )
+    if mcp_command is None and (
+        arguments.mcp_port is not None or arguments.mcp_output is not None
+    ):
+        parser.error("--mcp-port and --mcp-output require an MCP command")
+    if arguments.mcp_output is not None and not arguments.mcp_config:
+        parser.error("--mcp-output can be used only with --mcp-config")
+    mcp_port = arguments.mcp_port if arguments.mcp_port is not None else 8000
+    if mcp_command is not None and arguments.mcp_port is None:
+        try:
+            mcp_port = int(os.environ.get("CATLABEL_PORT", "8000"))
+        except ValueError:
+            parser.error("CATLABEL_PORT must be an integer between 1 and 65535")
+    if mcp_command is not None and not 1 <= mcp_port <= 65535:
+        parser.error("MCP port must be between 1 and 65535")
     if bool(arguments.artifact) != bool(arguments.sha256):
         parser.error("--artifact and --sha256 must be supplied together")
     if arguments.rollback and arguments.artifact:
         parser.error("Choose either --rollback or --artifact")
+    if arguments.update_bundled and (
+        arguments.artifact or arguments.rollback or arguments.diagnose
+    ):
+        parser.error(
+            "--update-bundled cannot be combined with artifact, rollback, or diagnosis"
+        )
     if arguments.install_ai and arguments.skip_ai:
         parser.error("Choose either --install-ai or --skip-ai")
     if arguments.install_headless and arguments.skip_headless:
@@ -211,6 +309,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("Choose either --install-mcp or --skip-mcp")
     if arguments.diagnose and (arguments.artifact or arguments.rollback):
         parser.error("Run diagnosis separately from promotion or rollback")
+    if mcp_command is not None:
+        bootstrap_options = [
+            flag
+            for flag in BOOTSTRAP_FLAGS
+            if getattr(arguments, flag[2:].replace("-", "_"))
+        ]
+        if (
+            bootstrap_options
+            or arguments.artifact
+            or arguments.rollback
+            or arguments.update_bundled
+        ):
+            parser.error(
+                "MCP commands cannot be combined with bootstrap, artifact, rollback, or update options"
+            )
     root = (arguments.installation_root or launcher_directory()).resolve()
     options = [
         flag
@@ -223,6 +336,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         data_directory = _data_directory(root, arguments.data_directory)
         current = load_active(root)
+        if mcp_command is not None:
+            if current is not None:
+                target = current.path
+            elif (root / "run.sh").is_file() or (root / "run.ps1").is_file():
+                target = root
+            else:
+                print(
+                    "No accepted release or source installation was found. Select an installation before running an MCP command.",
+                    file=sys.stderr,
+                )
+                return 1
+            return _run_mcp_command(
+                target,
+                data_directory,
+                mcp_command,
+                mcp_port,
+                arguments.mcp_output,
+            )
         selected = (
             (arguments.artifact, arguments.sha256) if arguments.artifact else None
         )
@@ -231,8 +362,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(
                 f"Selected previous release {current.manifest.release_id}. Project data was retained."
             )
+        elif arguments.update_bundled:
+            selected = _bundled_artifact(root)
+            if selected is None:
+                print(
+                    "No bundled release artifact is available for this launcher.",
+                    file=sys.stderr,
+                )
+                return 1
         elif current is None and selected is None and not arguments.diagnose:
             selected = _bundled_artifact(root)
+        if (
+            getattr(sys, "frozen", False)
+            and current is None
+            and selected is not None
+            and not arguments.skip_mcp
+            and not arguments.skip_headless
+            and not _has_legacy_selection(data_directory)
+            and "--install-mcp" not in setup_options
+        ):
+            setup_options.append("--install-mcp")
         if selected is not None:
             archive, digest = selected
             try:

@@ -11,7 +11,7 @@ import { apiJson } from '../utils/apiClient';
 import { isPrinterScanResponse } from '../domain/printer';
 import {
   ChevronDown, ChevronRight, LayoutTemplate,
-  Menu, Printer, Wifi, Archive, Activity
+  Menu, Printer, Wifi, Archive, Activity, Plug
 } from 'lucide-react';
 
 function SidebarButton({ icon: Icon, label, onClick, primary = false, collapsed, disabled = false }) {
@@ -43,7 +43,7 @@ function reportScanError(error) {
   useStore.setState({ apiError: error.message || 'Printer scan failed. Check Bluetooth access and try again, or choose an offline profile.' });
 }
 
-export default function Sidebar({ onOpenStatus, statusNeedsAttention = false }) {
+export default function Sidebar({ onOpenHarness, onOpenStatus, statusNeedsAttention = false }) {
   const {
     items,
     selectedPrinter,
@@ -147,6 +147,8 @@ export default function Sidebar({ onOpenStatus, statusNeedsAttention = false }) 
       )}
 
       <SidebarButton collapsed={isSidebarCollapsed} icon={Activity} label={statusNeedsAttention ? 'Status — needs attention' : 'Status'} onClick={onOpenStatus} />
+
+      <SidebarButton collapsed={isSidebarCollapsed} icon={Plug} label="Connect AI harness" onClick={onOpenHarness} />
 
       {!isSidebarCollapsed ? (
         <div className="space-y-3">

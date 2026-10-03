@@ -31,6 +31,8 @@ ROOT_FILES = frozenset(
         "requirements.txt",
         "requirements-ai.txt",
         "README.md",
+        "API_REFERENCE.md",
+        "logo.webp",
         "NOTICE",
         "LICENSE",
         "LICENSE.txt",
@@ -74,6 +76,13 @@ def build_release(
             path in ROOT_FILES
             or path in TOOL_FILES
             or path.startswith(("catlabel/", "frontend/dist/"))
+            or (
+                path.startswith("docs/")
+                and path.endswith(".md")
+                and not path.startswith(("docs/reviews/", "docs/internal/"))
+                and path
+                not in {"docs/maintenance-progress.md", "docs/mcp-architecture.md"}
+            )
         ):
             continue
         if mode not in {"100644", "100755"} or kind != "blob":

@@ -19,6 +19,9 @@ class BuildReleaseTests(unittest.TestCase):
         self.root.mkdir()
         self.contents = {
             "catlabel/__main__.py": b"entry",
+            "docs/mcp.md": b"public MCP guidance",
+            "docs/reviews/internal.md": b"private review must not ship",
+            "docs/mcp-architecture.md": b"private plan must not ship",
             "catlabel/api/main.py": b"api",
             "tools/bootstrap_runtime.py": b"verify",
             "run.sh": b"shell",
@@ -78,6 +81,9 @@ class BuildReleaseTests(unittest.TestCase):
             (stage / "frontend/dist/index.html").read_bytes(), b"accepted frontend"
         )
         self.assertFalse((stage / "data").exists())
+        self.assertEqual((stage / "docs/mcp.md").read_bytes(), b"public MCP guidance")
+        self.assertFalse((stage / "docs/reviews").exists())
+        self.assertFalse((stage / "docs/mcp-architecture.md").exists())
         self.assertEqual(
             manifest.source_commit, self.git("rev-parse", "HEAD").decode().strip()
         )

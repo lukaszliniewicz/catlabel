@@ -1,12 +1,35 @@
-# Print jobs and hardware acceptance
+# Print jobs
 
-One running process admits one print job per canonical device address. A competing request receives HTTP 409 before scanning or connecting. This is admission control, not a persistent queue or a cross-process lock: run one CatLabel process for a printer.
+One CatLabel process owns the database and printer connections. Hardware admission
+allows one transfer per canonical device address; a competing transfer is rejected
+before scanning or connecting. Run one authoritative process for a data directory.
 
-A successful print request returns `status: submitted`, the `submitted` label count and `physical_completion: unverified`. It confirms the client completed its send operation, not that every physical label emerged. An error includes `stage`, an `error_id` and `delivery_uncertain`. Lost replies, connection failures during transfer and browser timeouts can leave delivery uncertain. Check the physical output before resubmitting; a retry can duplicate labels. CatLabel does not automatically replay uncertain print jobs.
+## Submission and uncertainty
 
-Hardware acceptance currently targets a PD01 cat printer and a Niimbot identified by its owner as D111 or D100. The exact Niimbot model and firmware still need confirmation. Source and fixture tests are recorded separately from physical printing.
+A successful response reports `submitted`, a label count and
+`physical_completion: unverified`. That confirms data submission, not that every
+physical label emerged. Connection failures or lost responses can leave delivery
+uncertain. Check the output before deliberately retrying; another transfer can
+print duplicates. CatLabel never automatically replays uncertain delivery.
 
-Browser preparation has a local job identity. Cancelled, superseded or duplicate
-render callbacks cannot submit that job again. Cancelling preparation happens
-before submission; it does not stop a physical transfer already running. The editor
-shows a validated submission receipt with physical completion explicitly unverified.
+The editor prepares pages without replacing the canvas. Progress appears on the
+print controls and in Status. Preparation can be cancelled before submission;
+this does not stop a transfer already in progress. Superseded and duplicate render
+callbacks cannot submit the same local preparation again.
+
+## Durable MCP jobs
+
+MCP previews and plans have immutable identities. A plan freezes the preview,
+printer identity, settings, selected pages and copies. `catlabel_print_start`
+requires the exact plan hash and an idempotency key. Repeating the same request
+with that key returns the same persisted job, including across restarts; using the
+key for another request fails.
+
+Use `catlabel_job_get` or `catlabel_jobs_list` for status. Cancellation is permitted
+before delivery starts. If the app stops after that boundary, recovery marks the
+job `delivery_uncertain` instead of sending again. A deliberate retry needs a new
+key and a check of the physical printer.
+
+Unstarted plans expire after 15 minutes. Receipts and key reservations remain for
+90 days; uncertain delivery sources remain for seven days. See the [MCP guide](mcp.md)
+for the complete workflow and artifact boundaries.

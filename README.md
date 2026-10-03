@@ -1,152 +1,209 @@
 <div align="center">
-  <img src="logo.webp" width="160" alt="CatLabel Logo">
+  <img src="logo.webp" width="140" alt="CatLabel logo">
   <h1>CatLabel Studio</h1>
+  <p>Design labels in your browser. Print them over Bluetooth. Or let your AI harness do the whole workflow.</p>
 </div>
 
-CatLabel is a local web application for designing and printing labels to portable Bluetooth thermal printers. 
+CatLabel is a local label designer for portable thermal printers, including
+Niimbot, Phomemo and many generic “cat printers”. It combines a visual canvas,
+HTML/CSS layouts, reusable templates and batch printing with MCP
+and browser site tools for OpenCode, ChatGPT Work and other harnesses. Your projects and printer connection
+stay on your computer; ordinary design and printing need no account or AI service.
 
-It is a fork of [TiMini Print](https://github.com/Dejniel/TiMini-Print). CatLabel moves the original CLI and Tkinter-based logic into a web interface built with FastAPI and React, while adding native support for Niimbot.
+A fork of [TiMini-Print](https://github.com/Dejniel/TiMini-Print), with a
+FastAPI/React interface, dedicated Niimbot support and shared services for the
+editor, REST API and MCP.
 
-https://github.com/user-attachments/assets/d7103905-7133-41c0-b20b-ee69727d9418
+[Installation](#installation) · [MCP / OpenCode](#use-with-opencode-and-other-harnesses) ·
+[Features](#what-you-can-make) · [Printers](#printer-support) · [Documentation](#documentation)
 
----
-<img width="1000" height="1115" alt="catlabel_print" src="https://github.com/user-attachments/assets/20a525d0-b6b4-4e8e-a743-ebb3ff5333ea" />
+<img width="1000" alt="CatLabel editor and printed labels" src="https://github.com/user-attachments/assets/20a525d0-b6b4-4e8e-a743-ebb3ff5333ea">
 
----
+## Installation
 
-## Supported Printers
+Download the [source ZIP](https://github.com/lukaszliniewicz/catlabel/archive/refs/heads/main.zip)
+or clone the repository, then extract it to a **writable folder**. For features
+not yet included in a published build, use the current source checkout. Packaged
+builds are listed on the [Releases page](https://github.com/lukaszliniewicz/catlabel/releases).
 
-CatLabel communicates directly with portable thermal printers over Bluetooth. It supports many models that do not use standard ESC/POS commands.
+| System | Start CatLabel |
+| --- | --- |
+| Linux / macOS | Open a terminal in the extracted folder and run `bash ./run.sh`. |
+| Windows | Double-click `run.bat`, or run it from a terminal. |
 
-*   **Niimbot:** D-Series (D11, D110, D101; experimental D11S 203 DPI profile), B-Series (B1, B21, B3S, B24, B18).
-*   **Phomemo:** M-Series (M02, M02S, M02X, M03, M04, M200), D-Series (D30), T02, P12, PM-241.
-*   **Generic:** 136 executable model records from the pinned TiMini-Print v0.8.1 catalog and selected Luck/PrintMaster updates across Tiny/Tiny-prefixed, Luck, V5G/V5X/V5C, Eleph/ToPrint, Instaprint Core, Funny LX, Orgstra S001, and PrintMaster families. Detection uses advertised names and MAC constraints from the catalog; models owned by the separate Niimbot and Phomemo backends are not duplicated.
+The launcher installs an isolated, locked Python environment and opens
+[localhost:8000](http://localhost:8000) when the app is ready. **You do not need
+system Python or Node.js.** The compiled frontend is included. First setup needs
+internet access; subsequent verified launches reuse the installed environment.
 
-Exact M110/M120 names select experimental PrintMaster recipes. Unconfirmed suffixes, M220 and the unconfirmed M221/M260 aliases remain unknown. Phomemo P12/D-series/M03/M04/M200 support uses existing local recipes. Changed printer paths have source-backed tests; physical printer acceptance is still open. See the [upstream parity ledger](docs/upstream-parity.md) for pinned sources and remaining differences.
+Linux is the currently verified platform. Windows and macOS are supported on a
+best-effort basis; their native installation and Bluetooth paths need further
+verification. The runtime targets Linux x86_64/ARM64, Windows x86_64 and macOS
+Intel/Apple Silicon. See [installation and recovery](docs/installation.md) for
+platform requirements, diagnostics, data paths, updates and rollback.
 
----
+### Linux AppImage
 
-## Installation & Running
+When a release provides an x86_64 AppImage, make it executable and run it. First
+launch installs the locked runtime, MCP and preview support; projects live under `~/.local/share/catlabel`
+by default. Use `--appimage-extract-and-run` if FUSE is unavailable. See the
+[AppImage instructions](docs/installation.md#linux-appimage) for setup and updates.
 
-CatLabel runs a local web server and opens the interface in your browser. The installation scripts manage a locked, isolated Python environment with a checksum-verified copy of Pixi. You do not need system Python or Node.js. First setup needs internet access; subsequent launches use the installed environment.
+### Optional add-ons
 
-### Windows
-Download or clone this repository into a writable folder and double-click `run.bat`. It installs the locked environment and starts CatLabel. Windows support is best effort; native installation has not been verified in this maintenance run.
+Fresh packaged desktop installations enable MCP and preview support by default.
+Source-folder installations keep the smaller browser-only default. Existing
+installations retain their choices. Use these flags with the launcher, `run.bat`
+or `bash ./run.sh`; enabled add-ons are remembered:
 
-The existing standalone launcher on the [Releases](../../releases) page may predate these scripts. Its release/update workflow is being revised as part of the maintenance plan.
+| Flag | Adds |
+| --- | --- |
+| `--install-mcp` | Harness tools and headless Chromium for previews and printing. |
+| `--install-headless` | Backend HTML rendering for direct REST clients. |
+| `--install-ai` | Provider SDKs for the built-in chat assistant. |
+| `--setup-only` | Setup without starting the app. |
+| `--diagnose` / `--repair` | Installation diagnostics / runtime repair. |
 
-https://github.com/user-attachments/assets/4e784645-0ccf-478c-a6e1-0c41a3519624
+Normal browser design and printing need none of these add-ons. MCP uses the
+harness's model, so it **does not require the AI add-on or provider keys in CatLabel**.
+The matching `--skip-mcp`, `--skip-headless` and `--skip-ai` flags disable an add-on
+without deleting projects or retained installation files.
 
-### macOS & Linux
-1. Clone or download this repository.
-2. Open a terminal in the repository folder.
-3. Run `bash ./run.sh`.
-4. The script downloads verified Pixi, installs the locked dependencies, and starts the server. The compiled frontend is included. macOS support is best effort; native execution has not been verified in this maintenance run.
+## Use with OpenCode and other harnesses
 
-Both scripts accept `--setup-only`, `--install-headless`, `--skip-headless`, `--install-ai`, `--skip-ai`, `--install-mcp`, `--skip-mcp`, `--repair` and `--diagnose`. Headless Chromium is an explicit add-on for backend HTML rendering. Normal browser design and printing do not need it. Cloud chat SDKs are another independent add-on, enabled with `--install-ai`. See [installation and recovery](docs/installation.md) for data paths, optional setup and diagnostics. Harness workflows use the optional [MCP add-on](docs/mcp.md), which supports saved design editing, PNG previews and printing through the same backend.
+CatLabel exposes **22 shared tools** to create and edit saved designs, import
+images/PDFs, inspect PNG previews, export portable designs, discover printers,
+adjust profiles and start or inspect print jobs. The editor and harness use the
+same documents, renderer and printer backend. **No provider keys are needed in
+CatLabel** when you use your existing harness.
 
-*The app runs at [http://localhost:8000](http://localhost:8000).*
+### ChatGPT Work / Codex desktop: open the app and ask
 
-CatLabel listens on this computer only by default. See [local operation and API clients](docs/local-operation.md) for optional LAN access, access tokens, developer origins.
+1. Start CatLabel and choose **Connect AI harness** in the sidebar.
+2. Copy the app address and open it in your harness's built-in browser.
+3. Ask for a label. Compatible browsers discover the page's tools automatically;
+   there is no JSON configuration or token to paste for this route.
 
-See [print jobs and hardware acceptance](docs/print-jobs.md) for busy-printer responses, uncertain delivery and physical acceptance status.
+Site tools require a compatible desktop browser, an eligible model and enabled
+browser/workspace permissions. Their availability follows the host's rollout.
+See [OpenAI's site-tools guide](https://learn.chatgpt.com/docs/webmcp). Tools work
+with saved projects; save your current canvas first or ask for a new named design.
+Keep CatLabel running. Cloud-only chats cannot reach your local printer through a
+localhost URL.
 
-API clients should also follow the [resource limits](docs/resource-limits.md) and [project revision/import contract](docs/project-persistence.md).
+### OpenCode: use the prepared connection file
 
----
+When MCP is enabled, CatLabel automatically prepares a private OpenCode v2 file
+for its current port. **Connect AI harness** shows its path. For a new OpenCode
+session, set `OPENCODE_CONFIG` to that file before starting OpenCode. For an
+existing project, merge its `mcp.servers.catlabel` entry into your project config,
+preserving other entries, then reconnect with `/mcps`.
 
-## Instruction Manual & Features
+The fragment uses a private token-file reference. It does not print or embed the
+credential. Keep both files on the same computer and outside Git/shared folders.
 
-CatLabel is divided into a sidebar (for printers and files), a central canvas, and a right-hand properties panel.
+New packaged desktop installs enable MCP by default. To enable it in an existing
+or source-folder installation, close CatLabel and run:
 
-### 1. Canvas Editor (WYSIWYG)
-The visual editor allows you to place text, barcodes, QR codes, icons, shapes, and images.
-*   **Precision Control:** In the right panel, you can adjust X/Y coordinates and dimensions using millimeter inputs. Click and drag horizontally on the input labels (where you see `⇹`) to scrub the values up and down smoothly.
-*   **Icons & Images:** The toolbar includes a searchable Lucide icon library. Standard images are automatically thresholded (converted to black and white) and dithered to print clearly on thermal heads.
-*   **Z-Order & Grouping:** Use the toolbar to bring elements forward or backward. You can select multiple items (hold `Shift`) to group them together for moving and scaling.
-
-### 2. Designing with HTML & CSS
-For complex layouts (like shipping labels or split columns), each label page can include a sanitized HTML/CSS background together with visual drag-and-drop elements. HTML and canvas elements are composited in the same page during preview and printing.
-
-**Auto-Scaling Text:** 
-If you wrap text in an `.auto-text` class inside a `.bound-box` container, CatLabel will calculate and apply the exact font size needed to maximize the text within that box. This prevents text from overflowing or being too small without requiring manual font-size guessing.
-
-**Example Layout:**
-```html
-<div style="display: flex; flex-direction: column; height: 100%; padding: 4px; gap: 4px;">
-  <!-- Top half: Auto-scaling Title -->
-  <div class="bound-box" style="flex: 2;">
-    <div class="auto-text" style="font-weight: 900;">{{ product_name }}</div>
-  </div>
-  
-  <!-- Divider -->
-  <div style="height: 2px; background: black; width: 100%;"></div>
-  
-  <!-- Bottom half: Dynamic Barcode -->
-  <div class="bound-box" style="flex: 1;">
-    <div class="catlabel-code" data-type="barcode" data-format="code128" data-value="{{ sku }}"></div>
-  </div>
-</div>
+```sh
+bash ./run.sh --install-mcp
 ```
-*Note: To add background patterns or colors, place an absolutely positioned `div` behind your flex containers to ensure the bounding box calculations remain accurate.*
 
-### 3. Variables & Batch Printing
-You can design a single template and print multiple variations using variables.
-1. Type `{{ any_name }}` into a text element, barcode data field, or HTML block.
-2. Open the **Batch Data** tab in the right panel. The system will automatically detect your variables.
-3. Choose your data input method:
-   *   **Table:** Manually type rows of data, or use the "Import CSV" button to map spreadsheet columns to your variables.
-   *   **Permutations (Matrix):** Enter comma-separated lists for each variable. The app will generate every possible combination (e.g., Size: S, M, L / Color: Red, Blue).
-   *   **Sequence:** Select a variable and set a start number, end number, prefix, and zero-padding to instantly generate serialized labels (e.g., `BOX-001` to `BOX-050`).
+Use `run.bat --install-mcp` on Windows, or the AppImage with `--install-mcp`.
+The local endpoint is `http://127.0.0.1:8000/mcp/` unless you choose another port.
+Other MCP clients use Streamable HTTP and CatLabel's private bearer credential.
+For platform commands, manual configuration, connection checks and troubleshooting,
+see [the MCP guide](docs/mcp.md).
 
-### 4. Wizards & Templates
-The toolbar includes a "Wizards" dropdown with built-in forms. These generate standard layouts for specific use cases:
-*   **Shipping Labels:** Includes an address book to save frequently used senders/recipients.
-*   **Price Tags:** Formats currency, large main prices, and underlined cents alongside a barcode.
-*   **Inventory & IT Assets:** Creates a high-contrast department header and paired QR code.
-*   **Date Tool:** Quickly insert today's date, or calculate offset dates (e.g., "+7 Days" for food expiry).
+Try a request such as:
 
-### 5. AI Layout Assistant
-CatLabel includes a chat interface that can write HTML layouts and execute tool commands based on your text requests. It operates in two modes:
-*   **Live Agent:** Enter API keys for OpenAI, Google Gemini, or Vertex AI. You can also point it to a local LLM host (like LM Studio or Ollama) by selecting "Custom" and using `http://localhost:1234/v1`.
-*   **External (Copy/Paste):** If you already pay for ChatGPT Plus or Claude Pro, you can generate a system prompt block here, paste it into your browser tab, and paste the resulting JSON back into CatLabel. This applies the layout without consuming API credits.
+> Create a 48 × 25 mm label with “Spare parts” and a QR code. Save it as “Parts
+> shelf”, show me the preview, then prepare a print plan for the printer I choose.
+> Ask before starting the physical print.
 
-### 6. Project Management
-The sidebar contains a file tree to save your designs.
-*   You can create folders and drag-and-drop projects between them.
-*   Projects save the canvas dimensions, per-page HTML/template layouts, page-indexed elements, and your currently loaded batch data.
-*   You can export individual projects or entire folders as JSON files to back them up or share them.
+A print plan freezes the preview, printer and settings. Starting it requires its
+hash and an idempotency key: retrying the same request returns the same job,
+including after a restart. Interrupted delivery is marked uncertain and never
+replayed automatically. Saved edits require a revision, and the editor notices
+external changes while preserving your current canvas and undo history.
 
-### 7. Printer Settings (Hardware Overrides)
-In the **Canvas & Printer** tab, you can override default hardware behaviors:
-*   **Density / Energy:** Increase this value to make prints darker (useful for transparent or synthetic label stock), or decrease it if the print head is smudging. V5G printers accept raw density overrides from 1–200; `0` keeps the model default. The UI also shows the model-tuned range, and the runtime may reduce an override while the print head is hot.
-*   **Feed Lines:** Controls how much blank tape is ejected after a print job to align the cut with the printer's tear-off teeth.
-*   **Split Mode:** Allows you to define a canvas larger than the printer's physical width. The app will slice the image and print it in sequential strips.
+The server supports the **July 2026 MCP protocol (`2026-07-28`)** with the
+`2025-11-25` compatibility path over local Streamable HTTP. OpenCode design and
+preview workflows are verified. Stdio, legacy SSE and the Tasks extension are
+not currently implemented.
 
----
+## What you can make
 
-## Troubleshooting & Bluetooth
+- **Visual labels:** text, QR codes, barcodes, icons, images and shapes; drag,
+  resize, align, group and reorder elements. Millimetre controls help keep the
+  design matched to the paper. Upload your own fonts and import PDF pages.
+- **Reusable layouts:** shipping/address labels, price tags, inventory/IT asset
+  labels and date tools, with saved projects, folders and JSON export/import.
+- **Batch labels:** put `{{ product_name }}` or `{{ sku }}` in text, codes or
+  HTML, then populate the Batch Data tab from CSV, a table, number sequences or
+  a matrix of combinations.
+- **HTML/CSS designs:** compose sanitized layouts alongside canvas elements.
+  Auto-fitting text and dynamic code elements make dense labels easier to build.
+- **Printer profiles:** save per-printer density/energy, feed and supported speed
+  or paper-mode controls. Availability and ranges depend on the model; a speed
+  control is not supported by every printer.
+- **Long or oversized layouts:** rotate a continuous-roll design for a banner,
+  or use split mode to print a wider design in strips. Keep pre-cut labels within
+  their physical dimensions.
+- **Optional AI assistance:** use MCP from your existing harness, or install the
+  built-in chat add-on. External prompt/JSON copy-and-paste is also available.
 
-*   **Windows Pairing:** Windows sometimes refuses to communicate with generic SPP (Serial Port Profile) printers unless they are explicitly paired in the Windows Settings menu first. If the app fails to connect, pair it manually in Windows, then try again.
-*   **macOS Connections:** Apple restricts classic Bluetooth SPP connections. CatLabel uses a custom PyObjC bridge to handle this, but you may occasionally need to restart the printer if macOS caches a stale connection state.
-*   **Niimbot Printers:** Niimbot devices use Bluetooth Low Energy (BLE). They do not require OS-level pairing. The app will connect to them directly.
-*   **Headless API Rendering:** Normal browser-based design and printing does not require Playwright. Third-party scripts that ask the backend API to rasterize HTML do require the optional headless Chromium environment. On Windows, install or repair it with `catlabel\run.bat --install-headless` from the folder containing the launcher.
+For example, a batch design can use `{{ sku }}` in its barcode and
+`{{ product_name }}` in its heading. Import a CSV with those columns, check the
+preview, and print each row without editing the layout repeatedly.
 
----
+## Printer support
 
-## Architecture
+CatLabel talks directly to printers over Bluetooth Classic or BLE, depending on
+the device. Printer recognition is conservative: an unknown or ambiguous device
+name is not assigned a protocol just because it resembles another model.
 
-*   **Backend (`catlabel/`):** A FastAPI server with separate device policy, printing runtime, stateless protocol encoding, and Bluetooth transport layers. Generic printer metadata is a reproducible snapshot pinned to TiMini-Print v0.8.1.
-*   **Frontend (`frontend/`):** A React application using Zustand for state management and Konva.js for the interactive canvas. Pages are represented by the union of page-indexed canvas elements and `pageLayouts`; rendering never inherits content from another page.
+| Backend | Examples and scope |
+| --- | --- |
+| Niimbot | D11, D110, D101; B1, B21, B3S, B24, B18. D11S has an experimental 203 DPI profile. |
+| Phomemo | M02/M02S/M02X/T02, plus local M03/M04/M200, D30, P12 and PM-241 recipes. |
+| Generic | PD01 and catalogued Tiny, Luck, V5G/V5X/V5C, Eleph/ToPrint, Instaprint, Funny LX, Orgstra and selected PrintMaster families. |
 
-See the [backend architecture](docs/architecture.md), [frontend architecture](docs/frontend-architecture.md), and [upstream synchronization ledger](docs/upstream-sync.md) for layer ownership, document invariants, imported changes, and intentionally deferred printer families.
+Catalog support and protocol tests are not a guarantee for every firmware or
+Bluetooth adapter. Exact M110/M120 names use experimental PrintMaster recipes;
+M220 and unconfirmed M221/M260 aliases remain unavailable. Check the app's model
+list and [protocol compatibility notes](docs/upstream-parity.md) for the supported
+scope and known limitations.
 
-For contributors, see the [development check policy](docs/development-checks.md) and [maintenance implementation ledger](docs/maintenance-progress.md). Checks use a locked disposable test environment and build without replacing release assets.
+### Bluetooth and printing tips
 
----
+Turn the printer on, load the appropriate paper and scan from the sidebar.
+Some Classic/SPP devices need pairing in the operating system first; BLE devices
+such as Niimbot generally connect directly. If discovery or connection fails,
+check the OS Bluetooth service, restart the printer and retry the scan.
 
-## License & Attribution
+Density changes darkness; speed controls the motor on models that expose it.
+Transport pacing and the negotiated Bluetooth transfer size can also affect
+throughput. A successful submission means the data was sent; check the physical
+output before retrying an uncertain job. See [print-job behavior](docs/print-jobs.md).
 
-This project is a fork of [TiMini Print](https://github.com/Dejniel/TiMini-Print) by Dejniel. The original reverse-engineering of the V5/Generic printer protocols and the core encoding logic belong to the original author.
+## Documentation
 
-CatLabel is distributed under the **Apache License 2.0**.
+| Guide | Contents |
+| --- | --- |
+| [Installation and recovery](docs/installation.md) | Add-ons, prerequisites, data locations, diagnostics, update and rollback. |
+| [MCP and site tools](docs/mcp.md) | Desktop browser setup, OpenCode, credentials, previews and durable jobs. |
+| [REST API](API_REFERENCE.md) | Payloads, templates, batch generation and direct integrations. |
+| [Local operation](docs/local-operation.md) | Ports, access tokens, optional LAN operation and API headers. |
+| [Project persistence](docs/project-persistence.md) / [resource limits](docs/resource-limits.md) | Revision guards, imports and processing limits. |
+| [Backend](docs/architecture.md) / [frontend architecture](docs/frontend-architecture.md) | Shared services, documents, rendering and printer layers. |
+| [Development checks](docs/development-checks.md) | Ruff, basedpyright, React lint, Knip, cycles, tests and audits. |
+| [Release packaging](docs/releases.md) | Immutable ZIPs and launcher/AppImage builds. |
+| [Upstream synchronization](docs/upstream-sync.md) | Pinned catalog provenance and contributor workflow. |
+
+## License and attribution
+
+CatLabel is distributed under the [Apache License 2.0](LICENSE). It builds on
+[TiMini-Print](https://github.com/Dejniel/TiMini-Print) by Dejniel, including the
+reverse-engineered printer protocols and encoding logic. See [NOTICE](NOTICE)
+for attribution.

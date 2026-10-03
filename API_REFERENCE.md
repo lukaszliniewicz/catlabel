@@ -1,6 +1,8 @@
 # CatLabel API Reference
 
-This document is optimized for LLM Agents, programmatic generation, and external API integrations. It explains how to construct payloads, handle spatial reasoning, utilize the built-in layout/template engine, and execute complex batch workflows with minimal token overhead.
+This guide describes the REST API for direct integrations. For harness-driven design, PNG previews and durable print plans, start with [MCP](docs/mcp.md).
+
+Every `/api` request requires `X-CatLabel-Client: 1`; configured access tokens also require Bearer authentication. See [local operation](docs/local-operation.md), [resource limits](docs/resource-limits.md) and [project revisions](docs/project-persistence.md).
 
 ## Core Concepts & Agent Guidelines
 
@@ -9,14 +11,12 @@ This document is optimized for LLM Agents, programmatic generation, and external
     *   **300 DPI**: 1 mm ≈ 11.8 pixels.
     *   *Tip*: Always check `/api/agent/context` or the hardware profile for the exact width/DPI.
 *   **Media Types (CRITICAL)**: 
-    *   **`continuous` (Rolls)**: Can be cut to any length. Set `canvas_state.isRotated = true` to print infinitely long landscape banners.
+    *   **`continuous` (Rolls)**: Can be cut to a chosen length within the model and processing limits. Use `canvas_state.isRotated = true` for landscape banners.
     *   **`pre-cut` (Niimbot D11, B21, etc.)**: Fixed boundaries. You *must* strictly adhere to the defined canvas size. **Do not use `splitMode` on pre-cut media.**
 *   **Banners vs. Oversize Split (CRITICAL)**:
     *   **Long Banners**: To print a long banner on a *single* strip of continuous tape, set `"isRotated": true`, make the `width` as long as you need (e.g., 1000px), and keep `height: 384` (hardware max). **Do NOT use `splitMode`**.
     *   **Oversize Multi-Strip Decals**: Only set `"splitMode": true` if the user wants a giant graphic stitched together from *multiple parallel strips of tape*.
-*   **Design Modes**: The canvas operates in two distinct modes:
-    1.  **`canvas`**: WYSIWYG mode using absolute-positioned elements (Text, QR, Barcode, Shape, Icon).
-    2.  **`html`**: Renders pure HTML/CSS. Great for flexbox, CSS Grid, or highly stylized layouts.
+*   **Design Modes**: A page can combine absolute-positioned canvas elements with a sanitized HTML/CSS layout. `pageLayouts` supplies the exact page-specific HTML or managed template; one page never inherits another page’s content.
 *   **Built-in Dynamic Tags**:
     *   `{{ $date }}` -> Inserts today's date (YYYY-MM-DD).
     *   `{{ $date+7 }}` / `{{ $date-30 }}` -> Inserts offset dates.
@@ -266,3 +266,13 @@ CatLabel uses a custom 3-Pass Rendering Pipeline to guarantee text auto-scales p
 1. `set_canvas_dimensions({ "width": 1200, "height": 384, "print_direction": "along_tape_banner" })`
 2. `add_text_element({ "text": "FRAGILE - DO NOT DROP", "x": 0, "y": 0, "width": 1200, "height": 384, "fit_to_width": true, "invert": true, "bgColor": "black" })`
 *Execution:* The renderer rotates the resulting 1200x384 image 90 degrees and streams it infinitely through the printer feed mechanism.
+
+### Harness connection adapter
+
+`GET /api/harness/connection` reports whether harness support is enabled and the
+local connection/configuration-file location. `GET /api/harness/tools` returns the
+existing MCP tool definitions for browser registration.
+`POST /api/harness/tools/{name}` accepts `{ "arguments": { ... } }` and returns
+the SDK tool result, including `content`, `structuredContent` and `isError`. These
+endpoints use the same editor authentication and `X-CatLabel-Client: 1` policy as
+the rest of the REST API; they never return the MCP credential.

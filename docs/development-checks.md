@@ -1,8 +1,10 @@
-# Development checks and static debt policy
+# Development checks
 
-Use Python 3.11.15 and Node 24.18.0 (`.node-version`), with npm 11.16.0. The five-platform Pixi runtime lock is separate from the universal CI/development lock. Native acceptance is recorded separately from lock resolution.
+Use Python 3.11 and the Node version in `.node-version`; install npm at the version
+specified in `frontend/package.json`. The runtime's five-platform Pixi lock and
+the universal CI/development dependency lock serve different purposes.
 
-Create an isolated environment and install the **hash-locked** check dependencies:
+## Setup and commands
 
 ```sh
 python -m pip install uv==0.11.29
@@ -14,108 +16,91 @@ cd ..
 .venv/bin/python -m tools.check --lane full --report check-results/static.json
 ```
 
-On Windows use `.venv\Scripts\python.exe` for the environment's interpreter. Linux owns the current shared typing baseline. The Windows/macOS CI lanes run `--without-typing` explicitly; the Windows SDK runtime imports are checked by a Windows-only unit test. Native execution and hardware acceptance remain separate. No check is silently skipped. Native CI results and clean native installation are separate from the Linux results recorded here.
+On Windows, use `.venv\Scripts\python.exe`. Run results belong under ignored
+`check-results/`, rather than in public documentation.
 
-`--lane static` checks generated dependency and canvas/edit-schema drift, then runs Ruff, formatter, basedpyright, full React Hooks rules/config lint, both Knip modes, Python/frontend cycle detection and Import Linter contracts. Vulture >=80% remains an advisory report. `--lane fast` adds backend/frontend unit tests. `--lane full` adds a production build in a temporary directory. Tests also use a temporary cwd; they must not require a pre-existing user database. The runner leaves tracked frontend artifacts unchanged.
+| Lane | Checks |
+| --- | --- |
+| `static` | Public-document visibility/links; generated dependency and document/edit-schema drift; Ruff, formatting, basedpyright, frontend TypeScript, React lint, both Knip modes, Python/frontend cycles and Import Linter contracts. |
+| `fast` | Static checks plus backend and frontend unit tests. |
+| `full` | The fast lane plus a production frontend build in a temporary directory. |
+| `audit` | Installed Python and locked frontend dependencies against current advisory metadata. |
 
-`--lane audit --report check-results/audit.json` audits the installed resolved Python environment and frontend lock tree against live advisory metadata. Any dependency collection failure, skipped Python package, missing tool or malformed output fails the check. Advisory execution is distinct from a zero-advisory result. The current audit gate is Linux-only; native resolved audits remain acceptance work. No paid provider calls or physical prints belong in these lanes.
+Vulture findings at 80% confidence or higher are advisory. Context-manager
+parameters required by Python's protocol are not removable dead code merely
+because their names are unused.
 
-Hardware/integration acceptance requires named device, firmware, OS, transport, media, source/build identity, observed physical outcome and timeout/retry evidence. It must be recorded separately; a fake-device unit pass is not a hardware receipt. Browser integration acceptance is parent-owned and specified in the [maintenance plan](reviews/2026-10-02/plan.md).
+The runner does not replace committed frontend assets. Backend tests use a
+temporary working directory and must not depend on a user's database. Paid
+provider calls and physical prints belong in explicit integration checks.
 
-## Canonical dependencies and locks
+Linux runs the shared Python typing gate. Windows/macOS CI explicitly use
+`--without-typing`; the Windows-only SDK import test runs on Windows. Frontend
+TypeScript checks remain enabled everywhere. A configured workflow or resolved
+platform lock does not establish a successful native installation or print.
 
-`pyproject.toml` owns application requirements and optional AI/headless/MCP/launcher dependencies. `python -m tools.sync_dependencies --check` rejects divergent pip/Pixi manifests. `--write` explicitly regenerates `requirements.txt`, `requirements-ai.txt`, `launcher-requirements.txt` and `pixi.toml`. The generator maps platform bridges to win-64/osx-64/osx-arm64 targets and resolves common dependencies across all five declared platforms. Overlapping normalized requirements are rejected.
+## Dependencies and generated contracts
 
-`requirements-dev.lock` pins the checker-only environment; `requirements-check.lock` includes app, launcher, optional renderer/MCP and check dependencies for reproducible CI. Neither replaces the runtime lock. Refresh deliberately:
+`pyproject.toml` owns application, optional AI/headless/MCP/launcher and check
+requirements. `python -m tools.sync_dependencies --check` rejects divergent
+pip/Pixi manifests; `--write` deliberately regenerates them.
+
+The backend document/edit models generate checked-in JSON schemas and frontend
+contract types. Run `python -m tools.sync_document_contract --check` to detect
+drift, or `--write` after an intentional model change.
+
+Refresh the hash-locked checker and complete development environments explicitly:
 
 ```sh
 uv pip compile --group dev --python-version 3.11 --universal --generate-hashes --output-file requirements-dev.lock
 uv pip compile pyproject.toml --extra launcher --extra headless --extra ai --extra mcp --group dev --python-version 3.11 --universal --generate-hashes --output-file requirements-check.lock
 ```
 
-Review the resolved changes and audit/test them. Pin checker versions in the dev group. Use `pixi lock --manifest-path pixi.toml --check --dry-run` to verify existing runtime-lock consistency without promotion. Node dependencies/checkers are pinned through `frontend/package-lock.json`; no `npx latest` is used by the runner.
+Review, audit and test the resulting versions. Use `pixi lock --check --dry-run`
+to check the runtime lock without promoting another resolution. Frontend tools
+and dependencies come from `frontend/package-lock.json`; the gate does not invoke
+unversioned latest tools.
 
-## Temporary debt, without hiding new failures
+## Static policy
 
-`checks/debt.json` contains individual current diagnostics, not a total-count allowance. Path, rule, message, severity and exact location are retained where supplied. Identical duplicate findings are counted. Removing an old error cannot pay for an unrelated new one. Moving existing debt intentionally requires reviewing the baseline diff; line drift is not automatically forgiven. Formatter debt includes source hashes, so editing an unformatted file requires cleaning it. Cycle allowances name the complete existing SCC membership.
+The expected source/check diagnostic baseline is empty. `checks/debt.json` stores
+individual diagnostic fingerprints if a reviewed migration needs temporary debt;
+it cannot grant an allowance by total count. Removing one error cannot pay for
+another. Formatting debt includes source hashes, and cycle entries identify the
+complete component membership. Broad disabled rules or ignored source paths are
+not acceptable fixes.
 
-The uncapped `--report` output always includes existing debt. `--write-baseline` is a deliberate local Linux migration operation and is rejected in CI; it is not the default check. New tooling is strict-typed and may not acquire baseline entries. After a coherent cleanup, remove resolved entries and review every added/moved entry before committing. Phase 2 eliminates the migration baseline rather than keeping it forever. Broad disabled rules/ignored source paths are not an acceptable fix.
+`--write-baseline` is an explicit local Linux migration operation, rejected in CI.
+Review every changed allowance and remove resolved entries. New tooling and strict
+contracts must not acquire baseline allowances.
 
-Ruff targets Python 3.11 with `E4,E7,E9,F,I,UP,B,SIM,C4`; line-length E501 is excluded. Application, launcher, tool, test and maintained `.pyi` source are linted/formatted and type-checked. basedpyright uses standard mode for existing code and strict mode for the named check/domain contracts in `pyproject.toml`. The headless import is included in the locked check environment.
+Ruff checks the maintained Python, tests and stubs for Python 3.11. basedpyright
+uses standard mode generally and strict mode for the contracts named in
+`pyproject.toml`. The licensed `typings/winsdk` subset checks the used SDK shapes
+on Linux; it does not emulate the Windows runtime. Scoped missing-runtime-source
+policy is documented in the bridge, while missing imports and type errors remain
+checked.
 
-The Windows-only `winsdk` dependency has a pinned-wheel-derived, licensed structural subset under `typings/winsdk`. This checks used SDK signatures on Linux without pretending the native extension can run there. Only `reportMissingModuleSource` is disabled in `windows_winrt.py`: its stub-only runtime source is intentionally unavailable in this environment. Missing imports and type errors remain enabled. This is a documented platform policy, not a source-debt allowance. The Windows CI test calls the real SDK import helper; fake-SDK tests cover the selector overload and nullable device. Wheel/version changes require refreshing the subset and its provenance. Native Windows execution remains unverified until the corresponding CI/install checks run. [Basedpyright documents the distinction and scoped diagnostic configuration](https://docs.basedpyright.com/v1.40.1/configuration/comments/).
+React lint covers Hooks rules. Knip checks development and production usage;
+Madge checks frontend cycles. The Python graph distinguishes eager, function-local
+and type-only imports; Import Linter enforces layer ownership. TypeScript strictly
+checks the domain and API utilities; remaining JavaScript/JSX is outside that
+compiler's scope.
 
-Knip includes JavaScript/JSX/TypeScript/CSS source and config entry points, excludes generated dist through its project scope, and marks production entry/project patterns explicitly. CSS imports are checked after the Tailwind 4 migration; generated output needs no redundant ignore. Tests are excluded only from production analysis. Madge resolves JS/JSX/TypeScript imports. The deterministic Python graph distinguishes function-local/type-only edges from eager edges and reports unresolved dynamic imports. No new eager cycle is allowed. Import Linter also checks indirect paths. Device transfer policy consumes stable string identifiers without importing protocol implementations; the temporary device-policy → family-ID exception has been removed. The API context service and protocol specification ownership remove both former full-graph cycles.
+Advisory collection failures, skipped packages and malformed tool output fail the
+audit. `checks/audit-exceptions.json` requires exact advisory/package/version
+scope, rationale, owner and expiry. Expired or unrelated exceptions fail; baseline
+capture cannot create advisory exceptions.
 
-`checks/audit-exceptions.json` requires an exact advisory/package/version scope, owner, rationale and expiry. New findings and expired exceptions fail, including on the same package. Baseline capture cannot create advisory exceptions. The initial three Vitest exceptions, due 16 October 2026, were removed after the tested Vitest 5 migration and a clean advisory refresh. The current exception list is empty.
+## Public docs and releases
 
-The GitHub workflow runs shared checks/tests/builds on Linux, Windows and macOS and preserves uncapped reports. It is configured locally; do not claim hosted CI passed until actual runs are inspected.
+Keep stable user guidance, contributor contracts and upstream attribution public.
+Keep dated plans, implementation ledgers, test logs, receipts and screenshots in
+ignored internal locations. `python -m tools.check_docs` rejects tracked private
+paths and public Markdown links to private, missing or untracked files.
 
-Current acceptance availability (user-confirmed): Linux only. Windows and macOS validation is best effort; successful lock resolution, script/interface checks and configured CI are evidence about those artifacts, not proof of a native install or print. Unavailable native runs are recorded without blocking local implementation.
-
-TypeScript 5.9.3 checks `src/domain/**/*.ts` and `src/utils/**/*.ts` strictly with no emit, unused declarations, implicit returns or unchecked indexed access. This gate is always enabled, including native lanes that omit the Linux-owned Python typing check. Compiler diagnostics cannot acquire debt allowances. The remaining JavaScript/JSX is outside this typing scope; a typed serializer does not validate its callers. Expand the checked boundary deliberately as decomposition proceeds. TypeScript 7 is deferred until the installed analysis tools declare compatible peer ranges.
-
-TypeScript source is also covered by the pinned typescript-eslint 8.71.0
-`recommendedTypeChecked` rules, scoped to `src/**/*.ts` with project service.
-Unknown response bodies must be narrowed before access; unsafe assignments and
-unhandled promises are checked. The existing React/Hooks policy applies to JS/JSX.
-Both scopes run through the same ESLint command; there is no ignored-TypeScript
-success. [Official flat-config setup](https://typescript-eslint.io/getting-started/).
-
-The typed JSON request boundary includes response body consumption and validation
-in its deadline and preserves caller cancellation. Raw `apiFetch` returns at
-successful headers; callers that consume a body should use `apiJson` to keep that
-consumption inside the deadline. These checks cover the boundary contracts, not
-whole-app JavaScript typing.
-
-## Maintenance ownership and review cadence
-
-The CatLabel repository maintainer owns dependency selection, accepted exceptions,
-upstream scope and release decisions. The author of a change owns its focused checks
-and receipt; the integrating maintainer owns the combined gate and exact shipped
-artifact. A delegated test or review does not transfer acceptance ownership.
-
-| When | Owner | Required action and recorded result |
-| --- | --- | --- |
-| Every change | Change author and integrating maintainer | Run the static gate and relevant tests; run the full lane for integration. Keep all ten diagnostic categories at zero. Review every suppression, ignored path and boundary change. |
-| Weekly during active development | Repository maintainer | Run the live advisory lane against the resolved environment. Review actionable security patches; retain the uncapped report, resolved versions and disposition. Next review: 10 October 2026. |
-| Monthly | Repository maintainer | Review upstream releases and the pinned parity ledger, dependency minors/majors, compatibility deferrals and outstanding acceptance gaps. Publish a dated debt report. Next review: 3 November 2026. |
-| Before a release | Integrating maintainer | Verify source/lock/checker identity, exact built frontend, install/update/rollback evidence, and changed protocol-family fixtures. Distinguish physical/native/provider evidence from fixtures. |
-
-The cadence is a manual maintenance policy. No reminder or recurring automation has
-been scheduled. Missing future reports are not represented as already completed.
-
-A monthly debt report records the source commit, environment/checker versions, all
-uncapped static/advisory counts, remaining exceptions with owners and expiry,
-upstream tag/SHA and adopted/deferred deltas, dependency decisions and new evidence.
-Compare diagnostic fingerprints, not just totals. The historical review baseline
-is immutable; a green new tool/configuration does not retroactively change it.
-Vulture remains advisory: context-manager parameters such as `exc_type` are part of
-the Python protocol and are not removable dead code merely because their names are
-unused. Record reviewed advisory candidates rather than adding meaningless reads.
-
-Current compatibility deferrals have concrete reconsideration triggers:
-
-- ESLint10: reconsider when the installed React plugin declares compatible peers,
-  or after a deliberately tested replacement of that rule surface. Owner: repository
-  maintainer. Review by 3 November2026; do not force an incompatible dependency tree.
-- TypeScript7: reconsider when the installed analysis tool peers support it and the
-  domain/API fixtures pass. Owner: repository maintainer. Review by 3 November2026.
-- Windows/macOS native installs and transports: best effort until native runners
-  are available. Owner: repository maintainer. Reassess availability monthly; keep
-  portable script/lock evidence separate from native execution.
-- Physical PD01 and Niimbot checks: confirm the actual Niimbot model before choosing
-  its hardware recipe; record model/firmware/media/transport and visible output.
-  Owner: repository maintainer. No automatic enablement follows from a calendar date.
-
-These are compatibility/acceptance deferrals, not advisory exemptions. The advisory
-exception list is currently empty. Any future advisory exemption needs its exact
-package/version/advisory, rationale, owner, expiry and review receipt; the check gate
-rejects an expired exemption or an unrelated replacement finding.
-
-Each release receipt must include the source commit and dirty-state disposition,
-resolved lock/checker hashes and versions, commands and test outcomes including
-skips, static and live advisory reports, inspected frontend file manifest/digest,
-installation/update/rollback scope, relevant fixture hashes, and actual hardware or
-provider receipts when performed. Unavailable checks remain explicitly unverified.
-Never replace an accepted artifact with an uninspected rebuild during promotion.
+Before release, inspect the exact source, locks, frontend files, installation and
+update/rollback behavior. Protocol fixtures and fake devices do not establish
+physical output. Record hardware/firmware/OS/media and observed outcomes privately,
+and label unavailable native or provider checks clearly. Preserve an accepted
+artifact during publication rather than replacing it with an uninspected rebuild.

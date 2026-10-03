@@ -1,9 +1,27 @@
 # CatLabel MCP
 
-CatLabel's optional MCP add-on lets a harness create and edit saved designs,
+CatLabel's MCP support lets a harness create and edit saved designs,
 import images or PDFs, retrieve PNG previews, export portable designs, discover
 printers and submit prints. It shares the editor's database, React renderer and
 printer services. No AI provider is required in CatLabel.
+
+## Easiest desktop connection
+
+Fresh packaged desktop installations include MCP and preview support by default.
+Choose **Connect AI harness** in the sidebar for the app address and connection
+file location. Existing installations preserve their selected add-ons.
+
+For ChatGPT Work or Codex desktop, open the app address in the harness's built-in
+browser and ask for a label. CatLabel registers the same 22 MCP tool definitions
+as browser site tools, using the same application services and validation. No
+separate MCP configuration or token is needed for this browser route. Site tools
+use the editor's normal authenticated session and remain unavailable on headless
+renderer pages. A compatible browser, model and workspace policy are required;
+see the [official site-tools guide](https://learn.chatgpt.com/docs/webmcp).
+
+The tools edit saved projects, rather than an unsaved canvas. Save first or ask
+the harness to create a named project, then inspect its preview before printing.
+Cloud-only clients cannot reach this computer through a localhost address.
 
 ## Install and start
 
@@ -12,14 +30,29 @@ folder, run `bash ./run.sh --install-mcp` on Linux/macOS, or
 `run.bat --install-mcp` on Windows. MCP also installs the headless Chromium add-on.
 Subsequent normal launches remember the choice. `--skip-mcp` disables the endpoint
 without removing designs or job receipts. Linux is the first acceptance platform;
-native Windows/macOS installation and credential ACLs still need verification.
+Windows/macOS native installation and credential access controls remain unverified.
 
 The endpoint is `http://127.0.0.1:8000/mcp/` by default. If you set
 `CATLABEL_PORT`, use that port in the client configuration too. MCP requires a
 loopback host and its own bearer credential even when the browser editor has no
-sign-in. Keep the app running while a harness uses it.
+sign-in. MCP cannot be enabled on a LAN-bound server; disable it before using
+the optional LAN editor mode. Keep the app running while a harness uses it.
 
-Create a private OpenCode v2 configuration fragment and test readiness:
+For an existing AppImage installation, enable MCP with `--install-mcp` if needed. Use its
+launcher commands to generate the configuration or check readiness:
+
+```sh
+./CatLabel-VERSION-x86_64.AppImage --mcp-config
+./CatLabel-VERSION-x86_64.AppImage --mcp-doctor
+```
+
+Add `--mcp-port 18260` if the app uses port 18260 or
+`--mcp-output /absolute/path/opencode.json` to create a new configuration file.
+Configuration never starts a second server; the doctor requires the app to be
+running. The commands use the installed release and its remembered add-ons.
+
+For a source-folder installation, create the same private OpenCode v2 fragment
+and check readiness:
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=0 ./bin/pixi run --environment mcp-headless --locked --no-install \
@@ -33,7 +66,27 @@ If AI is also enabled, use environment `ai-mcp-headless`. Set `CATLABEL_DATA_DIR
 consistently when using a separate data folder. The doctor launches Chromium and
 checks the authenticated MCP endpoint; it never prints a label.
 
-The generated `data/mcp-opencode.json` contains a `mcp.servers.catlabel` entry.
+On normal startup, CatLabel creates `<data directory>/mcp-opencode-PORT.json`
+automatically, with the selected port in its filename. Set `OPENCODE_CONFIG` to
+that file before starting a new OpenCode session:
+
+```sh
+OPENCODE_CONFIG='/absolute/path/to/data/mcp-opencode-8000.json' opencode
+```
+
+In PowerShell:
+
+```powershell
+$env:OPENCODE_CONFIG = 'C:\absolute\path\to\data\mcp-opencode-8000.json'
+opencode
+```
+
+`OPENCODE_CONFIG` is an additional config layer, not an isolation switch. An
+already-running OpenCode service or project config may need reconnection or the
+entry merged into its own settings. The app does not edit global harness files.
+
+The explicit `config` command instead creates `<data directory>/mcp-opencode.json`
+(or your `--output` path). Both files contain a `mcp.servers.catlabel` entry.
 Its bearer header refers to a private local token file, so the token is not
 printed or embedded in the JSON fragment. Copy that entry into your OpenCode
 project configuration; preserve the project's existing entries. Alternatively,
@@ -97,9 +150,8 @@ for seven days. The artifact quota is 1 GiB. Limits also bound request size,
 image/PDF decoding, document complexity and rendered pixels.
 
 The server supports July `2026-07-28` and legacy `2025-11-25` through the official
-SDK. Ordinary durable job tools work without the Tasks extension. The first
-slice uses local Streamable HTTP. Stdio, SSE, LAN/OAuth, contact sheets and fully
-printer-transformed proofs are deferred. Arbitrary server paths, shell commands,
+SDK. Ordinary durable job tools work without the Tasks extension. The server uses local Streamable HTTP. Stdio, SSE, LAN/OAuth, contact sheets and fully
+printer-transformed proofs are not currently implemented. Arbitrary server paths, shell commands,
 provider credentials and automatic URL downloads are not tools.
 
 The editor notices external saved revisions and offers a reload; it keeps the

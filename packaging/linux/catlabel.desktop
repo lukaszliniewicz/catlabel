@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=CatLabel Studio
+Comment=Design and print Bluetooth thermal labels
+Exec=CatLabel-Launcher
+Icon=catlabel
+Terminal=true
+Categories=Graphics;Utility;
+StartupNotify=false

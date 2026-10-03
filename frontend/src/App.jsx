@@ -8,13 +8,17 @@ import ProjectSwitchDialog from './components/ProjectSwitchDialog';
 import LazyFeature from './components/LazyFeature';
 import HeadlessRenderer from './HeadlessRenderer';
 import { useStore } from './store';
+import { registerSiteTools, siteToolContext } from './utils/siteTools';
 
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'));
+const HarnessConnection = lazy(() => import('./components/HarnessConnection'));
 const AIConfigModal = lazy(() => import('./components/AIConfigModal'));
 const LocalBatchRenderer = lazy(() => import('./components/LocalBatchRenderer'));
 
 function App() {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [isHarnessOpen, setIsHarnessOpen] = useState(false);
+  const [siteTools, setSiteTools] = useState({ state: 'unavailable', count: 0 });
   const [statusNeedsAttention, setStatusNeedsAttention] = useState(false);
   const theme = useStore((state) => state.theme);
   const fetchFonts = useStore((state) => state.fetchFonts);
@@ -40,6 +44,31 @@ function App() {
     if (isNarrowLayout) useStore.setState({ isSidebarCollapsed: true, isPropertiesOpen: false });
     setIsStatusOpen(true);
   };
+
+  useEffect(() => {
+    const context = siteToolContext(document.modelContext, navigator.modelContext);
+    if (isHeadless || !context) return;
+    const controller = new AbortController();
+    let dispose;
+    registerSiteTools(context, {
+      signal: controller.signal,
+      onChange: name => {
+        if (name.startsWith('catlabel_design_') || name.startsWith('catlabel_category_')) useStore.getState().fetchProjects();
+      },
+    }).then(result => {
+      if (controller.signal.aborted) result.dispose();
+      else {
+        dispose = result.dispose;
+        setSiteTools({ state: result.enabled ? 'ready' : 'disabled', count: result.count });
+      }
+    }).catch(error => {
+      if (!controller.signal.aborted) {
+        console.warn('CatLabel site tools could not register.', error);
+        setSiteTools({ state: 'failed', count: 0 });
+      }
+    });
+    return () => { controller.abort(); dispose?.(); };
+  }, [isHeadless]);
 
   useEffect(() => {
     if (isHeadless) return;
@@ -80,7 +109,7 @@ function App() {
   return (
     <main className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans transition-colors duration-300">
       {isNarrowLayout && <h1 className="sr-only">CatLabel Studio</h1>}
-      <Sidebar onOpenStatus={openStatus} statusNeedsAttention={statusNeedsAttention} />
+      <Sidebar onOpenHarness={() => setIsHarnessOpen(true)} onOpenStatus={openStatus} statusNeedsAttention={statusNeedsAttention} />
       <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
         {isNarrowLayout && <div className="flex shrink-0 justify-between gap-2 border-b border-neutral-300 px-2 py-1 dark:border-neutral-700">
           <button type="button" aria-expanded={!isSidebarCollapsed} onClick={toggleSidebar} className="min-h-10 rounded-sm border border-neutral-400 px-3 text-sm">Projects and printers</button>
@@ -101,6 +130,7 @@ function App() {
       )}
       {isPreparingForPrint && <LazyFeature fallback={null} label="print preparation" onError={error => onLocalRenderComplete([], error, pendingPrintJob?.id)}><LocalBatchRenderer onComplete={onLocalRenderComplete} /></LazyFeature>}
       {settingsLoaded && (!onboardingComplete || showOnboarding) && <LazyFeature label="welcome setup" onClose={completeOnboarding}><OnboardingWizard /></LazyFeature>}
+      {isHarnessOpen && <LazyFeature label="harness connection" onClose={() => setIsHarnessOpen(false)}><HarnessConnection onClose={() => setIsHarnessOpen(false)} siteTools={siteTools} /></LazyFeature>}
       {showAiConfig && <LazyFeature label="AI settings" onClose={() => setShowAiConfig(false)}><AIConfigModal onClose={() => setShowAiConfig(false)} /></LazyFeature>}
     </main>
   );
