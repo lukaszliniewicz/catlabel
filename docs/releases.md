@@ -25,7 +25,12 @@ publication.
 
 `build_launcher.ps1 -ReleaseId RELEASE_ID -FrontendSha256 ACCEPTED_FRONTEND_DIGEST`
 builds the selected ZIP, then packages it with pinned PyInstaller. Native Windows
-launcher acceptance must be performed on Windows.
+launcher acceptance must be performed on Windows. The **Windows release assets** GitHub
+Actions workflow builds the launcher on a Windows runner and performs fresh
+installation with MCP and Chromium enabled. Dispatch it with the immutable commit,
+release ID, accepted frontend digest and the SHA-256 of the application ZIP built
+locally. It rejects a ZIP that differs from that accepted artifact. Download the
+`windows-release-assets` workflow artifact only after all steps pass.
 
 ## Linux AppImage
 
@@ -56,3 +61,17 @@ Publish the AppImage and its checksum sidecar, not build logs, private acceptanc
 reports or diagnostic directories. Inspect installation, repeat launch, MCP
 configuration and explicit update/rollback on disposable data before release.
 The source ZIP and AppImage must identify the same source commit and frontend.
+
+## Publication
+
+Keep the application ZIP, Windows launcher and Linux AppImage tied to the same
+commit, release ID and frontend digest. Publish their checksum sidecars and a
+`SHA256SUMS` file alongside the binaries. The portable application ZIP contains
+runtime files and public guides; GitHub's separate source archives contain the
+full development tree.
+
+Create the release against the inspected commit after native packaging checks
+and the repository gates pass. Use direct links to each asset in the release
+notes, and verify the downloaded public bytes against the accepted checksums.
+Native installation checks do not establish Bluetooth or physical print behavior
+on the runner's operating system.

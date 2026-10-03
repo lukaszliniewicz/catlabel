@@ -21,10 +21,22 @@ editor, REST API and MCP.
 
 ## Installation
 
-Download the [source ZIP](https://github.com/lukaszliniewicz/catlabel/archive/refs/heads/main.zip)
-or clone the repository, then extract it to a **writable folder**. For features
-not yet included in a published build, use the current source checkout. Packaged
-builds are listed on the [Releases page](https://github.com/lukaszliniewicz/catlabel/releases).
+**Download v0.3:**
+
+[![Linux AppImage](https://img.shields.io/badge/Download-Linux_AppImage-2563eb?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3/CatLabel-0.3.0-x86_64.AppImage)
+[![Windows launcher](https://img.shields.io/badge/Download-Windows_launcher-2563eb?style=for-the-badge)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3/CatLabel-Launcher.exe)
+[![Portable application ZIP](https://img.shields.io/badge/Download-Portable_ZIP-475569?style=for-the-badge)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3/CatLabel-0.3.0.zip)
+
+On **Linux x86_64**, make the AppImage executable and open it. On **Windows
+x86_64**, put the launcher in a writable folder and double-click it. Fresh
+packaged installs include MCP and preview support by default. These are small
+bootstrap downloads: first setup still needs internet access to install the
+runtime and Chromium. [Checksums and release notes](https://github.com/lukaszliniewicz/catlabel/releases/tag/0.3).
+
+For **macOS or Linux ARM64**, or a browser-only installation, extract the portable
+ZIP to a writable folder and use the scripts below. Developers can
+[download the source](https://github.com/lukaszliniewicz/catlabel/archive/refs/heads/main.zip)
+or clone the repository.
 
 | System | Start CatLabel |
 | --- | --- |
@@ -44,7 +56,7 @@ platform requirements, diagnostics, data paths, updates and rollback.
 
 ### Linux AppImage
 
-When a release provides an x86_64 AppImage, make it executable and run it. First
+Download the x86_64 AppImage above, make it executable and run it. First
 launch installs the locked runtime, MCP and preview support; projects live under `~/.local/share/catlabel`
 by default. Use `--appimage-extract-and-run` if FUSE is unavailable. See the
 [AppImage instructions](docs/installation.md#linux-appimage) for setup and updates.

@@ -1,0 +1,175 @@
+name: Windows release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Full immutable source commit SHA (40 lowercase hexadecimal characters).
+        required: true
+        type: string
+      release_id:
+        description: Semantic version for this release (for example, 0.3.0).
+        required: true
+        type: string
+      frontend_sha256:
+        description: Accepted frontend SHA-256 digest (64 lowercase hexadecimal characters).
+        required: true
+        type: string
+      archive_sha256:
+        description: Archive SHA-256 digest from the accepted Linux build (64 lowercase hexadecimal characters).
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-release:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      RELEASE_ID: ${{ inputs.release_id }}
+      FRONTEND_SHA256: ${{ inputs.frontend_sha256 }}
+      ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
+    steps:
+      - name: Validate workflow inputs
+        shell: pwsh
+        run: |
+          if ($env:SOURCE_COMMIT -cnotmatch '\A[0-9a-f]{40}\z') {
+            throw 'source_commit must contain exactly 40 lowercase hexadecimal characters.'
+          }
+          if ($env:FRONTEND_SHA256 -cnotmatch '\A[0-9a-f]{64}\z') {
+            throw 'frontend_sha256 must contain exactly 64 lowercase hexadecimal characters.'
+          }
+          if ($env:ARCHIVE_SHA256 -cnotmatch '\A[0-9a-f]{64}\z') {
+            throw 'archive_sha256 must contain exactly 64 lowercase hexadecimal characters.'
+          }
+
+          $identifier = '(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)'
+          $semverPattern = "\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-($identifier(?:\.$identifier)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?\z"
+          if ($env:RELEASE_ID.Length -gt 64 -or $env:RELEASE_ID -cnotmatch $semverPattern) {
+            throw 'release_id must be a valid semantic version of at most 64 characters.'
+          }
+
+      - name: Checkout immutable release source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Assert selected source commit
+        shell: pwsh
+        run: |
+          $checkedOutCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw 'git rev-parse failed while checking the selected source commit.'
+          }
+          if ($checkedOutCommit -cne $env:SOURCE_COMMIT) {
+            throw "Checked out $checkedOutCommit instead of the selected source commit."
+          }
+
+      - name: Set up pinned Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11.15'
+
+      - name: Build Windows launcher and release archive
+        shell: pwsh
+        run: |
+          & ./build_launcher.ps1 -ReleaseId $env:RELEASE_ID -FrontendSha256 $env:FRONTEND_SHA256 -SourceCommit $env:SOURCE_COMMIT
+          if ($LASTEXITCODE -ne 0) {
+            throw 'build_launcher.ps1 failed.'
+          }
+
+      - name: Verify accepted archive digest
+        shell: pwsh
+        run: |
+          $archivePath = Join-Path $PWD 'dist/CatLabel-release.zip'
+          $archiveDigest = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($archiveDigest -cne $env:ARCHIVE_SHA256) {
+            throw "Built archive digest $archiveDigest does not match the accepted Linux digest."
+          }
+
+      - name: Smoke test native Windows launcher
+        shell: pwsh
+        run: |
+          $launcherPath = Join-Path $PWD 'dist/CatLabel-Launcher.exe'
+          & $launcherPath --help
+          if ($LASTEXITCODE -ne 0) {
+            throw 'CatLabel-Launcher.exe --help failed.'
+          }
+
+          $installationRoot = Join-Path $env:RUNNER_TEMP 'catlabel-release-smoke'
+          $env:CATLABEL_DATA_DIR = Join-Path $installationRoot 'data'
+          & $launcherPath --installation-root $installationRoot --setup-only
+          if ($LASTEXITCODE -ne 0) {
+            throw 'CatLabel-Launcher.exe setup-only smoke test failed.'
+          }
+
+      - name: Verify active release metadata and feature markers
+        shell: pwsh
+        run: |
+          $installationRoot = Join-Path $env:RUNNER_TEMP 'catlabel-release-smoke'
+          $activeStatePath = Join-Path $installationRoot 'active.json'
+          if (-not (Test-Path -LiteralPath $activeStatePath -PathType Leaf)) {
+            throw 'The launcher did not create active release state.'
+          }
+          $activeState = Get-Content -LiteralPath $activeStatePath -Raw | ConvertFrom-Json
+          if ($activeState.active -cne $env:ARCHIVE_SHA256) {
+            throw 'The active release digest does not match the accepted archive digest.'
+          }
+
+          $selectedSlot = Join-Path (Join-Path $installationRoot '.releases') $env:ARCHIVE_SHA256
+          $manifestPath = Join-Path $selectedSlot 'release-manifest.json'
+          if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+            throw 'The selected release slot manifest is missing.'
+          }
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          if ($manifest.source_commit -cne $env:SOURCE_COMMIT) {
+            throw 'The selected release manifest source_commit does not match the requested commit.'
+          }
+          if ($manifest.frontend_sha256 -cne $env:FRONTEND_SHA256) {
+            throw 'The selected release manifest frontend_sha256 does not match the accepted frontend digest.'
+          }
+          if ($manifest.release_id -cne $env:RELEASE_ID) {
+            throw 'The selected release manifest release_id does not match the requested release ID.'
+          }
+
+          $bootstrapState = Join-Path $selectedSlot '.bootstrap-state'
+          foreach ($marker in @('.mcp-enabled', '.headless-enabled')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $bootstrapState $marker) -PathType Leaf)) {
+              throw "The selected release is missing its $marker feature marker."
+            }
+          }
+
+      - name: Prepare checksummed release assets
+        shell: pwsh
+        run: |
+          $launcherPath = Join-Path $PWD 'dist/CatLabel-Launcher.exe'
+          $releaseArchive = Join-Path $PWD 'dist/CatLabel-release.zip'
+          $namedArchive = Join-Path $PWD "dist/CatLabel-$env:RELEASE_ID.zip"
+
+          $launcherDigest = (Get-FileHash -LiteralPath $launcherPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          Copy-Item -LiteralPath $releaseArchive -Destination $namedArchive
+          $namedArchiveDigest = (Get-FileHash -LiteralPath $namedArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($namedArchiveDigest -cne $env:ARCHIVE_SHA256) {
+            throw 'The named release archive differs from the verified archive.'
+          }
+
+          [System.IO.File]::WriteAllText("$launcherPath.sha256", "$launcherDigest`n", [System.Text.Encoding]::ASCII)
+          [System.IO.File]::WriteAllText("$namedArchive.sha256", "$namedArchiveDigest`n", [System.Text.Encoding]::ASCII)
+
+      - name: Upload Windows release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-release-assets
+          path: |
+            dist/CatLabel-Launcher.exe
+            dist/CatLabel-Launcher.exe.sha256
+            dist/CatLabel-${{ env.RELEASE_ID }}.zip
+            dist/CatLabel-${{ env.RELEASE_ID }}.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

@@ -4,9 +4,21 @@ CatLabel runs a local server and opens your browser when it is ready. The bundle
 frontend needs no Node.js installation, and the setup scripts provide Python
 through a locked Pixi environment.
 
+## Windows launcher
+
+Download `CatLabel-Launcher.exe` from the [latest release](https://github.com/lukaszliniewicz/catlabel/releases/latest),
+place it in a writable folder and double-click it. It installs the locked runtime,
+MCP and preview support on first use. Keep the launcher folder: it also contains
+release slots and your projects. Use `--installation-root` to select another folder.
+
+If you used the v0.2 launcher, close CatLabel and replace the executable **in the
+same folder**. The new launcher detects and reuses projects under
+`catlabel/data`; keep that folder and back it up before upgrading. For subsequent
+packaged updates, use `--update-bundled --setup-only` as described below.
+
 ## Source-folder installation
 
-Download and extract the source, or clone the repository into a writable folder.
+Extract the portable application ZIP, download the source ZIP, or clone the repository into a writable folder.
 Run `run.bat` on Windows or `bash ./run.sh` on Linux/macOS. The scripts resolve
 their own location, and paths containing spaces are supported.
 
@@ -23,7 +35,7 @@ Firefox 128+ or Safari 16.4+.
 
 ## Linux AppImage
 
-When an AppImage is provided with a release, download the x86_64 asset and its
+Download the x86_64 AppImage from the [latest release](https://github.com/lukaszliniewicz/catlabel/releases/latest) and its
 SHA-256 sidecar. Make it executable, then run it:
 
 ```sh
@@ -58,7 +70,7 @@ installation for Linux ARM64.
 
 ## Add-ons and diagnostics
 
-Use these options with the source scripts or the AppImage:
+Use these options with the source scripts, Windows launcher or AppImage:
 
 | Option | Behavior |
 | --- | --- |
@@ -105,6 +117,8 @@ close CatLabel and run:
 ```sh
 ./CatLabel-VERSION-x86_64.AppImage --update-bundled --setup-only
 ```
+
+On Windows, use `CatLabel-Launcher.exe --update-bundled --setup-only` after replacing the executable.
 
 The launcher verifies the archive, prepares a separate release slot, backs up
 SQLite and probes the candidate before atomically selecting it. Failed updates
