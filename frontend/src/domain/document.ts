@@ -12,7 +12,7 @@ interface ItemGeometry extends RecordData {
   rotation?: number;
 }
 
-type CanvasItem = ItemGeometry & (
+export type CanvasItem = ItemGeometry & (
   | { type: 'text'; text?: string; size?: number; font?: string }
   | { type: 'icon_text'; text?: string; icon?: string; size?: number }
   | { type: 'image'; src?: string }

@@ -610,3 +610,20 @@ The shipped27-file frontend matches the inspected artifact.
 [Code cache receipt](reviews/2026-10-02/evidence/phase6-code-cache-receipt.json).
 Stronger element typing, whole-job spooling, broader performance and phase7remain
 active. No physical printer/provider call, foreign native acceptance or promotion.
+
+Phase5 adds a strict typed element geometry/change boundary. Percentage sizes and
+positions resolve to the appropriate canvas axis before millimetre display, centering
+or aspect-preserving image resizing. Invalid numeric dimensions cannot enter the
+helper patch. QR resizing updates both axes atomically in one history revision.
+Opening the panel preserves persisted percentage values and document revision.
+This checks the extracted TS boundary; the whole JSX/store surface is not yet TS.
+
+All206frontend tests in37files pass, including31focused element/properties tests.
+The integrated backend passes776tests with one platform skip, and all ten static
+categories are empty without a baseline change. Parent inspected the clean compiled
+QR controls, one Undo15mm→Redo20mm and the accessible object-selection path.
+Axe has zero violations with one incomplete contrast result. Native keyboard/pointer
+and physical output remain unverified. The shipped27-file frontend matches the
+inspected clean build. [Element receipt](reviews/2026-10-02/evidence/phase5-elements-receipt.json).
+The lightweight paginated project summaries and detail-on-selection work was already
+accepted earlier in phase6; it is not an outstanding implementation task.

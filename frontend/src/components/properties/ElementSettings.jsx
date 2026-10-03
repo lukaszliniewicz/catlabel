@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { AlignCenter, MoveHorizontal, Maximize2, Plus, Bold, Italic, Underline } from 'lucide-react';
 import { MmScrubberInput, ScrubberInput } from '../NumericInput';
 import { calculateAutoFitItem } from '../../utils/rendering';
+import { buildElementChange, centerElement, fitElementWidth, resolveElementDimension } from '../../domain/elementEditing';
 import { inputClass, labelClass } from './styles';
 import FileUploadButton from '../FileUploadButton';
 import LazyFeature from '../LazyFeature';
@@ -32,23 +33,11 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
     updateItem: state.updateItem, deleteItem: state.deleteItem, canvasWidth: state.canvasWidth,
     canvasHeight: state.canvasHeight, batchRecords: state.batchRecords, settings: state.settings, fonts: state.fonts, uploadFont: state.uploadFont
   })));
+  const itemWidth = resolveElementDimension(selectedItem.width, canvasWidth);
+  const itemHeight = resolveElementDimension(selectedItem.height, canvasHeight);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const handleCenterAbsolute = () => {
-    if (!selectedItem) return;
-    const itemW = selectedItem.width || 0;
-
-    let itemH = selectedItem.height || 0;
-    if (!itemH && selectedItem.type === 'text') {
-      const pad = selectedItem.padding !== undefined ? Number(selectedItem.padding) : ((selectedItem.invert || selectedItem.bg_white) ? 4 : 0);
-      const numLines = selectedItem.text ? String(selectedItem.text).split('\n').length : 1;
-      const actualLineHeight = selectedItem.lineHeight ?? (numLines > 1 ? 1.15 : 1);
-      itemH = (selectedItem.size * actualLineHeight * numLines) + (pad * 2);
-    }
-
-    updateItem(selectedId, {
-      x: (canvasWidth - itemW) / 2,
-      y: (canvasHeight - itemH) / 2
-    });
+    updateItem(selectedId, centerElement(selectedItem, canvasWidth, canvasHeight));
   };
 
   const handleMakeFullWidth = () => {
@@ -58,21 +47,7 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
       return;
     }
 
-    let newHeight = selectedItem.height;
-
-    if (selectedItem.type === 'qrcode') {
-      newHeight = canvasWidth;
-    } else if (selectedItem.type === 'image' && selectedItem.width && selectedItem.height) {
-      const ratio = selectedItem.width / selectedItem.height;
-      newHeight = Math.round(canvasWidth / ratio);
-    }
-
-    updateItem(selectedId, {
-      x: 0,
-      width: canvasWidth,
-      height: newHeight,
-      align: 'center'
-    });
+    updateItem(selectedId, fitElementWidth(selectedItem, canvasWidth, canvasHeight));
   };
 
   const handleFitToWidth = () => {
@@ -92,27 +67,16 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
   };
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    let parsedValue = type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value);
-
-    if (selectedItem.type === 'image' && (name === 'width' || name === 'height')) {
-      const ratio = selectedItem.width / selectedItem.height;
-      if (name === 'width') {
-        updateItem(selectedId, { width: parsedValue, height: Math.round(parsedValue / ratio) });
-      } else {
-        updateItem(selectedId, { height: parsedValue, width: Math.round(parsedValue * ratio) });
-      }
-      return;
-    }
-    updateItem(selectedId, { [name]: parsedValue });
+    const patch = buildElementChange(selectedItem, e.target, canvasWidth, canvasHeight);
+    if (patch) updateItem(selectedId, patch);
   };
 
   return <>
             <div className="space-y-4">
               <div>
                 <div className="grid grid-cols-3 gap-2">
-                  <MmScrubberInput name="x" label="X Pos" value={selectedItem.x} onChange={handleChange} />
-                  <MmScrubberInput name="y" label="Y Pos" value={selectedItem.y} onChange={handleChange} />
+                  <MmScrubberInput name="x" label="X Pos" value={resolveElementDimension(selectedItem.x, canvasWidth)} onChange={handleChange} />
+                  <MmScrubberInput name="y" label="Y Pos" value={resolveElementDimension(selectedItem.y, canvasHeight)} onChange={handleChange} />
                   <ScrubberInput name="rotation" label="Rot(°)" value={Math.round(selectedItem.rotation || 0)} onChange={handleChange} />
                 </div>
 
@@ -189,7 +153,7 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
                   </div>
 
                   <div className="flex gap-4 mt-2">
-                    <MmScrubberInput name="width" label="Box Width" value={selectedItem.width || 0} onChange={handleChange} />
+                    <MmScrubberInput name="width" label="Box Width" value={itemWidth} onChange={handleChange} />
                   </div>
 
                   <div className="flex gap-4 mt-2">
@@ -295,8 +259,8 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
                     <textarea id={`${tabId}-html`} name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={8} />
                   </div>
                   <div className="flex gap-4">
-                    <MmScrubberInput name="width" label="Frame Width" value={selectedItem.width} onChange={handleChange} />
-                    <MmScrubberInput name="height" label="Frame Height" value={selectedItem.height} onChange={handleChange} />
+                    <MmScrubberInput name="width" label="Frame Width" value={itemWidth} onChange={handleChange} />
+                    <MmScrubberInput name="height" label="Frame Height" value={itemHeight} onChange={handleChange} />
                   </div>
                 </>
               )}
@@ -304,16 +268,16 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
 
               {selectedItem.type === 'image' && (
                 <div className="flex gap-4">
-                  <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
-                  <MmScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                  <MmScrubberInput name="width" label="Width" value={itemWidth} onChange={handleChange} />
+                  <MmScrubberInput name="height" label="Height" value={itemHeight} onChange={handleChange} />
                 </div>
               )}
 
               {selectedItem.type === 'shape' && (
                 <>
                   <div className="flex gap-4">
-                    <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
-                    <MmScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                    <MmScrubberInput name="width" label="Width" value={itemWidth} onChange={handleChange} />
+                    <MmScrubberInput name="height" label="Height" value={itemHeight} onChange={handleChange} />
                   </div>
                   <div className="flex gap-4 mt-2">
                     <div className="flex-1">
@@ -345,10 +309,7 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
                   </div>
                   <div className="flex gap-4">
                     {/* Scrubbing one axis updates both to maintain the square aspect ratio */}
-                    <MmScrubberInput name="width" label="Size" value={selectedItem.width} onChange={(e) => {
-                      handleChange({ target: { name: 'width', value: e.target.value, type: 'number' } });
-                      handleChange({ target: { name: 'height', value: e.target.value, type: 'number' } });
-                    }} />
+                    <MmScrubberInput name="width" label="Size" value={itemWidth} onChange={handleChange} />
                   </div>
                 </>
               )}
@@ -368,8 +329,8 @@ export default function ElementSettings({ selectedItem, dupCopies, setDupCopies,
                     </select>
                   </div>
                   <div className="flex gap-4">
-                    <MmScrubberInput name="width" label="Width" value={selectedItem.width} onChange={handleChange} />
-                    <MmScrubberInput name="height" label="Height" value={selectedItem.height} onChange={handleChange} />
+                    <MmScrubberInput name="width" label="Width" value={itemWidth} onChange={handleChange} />
+                    <MmScrubberInput name="height" label="Height" value={itemHeight} onChange={handleChange} />
                   </div>
                 </>
               )}

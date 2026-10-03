@@ -144,3 +144,35 @@ test('delayed element icon selection cannot change another document', async () =
   expect(useStore.getState().items[0].icon_src).toBe('new document');
   expect(useStore.getState().apiError).toContain('Nothing was replaced');
 });
+
+
+test('percentage geometry displays millimetres without changing the document until centering', async () => {
+  useStore.setState({ canvasWidth: 400, canvasHeight: 200, currentDpi: 203, currentPage: 0,
+    selectedId: 'percentage', items: [{ id: 'percentage', type: 'image', width: '50%', height: '25%', x: '10%', y: '20%' }] });
+  const revision = useStore.getState().documentRevision;
+  await act(() => root.render(<PropertiesPanel />));
+  await act(() => container.querySelector('[aria-label="Element and layout"]').click());
+  const state = useStore.getState();
+  expect(Number(container.querySelector('input[name="width"]').value)).toBe(Number(state.getPxToMm(200)));
+  expect(Number(container.querySelector('input[name="height"]').value)).toBe(Number(state.getPxToMm(50)));
+  expect(Number(container.querySelector('input[name="x"]').value)).toBe(Number(state.getPxToMm(40)));
+  expect(state.documentRevision).toBe(revision);
+  expect(state.items[0].width).toBe('50%');
+  await act(() => container.querySelector('[aria-label="Center element on canvas"]').click());
+  expect(useStore.getState().items[0]).toMatchObject({ x: 100, y: 75, width: '50%', height: '25%' });
+  expect(useStore.getState().documentRevision).toBe(revision + 1);
+});
+
+test('QR numeric scrubbing changes both axes in one document revision', async () => {
+  useStore.setState({ canvasWidth: 400, canvasHeight: 200, currentDpi: 203, currentPage: 0,
+    selectedId: 'qr', items: [{ id: 'qr', type: 'qrcode', width: 20, height: 20, data: 'fixture' }] });
+  await act(() => root.render(<PropertiesPanel />));
+  await act(() => container.querySelector('[aria-label="Element and layout"]').click());
+  const revision = useStore.getState().documentRevision;
+  const label = container.querySelector('input[name="width"]').labels[0];
+  const pointer = (type, clientX) => { const event = new Event(type, { bubbles: true }); Object.assign(event, { pointerId: 7, clientX, pointerType: 'touch' }); label.dispatchEvent(event); };
+  await act(() => { pointer('pointerdown', 100); pointer('pointermove', 110); pointer('pointerup', 110); });
+  const item = useStore.getState().items[0];
+  expect(item.width).toBe(item.height); expect(item.width).toBeGreaterThan(20);
+  expect(useStore.getState().documentRevision).toBe(revision + 1);
+});
