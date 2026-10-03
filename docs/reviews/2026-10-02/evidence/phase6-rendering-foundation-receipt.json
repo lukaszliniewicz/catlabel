@@ -1,0 +1,233 @@
+{
+  "source_base_commit": "d8b3628eb26c5d11702283f95c89189961d1c390",
+  "source_sha256": {
+    "catlabel/api/main.py": "f41ce0e1de394468762216eb3560fbb570e8f03f3ce768d192cb1deadc640707",
+    "catlabel/api/routes_print.py": "03191d5a736346f946517341eb135156f2bb34019f08ccbc47aae4fd07eefb47",
+    "catlabel/api/routes_project.py": "6ff928349464326d3b2962f1475b06793d7a2bf8809570daf0f6a8c43b2dac54",
+    "catlabel/rendering/renderer.py": "6755e00612887d40d6f9bca8c0b298370915c29d37a26b34c17da2781798b5c0",
+    "catlabel/rendering/template.py": "6245c81ff729222fac42a5921f168142bd8c16dce62b69efb2902bb641adffed",
+    "frontend/package-lock.json": "ae7efcd7aa9a178f81982ff595ff22e6d9fd20508f18754a53e6d2797e67d857",
+    "frontend/src/App.jsx": "cefa43a8c6bb4efe452d0e28e90165f15aaff03b65c8c77e586c8a0dfd480c92",
+    "frontend/src/HeadlessRenderer.jsx": "a0a03c8f11cdc37c8aeaaed9bdff3a2c2c00e8d7eb0f4f5e52c96b26b1ec2998",
+    "frontend/src/components/CanvasItemNode.jsx": "a758991d16c3d61174dc5cc867179659cf17ca56c413e9c1f894c0a3df04914e",
+    "frontend/src/components/HeadlessPage.jsx": "fc3f2a5fb4fef22eb08c4249b8bd9acb2342a8fef18c0cdd23abc837b70a50cf",
+    "frontend/src/components/HtmlLabel.jsx": "db9a3d933b126eafc5d9e1e4b0c0ba54b3e5174632caec6709feaeb3cf107386",
+    "frontend/src/components/IconPicker.jsx": "f12f59ee5726c446a813d82a49379e19d5bbe8be285975511469286766e69359",
+    "frontend/src/components/LocalBatchRenderer.jsx": "e918484856d655ae24bb4a99b16b7d5af3fcfddfdc7d54375ad314214c3c56bd",
+    "frontend/src/components/stateLifecycle.test.js": "a552e63a8b6e02a09e40e33e66fc789e357bf2147e4b8b51d4d2d4815d5819c1",
+    "frontend/src/rendering/readiness.js": "355f88a07a0a4d0548383caa7bd19f20f7e35b57b7b57bc0f84096bd9f69e00d",
+    "frontend/src/rendering/readiness.test.js": "1a35dbb0f524a061f93acf9384312a408ba1bb86f118de737ecb4f08abc9372a",
+    "frontend/src/rendering/useCanvasResources.js": "32bda3a0137369fcab4a21d340e256a3bf112553e9be3d12724b3fd4c467b81e",
+    "frontend/src/rendering/useResourceReady.js": "dd88184ffb60b50d42b7e6c4b23c91e05fc59dd13d24e2866fda35209d2cba66",
+    "frontend/src/store.js": "bbb67d87a00a688318b83b24439efa257deb3a5d1841c04c18ce8ba826e47444",
+    "frontend/src/store.test.js": "b289e38def20ddfac5bc86e9b41c35404590a0be7646eccdb2ca50424650aa58",
+    "frontend/src/utils/rendering.js": "f5af96083f6286eb2d0b365c306d961f110335b22badebd4bf580301201fccbf",
+    "requirements-check.lock": "4f33fa6414364962d9e16cd6309b534f0d504024159f309e03562e049a6e1774",
+    "tests/test_browser_renderer.py": "51465014ce558d0a2e77e9d0c26ffeb697af14e8a923bf001d7184649c571352",
+    "tests/test_gray_preprocessing.py": "a4b5f5cee53acacbfb1d674c8ad862fcda36074ed7d910916e4f1804c4cb6a4a",
+    "tests/test_print_limits.py": "723e8c621067eb7bd8f8d75ce4b63ce4e541a8b79ca39524f6a51df67efc51e5",
+    "tests/test_project_summaries.py": "d61337859c84e3be822e216e0db8ebf6548f75ef89b4536c9f5d9bc8a2a6d0a3"
+  },
+  "frontend_release_manifest_digest": "4834b45e5e33914d87ace0c2535e58ef832fa65ef494ca2daf0c7059a894085c",
+  "frontend_files_sha256": {
+    "frontend/dist/logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423",
+    "frontend/dist/index.html": "c5358475673b7fbf9cd92b49c8b2e2a7db022a05864da353e1d065a064a7d114",
+    "frontend/dist/assets/index-CKtXkEo2.js": "ac583395c031390bcf0d394cf9be7f0665c9cceb8f96cef4c9f19b47753c1ad2",
+    "frontend/dist/assets/AIAssistant-BkBTmet_.js": "90133303eb77f40a883365b845bac54517ea843e02188d8c6fb4a8a9c8c23391",
+    "frontend/dist/assets/AIConfigModal-fOrfyEfd.js": "3741bb48c0404385c5ba71e8d172b3fb66f61d712cff4d080adb7d7827d06be7",
+    "frontend/dist/assets/BatchPrintModal-DctYAlhw.js": "fac57dd478e5293ad849d9aeab110bdef81a31f657d0c144553c3cf8907dbe68",
+    "frontend/dist/assets/DateToolModal-Btt2ZrPX.js": "b2ce403320c8bacd074293cd39bb0736cbe67ec92a7b99cc0a8b63e8f91450b5",
+    "frontend/dist/assets/HtmlPickerModal-DD48U0ji.js": "a7eea1f8a8e52d6759e8cf7b674d1e1ddb7c210d03a3630697e89ba5bb83592d",
+    "frontend/dist/assets/IconPicker-B88RNHAE.js": "56243a83d17d2484ecb35583b234635d58ad75b195da0dc4be7a34141f684774",
+    "frontend/dist/assets/LocalBatchRenderer-Dgd1aaMg.js": "8779caa24b6a5dd7b3a707cc43fca2ea44a77b2b7eca483dc19351008f5f661b",
+    "frontend/dist/assets/OnboardingWizard-CW-kLjGy.js": "e83818e72855d53304cf714c44efbd1c0daab6c132939fd7f6c7455d137c994c",
+    "frontend/dist/assets/TemplateWizardModal-BQRmtWIc.js": "764d54e2aadf2a2d7a45904ff128cfda22a0a6bd9799780708b97d10ea3ca2cb",
+    "frontend/dist/assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+    "frontend/dist/assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+    "frontend/dist/assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+    "frontend/dist/assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+    "frontend/dist/assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+    "frontend/dist/assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+    "frontend/dist/assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+    "frontend/dist/assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+    "frontend/dist/assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+    "frontend/dist/assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+    "frontend/dist/assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+    "frontend/dist/assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+    "frontend/dist/assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+    "frontend/dist/assets/index-BqBjMTqZ.css": "7cc44d105140c041c92f7a99ffdf91655a24764d0e5af3b0a2eebf9fbdbcd48e"
+  },
+  "checked_frontend_matches_shipped": true,
+  "gates": {
+    "backend_run": 730,
+    "backend_passed": 729,
+    "backend_skipped": 1,
+    "frontend_tests": 47,
+    "frontend_test_files": 9,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "production_build_seconds": 1.92,
+    "full_command": "TMPDIR=<workspace scratch> SQLITE_TMPDIR=<workspace scratch> python -m tools.check --lane full --report check-results/phase6-final/static.json",
+    "full_log_sha256": "9e0d976cbf80854f14fe2fdb4efec3e2c70563a885a3224368d66c45e3ab85bd",
+    "full_exit_code": 0
+  },
+  "advisory_provenance": {
+    "resolved_locks_unchanged": true,
+    "prior_zero_finding_receipt": "phase5-document-receipt.json",
+    "no_new_exceptions": true,
+    "live_audit_not_repeated_for_unchanged_locks": true
+  },
+  "rendering": {
+    "app_browser": {
+      "chrome_version": 154,
+      "dpr": 0.8,
+      "two_runs_png_identical": true,
+      "pages": [
+        {
+          "page": 0,
+          "size": [
+            372,
+            372
+          ],
+          "png_sha256": "0f7d0462854c4e32c861c4f99051b92ce691d196c96ef0aa338b8018436bac4f",
+          "rgb_pixel_sha256": "491265920f51f60ea2713c91d7514719e9cd75b13bac86d8aadfca8b152ca3a5"
+        },
+        {
+          "page": 1,
+          "size": [
+            372,
+            372
+          ],
+          "png_sha256": "e9552534a71c3e13bac41fbbc2f27e32fbee905fcce0a62011b3a54b6743fa0d",
+          "rgb_pixel_sha256": "1fb2b4a698832f1481a8dd53c01c7368d2ebaf0b5eb9a9ff701ee297be4e785f"
+        }
+      ],
+      "nonblank_html_object_inspected": true
+    },
+    "async_service": {
+      "browser_version": "153.0.8010.12",
+      "two_concurrent_requests": [
+        [
+          {
+            "size": [
+              372,
+              372
+            ],
+            "mode": "RGB",
+            "pixel_sha256": "00e47ebf93304c4e999c56f4fc49853d4805ead9a25c3449b5e6d93f3e2c941f"
+          },
+          {
+            "size": [
+              372,
+              372
+            ],
+            "mode": "RGB",
+            "pixel_sha256": "6c774d269670b3654eb8c4f20a90d79ccedc0b784d4d6be2aee8a4e3e125f912"
+          }
+        ],
+        [
+          {
+            "size": [
+              372,
+              372
+            ],
+            "mode": "RGB",
+            "pixel_sha256": "00e47ebf93304c4e999c56f4fc49853d4805ead9a25c3449b5e6d93f3e2c941f"
+          },
+          {
+            "size": [
+              372,
+              372
+            ],
+            "mode": "RGB",
+            "pixel_sha256": "6c774d269670b3654eb8c4f20a90d79ccedc0b784d4d6be2aee8a4e3e125f912"
+          }
+        ]
+      ],
+      "wall_seconds": 2.713155471996288,
+      "clean_close_and_fresh_singleton": true,
+      "no_printer_or_provider_calls": true,
+      "pixel_comparison": "Exact within the Playwright Chromium runtime. App browser Chrome154 at DPR0.8 has separate font-antialiasing pixels; both outputs visually inspected and nonblank."
+    },
+    "failed_resources": {
+      "error": "A label image could not be loaded.",
+      "images": []
+    },
+    "empty_code": {
+      "error": "A label code has no value.",
+      "images": []
+    },
+    "export_canvas_pixel_ratio": 1,
+    "readiness": "Fonts, images, HTML and generated codes are awaited per immutable render job; errors are propagated; stale callbacks are ignored.",
+    "cross_runtime_limit": "Chrome153 headless and Chrome154 app-browser pixels differ in font/antialiasing. Exact equality is asserted within each runtime, not across browser versions. Parent inspected nonblank HTML, cat, text and codes.",
+    "excluded_runs": "Early blank HTML captures, exited-preview connection refusal, quota/resource failures and captures before the final export-buffer correction are not final acceptance."
+  },
+  "backend_limits": {
+    "active_jobs_including_decode": 2,
+    "admitted_jobs": 4,
+    "max_deadline_seconds": 120,
+    "request_cleanup_budget_seconds": 8,
+    "shutdown_budget_seconds": 12,
+    "max_encoded_output_characters": 67108864,
+    "identity_marker": "window.__CATLABEL_HEADLESS_VERSION__ === 1",
+    "headless_url": "Explicit loopback application URL, no development-server fallback",
+    "cleanup_failure": "Stops admission; preserves primary error; retains late tasks and failed browser handles for cleanup. Nonresponsive external processes may require process-level termination."
+  },
+  "project_summaries": {
+    "selected_columns": [
+      "id",
+      "name",
+      "category_id",
+      "revision"
+    ],
+    "page_limit": 200,
+    "cursor_order": "Ascending id",
+    "frontend_total_limit": 10000,
+    "large_or_malformed_canvas_test": true,
+    "stale_detail_response_ignored": true,
+    "production_browser_opened_saved_dpi_fixture_mm": [
+      50.8,
+      25.4
+    ],
+    "known_display_tradeoff": "Project-tree batch hint previously inferred from document blobs is absent from summaries; opening and editing still fetch full detail."
+  },
+  "alpha_experiment": "phase6-alpha-results.json",
+  "specialists": [
+    {
+      "profile": "implementer",
+      "configured_model": "gpt-6-luna",
+      "effort": "max",
+      "purpose": "Exact async renderer lifecycle implementation"
+    },
+    {
+      "profile": "implementer",
+      "configured_model": "gpt-6-luna",
+      "effort": "max",
+      "purpose": "Project summary endpoint and isolated tests"
+    },
+    {
+      "profile": "default",
+      "configured_model": "gpt-6.1-sol",
+      "effort": "high",
+      "purpose": "Read-only backend lifecycle review; cleanup finding corrected"
+    }
+  ],
+  "runtime_model_telemetry": "Not independently exposed by harness",
+  "limitations": [
+    "Linux local evidence only; native Windows/macOS remain best effort and untested.",
+    "Physical PD01 and tentative NIIMBOT D111/D100 acceptance remains unverified.",
+    "No printer submission or paid/provider calls in acceptance.",
+    "Remote image CORS/availability and different browser/font runtimes are not universally verified.",
+    "This checkpoint does not complete store/component decomposition, drafts/accessibility, preview virtualization, bounded batch streaming, full performance matrix or maintenance routine."
+  ]
+}

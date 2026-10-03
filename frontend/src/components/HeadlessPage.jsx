@@ -5,6 +5,9 @@ import CanvasItemNode from './CanvasItemNode';
 import HtmlLabel from './HtmlLabel';
 import { buildLabelTemplateMarkup } from '../domain/templates';
 import { getPageItems, getPageLayout } from '../utils/canvasPages';
+import { createRenderReadiness, nextPaint, prepareRenderFonts } from '../rendering/readiness';
+import { useStore } from '../store';
+import { RenderReadinessContext } from '../rendering/useResourceReady';
 
 const renderCanvasBorder = (canvasState) => {
   const width = Math.max(1, Number(canvasState?.width) || 384);
@@ -32,10 +35,29 @@ const renderCanvasBorder = (canvasState) => {
 
 const RENDER_TIMEOUT_MS = 20_000;
 
-export default function HeadlessPage({ state, record, pageIndex, onReady, onError }) {
+export default function HeadlessPage(props) {
+  const { state, onError } = props;
+  const defaultFont = useStore((state) => state.settings?.default_font) || 'Arial';
+  const [prepared, setPrepared] = useState(null);
+  useEffect(() => {
+    let active = true;
+    const deadline = setTimeout(() => {
+      if (active) { active = false; onError?.(new Error('Label fonts did not load within 20 seconds.')); }
+    }, RENDER_TIMEOUT_MS);
+    prepareRenderFonts(state?.items, defaultFont).then(
+      () => { clearTimeout(deadline); if (active) setPrepared(state); },
+      (error) => { clearTimeout(deadline); if (active) onError?.(error); }
+    );
+    return () => { active = false; clearTimeout(deadline); };
+  }, [state, onError, defaultFont]);
+  return prepared === state ? <PreparedPage {...props} /> : null;
+}
+
+function PreparedPage({ state, record, pageIndex, onReady, onError }) {
   const stageRef = useRef(null);
   const containerRef = useRef(null);
   const completedRef = useRef(false);
+  const [readiness] = useState(createRenderReadiness);
   const width = Math.max(1, Number(state?.width) || 384);
   const height = Math.max(1, Number(state?.height) || 384);
   const activeLayout = getPageLayout(state, pageIndex);
@@ -65,40 +87,49 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, onErro
     setHtmlReady(true);
   }, []);
 
-  const captureBoth = useCallback(async () => {
+  const captureBoth = useCallback(async (signal) => {
     if (!containerRef.current || completedRef.current) return;
     try {
       if (document.fonts?.ready) await document.fonts.ready;
-      await new Promise(r => setTimeout(r, 100));
+      await readiness.wait(signal);
+      await nextPaint();
+      if (signal.aborted || completedRef.current) return;
+      const stage = stageRef.current;
+      // Export buffers use document pixels, independent of browser zoom/DPR.
+      stage?.getLayers().forEach((layer) => layer.getCanvas().setPixelRatio(1));
+      stage?.draw();
       const dataUrl = await toPng(containerRef.current, {
         pixelRatio: 1,
+        style: { position: 'static' },
         backgroundColor: 'white',
         useCORS: true,
         cacheBust: true
       });
-      if (completedRef.current) return;
+      if (signal.aborted || completedRef.current) return;
       completedRef.current = true;
       onReady(dataUrl);
     } catch (error) {
-      reportError(error);
+      if (!signal.aborted) reportError(error);
     }
-  }, [onReady, reportError]);
+  }, [onReady, reportError, readiness]);
 
   useEffect(() => {
+    completedRef.current = false;
     const timeoutId = window.setTimeout(() => {
       reportError(new Error(`Label rendering timed out after ${RENDER_TIMEOUT_MS / 1000} seconds.`));
     }, RENDER_TIMEOUT_MS);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => { completedRef.current = true; window.clearTimeout(timeoutId); };
   }, [reportError]);
 
   useEffect(() => {
-    if (htmlReady) {
-      captureBoth();
-    }
+    const controller = new AbortController();
+    if (htmlReady) void captureBoth(controller.signal);
+    return () => controller.abort();
   }, [htmlReady, captureBoth]);
 
   return (
+    <RenderReadinessContext.Provider value={readiness}>
     <div ref={containerRef} style={{ width, height, position: 'absolute', backgroundColor: 'white' }}>
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
         <HtmlLabel
@@ -114,7 +145,7 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, onErro
       </div>
       <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
         <Stage ref={stageRef} width={width} height={height}>
-          <Layer>
+          <Layer listening={false}>
             <Rect x={0} y={0} width={width} height={height} fill="transparent" listening={false} />
             {renderCanvasBorder(state)}
             {pageItems.map((item) => (
@@ -130,5 +161,6 @@ export default function HeadlessPage({ state, record, pageIndex, onReady, onErro
         </Stage>
       </div>
     </div>
+    </RenderReadinessContext.Provider>
   );
 }

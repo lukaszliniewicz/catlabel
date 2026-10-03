@@ -2,7 +2,7 @@ import json
 from threading import RLock
 from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlalchemy.engine import CursorResult
@@ -86,6 +86,40 @@ def create_project(project: ProjectCreate):
 def list_projects():
     with Session(engine) as session:
         return [_project_detail(p) for p in session.exec(select(Project)).all()]
+
+
+@router.get("/api/projects/summaries")
+def list_project_summaries(
+    limit: Annotated[int, Query(ge=1, le=200)] = 200,
+    after_id: Annotated[int, Query(ge=0)] = 0,
+):
+    with Session(engine) as session:
+        rows = session.exec(
+            select(Project.id, Project.name, Project.category_id, Project.revision)
+            .where(col(Project.id) > after_id)
+            .order_by(col(Project.id))
+            .limit(limit + 1)
+        ).all()
+
+    has_more = len(rows) > limit
+    page_rows = rows[:limit]
+    projects: list[dict[str, int | str | None]] = []
+    for project_id, name, category_id, revision in page_rows:
+        assert project_id is not None
+        projects.append(
+            {
+                "id": project_id,
+                "name": name,
+                "category_id": category_id,
+                "revision": revision,
+            }
+        )
+
+    next_after_id: int | None = None
+    if has_more:
+        next_after_id = page_rows[-1][0]
+        assert next_after_id is not None
+    return {"projects": projects, "next_after_id": next_after_id}
 
 
 @router.get("/api/projects/{project_id}")

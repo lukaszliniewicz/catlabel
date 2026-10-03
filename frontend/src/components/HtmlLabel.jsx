@@ -40,7 +40,8 @@ export default function HtmlLabel({
           await document.fonts.ready;
         }
       } catch (error) {
-        console.warn('Font readiness check failed', error);
+        if (!cancelled) onRenderError?.(error);
+        return;
       }
 
       if (cancelled) return;

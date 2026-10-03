@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Konva from 'konva';
 import { applyVars } from '../domain/variables';
+import { useResourceReady } from '../rendering/useResourceReady';
 
 let barcodeModulePromise;
 let qrCodeModulePromise;
@@ -73,6 +74,7 @@ export const processHtmlDynamicElements = async (container, width, height, isCan
         const image = await loadInjectedImage(dataUrl);
         if (isCancelled && isCancelled()) return;
 
+        if (!image) throw new Error('A generated label code could not be loaded.');
         if (image) {
           image.style.maxWidth = '100%';
           image.style.maxHeight = '100%';
@@ -83,7 +85,7 @@ export const processHtmlDynamicElements = async (container, width, height, isCan
         }
       }
     } catch (error) {
-      console.error('Failed to generate dynamic code element', error);
+      throw new Error(`A label code could not be generated: ${error.message || error}`, { cause: error });
     }
   }
 
@@ -92,20 +94,22 @@ export const processHtmlDynamicElements = async (container, width, height, isCan
   // 2. Wait for all injected images to load
   const imgEls = Array.from(container.querySelectorAll('img'));
   await Promise.all(imgEls.map((img) => {
-    if (img.complete) return Promise.resolve();
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
+    if (img.complete) {
+      if (!img.naturalWidth) return Promise.reject(new Error('An HTML label image could not be loaded.'));
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const finish = (error) => {
         window.clearTimeout(timeoutId);
-        img.removeEventListener('load', finish);
-        img.removeEventListener('error', finish);
-        resolve();
+        img.removeEventListener('load', onLoad);
+        img.removeEventListener('error', onError);
+        if (error) reject(error); else resolve();
       };
-      const timeoutId = window.setTimeout(finish, IMAGE_LOAD_TIMEOUT_MS);
-      img.addEventListener('load', finish, { once: true });
-      img.addEventListener('error', finish, { once: true });
+      const onLoad = () => finish(null);
+      const onError = () => finish(new Error('An HTML label image could not be loaded.'));
+      const timeoutId = window.setTimeout(() => finish(new Error('An HTML label image timed out.')), IMAGE_LOAD_TIMEOUT_MS);
+      img.addEventListener('load', onLoad, { once: true });
+      img.addEventListener('error', onError, { once: true });
     });
   }));
 
@@ -190,13 +194,19 @@ export const processHtmlDynamicElements = async (container, width, height, isCan
 export { applyVars };
 
 export const useCodeGenerator = (type, data, barcodeType) => {
-  const [src, setSrc] = useState(null);
+  const [result, setResult] = useState(null);
+  const hasData = data != null && String(data).length > 0;
+  const [emptyError] = useState(() => new Error('A label code has no value.'));
+  const key = JSON.stringify([type, data, barcodeType]);
+  const current = result?.key === key ? result : null;
+  useResourceReady(hasData && Boolean(current), hasData ? current?.error : emptyError);
 
   useEffect(() => {
+    const setSrc = (src, error = null) => setResult({ key, src, error });
     let cancelled = false;
 
     const generate = async () => {
-      if (!data || (type !== 'barcode' && type !== 'qrcode')) {
+      if (!hasData || (type !== 'barcode' && type !== 'qrcode')) {
         if (!cancelled) setSrc(null);
         return;
       }
@@ -223,7 +233,7 @@ export const useCodeGenerator = (type, data, barcodeType) => {
           }
         } catch (error) {
           console.error('Failed to generate barcode', error);
-          if (!cancelled) setSrc(null);
+          if (!cancelled) setSrc(null, error);
         }
 
         return;
@@ -242,7 +252,7 @@ export const useCodeGenerator = (type, data, barcodeType) => {
         }
       } catch (error) {
         console.error('Failed to generate QR code', error);
-        if (!cancelled) setSrc(null);
+        if (!cancelled) setSrc(null, error);
       }
     };
 
@@ -251,9 +261,9 @@ export const useCodeGenerator = (type, data, barcodeType) => {
     return () => {
       cancelled = true;
     };
-  }, [barcodeType, data, type]);
+  }, [barcodeType, data, type, key, hasData]);
 
-  return src;
+  return current?.src || null;
 };
 
 export const resolveDim = (dim, maxDim) => {

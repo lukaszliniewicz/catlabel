@@ -20,7 +20,8 @@ export default function IconPicker({ onClose, onSelect }) {
   useEffect(() => {
     if (!selectedIcon) return;
     
-    const timer = setTimeout(() => {
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
       const svgElement = svgRef.current?.querySelector('svg');
       if (!svgElement) return;
 
@@ -72,6 +73,7 @@ export default function IconPicker({ onClose, onSelect }) {
       
       const img = new Image();
       img.onload = () => {
+        if (cancelled) return;
         const finalCanvas = document.createElement("canvas");
         finalCanvas.width = finalW;
         finalCanvas.height = finalH;
@@ -84,9 +86,9 @@ export default function IconPicker({ onClose, onSelect }) {
         onSelect(finalCanvas.toDataURL("image/png"));
       };
       img.src = "data:image/svg+xml;base64," + btoa(svgData);
-    }, 50);
+    });
 
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; cancelAnimationFrame(frame); };
   }, [selectedIcon, onSelect]);
 
   return createPortal(

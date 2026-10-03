@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import urllib.request
@@ -23,6 +24,7 @@ from ..core.paths import (
 from ..core.release_artifacts import load_release_manifest, verify_artifact_directory
 from ..core.runtime_lease import RuntimeLease
 from ..core.server_security import ServerSecurity
+from ..rendering.template import close_browser_renderer
 from ..services.agent_context import build_agent_context
 from ..services.layout_engine import TEMPLATE_METADATA
 from ..services.uploads import convert_uploaded_pdf, store_uploaded_font
@@ -32,6 +34,8 @@ from .routes_ai import router as ai_router
 from .routes_print import router as print_router
 from .routes_project import router as project_router
 from .security import LocalSecurityMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 def seed_default_presets():
@@ -108,13 +112,19 @@ def release_identity() -> dict[str, str | int] | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     with RuntimeLease(DATA_DIRECTORY):
-        release_identity()
-        create_db_and_tables()
-        migrate_legacy_provider(engine)
-        seed_default_presets()
-        if os.environ.get("CATLABEL_ACCEPTANCE_PROBE") != "1":
-            download_default_fonts()
-        yield
+        try:
+            release_identity()
+            create_db_and_tables()
+            migrate_legacy_provider(engine)
+            seed_default_presets()
+            if os.environ.get("CATLABEL_ACCEPTANCE_PROBE") != "1":
+                download_default_fonts()
+            yield
+        finally:
+            try:
+                await close_browser_renderer()
+            except Exception:
+                logger.exception("Browser renderer cleanup failed during shutdown")
 
 
 security_settings = ServerSecurity.from_environment()

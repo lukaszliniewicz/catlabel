@@ -24,8 +24,8 @@ function App() {
   const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
 
   useEffect(() => {
-    fetchFonts();
-  }, [fetchFonts]);
+    if (!isHeadless) fetchFonts();
+  }, [fetchFonts, isHeadless]);
 
   useEffect(() => {
     const root = window.document.documentElement;

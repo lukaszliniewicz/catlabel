@@ -309,3 +309,43 @@ Phase 5 document foundation is accepted locally. A versioned serializer now incl
 The production browser saved a 600×300 pixel / 300-DPI fixture at 400×200 / 200 DPI, then reloaded it before and after printer discovery: the physical size remained 50.8×25.4 mm. No print job was submitted. Strict TypeScript 5.9.3 covers the new document boundary; JavaScript/JSX callers remain unchecked. Version 7 conflicts with current analysis-tool peers and is deferred.
 
 Full Linux checks pass: 702 backend tests (701 pass, one Windows SDK skip), 42 frontend tests, production build, ten empty static categories and zero Python/npm advisory findings. The shipped 26-file frontend matches the inspected build with canonical digest `dc3521dbda7b0269b9251556b2ac9b9e441d853c9d00fdbc14730c53266a60d1`. [Document receipt](reviews/2026-10-02/evidence/phase5-document-receipt.json). Named store slices, component decomposition, unsaved-work/draft UX, accessibility and phases 6–7 remain active. Windows/macOS and physical devices remain best effort/unverified.
+
+Phase 6 rendering foundation is accepted locally. A per-job readiness contract
+waits for fonts, images, HTML and generated codes, propagates errors and ignores
+stale callbacks. Individual HTML objects now appear in output. Print canvas
+buffers use document pixels independently of browser zoom; fixed readiness sleeps
+are removed. React rendering hooks have separate resource ownership.
+
+The backend uses one owning async Playwright service, with two active/four admitted
+jobs, a job-size deadline, bounded request cleanup and shutdown, and an explicit
+loopback headless identity wait. Decode remains inside the active-job bound.
+Cleanup failure stops admission; successful shutdown permits a fresh service.
+The GPT-6.1 Sol/high source review found a cleanup-failure admission gap, which is
+corrected and covered by fault-injection tests. Hung external SDK processes can
+still require process-level termination; a bounded API wait is not a guarantee
+that such a process has exited.
+
+Paginated project summaries exclude embedded document blobs, and selection fetches
+detail with a stale-response fence. The production browser reopens the saved DPI
+fixture at 50.8×25.4 mm. The former tree batch hint, inferred from full document
+blobs, is absent from summaries. The alpha hoist preserves all four fixed-fixture
+pixel hashes and reduces median preprocessing time by 7.69–15.89×. These are local
+step measurements, not printer throughput or end-to-end p95 results.
+
+Final Linux checks pass: 730 backend tests (729 pass, one Windows-only skip),
+47 frontend tests, production build and ten empty static categories. Resolved
+dependency locks are unchanged, so the preceding zero-advisory receipt carries
+forward without a new live audit. Two actual Chromium requests produce identical
+mixed output and close cleanly; two app-browser captures also match exactly.
+Chrome 153 headless and Chrome 154 app-browser antialiasing differ; cross-version
+pixel equality is not claimed. Both outputs contain the inspected HTML object.
+Quota failures, an exited-preview run and early blank captures are excluded.
+
+The shipped 26-file frontend matches the final inspected build, with canonical
+digest `4834b45e5e33914d87ace0c2535e58ef832fa65ef494ca2daf0c7059a894085c`.
+[Rendering foundation receipt](reviews/2026-10-02/evidence/phase6-rendering-foundation-receipt.json)
+and [alpha measurements](reviews/2026-10-02/evidence/phase6-alpha-results.json).
+Named store/component decomposition, draft and accessibility UX, preview
+virtualization, batch memory/chunking, the broader performance matrix and phase 7
+remain required. No printer or provider calls were made in acceptance; foreign
+native systems and physical printer outcomes remain best effort/unverified.

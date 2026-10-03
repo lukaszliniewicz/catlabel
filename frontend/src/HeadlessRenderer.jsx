@@ -1,10 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HeadlessPage from './components/HeadlessPage';
+import { useStore } from './store';
 import { getPageIndices } from './utils/canvasPages';
 import { getPrintJobCount, getRenderPixelCount, MAX_PRINT_JOBS, MAX_RENDER_PIXELS } from './utils/batchData';
 
 
 export default function HeadlessRenderer() {
+  const [fontsReady, setFontsReady] = useState(false);
+  const [fontError, setFontError] = useState(null);
+  useEffect(() => {
+    window.__CATLABEL_HEADLESS_VERSION__ = 1;
+    let active = true;
+    useStore.getState().fetchFonts().then((loaded) => {
+      if (!active) return;
+      if (loaded === false) setFontError(new Error('Label fonts could not be loaded.'));
+      setFontsReady(true);
+    });
+    return () => { active = false; };
+  }, []);
   const [payload, setPayload] = useState(() => window.__INJECTED_PAYLOAD__ || null);
   useEffect(() => {
     if (payload) return undefined;
@@ -21,19 +34,17 @@ export default function HeadlessRenderer() {
     };
   }, [payload]);
 
-  return payload ? <HeadlessJob payload={payload} /> : null;
+  return payload && fontsReady ? <HeadlessJob payload={payload} initialError={fontError} /> : null;
 }
 
-function HeadlessJob({ payload }) {
+function HeadlessJob({ payload, initialError }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const resultsRef = useRef([]);
   const completedRef = useRef(false);
-  const advanceTimer = useRef(null);
   useEffect(() => {
     completedRef.current = false;
     return () => {
       completedRef.current = true;
-      window.clearTimeout(advanceTimer.current);
     };
   }, []);
 
@@ -51,6 +62,7 @@ function HeadlessJob({ payload }) {
 
 
   const renderPlan = useMemo(() => {
+    if (initialError) return { jobs: [], error: initialError };
     if (!payload) return { jobs: [], error: null };
 
     const canvasState = payload.canvas_state || {};
@@ -97,7 +109,7 @@ function HeadlessJob({ payload }) {
     });
 
     return { jobs, error: null };
-  }, [payload]);
+  }, [payload, initialError]);
   const renderJobs = renderPlan.jobs;
 
   useEffect(() => {
@@ -127,9 +139,7 @@ function HeadlessJob({ payload }) {
       return;
     }
 
-    advanceTimer.current = window.setTimeout(() => {
-      setCurrentIndex((idx) => idx + 1);
-    }, 50);
+    setCurrentIndex((idx) => idx + 1);
   }, [markDone, renderJobs.length]);
 
   const handlePageError = useCallback((error) => {

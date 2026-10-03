@@ -27,6 +27,31 @@ afterEach(() => {
 });
 
 describe('editor store correctness', () => {
+  test('project tree pages summaries without fetching embedded documents', async () => {
+    const api = vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url) => {
+      if (url === '/api/categories') return [];
+      if (url.endsWith('after_id=0')) return { projects: [{ id: 7, name: 'A', revision: 1 }], next_after_id: 7 };
+      if (url.endsWith('after_id=7')) return { projects: [{ id: 9, name: 'B', revision: 2 }], next_after_id: null };
+      throw new Error('Unexpected document fetch');
+    });
+    await useStore.getState().fetchProjects();
+    expect(useStore.getState().projects.map(project => project.id)).toEqual([7, 9]);
+    expect(api).toHaveBeenCalledTimes(3);
+  });
+
+  test('opening summaries fetches detail and ignores an older delayed selection', async () => {
+    let resolveOld;
+    const old = new Promise(resolve => { resolveOld = resolve; });
+    vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url) => url.endsWith('/1') ? old : {
+      id: 2, revision: 3, canvas_state: { items: [{ id: 'new', type: 'text' }] }
+    });
+    const openingOld = useStore.getState().loadProject({ id: 1 });
+    await useStore.getState().loadProject({ id: 2 });
+    resolveOld({ id: 1, revision: 1, canvas_state: { items: [{ id: 'old', type: 'text' }] } });
+    await openingOld;
+    expect(useStore.getState()).toMatchObject({ currentProjectId: 2, currentProjectRevision: 3, items: [{ id: 'new' }] });
+  });
+
   test('saved DPI survives loading without a selected printer', () => {
     useStore.setState({ currentDpi: 203 });
     useStore.getState().loadProject({ id: 1, revision: 2, canvas_state: {
@@ -72,7 +97,7 @@ describe('editor store correctness', () => {
     useStore.setState({ currentProjectId: 42, currentProjectRevision: 3, currentDpi: 300,
       canvasWidth: 600, canvasHeight: 300 });
     const fetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ id: 42, revision: 4 }) });
-    vi.spyOn(apiClient, 'apiJson').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url) => url.startsWith('/api/projects/summaries') ? { projects: [], next_after_id: null } : []);
     if (operation === 'save') await useStore.getState().saveProject('DPI fixture');
     else await useStore.getState().updateProject(42);
     expect(JSON.parse(fetch.mock.calls[0][1].body).canvas_state).toMatchObject({
@@ -162,7 +187,7 @@ describe('editor store correctness', () => {
   ])('%s updates send a revision without replacing the saved canvas', async (_kind, name, category) => {
     useStore.setState({ projects: [{ id: 42, revision: 3 }], items: [{ id: 'unrelated' }] });
     const fetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ id: 42, revision: 4 }) });
-    vi.spyOn(apiClient, 'apiJson').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url) => url.startsWith('/api/projects/summaries') ? { projects: [], next_after_id: null } : []);
     await useStore.getState().updateProject(42, name, category);
     const payload = JSON.parse(fetch.mock.calls[0][1].body);
     expect(payload.expected_revision).toBe(3);
@@ -175,7 +200,7 @@ describe('editor store correctness', () => {
     useStore.getState().loadProject({ id: 42, revision: 3, canvas_state: { items: [] } });
     useStore.setState({ projects: [{ id: 42, revision: 9 }] });
     const fetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ id: 42, revision: 4 }) });
-    vi.spyOn(apiClient, 'apiJson').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url) => url.startsWith('/api/projects/summaries') ? { projects: [], next_after_id: null } : []);
     await useStore.getState().updateProject(42);
     const payload = JSON.parse(fetch.mock.calls[0][1].body);
     expect(payload.expected_revision).toBe(3);

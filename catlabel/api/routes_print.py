@@ -23,7 +23,11 @@ from ..printing.admission import (
     printer_admission,
 )
 from ..rendering.image_payload import decode_image_payloads
-from ..rendering.template import render_via_browser
+from ..rendering.template import (
+    RenderBusyError,
+    RendererStoppedError,
+    render_via_browser_async,
+)
 from ..transport.bluetooth import SppBackend
 
 router = APIRouter(tags=["Print"])
@@ -71,6 +75,25 @@ def _print_http_error(
         exc_info=exc_info,
     )
     return HTTPException(status_code=status_code, detail=detail)
+
+
+def _render_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, (RenderBusyError, RendererStoppedError)):
+        status_code = 503
+    elif isinstance(exc, TimeoutError):
+        status_code = 504
+    elif isinstance(exc, ResourceLimitError):
+        status_code = 422
+    else:
+        status_code = 500
+    return HTTPException(
+        status_code=status_code,
+        detail={
+            "message": str(exc),
+            "stage": "render",
+            "delivery_uncertain": False,
+        },
+    )
 
 
 def _same_device_address(left: str, right: str) -> bool:
@@ -460,12 +483,14 @@ async def print_direct(request: DirectPrintRequest):
     except ResourceLimitError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     split_mode = request.canvas_state.get("splitMode", False)
-    images = await asyncio.to_thread(
-        render_via_browser,
-        request.canvas_state,
-        [request.variables or {}],
-        1,
-    )
+    try:
+        images = await render_via_browser_async(
+            request.canvas_state,
+            [request.variables or {}],
+            1,
+        )
+    except Exception as exc:
+        raise _render_http_error(exc) from exc
     try:
         receipt = await execute_print_jobs(
             request.mac_address, images, split_mode, dither=request.dither
@@ -502,12 +527,14 @@ async def print_batch(request: BatchPrintRequest):
     if not variables_collection:
         variables_collection = [{}]
 
-    images = await asyncio.to_thread(
-        render_via_browser,
-        request.canvas_state,
-        variables_collection,
-        request.copies,
-    )
+    try:
+        images = await render_via_browser_async(
+            request.canvas_state,
+            variables_collection,
+            request.copies,
+        )
+    except Exception as exc:
+        raise _render_http_error(exc) from exc
 
     try:
         return await execute_print_jobs(

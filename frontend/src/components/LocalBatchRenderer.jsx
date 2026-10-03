@@ -14,12 +14,10 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const resultsRef = useRef([]);
   const completedRef = useRef(false);
-  const advanceTimer = useRef(null);
   useEffect(() => {
     completedRef.current = false;
     return () => {
       completedRef.current = true;
-      window.clearTimeout(advanceTimer.current);
     };
   }, []);
 
@@ -70,9 +68,7 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
       return;
     }
 
-    advanceTimer.current = window.setTimeout(() => {
-      setCurrentIndex((idx) => idx + 1);
-    }, 50);
+    setCurrentIndex((idx) => idx + 1);
   }, [jobs.length, onComplete]);
 
   const handlePageError = useCallback((error) => {

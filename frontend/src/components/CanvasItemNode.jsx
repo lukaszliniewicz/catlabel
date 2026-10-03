@@ -1,120 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from 'react-konva';
 import Konva from 'konva';
-import { toPng } from 'html-to-image';
-import { applyVars, calculateAutoFitItem, computeOptimalTextSize, processHtmlDynamicElements, resolveDim, useCodeGenerator } from '../utils/rendering';
+import { applyVars, calculateAutoFitItem, computeOptimalTextSize, resolveDim, useCodeGenerator } from '../utils/rendering';
 import { useStore } from '../store';
-import { sanitizeLabelHtml } from '../utils/htmlSecurity';
+import { useCanvasImage, useHtmlRasterizer } from '../rendering/useCanvasResources';
 
 
-const useHtmlRasterizer = (htmlString, width, height, isTemplate = false, font = 'Arial') => {
-  const [img, setImg] = useState(null);
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      const container = document.createElement('div');
-      container.style.position = 'fixed';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.overflow = 'hidden';
-      container.style.boxSizing = 'border-box';
-      container.style.pointerEvents = 'none';
-      container.style.backgroundColor = 'transparent';
-      container.style.color = 'black';
-      document.body.appendChild(container);
-      containerRef.current = container;
-    }
-
-    return () => {
-      if (containerRef.current && document.body.contains(containerRef.current)) {
-        document.body.removeChild(containerRef.current);
-        containerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!htmlString || width <= 0 || height <= 0 || !containerRef.current) {
-      setImg(null);
-      return undefined;
-    }
-
-    let cancelled = false;
-    const fontFamily = font.split('.')[0];
-    const container = containerRef.current;
-    
-    container.style.width = `${width}px`;
-    container.style.height = `${height}px`;
-    container.style.fontFamily = `'${fontFamily}', sans-serif`;
-    
-    container.innerHTML = sanitizeLabelHtml(htmlString);
-
-    const rasterize = async () => {
-      try {
-        if (document.fonts?.ready) {
-          await document.fonts.ready;
-        }
-      } catch (error) {
-        console.warn('Font readiness check failed', error);
-      }
-
-      if (cancelled) {
-        return;
-      }
-
-      await processHtmlDynamicElements(container, width, height, () => cancelled);
-
-      if (cancelled) {
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        requestAnimationFrame(async () => {
-          try {
-            const dataUrl = await toPng(container, {
-              pixelRatio: 1,
-              useCORS: true
-            });
-
-            if (cancelled) {
-              return;
-            }
-
-            const imageObj = new window.Image();
-            imageObj.onload = () => {
-              if (!cancelled) {
-                setImg(imageObj);
-              }
-            };
-            imageObj.onerror = () => {
-              if (!cancelled) {
-                setImg(null);
-              }
-            };
-            imageObj.src = dataUrl;
-          } catch (error) {
-            console.error('Rasterization failed', error);
-            if (!cancelled) {
-              setImg(null);
-            }
-          }
-        });
-      });
-    };
-
-    rasterize();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [htmlString, width, height, isTemplate, font]);
-
-  return img;
-};
-
-const RasterizedHtml = ({ html, width, height, isTemplate = false, font = 'Arial' }) => {
-  const image = useHtmlRasterizer(html, width, height, isTemplate, font);
+const RasterizedHtml = ({ html, width, height, font = 'Arial' }) => {
+  const image = useHtmlRasterizer(html, width, height, font);
 
   if (!image) {
     return null;
@@ -123,48 +16,16 @@ const RasterizedHtml = ({ html, width, height, isTemplate = false, font = 'Arial
   return <KonvaImage image={image} width={width} height={height} />;
 };
 
-const useImageLoader = (url) => {
-  const [loaded, setLoaded] = React.useState(null);
-
-  React.useEffect(() => {
-    if (!url) return undefined;
-
-    let cancelled = false;
-    const image = new window.Image();
-
-    image.onload = () => {
-      if (!cancelled) {
-        setLoaded({ url, image });
-      }
-    };
-
-    image.onerror = () => {
-      console.warn('Failed to load image or SVG on canvas:', `${String(url).substring(0, 50)}...`);
-      if (!cancelled) {
-        setLoaded({ url, image: null });
-      }
-    };
-
-    image.src = url;
-
-    return () => {
-      cancelled = true;
-      image.onload = null;
-      image.onerror = null;
-    };
-  }, [url]);
-
-  return loaded?.url === url ? loaded.image : null;
-};
-
 const URLImage = ({ src, width, height }) => {
-  const image = useImageLoader(src);
+  const image = useCanvasImage(src);
   const dither = useStore((state) => state.dither);
   const imageRef = useRef(null);
 
   useEffect(() => {
     if (image && imageRef.current && !dither) {
       imageRef.current.cache();
+    } else {
+      imageRef.current?.clearCache();
     }
   }, [image, dither, width, height]);
 
@@ -310,7 +171,8 @@ function CanvasItemNode({
     : {
         x: resolvedX,
         y: resolvedY,
-        rotation: activeItem.rotation || 0
+        rotation: activeItem.rotation || 0,
+        listening: false
       };
 
   if (item.type === 'group') {
@@ -425,7 +287,7 @@ function CanvasItemNode({
     element = (
       <CodeImage
         type={item.type}
-        data={substitutedData || substitutedText || ''}
+        data={substitutedData === 0 ? '0' : (substitutedData || substitutedText || '')}
         barcodeType={item.barcode_type}
         width={visualW}
         height={approxHeight}

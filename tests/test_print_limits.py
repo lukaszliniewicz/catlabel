@@ -13,7 +13,12 @@ from pydantic import ValidationError
 from catlabel.api import routes_print
 from catlabel.core.resource_limits import ResourceLimitError
 from catlabel.rendering.image_payload import decode_image_payloads
-from catlabel.rendering.template import render_via_browser
+from catlabel.rendering.template import (
+    BrowserRenderer,
+    RenderBusyError,
+    RendererStoppedError,
+    render_via_browser,
+)
 
 
 def _png(width: int = 8, height: int = 4) -> str:
@@ -30,7 +35,9 @@ class PrintInputLimitsTests(unittest.IsolatedAsyncioTestCase):
             variables_matrix={str(i): ["a", "b"] for i in range(100)},
         )
         with (
-            patch.object(routes_print, "render_via_browser") as render,
+            patch.object(
+                routes_print, "render_via_browser_async", new=AsyncMock()
+            ) as render,
             patch.object(
                 routes_print, "execute_print_jobs", new=AsyncMock()
             ) as execute,
@@ -46,12 +53,59 @@ class PrintInputLimitsTests(unittest.IsolatedAsyncioTestCase):
             mac_address="fixture", canvas_state={"width": 20001, "height": 1}
         )
         with (
-            patch.object(routes_print, "render_via_browser") as render,
+            patch.object(
+                routes_print, "render_via_browser_async", new=AsyncMock()
+            ) as render,
             self.assertRaises(HTTPException) as raised,
         ):
             await routes_print.print_direct(request)
         self.assertEqual(raised.exception.status_code, 422)
         render.assert_not_called()
+
+    async def test_renderer_failures_map_to_render_http_errors_without_printing(
+        self,
+    ) -> None:
+        direct = routes_print.DirectPrintRequest(mac_address="fixture", canvas_state={})
+        batch = routes_print.BatchPrintRequest(
+            mac_address="fixture", canvas_state={}, variables_list=[{}]
+        )
+        error_cases = (
+            (RenderBusyError, "renderer busy", 503),
+            (RendererStoppedError, "renderer stopped", 503),
+            (TimeoutError, "render deadline", 504),
+            (ResourceLimitError, "render output limit", 422),
+            (RuntimeError, "browser failed", 500),
+        )
+        for request in (direct, batch):
+            for error_type, message, status_code in error_cases:
+                with self.subTest(route=type(request).__name__, error=error_type):
+                    error = error_type(message)
+                    with (
+                        patch.object(
+                            routes_print,
+                            "render_via_browser_async",
+                            new=AsyncMock(side_effect=error),
+                        ) as render,
+                        patch.object(
+                            routes_print, "execute_print_jobs", new=AsyncMock()
+                        ) as execute,
+                        self.assertRaises(HTTPException) as raised,
+                    ):
+                        if isinstance(request, routes_print.DirectPrintRequest):
+                            await routes_print.print_direct(request)
+                        else:
+                            await routes_print.print_batch(request)
+                    self.assertEqual(raised.exception.status_code, status_code)
+                    self.assertEqual(
+                        raised.exception.detail,
+                        {
+                            "message": message,
+                            "stage": "render",
+                            "delivery_uncertain": False,
+                        },
+                    )
+                    render.assert_awaited_once()
+                    execute.assert_not_awaited()
 
     def test_copies_are_strict_and_bounded(self) -> None:
         for copies in (0, 101, True, "2", 1.5):
@@ -134,8 +188,10 @@ class ImagePayloadTests(unittest.TestCase):
 
     def test_backend_render_limit_rejects_before_browser_creation(self) -> None:
         with (
-            patch("catlabel.rendering.template._get_browser") as browser,
+            patch.object(
+                BrowserRenderer, "_ensure_browser", new=AsyncMock()
+            ) as ensure_browser,
             self.assertRaises(ResourceLimitError),
         ):
             render_via_browser({"width": 10000, "height": 10000}, [{}])
-        browser.assert_not_called()
+        ensure_browser.assert_not_awaited()

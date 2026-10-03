@@ -89,11 +89,9 @@ def _preprocess_gray_image(
     blurred = gray.filter(ImageFilter.GaussianBlur(radius=1.0))
     gamma = _auto_gray_gamma(blurred) if gamma_value is None else gamma_value
     transformed = _apply_gamma(blurred, gamma)
+    alpha = _gray_enhance_alpha(transformed)
     enhanced = transformed.point(
-        [
-            max(0, min(255, round(value * _gray_enhance_alpha(transformed))))
-            for value in range(256)
-        ]
+        [max(0, min(255, round(value * alpha))) for value in range(256)]
     )
     equalized = ImageOps.equalize(enhanced)
     return equalized.filter(

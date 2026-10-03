@@ -22,7 +22,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   pages.length = 0;
-  useStore.setState({ ...originalState, items: [], pageLayouts: [], batchRecords: [{}], labelPresets: [] }, true);
+  useStore.setState({ ...originalState, items: [], pageLayouts: [], batchRecords: [{}], labelPresets: [], fetchFonts: vi.fn().mockResolvedValue(true) }, true);
 });
 afterEach(async () => {
   await act(() => root.unmount());

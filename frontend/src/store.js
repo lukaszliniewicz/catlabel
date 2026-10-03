@@ -22,6 +22,7 @@ let nextPrintJobId = 0;
 const errorMessage = (error, fallback) => error?.message || fallback;
 
 let printerProfileRequestId = 0;
+let projectLoadRequestId = 0;
 
 export const useStore = create(withHistory((set, get) => ({
   history: [],
@@ -566,8 +567,25 @@ export const useStore = create(withHistory((set, get) => ({
 
   fetchProjects: async () => {
     try {
+      const loadSummaries = async () => {
+        const projects = [];
+        let afterId = 0;
+        for (let page = 0; page < 50; page += 1) {
+          const result = await apiJson(`/api/projects/summaries?limit=200&after_id=${afterId}`, {}, {
+            validate: isObjectPayload, validationMessage: 'Project summary data is malformed.'
+          });
+          if (!Array.isArray(result.projects)) throw new Error('Project summary data is malformed.');
+          projects.push(...result.projects);
+          if (result.next_after_id == null) return projects;
+          if (!Number.isInteger(result.next_after_id) || result.next_after_id <= afterId) {
+            throw new Error('Project pagination returned an invalid cursor.');
+          }
+          afterId = result.next_after_id;
+        }
+        throw new Error('The project tree exceeds the 10,000-project limit.');
+      };
       const [projects, categories] = await Promise.all([
-        apiJson('/api/projects', {}, { validate: isArrayPayload, validationMessage: 'Project data is malformed.' }),
+        loadSummaries(),
         apiJson('/api/categories', {}, { validate: isArrayPayload, validationMessage: 'Category data is malformed.' })
       ]);
       set({ projects, categories });
@@ -702,14 +720,21 @@ export const useStore = create(withHistory((set, get) => ({
     { history: options.resetHistory ? 'reset' : 'record' }
   ),
 
-  loadProject: (proj) => {
+  loadProject: async (summary) => {
+    const requestId = ++projectLoadRequestId;
     try {
-      get().hydrateCanvasState(proj.canvas_state || {}, {
+      const proj = summary.canvas_state !== undefined ? summary : await apiJson(`/api/projects/${summary.id}`, {}, {
+        validate: isObjectPayload, validationMessage: 'Project data is malformed.'
+      });
+      if (requestId !== projectLoadRequestId) return;
+      if (!isObjectPayload(proj.canvas_state)) throw new Error('The project document is malformed.');
+      get().hydrateCanvasState(proj.canvas_state, {
         currentProjectId: proj.id,
         currentProjectRevision: proj.revision ?? null,
         resetHistory: true
       });
     } catch (error) {
+      if (requestId !== projectLoadRequestId) return;
       set({ apiError: errorMessage(error, 'Failed to open the project.') }, false, { history: 'skip' });
     }
   },
@@ -836,9 +861,11 @@ export const useStore = create(withHistory((set, get) => ({
       });
       style.appendChild(document.createTextNode(css));
       document.head.appendChild(style);
+      return true;
     } catch (e) {
       console.error("Failed to fetch fonts", e);
       set({ apiError: errorMessage(e, 'Failed to load fonts.') });
+      return false;
     }
   },
 
