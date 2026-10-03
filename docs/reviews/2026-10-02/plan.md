@@ -167,3 +167,21 @@ and run the full gate. Keep physical acceptance open until the matching hardware
 is available. Do not infer that importing a newer runtime makes its newer raster
 recipe integrated. Width and first/middle marker helpers without an active path
 remain deferred.
+
+## BLE model coverage follow-up, 3 October
+
+The [upstream issue review](upstream-ble-issues.md) found MXTP-100 Linux logs with
+the same 15-byte/30 ms bottleneck as the physically verified PD01. The accepted
+Linux V5G MTU fix covers that family; physical coverage remains PD01 only.
+Niimbot retains its dedicated 20-byte/10 ms sender. Do not generalize observed
+V5G acceptance to every generic BLE profile.
+
+The next transport packet should expose reported versus verified MTU, effective
+payload, profile cap, chunk count and pacing in diagnostic logs. Check representative
+generic profiles with caps above 20 before opting them into acquisition; retain
+conservative fallback and native-platform isolation. Review upstream's V5X direct
+ATT/L2CAP connection path and tall-page mitigations separately against issues
+#23/#25 and PR #26, with a bounded connection probe, protocol parity and cleanup
+checks before any hardware print. No direct ATT adapter is currently present
+locally. Physical Windows/macOS and additional models require their own runs;
+the user's previous Windows success is context rather than current acceptance.
