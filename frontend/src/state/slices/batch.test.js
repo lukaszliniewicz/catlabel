@@ -77,3 +77,15 @@ test('a print still running after two minutes stays guarded until its receipt ar
     vi.unstubAllGlobals();
   }
 });
+
+test('preparation progress rejects stale callbacks and cannot move backwards', async () => {
+  await useStore.getState().printPages([0]);
+  const id = useStore.getState().pendingPrintJob.id;
+  useStore.getState().reportPrintPreparation(id, 1);
+  useStore.getState().reportPrintPreparation(id, 0);
+  expect(useStore.getState().printPreparationProgress).toEqual({ completed: 1, total: 1 });
+  await useStore.getState().onLocalRenderComplete([], new Error('Cancelled'), id);
+  await useStore.getState().printPages([0]);
+  useStore.getState().reportPrintPreparation(id, 1);
+  expect(useStore.getState().printPreparationProgress).toEqual({ completed: 0, total: 1 });
+});

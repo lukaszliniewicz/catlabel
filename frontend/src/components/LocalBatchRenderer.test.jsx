@@ -28,12 +28,9 @@ const mount = async () => act(() => root.render(<LocalBatchRenderer onComplete={
 
 test('cancelling preparation rejects stale output without completing a physical submission', async () => {
   await mount(); const late = resources.current.onReady;
-  expect(container.querySelector('[role=dialog]').getAttribute('aria-modal')).toBe('true');
-  await act(() => container.querySelector('button').click());
-  expect(complete).toHaveBeenCalledOnce(); expect(complete.mock.calls[0][0]).toEqual([]);
-  expect(complete.mock.calls[0][1].message).toContain('before submission');
+  expect(container.querySelector('[role=dialog]')).toBeNull();
   await act(() => root.render(null)); await act(() => late(png));
-  expect(complete).toHaveBeenCalledOnce();
+  expect(complete).not.toHaveBeenCalled();
   expect(requests.filter(x => x.options.method === 'DELETE')).toHaveLength(1);
   expect(requests.some(x => x.url.includes('/pages/'))).toBe(false);
 });
@@ -54,7 +51,7 @@ test('rendering overlaps one ordered upload and only the final receipt reaches s
   await act(() => { successor = resources.current.onReady(png); });
   expect(requests.filter(x => x.url.includes('/pages/'))).toHaveLength(1);
   await act(async () => { release(); await pending; await successor; });
-  expect(resources.current.pageIndex).toBe(1); expect(container.textContent).toContain('Preparing 2 of 2');
+  expect(resources.current.pageIndex).toBe(1); expect(container.querySelector('[role=dialog]')).toBeNull();
   expect(complete).toHaveBeenCalledWith({ prepared_id: id, total: 2, next_index: 2 }, null, 1);
   for (const request of requests.filter(x => x.url.includes('/pages/'))) {
     expect(request.options.body).toBeInstanceOf(FormData);
@@ -72,10 +69,10 @@ test('cancellation during upload aborts it and its late acknowledgement cannot s
     ? new Promise(resolve => { uploadSignal = options.signal; release = resolve; }) : normal(url, options));
   await mount(); let pending;
   await act(() => { pending = resources.current.onReady(png); });
-  await act(() => container.querySelector('button').click());
+  await act(() => root.render(null));
   expect(uploadSignal.aborted).toBe(true);
   await act(async () => { release({ prepared_id: id, total: 1, next_index: 1 }); await pending; });
-  expect(complete).toHaveBeenCalledOnce(); expect(complete.mock.calls[0][0]).toEqual([]);
+  expect(complete).not.toHaveBeenCalled();
 });
 
 test('a late creation response is discarded after cancellation before the first render', async () => {
@@ -83,10 +80,10 @@ test('a late creation response is discarded after cancellation before the first 
   const normal = apiClient.apiJson.getMockImplementation();
   apiClient.apiJson.mockImplementation((url, options) => url === '/api/print/prepared' ? new Promise(resolve => { release = resolve; }) : normal(url, options));
   await mount(); expect(resources.current).toBeNull();
-  await act(() => container.querySelector('button').click()); await act(() => root.render(null));
+  await act(() => root.render(null));
   await act(() => release({ prepared_id: id, total: 1, next_index: 0 }));
   expect(requests).toEqual([expect.objectContaining({ options: { method: 'DELETE' } })]);
-  expect(complete).toHaveBeenCalledOnce();
+  expect(complete).not.toHaveBeenCalled();
 });
 
 test('bad acknowledgement stops preparation and discards its files', async () => {
@@ -133,9 +130,8 @@ test('cancellation drops a rendered successor waiting behind the current upload'
   expect(resources.current.pageIndex).toBe(1);
   await act(() => { successor = resources.current.onReady(png); });
   expect(resources.current.pageIndex).toBe(1);
-  await act(() => container.querySelector('button').click());
+  await act(() => root.render(null));
   await act(async () => { release({ prepared_id: id, total: 3, next_index: 1 }); await first; await successor; });
   expect(requests.filter(x => x.url.includes('/pages/'))).toHaveLength(1);
-  expect(complete).toHaveBeenCalledOnce();
-  expect(complete.mock.calls[0][0]).toEqual([]);
+  expect(complete).not.toHaveBeenCalled();
 });

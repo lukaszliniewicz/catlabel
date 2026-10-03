@@ -34,6 +34,11 @@ export default function PrinterSettings() {
   const usesRawDensity = caps.density?.scale === 'raw';
   const recommendedMinDensity = caps.density?.recommended_min;
   const recommendedMaxDensity = caps.density?.recommended_max;
+  const hardwareDefaults = [
+    caps.speed?.available && `Speed ${caps.speed.default ?? 'Auto'}`,
+    caps.density?.available && `Density ${caps.density.default ?? 'Auto'}`,
+    caps.energy?.available && `Energy ${caps.energy.default ?? 'Auto'}`,
+  ].filter(Boolean).join(', ');
 
   const request = useRef(0);
   const [save, setSave] = useState({ status: 'idle' });
@@ -96,7 +101,7 @@ export default function PrinterSettings() {
 
       <div className="text-xs text-blue-600 dark:text-blue-400 mb-2">
         {selectedPrinter
-          ? `Hardware Defaults: Speed ${caps.speed?.default ?? 'Auto'}, ${caps.density?.available ? 'Density' : 'Energy'} ${caps.density?.available ? (caps.density.default || 'Auto') : (caps.energy?.default || 'Auto')}`
+          ? hardwareDefaults ? `Hardware Defaults: ${hardwareDefaults}` : 'This printer uses its own hardware defaults.'
           : 'Select a printer to configure device-specific overrides.'}
       </div>
 
@@ -193,6 +198,10 @@ export default function PrinterSettings() {
           </p>
         </div>
       )}
+
+      {selectedPrinter && pInfo.protocol_family === 'v5g' && !caps.speed?.available && <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+        This printer does not expose a speed control. Density adjusts darkness; it is not a speed setting. Bluetooth transfer and printer firmware determine throughput.
+      </p>}
 
       {caps.energy?.available && (
         <div>

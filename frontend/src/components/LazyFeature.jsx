@@ -35,6 +35,6 @@ class FeatureBoundary extends Component {
 }
 
 // React.lazy caches a rejected import; a page reload is the reliable retry path.
-export default function LazyFeature({ children, ...props }) {
-  return <FeatureBoundary {...props}><Suspense fallback={<FeatureNotice {...props} />}>{children}</Suspense></FeatureBoundary>;
+export default function LazyFeature({ children, fallback, ...props }) {
+  return <FeatureBoundary {...props}><Suspense fallback={fallback === undefined ? <FeatureNotice {...props} /> : fallback}>{children}</Suspense></FeatureBoundary>;
 }

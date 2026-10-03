@@ -11,6 +11,7 @@ export default function CanvasPagePreview({ pageIndex, pageNumber, pageCount, pa
   const { isPanning, trRef, snapLines, selectionBox, setSelectionBox, setStagePos, handleDragMove, handleDragEnd, handleItemPointerDown } = interactions;
   const { setCurrentPage, togglePageForPrint, printPages, deletePage, selectItem } = actions;
   const previewRef = useRef(null);
+  const printBusy = useStore(state => state.isPreparingForPrint || state.isPrinting);
   const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined');
   const isInteractive = isActive && showControls;
   const renderContent = visible || isInteractive;
@@ -45,11 +46,12 @@ export default function CanvasPagePreview({ pageIndex, pageNumber, pageCount, pa
         {showControls && (
           <div className="flex gap-3">
             <button type="button"
+              disabled={printBusy}
               onClick={() => printPages([pageIndex])}
-              className="min-h-11 px-1 text-[10px] text-emerald-700 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400 uppercase font-bold tracking-widest transition-colors"
+              className="min-h-11 px-1 text-[10px] text-emerald-700 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400 uppercase font-bold tracking-widest transition-colors disabled:opacity-50"
               aria-label={`Print label ${pageNumber}`} title="Print only this label"
             >
-              Print
+              {printBusy ? 'Printing…' : 'Print'}
             </button>
             <button type="button"
               aria-label={`Duplicate label ${pageNumber}`} onClick={() => useStore.getState().duplicatePage(pageIndex)}

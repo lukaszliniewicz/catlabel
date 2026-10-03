@@ -33,3 +33,14 @@ test('rejected imports preserve surrounding editor and expose close/reload recov
   await act(() => container.querySelector('button').click());
   expect(close).toHaveBeenCalledOnce();
 });
+
+test('background print loading preserves editor focus without a modal fallback', async () => {
+  const Pending = lazy(() => new Promise(() => {}));
+  await act(() => root.render(<button>Print</button>));
+  const button = container.querySelector('button');
+  button.focus();
+  await act(() => root.render(<><button>Print</button><LazyFeature label="print preparation" fallback={<p role="status">Preparing labels…</p>}><Pending /></LazyFeature></>));
+  expect(container.querySelector('[role=dialog]')).toBeNull();
+  expect(document.activeElement).toBe(button);
+  expect(container.querySelector('[role=status]').textContent).toBe('Preparing labels…');
+});

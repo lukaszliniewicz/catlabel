@@ -47,3 +47,13 @@ test('dithering reflects external store changes without an unrelated panel rende
   await mount(); await act(() => useStore.getState().setDither(false));
   expect(container.querySelector('input[type=checkbox]').checked).toBe(false);
 });
+
+test('PD01 explains its speed limitation without advertising an unsupported default', async () => {
+  useStore.setState({ selectedPrinterInfo: { protocol_family: 'v5g', capabilities: {
+    speed: { available: false }, density: { available: true, scale: 'raw', min: 1, max: 200, default: 130 } } } });
+  await mount();
+  expect(container.textContent).toContain('does not expose a speed control');
+  expect(container.textContent).toContain('Density 130');
+  expect(container.textContent).not.toContain('Speed Auto');
+  expect(container.querySelector('input[name=speed]')).toBeNull();
+});

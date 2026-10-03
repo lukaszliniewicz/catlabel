@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { serializeCanvasDocument } from '../domain/document';
 import ConfirmActionDialog from './ConfirmActionDialog';
+import EditorDrawer from './EditorDrawer';
 
 const DRAFT_KEY = 'catlabel_document_draft_v1';
 const MAX_DRAFT_CHARACTERS = 1_500_000;
@@ -20,9 +21,13 @@ const readDraft = () => {
   } catch { return { invalid: true }; }
 };
 
-export default function DocumentStatus() {
+export default function DocumentStatus({ open = false, onClose, onAttentionChange }) {
   const lastPrintReceipt = useStore(state => state.lastPrintReceipt);
   const isPrinting = useStore(state => state.isPrinting);
+  const isPreparing = useStore(state => state.isPreparingForPrint);
+  const progress = useStore(state => state.printPreparationProgress);
+  const pendingPrintJob = useStore(state => state.pendingPrintJob);
+  const onLocalRenderComplete = useStore(state => state.onLocalRenderComplete);
   const dirty = useStore(state => state.isDocumentDirty);
   const status = useStore(state => state.saveStatus);
   const projectId = useStore(state => state.currentProjectId);
@@ -32,6 +37,14 @@ export default function DocumentStatus() {
   const [recoveryConfirmation, setRecoveryConfirmation] = useState(null);
   const pendingDraft = useRef(draft);
   const flushDraft = useRef(null);
+  const documentMessage = status === 'saving' ? 'Saving…' : status === 'failed'
+    ? 'Save failed — your edits are still here' : dirty ? 'Unsaved changes' : projectId ? 'Saved' : 'New design';
+  const printMessage = isPreparing ? progress ? `Preparing ${progress.completed} of ${progress.total} labels…` : 'Preparing labels…' : isPrinting ? 'Submitting labels…' : lastPrintReceipt
+    ? lastPrintReceipt.status === 'submitted'
+      ? `${lastPrintReceipt.submitted} label${lastPrintReceipt.submitted === 1 ? '' : 's'} submitted. Check the physical output; completion is unverified.`
+      : 'No labels were submitted.' : '';
+  const needsAttention = Boolean(draft || notice || status === 'failed');
+  useEffect(() => { onAttentionChange?.(needsAttention); }, [needsAttention, onAttentionChange]);
 
   useEffect(() => {
     let timer;
@@ -105,25 +118,34 @@ export default function DocumentStatus() {
     } catch (error) { setNotice(error.message || 'The recovery copy could not be opened. Your current design was kept.'); }
   };
 
-  return <div className="shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-3 py-2 text-xs">
+  // Stay mounted even with the drawer closed: recovery persistence and unload
+  // protection belong to the editor session, not to the panel's visibility.
+  return <>
+    <span role="status" aria-live="polite" className="sr-only">{documentMessage} {printMessage}{needsAttention ? ' Open Status for recovery or save details.' : ''}</span>
+    {open && <EditorDrawer label="Status" side="left" width={320} onClose={onClose}>
+    <div className="h-full overflow-y-auto p-4 text-xs space-y-5">
+    <h3 className="text-sm font-semibold">Design</h3>
     <div className="flex flex-wrap items-center gap-3">
-      <span role="status" aria-live="polite">{status === 'saving' ? 'Saving…' : status === 'failed'
-        ? 'Save failed — your edits are still here' : dirty ? 'Unsaved changes' : projectId ? 'Saved' : 'New design'}</span>
+      <span>{documentMessage}</span>
       {projectId != null && <button type="button" disabled={status === 'saving' || !dirty}
         onClick={() => updateProject(projectId)} className="border border-neutral-400 dark:border-neutral-600 px-3 py-1 disabled:opacity-50">Save changes</button>}
       {projectId == null && dirty && <span>Use Projects → Save to name this design.</span>}
     </div>
-    {(isPrinting || lastPrintReceipt) && <p role="status" aria-live="polite" className="mt-2">
-      {isPrinting ? 'Submitting labels…' : lastPrintReceipt.status === 'submitted'
-        ? `${lastPrintReceipt.submitted} label${lastPrintReceipt.submitted === 1 ? '' : 's'} submitted. Check the physical output; completion is unverified.` : 'No labels were submitted.'}
-    </p>}
+    {printMessage && <section className="border-t border-neutral-200 pt-4 dark:border-neutral-800"><h3 className="mb-2 text-sm font-semibold">Printing</h3><p>{printMessage}</p>
+      {isPreparing && <>
+        {progress && <progress aria-label="Label rendering progress" max={progress.total} value={progress.completed} className="mt-2 w-full accent-blue-600" />}
+        <button type="button" onClick={() => onLocalRenderComplete([], new Error('Print preparation cancelled before submission.'), pendingPrintJob?.id)} className="mt-3 min-h-10 border border-neutral-400 px-3">Cancel preparation</button>
+        <p className="mt-2">Nothing has been sent to the printer yet.</p>
+      </>}
+    </section>}
     {draft && <div className="mt-2 flex flex-wrap items-center gap-2" role="status">
       <span>{draft.invalid ? 'A browser recovery copy could not be read.' : 'A browser recovery copy is available. Recovering creates a new design.'}</span>
       {!draft.invalid && <button type="button" onClick={() => recover()} className="border border-blue-500 px-3 py-1">Recover as new design</button>}
       <button type="button" onClick={releaseDraft} className="border border-neutral-400 dark:border-neutral-600 px-3 py-1">Discard recovery copy</button>
     </div>}
     {notice && (dirty || !notice.startsWith('Recovered as a new unsaved design.')) && <p role="status" className="mt-2 text-amber-800 dark:text-amber-200">{notice}</p>}
+    </div></EditorDrawer>}
     {recoveryConfirmation && <ConfirmActionDialog title="Recover the browser copy?" message="Recovery creates a new design and replaces the unsaved edits currently in the editor. Save those edits first if you want to keep them."
       actionLabel="Replace edits and recover" cancelLabel="Keep editing" onClose={() => setRecoveryConfirmation(null)} onConfirm={() => recover(recoveryConfirmation)} />}
-  </div>;
+  </>;
 }

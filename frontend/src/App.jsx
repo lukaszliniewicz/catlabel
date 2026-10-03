@@ -1,4 +1,4 @@
-import React, { lazy, useEffect } from 'react';
+import React, { lazy, useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
 import CanvasArea from './components/CanvasArea';
@@ -14,6 +14,8 @@ const AIConfigModal = lazy(() => import('./components/AIConfigModal'));
 const LocalBatchRenderer = lazy(() => import('./components/LocalBatchRenderer'));
 
 function App() {
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [statusNeedsAttention, setStatusNeedsAttention] = useState(false);
   const theme = useStore((state) => state.theme);
   const fetchFonts = useStore((state) => state.fetchFonts);
   const settingsLoaded = useStore((state) => state.settingsLoaded);
@@ -34,6 +36,10 @@ function App() {
   const toggleSidebar = useStore(state => state.toggleSidebar);
   const toggleProperties = useStore(state => state.toggleProperties);
   const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
+  const openStatus = () => {
+    if (isNarrowLayout) useStore.setState({ isSidebarCollapsed: true, isPropertiesOpen: false });
+    setIsStatusOpen(true);
+  };
 
   useEffect(() => {
     if (isHeadless) return;
@@ -74,17 +80,18 @@ function App() {
   return (
     <main className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans transition-colors duration-300">
       {isNarrowLayout && <h1 className="sr-only">CatLabel Studio</h1>}
-      <Sidebar />
+      <Sidebar onOpenStatus={openStatus} statusNeedsAttention={statusNeedsAttention} />
       <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
         {isNarrowLayout && <div className="flex shrink-0 justify-between gap-2 border-b border-neutral-300 px-2 py-1 dark:border-neutral-700">
           <button type="button" aria-expanded={!isSidebarCollapsed} onClick={toggleSidebar} className="min-h-10 rounded-sm border border-neutral-400 px-3 text-sm">Projects and printers</button>
+          <button type="button" aria-expanded={isStatusOpen} onClick={openStatus} className="min-h-10 rounded-sm border border-neutral-400 px-3 text-sm">Status{statusNeedsAttention && <span className="ml-1 text-amber-600" aria-label="Needs attention">●</span>}</button>
           <button type="button" aria-expanded={isPropertiesOpen} onClick={toggleProperties} className="min-h-10 rounded-sm border border-neutral-400 px-3 text-sm">Properties</button>
         </div>}
-        <DocumentStatus />
         <Toolbar />
         <CanvasArea />
       </div>
       <PropertiesPanel />
+      <DocumentStatus open={isStatusOpen} onClose={() => setIsStatusOpen(false)} onAttentionChange={setStatusNeedsAttention} />
       {pendingProjectLoad && <ProjectSwitchDialog />}
       {apiError && (
         <div role="alert" className="fixed bottom-4 left-1/2 z-100 flex max-w-xl -translate-x-1/2 items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-xl dark:border-red-800 dark:bg-red-950 dark:text-red-100">
@@ -92,7 +99,7 @@ function App() {
           <button type="button" onClick={clearApiError} className="font-bold" aria-label="Dismiss error">×</button>
         </div>
       )}
-      {isPreparingForPrint && <LazyFeature label="print preparation" onClose={() => onLocalRenderComplete([], new Error('Print preparation cancelled before submission.'), pendingPrintJob?.id)} onError={error => onLocalRenderComplete([], error, pendingPrintJob?.id)}><LocalBatchRenderer onComplete={onLocalRenderComplete} /></LazyFeature>}
+      {isPreparingForPrint && <LazyFeature fallback={null} label="print preparation" onError={error => onLocalRenderComplete([], error, pendingPrintJob?.id)}><LocalBatchRenderer onComplete={onLocalRenderComplete} /></LazyFeature>}
       {settingsLoaded && (!onboardingComplete || showOnboarding) && <LazyFeature label="welcome setup" onClose={completeOnboarding}><OnboardingWizard /></LazyFeature>}
       {showAiConfig && <LazyFeature label="AI settings" onClose={() => setShowAiConfig(false)}><AIConfigModal onClose={() => setShowAiConfig(false)} /></LazyFeature>}
     </main>

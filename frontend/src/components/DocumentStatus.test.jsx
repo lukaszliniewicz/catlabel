@@ -23,7 +23,7 @@ afterEach(async () => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
-const mount = () => act(() => root.render(<DocumentStatus />));
+const mount = () => act(() => root.render(<DocumentStatus open onClose={() => {}} />));
 const click = text => act(() => [...container.querySelectorAll('button')].find(button => button.textContent === text).click());
 
 test('draft recovery creates an unsaved copy and does not retain ancestor write identity', async () => {
@@ -82,4 +82,31 @@ test('print receipts remain visible with physical completion explicitly unverifi
   useStore.setState({ lastPrintReceipt: { status: 'submitted', submitted: 2, physical_completion: 'unverified' } });
   await mount(); expect(container.textContent).toContain('2 labels submitted'); expect(container.textContent).toContain('completion is unverified');
   await act(() => useStore.setState({ isPrinting: true })); expect(container.textContent).toContain('Submitting labels');
+});
+
+test('closing Status keeps draft persistence and unsaved unload protection active', async () => {
+  vi.useFakeTimers();
+  const attention = vi.fn();
+  await act(() => root.render(<DocumentStatus onAttentionChange={attention} />));
+  expect(document.querySelector('[role=dialog]')).toBeNull();
+  await act(() => useStore.getState().setItems([{ id: 'closed-panel-edit', type: 'text' }]));
+  await act(() => vi.advanceTimersByTime(600));
+  expect(JSON.parse(localStorage.getItem('catlabel_document_draft_v1')).canvas_state.items[0].id).toBe('closed-panel-edit');
+  const event = new Event('beforeunload', { cancelable: true });
+  await act(() => window.dispatchEvent(event));
+  expect(event.defaultPrevented).toBe(true);
+  await act(() => useStore.setState({ saveStatus: 'failed' }));
+  expect(attention).toHaveBeenLastCalledWith(true);
+});
+
+test('Status cancels preparation through the guarded job callback before physical submission', async () => {
+  const pending = { id: 88 };
+  useStore.setState({ pendingPrintJob: pending, isPreparingForPrint: true,
+    printPreparationProgress: { completed: 1, total: 5 } });
+  await mount();
+  expect(container.querySelector('progress').value).toBe(1);
+  await click('Cancel preparation');
+  expect(useStore.getState()).toMatchObject({ pendingPrintJob: null, isPreparingForPrint: false,
+    isPrinting: false, printPreparationProgress: null });
+  expect(useStore.getState().apiError).toContain('cancelled before submission');
 });

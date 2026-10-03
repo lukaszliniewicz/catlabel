@@ -20,6 +20,13 @@ export const createBatchSlice = (set, get) => ({
   selectedPagesForPrint: [],
   isPreparingForPrint: false,
   pendingPrintJob: null,
+  printPreparationProgress: null,
+  reportPrintPreparation: (jobId, completed) => {
+    const state = get();
+    if (!state.isPreparingForPrint || state.pendingPrintJob?.id !== jobId || !state.printPreparationProgress) return;
+    set({ printPreparationProgress: { ...state.printPreparationProgress,
+      completed: Math.max(state.printPreparationProgress.completed, Math.min(completed, state.printPreparationProgress.total)) } });
+  },
   isPrinting: false,
   lastPrintReceipt: null,
   setIsPrinting: (val) => set({ isPrinting: val }),
@@ -83,6 +90,7 @@ export const createBatchSlice = (set, get) => ({
 
     set({
       isPreparingForPrint: true,
+      printPreparationProgress: { completed: 0, total: printJobCount },
       lastPrintReceipt: null,
       pendingPrintJob: {
         id: ++nextPrintJobId,
@@ -101,7 +109,7 @@ export const createBatchSlice = (set, get) => ({
     const pendingPrintJob = state.pendingPrintJob;
 
     if (!pendingPrintJob || pendingPrintJob.id !== jobId || state.isPrinting || !state.isPreparingForPrint) return false;
-    set({ isPreparingForPrint: false });
+    set({ isPreparingForPrint: false, printPreparationProgress: null });
 
     if (renderError) {
       set({ pendingPrintJob: null });

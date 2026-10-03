@@ -748,3 +748,31 @@ Runtime model/effort telemetry was unavailable.
 [Follow-up receipt](reviews/2026-10-02/evidence/upstream-controls-receipt.json)
 records source pins, hashes, validation, local adaptations and remaining limits.
 Physical printing, foreign native acceptance, deployment and push remain unperformed.
+
+### Physical PD01 acceptance and quieter print feedback — 3 October
+
+The standard locked Linux setup completed and the actual app runs locally on port
+18260 because 8000 is occupied by another service. The user confirmed the PD01
+printed the short text test and reported printing larger QR codes. QR scanning
+and Niimbot physical acceptance are not established by that report.
+
+Save, recovery and submission details now live behind Status. Recovery persistence
+and unload protection remain mounted with that panel closed. Preparation no longer
+opens or blurs a full-screen dialog; print buttons display Preparing/Printing and
+remain disabled until the guarded request ends. Progress and cancellation before
+submission remain available inside Status. The parent inspected the compiled app,
+observed both button states, the unobscured canvas and the final submission receipt.
+The test design was saved as a project before refresh.
+
+PD01 settings no longer advertise an unsupported speed default and explain that
+raw density controls darkness rather than a speed command. A Luna/max researcher
+checked current backend and pinned upstream; runtime model metadata was unavailable.
+The user reports good text but very slow, intermittent motion. A no-print-data link
+probe observed public characteristic write sizes of 20 bytes; backend diagnosis
+continues before changing transport pacing or print-head settings.
+
+Frontend lint, typing, 226 tests and production build passed. All ten static policy
+categories remain empty. Existing large optional-chunk warnings and Vulture context
+manager advisories remain. No backend behavior changed in this UI packet.
+[Receipt](reviews/2026-10-02/evidence/printing-ui-receipt.json) records source and
+bundle hashes, evidence boundaries and the pending throughput diagnosis.
