@@ -4,6 +4,7 @@ import Toolbar from './components/Toolbar';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
 import DocumentStatus from './components/DocumentStatus';
+import ProjectSwitchDialog from './components/ProjectSwitchDialog';
 import HeadlessRenderer from './HeadlessRenderer';
 import { useStore } from './store';
 
@@ -23,6 +24,7 @@ function App() {
   const onLocalRenderComplete = useStore((state) => state.onLocalRenderComplete);
   const apiError = useStore((state) => state.apiError);
   const clearApiError = useStore((state) => state.clearApiError);
+  const pendingProjectLoad = useStore(state => state.pendingProjectLoad);
   const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
 
   useEffect(() => {
@@ -61,6 +63,7 @@ function App() {
         <CanvasArea />
       </div>
       <PropertiesPanel />
+      {pendingProjectLoad && <ProjectSwitchDialog />}
       {apiError && (
         <div role="alert" className="fixed bottom-4 left-1/2 z-100 flex max-w-xl -translate-x-1/2 items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-xl dark:border-red-800 dark:bg-red-950 dark:text-red-100">
           <span className="flex-1">{apiError}</span>

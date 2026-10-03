@@ -10,6 +10,13 @@ export const createPersistenceSlice = (set, get) => ({
   categories: [],
   currentProjectId: null,
   currentProjectRevision: null,
+  pendingProjectLoad: null,
+  cancelProjectLoad: () => set({ pendingProjectLoad: null }, false, { history: 'skip' }),
+  confirmProjectLoad: () => {
+    const pending = get().pendingProjectLoad;
+    if (!pending) return false;
+    return get().loadProject(pending.summary, pending);
+  },
   setCurrentProjectId: (id, revision = null) => set({
     currentProjectId: id,
     currentProjectRevision: Number.isInteger(revision) && revision > 0 ? revision : null
@@ -174,10 +181,18 @@ export const createPersistenceSlice = (set, get) => ({
       set({ apiError: errorMessage(e, 'Failed to delete the project.') });
     }
   },
-  loadProject: async (summary) => {
-    if (get().isDocumentDirty && !window.confirm('Open this project and replace your unsaved edits?')) return false;
-    const { documentSessionId: session, documentRevision: revision } = get();
+  loadProject: async (summary, approval = null) => {
     const requestId = ++projectLoadRequestId;
+    if (approval && (get().documentSessionId !== approval.session || get().documentRevision !== approval.revision)) {
+      set({ pendingProjectLoad: null, apiError: 'The design changed while confirmation was open. Your edits were kept; open the project again when ready.' }, false, { history: 'skip' });
+      return false;
+    }
+    if (get().isDocumentDirty && !approval) {
+      set({ pendingProjectLoad: { summary, session: get().documentSessionId, revision: get().documentRevision } }, false, { history: 'skip' });
+      return false;
+    }
+    if (get().pendingProjectLoad) set({ pendingProjectLoad: null }, false, { history: 'skip' });
+    const { documentSessionId: session, documentRevision: revision } = get();
     try {
       const proj = summary.canvas_state !== undefined ? summary : await apiJson(`/api/projects/${summary.id}`, {}, {
         validate: isObjectPayload, validationMessage: 'Project data is malformed.'

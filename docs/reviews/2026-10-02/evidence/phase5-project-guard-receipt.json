@@ -1,0 +1,73 @@
+{
+  "source_parent": "f462130cc45a3b9a81301d1a1b3ae1991271e7e0",
+  "scope": "Accessible unsaved project-switch guard and nested modal background ownership",
+  "source_sha256": {
+    "frontend/src/App.jsx": "e110c04d3ae771622fb355f6abb93f87ab773ec710049849eae75bb362843328",
+    "frontend/src/state/slices/persistence.js": "39e47ce057899915091a2e736ee45fa9c4143ae3688e7a9a2f772b12ff455fda",
+    "frontend/src/store.test.js": "f771c4abf8f1a0b322987d97817dd500c5341fd8a2fd734c694279d25e4a3d8e",
+    "frontend/src/utils/useDialogAccessibility.js": "f94fb4d62f5e17051e4650f9a3e008025be889d6270dcb1140f3d6dfda7d147a",
+    "frontend/src/components/ProjectSwitchDialog.jsx": "922739a127312778ee560de4c998d50b79e6e9742f829dc5c6e316259b9f9c82",
+    "frontend/src/components/ProjectSwitchDialog.test.jsx": "2bf92f15180935fb7941a12695d49c979868d8fa2fd55251d7994c66167597bb"
+  },
+  "checks": {
+    "frontend_tests": 63,
+    "files": 12,
+    "eslint": "pass",
+    "frontend_typing": "pass",
+    "knip": "pass",
+    "frontend_cycles": [],
+    "production_build_seconds": 0.833,
+    "python": "Unchanged by this UI scope; preceding zero-debt receipt carries forward; concurrent PDF patch is separately accepted"
+  },
+  "browser": {
+    "accepted": [
+      "Keep editing leaves unsaved design",
+      "Explicit discard opens saved document at50.8x25.4mm withSavedstatus",
+      "Covered background absent from modal accessibility tree",
+      "Initial focus onKeepediting; close restores prior focus",
+      "Per-page offline print shows contextual rejection"
+    ],
+    "screenshots": [
+      "check-results/phase5-guards/confirmation.png",
+      "check-results/phase5-guards/final.png"
+    ],
+    "activation": "DOM click through documented CDP after ordinary input stalled due earlier native dialog",
+    "limitations": [
+      "Native pointer and keyboard input need clean browser session",
+      "Escape and nested-dialog cleanup are unit-tested",
+      "No physical printer/provider call",
+      "Narrow layout/accessibility acceptance remains"
+    ]
+  },
+  "frontend": {
+    "sha256": "938d95841b7f2eebe8d403f79efbd1fc0416c8b2a448d3deee3923f346ea61ab",
+    "files": {
+      "frontend/dist/assets/AIAssistant-Mwfxf1Mb.js": "34e942ba2a28a6757e6e8d9e819bad8fbdad8f9c74713784db38e427c6bb8dca",
+      "frontend/dist/assets/AIConfigModal-DAYW5RZB.js": "ba0d0a3bcae4f836cf029fcc0f5d0f0ba839ab9d98f1d246b41bfdfbfb7d546a",
+      "frontend/dist/assets/BatchPrintModal-DODYfF11.js": "8936d7bc3638fe058fe07f92b07f28d4810583bd0f3b6a4647dd20a8ce726d74",
+      "frontend/dist/assets/DateToolModal-BBUv3War.js": "73117d99d97e1bdb5fa0a82fb44ac11fc7f913ea356a2e841868c4f0e14271a5",
+      "frontend/dist/assets/HtmlPickerModal-zYqxOAIo.js": "53a51a0407fb886e5dade915cab1b5e764f4c6702d54db88e9f4e0e5d02a3343",
+      "frontend/dist/assets/IconPicker-bfqTv1zJ.js": "7bed8656861ecbdacb6cd2718e01d2de43e6045b019811cf9c5a5db36a19c407",
+      "frontend/dist/assets/LocalBatchRenderer-DqRKLcEl.js": "3a2155008eab134cb01920c2337dd6478c5158aa24d36aacac98b5706b5ee994",
+      "frontend/dist/assets/OnboardingWizard-_ovTT2QE.js": "3aa8b4bf2561ac9dfa09794c9b83de9a776bb1df278968e2e3df8bbf03a6d70f",
+      "frontend/dist/assets/TemplateWizardModal-Om7sYmyH.js": "e8aaea7fe97691873ee7063e9ab6310b1662571d16941d7c196cbb5c481c59dd",
+      "frontend/dist/assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+      "frontend/dist/assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+      "frontend/dist/assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+      "frontend/dist/assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+      "frontend/dist/assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+      "frontend/dist/assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+      "frontend/dist/assets/index-BDFKj0lo.js": "31f1fb7ed49f8fffcd65fd02a18c5fada22eabfac3e89209c9b220de71f42e5d",
+      "frontend/dist/assets/index-iaLsSuya.css": "341e525a6b9f47e8b17daaf2ba1073c85ffc26d63047f91dc0a37d20463e5cd5",
+      "frontend/dist/assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+      "frontend/dist/assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+      "frontend/dist/assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+      "frontend/dist/assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+      "frontend/dist/assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+      "frontend/dist/assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+      "frontend/dist/assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+      "frontend/dist/index.html": "4f6e478a0a1841adb4119799bd39009974f7c40816a3832c07a36845e6ed8fd3",
+      "frontend/dist/logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+    }
+  }
+}

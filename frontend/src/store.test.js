@@ -2,7 +2,11 @@ import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { useStore } from './store';
 import * as apiClient from './utils/apiClient';
 
-beforeEach(() => { vi.spyOn(window, 'confirm').mockReturnValue(true); });
+beforeEach(() => { useStore.setState({ pendingProjectLoad: null }, false, { history: 'skip' }); });
+const openProject = (summary) => {
+  const result = useStore.getState().loadProject(summary);
+  return useStore.getState().pendingProjectLoad ? useStore.getState().confirmProjectLoad() : result;
+};
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -46,8 +50,8 @@ describe('editor store correctness', () => {
     vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url) => url.endsWith('/1') ? old : {
       id: 2, revision: 3, canvas_state: { items: [{ id: 'new', type: 'text' }] }
     });
-    const openingOld = useStore.getState().loadProject({ id: 1 });
-    await useStore.getState().loadProject({ id: 2 });
+    const openingOld = openProject({ id: 1 });
+    await openProject({ id: 2 });
     resolveOld({ id: 1, revision: 1, canvas_state: { items: [{ id: 'old', type: 'text' }] } });
     await openingOld;
     expect(useStore.getState()).toMatchObject({ currentProjectId: 2, currentProjectRevision: 3, items: [{ id: 'new' }] });
@@ -55,7 +59,7 @@ describe('editor store correctness', () => {
 
   test('saved DPI survives loading without a selected printer', () => {
     useStore.setState({ currentDpi: 203 });
-    useStore.getState().loadProject({ id: 1, revision: 2, canvas_state: {
+    openProject({ id: 1, revision: 2, canvas_state: {
       document_version: 1, dpi: 300, width: 600, height: 300, items: []
     } });
     expect(useStore.getState()).toMatchObject({ currentDpi: 300, canvasWidth: 600, canvasHeight: 300 });
@@ -64,7 +68,7 @@ describe('editor store correctness', () => {
 
   test('legacy documents retain the current resolution without inventing a saved DPI', () => {
     useStore.setState({ currentDpi: 300 });
-    useStore.getState().loadProject({ id: 1, canvas_state: { width: 600, height: 300, items: [] } });
+    openProject({ id: 1, canvas_state: { width: 600, height: 300, items: [] } });
     expect(useStore.getState()).toMatchObject({ currentDpi: 300, canvasWidth: 600, canvasHeight: 300 });
   });
 
@@ -73,16 +77,16 @@ describe('editor store correctness', () => {
     useStore.getState().setItems([{ id: 'old', type: 'text' }]);
     await vi.advanceTimersByTimeAsync(450);
     const observed = [];
-    const unsubscribe = useStore.subscribe(state => observed.push({ id: state.currentProjectId,
-      item: state.items[0]?.id, canUndo: state.canUndo, history: state.history.length }));
-    useStore.getState().loadProject({ id: 99, canvas_state: { items: [{ id: 'new', type: 'text' }] } });
+    const unsubscribe = useStore.subscribe((state, previous) => { if (state.items === previous.items) return; observed.push({ id: state.currentProjectId,
+      item: state.items[0]?.id, canUndo: state.canUndo, history: state.history.length }); });
+    openProject({ id: 99, canvas_state: { items: [{ id: 'new', type: 'text' }] } });
     unsubscribe();
     expect(observed).toEqual([{ id: 99, item: 'new', canUndo: false, history: 0 }]);
   });
 
   test('loading against a selected printer preserves millimetres and nested geometry', () => {
     useStore.setState({ currentDpi: 203, selectedPrinter: 'offline', selectedPrinterInfo: { dpi: 203 } });
-    useStore.getState().loadProject({ id: 1, canvas_state: {
+    openProject({ id: 1, canvas_state: {
       document_version: 1, dpi: 300, width: 600, height: 300, items: [{
         id: 'group', type: 'group', x: 300, rotation: 30,
         children: [{ id: 'text', type: 'text', size: 30, x: 150, width: '50%' }]
@@ -108,10 +112,10 @@ describe('editor store correctness', () => {
 
   test('unsupported or over-limit documents preserve the current editor', () => {
     useStore.setState({ currentProjectId: 42, items: [{ id: 'retained', type: 'text' }], currentDpi: 203 });
-    useStore.getState().loadProject({ id: 99, canvas_state: { document_version: 2, items: [] } });
+    openProject({ id: 99, canvas_state: { document_version: 2, items: [] } });
     expect(useStore.getState()).toMatchObject({ currentProjectId: 42, items: [{ id: 'retained' }] });
     expect(useStore.getState().apiError).toContain('document version');
-    useStore.getState().loadProject({ id: 99, canvas_state: { width: 20_001, items: [] } });
+    openProject({ id: 99, canvas_state: { width: 20_001, items: [] } });
     expect(useStore.getState()).toMatchObject({ currentProjectId: 42, items: [{ id: 'retained' }] });
     expect(useStore.getState().apiError).toContain('dimension limit');
   });
@@ -160,7 +164,7 @@ describe('editor store correctness', () => {
     await vi.advanceTimersByTimeAsync(450);
     expect(useStore.getState().canUndo).toBe(true);
 
-    useStore.getState().loadProject({
+    openProject({
       id: 42,
       canvas_state: { width: 300, height: 150, items: [{ id: 'new', type: 'text', text: 'New', pageIndex: 0 }] }
     });
@@ -198,7 +202,7 @@ describe('editor store correctness', () => {
   });
 
   test('canvas saves use the loaded revision rather than a refreshed listing', async () => {
-    useStore.getState().loadProject({ id: 42, revision: 3, canvas_state: { items: [] } });
+    openProject({ id: 42, revision: 3, canvas_state: { items: [] } });
     useStore.setState({ projects: [{ id: 42, revision: 9 }] });
     const fetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ id: 42, revision: 4 }) });
     vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url) => url.startsWith('/api/projects/summaries') ? { projects: [], next_after_id: null } : []);
@@ -210,7 +214,7 @@ describe('editor store correctness', () => {
   });
 
   test('a conflict preserves the loaded revision and edited canvas', async () => {
-    useStore.getState().loadProject({ id: 42, revision: 3, canvas_state: { items: [{ id: 'draft' }] } });
+    openProject({ id: 42, revision: 3, canvas_state: { items: [{ id: 'draft' }] } });
     vi.spyOn(apiClient, 'apiFetch').mockRejectedValue(new Error('A newer revision is saved.'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await useStore.getState().updateProject(42);
@@ -251,14 +255,14 @@ test('edits during save remain dirty and a late save cannot attach to another pr
 
 test('opening a project protects declined and newly made unsaved edits', async () => {
   useStore.getState().setItems([{ id: 'kept', type: 'text' }]);
-  vi.spyOn(window, 'confirm').mockReturnValue(false);
   const fetch = vi.spyOn(apiClient, 'apiJson');
   await useStore.getState().loadProject({ id: 2 });
   expect(fetch).not.toHaveBeenCalled();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  useStore.getState().cancelProjectLoad();
+  expect(useStore.getState().items[0].id).toBe('kept');
   let resolveLoad;
   fetch.mockImplementation(() => new Promise(resolve => { resolveLoad = resolve; }));
-  const opening = useStore.getState().loadProject({ id: 2 });
+  const opening = openProject({ id: 2 });
   useStore.getState().setItems([{ id: 'newer', type: 'text' }]);
   resolveLoad({ id: 2, revision: 1, canvas_state: { items: [] } });
   await opening;
@@ -278,3 +282,15 @@ test('clearing during a save detaches the old request and leaves a saveable new 
   await saving;
   expect(useStore.getState()).toMatchObject({ currentProjectId: null, saveStatus: 'dirty', isDocumentDirty: true });
 });
+
+ test('confirmation cannot discard edits made while the guard was open', async () => {
+  const fetch = vi.spyOn(apiClient, 'apiJson');
+  useStore.getState().setItems([{ id: 'before', type: 'text' }]);
+  await useStore.getState().loadProject({ id: 9 });
+  useStore.getState().setItems([{ id: 'after', type: 'text' }]);
+  await useStore.getState().confirmProjectLoad();
+  expect(fetch).not.toHaveBeenCalled();
+  expect(useStore.getState().pendingProjectLoad).toBeNull();
+  expect(useStore.getState().items[0].id).toBe('after');
+  expect(useStore.getState().apiError).toContain('confirmation was open');
+ });

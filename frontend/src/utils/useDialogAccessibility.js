@@ -10,6 +10,31 @@ const FOCUSABLE = [
 ].join(',');
 
 const openDialogs = [];
+const coveredElements = new WeakMap();
+
+const coverBackground = (dialog) => {
+  const covered = [];
+  for (let branch = dialog; branch?.parentElement; branch = branch.parentElement) {
+    for (const sibling of branch.parentElement.children) {
+      if (sibling === branch) continue;
+      const previous = coveredElements.get(sibling) || { count: 0, wasInert: sibling.hasAttribute('inert') };
+      previous.count += 1;
+      coveredElements.set(sibling, previous);
+      sibling.setAttribute('inert', '');
+      covered.push(sibling);
+    }
+  }
+  return () => {
+    for (const element of covered) {
+      const previous = coveredElements.get(element);
+      previous.count -= 1;
+      if (previous.count === 0) {
+        if (!previous.wasInert) element.removeAttribute('inert');
+        coveredElements.delete(element);
+      }
+    }
+  };
+};
 
 export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) => {
   const dialogRef = useRef(null);
@@ -22,6 +47,8 @@ export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) =
   useEffect(() => {
     const previouslyFocused = document.activeElement;
     const dialog = dialogRef.current;
+    if (!dialog) return;
+    const uncoverBackground = coverBackground(dialog);
     const focusTarget = dialog?.querySelector('[autofocus], [data-dialog-initial-focus]')
       || dialog?.querySelector(FOCUSABLE)
       || dialog;
@@ -60,12 +87,18 @@ export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) =
     };
 
     document.addEventListener('keydown', handleKeyDown);
+    const handleFocus = (event) => {
+      if (openDialogs.at(-1) === dialogRef && !dialog.contains(event.target)) focusTarget?.focus();
+    };
+    document.addEventListener('focusin', handleFocus);
     return () => {
       cancelAnimationFrame(initialFocusFrame);
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('focusin', handleFocus);
       const stackIndex = openDialogs.lastIndexOf(dialogRef);
       if (stackIndex >= 0) openDialogs.splice(stackIndex, 1);
-      previouslyFocused?.focus?.();
+      uncoverBackground();
+      if (previouslyFocused?.isConnected && !previouslyFocused.closest('[inert]')) previouslyFocused.focus?.();
     };
   }, [closeOnEscape]);
 
