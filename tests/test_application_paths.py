@@ -89,7 +89,7 @@ class ApplicationPathsTests(unittest.TestCase):
             ]
         )
         with tempfile.TemporaryDirectory(prefix="catlabel-path-cwd-") as temporary:
-            cwd = Path(temporary) / "default cwd ü"
+            cwd = Path(temporary).resolve() / "default cwd ü"
             cwd.mkdir()
             payload = self._assert_successful_json(self._run_fresh_import(code, cwd))
 
@@ -134,7 +134,7 @@ class ApplicationPathsTests(unittest.TestCase):
             ]
         )
         with tempfile.TemporaryDirectory(prefix="catlabel-path-shared-") as temporary:
-            scratch = Path(temporary)
+            scratch = Path(temporary).resolve()
             shared_data = scratch / "shared data ü"
             working_directories = [scratch / "first cwd", scratch / "second cwd"]
             for cwd in working_directories:
@@ -179,7 +179,7 @@ class ApplicationPathsTests(unittest.TestCase):
             ]
         )
         with tempfile.TemporaryDirectory(prefix="catlabel-path-invalid-") as temporary:
-            cwd = Path(temporary)
+            cwd = Path(temporary).resolve()
             result = self._run_fresh_import(
                 code, cwd, data_directory=Path("relative-data")
             )
@@ -199,7 +199,7 @@ class ApplicationPathsTests(unittest.TestCase):
             ]
         )
         with tempfile.TemporaryDirectory(prefix="catlabel-path-url-") as temporary:
-            cwd = Path(temporary)
+            cwd = Path(temporary).resolve()
             data_directory = cwd / "data ?query#fragment ü"
             payload = self._assert_successful_json(
                 self._run_fresh_import(code, cwd, data_directory=data_directory)
@@ -239,7 +239,7 @@ class ApplicationPathsTests(unittest.TestCase):
             ]
         )
         with tempfile.TemporaryDirectory(prefix="catlabel-path-download-") as temporary:
-            scratch = Path(temporary)
+            scratch = Path(temporary).resolve()
             cwd = scratch / "foreign cwd"
             cwd.mkdir()
             data_directory = scratch / "explicit data"

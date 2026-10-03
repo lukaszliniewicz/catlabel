@@ -1,4 +1,5 @@
 requirements.txt text eol=lf
+requirements-ai.txt text eol=lf
 launcher-requirements.txt text eol=lf
 pixi.toml text eol=lf
 pyproject.toml text eol=lf

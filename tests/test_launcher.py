@@ -19,7 +19,7 @@ class LauncherTests(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory(prefix="catlabel-launcher-")
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.data = self.root / "data"
         self.current = SimpleNamespace(
             path=self.root / "accepted",
@@ -410,6 +410,35 @@ class LauncherTests(unittest.TestCase):
                 self.invoke(*options)
             self.assertEqual(caught.exception.code, 2)
             self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_windows_bootstrap_reconstructs_powershell_module_path(self) -> None:
+        (self.root / "run.ps1").touch()
+        (self.root / "release-manifest.json").write_text("{}", encoding="utf-8")
+        for key in ("PSModulePath", "PSMODULEPATH", "psmodulepath"):
+            with (
+                self.subTest(key=key),
+                mock.patch.dict(
+                    os.environ, {key: "PowerShell-7-only", "UNRELATED": "keep"}
+                ),
+                mock.patch.object(launcher.platform, "system", return_value="Windows"),
+                mock.patch.object(launcher.subprocess, "run") as run,
+            ):
+                launcher.prepare_release(self.root, self.data, [])
+                self.assertEqual(run.call_args.args[0][0], "powershell.exe")
+                environment = run.call_args.kwargs["env"]
+                self.assertFalse(
+                    any(name.casefold() == "psmodulepath" for name in environment)
+                )
+                self.assertEqual(environment["UNRELATED"], "keep")
+                self.assertEqual(environment["CATLABEL_DATA_DIR"], str(self.data))
+
+    def test_nonwindows_child_preserves_powershell_module_path(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {"PSModulePath": "existing-path"}),
+            mock.patch.object(launcher.platform, "system", return_value="Linux"),
+        ):
+            environment = launcher._child_environment(self.data, self.root)
+        self.assertEqual(environment["PSModulePath"], "existing-path")
 
     def test_frozen_linux_child_restores_original_library_path(self) -> None:
         with (

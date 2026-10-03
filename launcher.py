@@ -98,6 +98,12 @@ def _child_environment(data_directory: Path, target_dir: Path) -> dict[str, str]
             environment["LD_LIBRARY_PATH"] = original_library_path
         else:
             environment.pop("LD_LIBRARY_PATH", None)
+    if platform.system() == "Windows":
+        # Python intermediates bypass PowerShell 7's Windows PowerShell path cleanup.
+        # Let Windows PowerShell reconstruct its own compatible module search path.
+        for key in list(environment):
+            if key.casefold() == "psmodulepath":
+                environment.pop(key)
     environment.setdefault("LITELLM_MODE", "PROD")
     environment.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
     return environment

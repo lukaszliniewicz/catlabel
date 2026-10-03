@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class MCPDependencyTests(unittest.TestCase):
     def test_mcp_feature_generates_only_headless_runtime_environments(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
+            root = Path(temporary_directory).resolve()
             (root / "pyproject.toml").write_text(
                 '[project]\nname = "fixture-catlabel"\ndependencies = []\n\n'
                 "[project.optional-dependencies]\n"
@@ -111,11 +111,12 @@ class MCPLauncherTests(unittest.TestCase):
     @unittest.skipUnless(os.name == "posix", "run.sh requires a POSIX shell")
     def test_setup_only_selects_mcp_environment_without_starting_server(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory) / "project"
+            temporary_root = Path(temporary_directory).resolve()
+            root = temporary_root / "project"
             run_script, _binary = self._fake_pixi_checkout(root)
-            state = Path(temporary_directory) / "state"
-            data = Path(temporary_directory) / "data"
-            log = Path(temporary_directory) / "pixi.log"
+            state = temporary_root / "state"
+            data = temporary_root / "data"
+            log = temporary_root / "pixi.log"
             environment = {
                 **os.environ,
                 "CATLABEL_BOOTSTRAP_STATE_DIR": str(state),
@@ -168,12 +169,13 @@ class MCPLauncherTests(unittest.TestCase):
     @unittest.skipUnless(os.name == "posix", "run.sh requires a POSIX shell")
     def test_skip_headless_rejects_active_mcp_before_setup(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory) / "project"
+            temporary_root = Path(temporary_directory).resolve()
+            root = temporary_root / "project"
             run_script, _binary = self._fake_pixi_checkout(root)
-            state = Path(temporary_directory) / "state"
+            state = temporary_root / "state"
             state.mkdir()
             (state / ".mcp-enabled").write_text("1\n", encoding="ascii")
-            log = Path(temporary_directory) / "pixi.log"
+            log = temporary_root / "pixi.log"
             result = subprocess.run(
                 ["bash", str(run_script), "--skip-headless", "--setup-only"],
                 capture_output=True,
@@ -181,7 +183,7 @@ class MCPLauncherTests(unittest.TestCase):
                 env={
                     **os.environ,
                     "CATLABEL_BOOTSTRAP_STATE_DIR": str(state),
-                    "CATLABEL_DATA_DIR": str(Path(temporary_directory) / "data"),
+                    "CATLABEL_DATA_DIR": str(temporary_root / "data"),
                     "PIXILOG": str(log),
                 },
                 text=True,
@@ -194,13 +196,14 @@ class MCPLauncherTests(unittest.TestCase):
     @unittest.skipUnless(os.name == "posix", "run.sh requires a POSIX shell")
     def test_skip_mcp_removes_only_the_mcp_marker(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory) / "project"
+            temporary_root = Path(temporary_directory).resolve()
+            root = temporary_root / "project"
             run_script, _binary = self._fake_pixi_checkout(root)
-            state = Path(temporary_directory) / "state"
+            state = temporary_root / "state"
             state.mkdir()
             (state / ".mcp-enabled").write_text("1\n", encoding="ascii")
             (state / ".headless-enabled").write_text("1\n", encoding="ascii")
-            log = Path(temporary_directory) / "pixi.log"
+            log = temporary_root / "pixi.log"
             result = subprocess.run(
                 ["bash", str(run_script), "--skip-mcp", "--setup-only"],
                 capture_output=True,
@@ -208,7 +211,7 @@ class MCPLauncherTests(unittest.TestCase):
                 env={
                     **os.environ,
                     "CATLABEL_BOOTSTRAP_STATE_DIR": str(state),
-                    "CATLABEL_DATA_DIR": str(Path(temporary_directory) / "data"),
+                    "CATLABEL_DATA_DIR": str(temporary_root / "data"),
                     "PIXILOG": str(log),
                 },
                 text=True,
@@ -257,7 +260,7 @@ class MCPLauncherTests(unittest.TestCase):
 class MCPReleaseLauncherTests(unittest.TestCase):
     def test_runtime_environment_preserves_existing_choices_and_adds_mcp(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
+            root = Path(temporary_directory).resolve()
             cases = (
                 ((), "default"),
                 ((".headless-enabled",), "headless"),
@@ -280,7 +283,7 @@ class MCPReleaseLauncherTests(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
+            root = Path(temporary_directory).resolve()
             data = root / "data"
             data.mkdir()
             ordinary_target = root / "ordinary-target"
@@ -313,7 +316,7 @@ class MCPReleaseLauncherTests(unittest.TestCase):
 
     def test_prepare_release_copies_mcp_selection_and_enables_child(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
+            root = Path(temporary_directory).resolve()
             data = root / "data"
             data.mkdir()
             source_state = root / "source-state"
@@ -339,7 +342,7 @@ class MCPReleaseLauncherTests(unittest.TestCase):
 
     def test_mcp_flags_are_forwarded_and_mutually_exclusive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
+            root = Path(temporary_directory).resolve()
             target = root / "accepted"
             current = SimpleNamespace(
                 path=target,

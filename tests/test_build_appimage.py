@@ -166,6 +166,31 @@ class AppImagePinTests(unittest.TestCase):
             build_appimage.resolve_pinned_tool("runtime", cache, pins={"runtime": pin})
         self.assertEqual(list(cache.iterdir()), [])
 
+    def test_build_host_guard_requires_linux_x86_64(self) -> None:
+        for system, machine in (
+            ("Windows", "AMD64"),
+            ("Darwin", "arm64"),
+            ("Linux", "aarch64"),
+        ):
+            with (
+                self.subTest(system=system, machine=machine),
+                mock.patch.object(
+                    build_appimage.platform, "system", return_value=system
+                ),
+                mock.patch.object(
+                    build_appimage.platform, "machine", return_value=machine
+                ),
+                self.assertRaisesRegex(RuntimeError, "only on Linux x86_64"),
+            ):
+                build_appimage._require_linux_x86_64()
+        with (
+            mock.patch.object(build_appimage.platform, "system", return_value="Linux"),
+            mock.patch.object(
+                build_appimage.platform, "machine", return_value="x86_64"
+            ),
+        ):
+            build_appimage._require_linux_x86_64()
+
     def test_pyinstaller_version_must_match_the_package_pin(self) -> None:
         with (
             mock.patch.object(
@@ -411,6 +436,7 @@ class AppImageBuildTests(unittest.TestCase):
             (frozen / "CatLabel-Launcher").write_bytes(b"frozen launcher fixture")
             return SimpleNamespace(returncode=0)
 
+        self.enterContext(mock.patch.object(build_appimage, "_require_linux_x86_64"))
         self.enterContext(
             mock.patch.object(build_appimage, "_require_pyinstaller_version")
         )
@@ -458,7 +484,8 @@ class AppImageBuildTests(unittest.TestCase):
             result["appimage_sha256"],
             hashlib.sha256(self.output.read_bytes()).hexdigest(),
         )
-        self.assertEqual(self.output.stat().st_mode & 0o777, 0o755)
+        if sys.platform != "win32":
+            self.assertEqual(self.output.stat().st_mode & 0o777, 0o755)
         self.assertEqual(
             self.output.with_suffix(".AppImage.sha256").read_text(encoding="ascii"),
             result["appimage_sha256"] + "\n",
