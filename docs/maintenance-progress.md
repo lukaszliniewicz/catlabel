@@ -776,3 +776,31 @@ categories remain empty. Existing large optional-chunk warnings and Vulture cont
 manager advisories remain. No backend behavior changed in this UI packet.
 [Receipt](reviews/2026-10-02/evidence/printing-ui-receipt.json) records source and
 bundle hashes, evidence boundaries and the pending throughput diagnosis.
+
+### Linux PD01 throughput repair — 3 October
+
+The live link negotiated MTU 248 after BlueZ acquisition while all public write
+characteristic limits remained at 20. The old path subtracted the five-byte reserve
+and paused 30 ms per 15-byte write. V5G now opts into bounded Linux BlueZ acquisition
+before notifications and runtime initialization; verified MTU permits ignoring only
+that stale 20-byte default. Other characteristic limits, the 448-byte profile cap,
+five-byte reserve and 30 ms delay remain. Failure uses conservative public sizing;
+non-Linux and other profiles retain their previous behavior. This uses the guarded
+private workaround in the pinned Bleak 3.0.2 official example.
+
+An actual adapter connection with printer data writes intercepted captured four
+240-byte chunks and one 40-byte chunk for 1000 bytes. The standard app was restarted
+with the change and submitted one identical saved text label. The user confirmed
+it printed smoothly and clearly. Density 100, feed 50 and raster commands remained
+unchanged. This establishes physical acceptance for this Linux PD01 test; API
+receipts still correctly leave physical completion unverified. The user reports
+previous Windows success, but Windows/macOS and Niimbot were not tested now.
+
+The full gate passed 864 backend tests (863 passed, one Windows SDK skip), 226
+frontend tests, production build and ten empty static categories. No baseline or
+ignore was added. Existing optional chunk-size and Vulture advisories remain.
+Luna/max specialists supplied bounded evidence and exact backend implementation;
+the parent reviewed all edits, corrected unverified-sizing compatibility and owned
+live probes, integration and physical acceptance. Runtime model telemetry was
+unavailable. [Receipt](reviews/2026-10-02/evidence/pd01-mtu-receipt.json) records
+source hashes, negotiated/write sizes, validation and acceptance limits.

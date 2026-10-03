@@ -27,6 +27,14 @@ class _NotifyCharacteristic:
     properties = ["notify"]
 
 
+class _StaleMtuCharacteristic(_Characteristic):
+    max_write_without_response_size = 20
+
+
+class _SmallerMtuCharacteristic(_Characteristic):
+    max_write_without_response_size = 100
+
+
 class _Service:
     uuid = "0000ffe0-0000-1000-8000-00805f9b34fb"
 
@@ -43,6 +51,17 @@ class _ImmediateReplyClient:
     async def write_gatt_char(self, char, data, *, response: bool) -> None:
         self.writes.append(bytes(data))
         self.session.handle_notification(self.reply)
+
+
+class _RecordingClient:
+    def __init__(self) -> None:
+        self.writes: list[bytes] = []
+
+    async def write_gatt_char(
+        self, _char: object, data: bytes, *, response: bool
+    ) -> None:
+        _ = response
+        self.writes.append(bytes(data))
 
 
 class BleTransportSessionTests(unittest.IsolatedAsyncioTestCase):
@@ -167,6 +186,94 @@ class BleTransportSessionTests(unittest.IsolatedAsyncioTestCase):
                 reserve=5,
             ),
             18,
+        )
+
+    def test_verified_payload_ignores_stale_default_and_applies_reserve(self) -> None:
+        self.assertEqual(
+            _BleakTransportSession._effective_mtu_payload(
+                _StaleMtuCharacteristic(),
+                245,
+                response=False,
+                reserve=5,
+                verified_payload=245,
+            ),
+            240,
+        )
+
+    def test_unverified_payload_keeps_reported_characteristic_limit(self) -> None:
+        self.assertEqual(
+            _BleakTransportSession._effective_mtu_payload(
+                _StaleMtuCharacteristic(),
+                245,
+                response=False,
+                reserve=5,
+            ),
+            15,
+        )
+
+    def test_verified_payload_honors_a_smaller_characteristic_limit(self) -> None:
+        self.assertEqual(
+            _BleakTransportSession._effective_mtu_payload(
+                _SmallerMtuCharacteristic(),
+                245,
+                response=False,
+                reserve=5,
+                verified_payload=245,
+            ),
+            95,
+        )
+
+    def test_unverified_public_limit_can_exceed_default_fallback(self) -> None:
+        self.assertEqual(
+            _BleakTransportSession._effective_mtu_payload(
+                _SmallerMtuCharacteristic(),
+                20,
+                response=False,
+                reserve=5,
+            ),
+            95,
+        )
+
+    def test_response_write_keeps_fallback_even_with_verified_payload(self) -> None:
+        self.assertEqual(
+            _BleakTransportSession._effective_mtu_payload(
+                _StaleMtuCharacteristic(),
+                245,
+                response=True,
+                reserve=5,
+                verified_payload=245,
+            ),
+            245,
+        )
+
+    async def test_actual_verified_chunks_stay_within_mtu_and_profile_cap(self) -> None:
+        profile = BleTransportProfile(
+            standard_chunk_cap=448,
+            standard_write_delay_ms=0,
+            write_without_response_payload_reserve=5,
+        )
+        session = _BleakTransportSession(
+            transport_profile=profile,
+            write_resolver=_BleWriteEndpointResolver(reporter=reporting.DUMMY_REPORTER),
+            reporter=reporting.DUMMY_REPORTER,
+        )
+        session.bindings.write_char = _StaleMtuCharacteristic()
+        session.bindings.write_selection_strategy = "preferred_uuid"
+        session.bindings.write_response_preference = False
+        client = _RecordingClient()
+        await session.initialize_connection(
+            client,
+            mtu_size=245,
+            timeout=0.1,
+            verified_payload=245,
+        )
+
+        await session.send_standard_payload(b"x" * 721)
+
+        self.assertEqual([len(chunk) for chunk in client.writes], [240, 240, 240, 1])
+        self.assertTrue(all(len(chunk) <= 245 for chunk in client.writes))
+        self.assertTrue(
+            all(len(chunk) <= profile.standard_chunk_cap for chunk in client.writes)
         )
 
     async def test_atomic_query_registers_waiter_before_write(self) -> None:

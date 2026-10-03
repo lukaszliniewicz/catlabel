@@ -54,6 +54,7 @@ class _BleakTransportSession:
         self.flow_can_write = True
         self._client: Any = None
         self._mtu_size = 180
+        self._verified_payload: int | None = None
         # Stateful protocol behavior is selected by the printing layer and
         # attached explicitly. Transport never selects a controller by family.
         self._runtime_controller: Any = None
@@ -274,9 +275,11 @@ class _BleakTransportSession:
         *,
         mtu_size: int,
         timeout: float,
+        verified_payload: int | None = None,
     ) -> None:
         self._client = client
         self._mtu_size = mtu_size
+        self._verified_payload = verified_payload
         _ = timeout
 
     async def send(
@@ -320,6 +323,7 @@ class _BleakTransportSession:
                 mtu_size,
                 response=response,
                 reserve=self._transport_profile.write_without_response_payload_reserve,
+                verified_payload=self._verified_payload,
             )
             await self._write_chunks(
                 client,
@@ -575,10 +579,11 @@ class _BleakTransportSession:
         *,
         response: bool,
         reserve: int = 0,
+        verified_payload: int | None = None,
     ) -> int:
         if response:
             return fallback
-        payload = fallback
+        payload = fallback if verified_payload is None else min(verified_payload, 512)
         try:
             max_without_response = getattr(
                 characteristic,
@@ -587,8 +592,16 @@ class _BleakTransportSession:
             )
         except Exception:
             max_without_response = None
-        if isinstance(max_without_response, int) and max_without_response > 0:
-            payload = min(max_without_response, 512)
+        if (
+            isinstance(max_without_response, int)
+            and max_without_response > 0
+            and (verified_payload is None or max_without_response != 20)
+        ):
+            payload = (
+                min(max_without_response, 512)
+                if verified_payload is None
+                else min(payload, max_without_response, 512)
+            )
         if reserve > 0:
             payload -= reserve
         return max(1, payload)
@@ -636,6 +649,7 @@ class _BleakTransportSession:
                     self._mtu_size,
                     response=response,
                     reserve=self._transport_profile.write_without_response_payload_reserve,
+                    verified_payload=self._verified_payload,
                 ),
                 self._transport_profile.standard_chunk_cap,
             ),
@@ -673,6 +687,7 @@ class _BleakTransportSession:
                     self._mtu_size,
                     response=response,
                     reserve=self._transport_profile.write_without_response_payload_reserve,
+                    verified_payload=self._verified_payload,
                 ),
                 self._transport_profile.standard_chunk_cap,
             ),
@@ -702,6 +717,7 @@ class _BleakTransportSession:
                     self._mtu_size,
                     response=response,
                     reserve=self._transport_profile.write_without_response_payload_reserve,
+                    verified_payload=self._verified_payload,
                 ),
                 bulk_write.chunk_cap,
             ),

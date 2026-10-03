@@ -7,6 +7,8 @@ binding plus byte-transfer policy to `_BleakTransportSession`.
 from __future__ import annotations
 
 import asyncio
+import math
+import sys
 from collections.abc import Callable
 from contextlib import suppress
 from typing import Any
@@ -133,10 +135,6 @@ class _BleakSocket:
                 f"Failed to connect to BLE device {address}: {detail}"
             ) from exc
 
-        if hasattr(self._client, "mtu_size") and self._client.mtu_size:
-            negotiated_mtu = self._client.mtu_size - 3
-            self._mtu_size = min(negotiated_mtu, 512)
-
         if self._pairing_hint:
             await self._pair_if_supported()
 
@@ -149,6 +147,18 @@ class _BleakSocket:
                 "The device may not support BLE printing, or uses unknown UUIDs."
             )
 
+        verified_payload = await self._acquire_bluez_mtu_payload()
+        try:
+            reported_mtu = getattr(self._client, "mtu_size", None)
+        except Exception as exc:
+            self._reporter.debug(
+                short="BLE",
+                detail=f"Could not read the reported MTU; using fallback payload: {exc}",
+            )
+        else:
+            if isinstance(reported_mtu, int) and reported_mtu:
+                self._mtu_size = min(reported_mtu - 3, 512)
+
         self._transport.apply_write_selection(selection)
         self._transport.configure_endpoints(
             getattr(self._client, "services", None) or []
@@ -160,7 +170,81 @@ class _BleakSocket:
             self._client,
             mtu_size=self._mtu_size,
             timeout=self._timeout,
+            verified_payload=verified_payload,
         )
+
+    async def _acquire_bluez_mtu_payload(self) -> int | None:
+        """Best-effort acquire and validate the Linux BlueZ negotiated MTU."""
+        if not self._ble_profile.acquire_bluez_mtu or sys.platform != "linux":
+            return None
+        client = self._client
+        if client is None:
+            return None
+        backend = getattr(client, "_backend", None)
+        backend_module = getattr(type(backend), "__module__", "")
+        if backend_module != "bleak.backends.bluezdbus.client" and not str(
+            backend_module
+        ).startswith("bleak.backends.bluezdbus."):
+            return None
+
+        try:
+            acquire_mtu = getattr(backend, "_acquire_mtu", None)
+        except Exception as exc:
+            self._reporter.warning(
+                short="BLE MTU negotiation unavailable",
+                detail=f"Could not inspect the BlueZ MTU method: {exc}",
+            )
+            return None
+        if not callable(acquire_mtu):
+            self._reporter.debug(
+                short="BLE",
+                detail="BlueZ MTU negotiation method is unavailable; using reported MTU",
+            )
+            return None
+
+        timeout = min(self._timeout, 5.0)
+        if not math.isfinite(timeout) or timeout <= 0:
+            self._reporter.debug(
+                short="BLE",
+                detail="BlueZ MTU negotiation skipped because its timeout is not positive",
+            )
+            return None
+        try:
+            await asyncio.wait_for(
+                await_operation(acquire_mtu(), operation="acquire_mtu"),
+                timeout=timeout,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._reporter.warning(
+                short="BLE MTU negotiation failed",
+                detail=f"Using the reported MTU after BlueZ negotiation failed: {exc}",
+            )
+            return None
+
+        try:
+            mtu_size = getattr(client, "mtu_size", None)
+        except Exception as exc:
+            self._reporter.warning(
+                short="BLE MTU negotiation failed",
+                detail=f"Could not read the negotiated MTU; using reported MTU: {exc}",
+            )
+            return None
+        if not isinstance(mtu_size, int) or not 24 <= mtu_size <= 517:
+            self._reporter.warning(
+                short="BLE MTU negotiation failed",
+                detail=(
+                    "BlueZ returned an invalid negotiated MTU; "
+                    f"using reported MTU (value: {mtu_size!r})"
+                ),
+            )
+            return None
+        self._reporter.debug(
+            short="BLE",
+            detail=f"Verified BlueZ MTU {mtu_size}; payload={min(mtu_size - 3, 512)}",
+        )
+        return min(mtu_size - 3, 512)
 
     async def _resolve_client_target(self, address: str) -> Any:
         """Return the address or discovered device object passed to BleakClient."""

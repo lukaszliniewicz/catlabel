@@ -27,6 +27,7 @@ class BleTransportProfile:
     write_without_response_payload_reserve: int = 0
     flow_resume_timeout_s: float | None = None
     control_notify_char_uuid: str = ""
+    acquire_bluez_mtu: bool = False
 
 
 _FALLBACK = BleTransportProfile()
@@ -46,6 +47,7 @@ _PROFILES = {
         standard_chunk_cap=56 * 8,
         standard_write_delay_ms=30,
         write_without_response_payload_reserve=5,
+        acquire_bluez_mtu=True,
     ),
     "v5c": BleTransportProfile(
         prefer_generic_notify=True,
