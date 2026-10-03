@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
+import DocumentStatus from './components/DocumentStatus';
 import HeadlessRenderer from './HeadlessRenderer';
 import { useStore } from './store';
 
@@ -47,6 +48,7 @@ function App() {
     <div className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans transition-colors duration-300">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
+        <DocumentStatus />
         <Toolbar />
         <CanvasArea />
       </div>

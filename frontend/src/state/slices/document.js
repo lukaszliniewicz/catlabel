@@ -202,7 +202,8 @@ export const createDocumentSlice = (set, get) => ({
         : {})
     }),
     false,
-    { history: options.resetHistory ? 'reset' : 'record' }
+    { history: options.resetHistory ? 'reset' : 'record',
+      document: options.resetHistory ? 'replace' : undefined, dirty: options.dirty }
   ),
   applyPreset: (preset) => set((state) => {
     const widthMm = preset.width_mm ?? preset.w ?? 48;
@@ -250,7 +251,7 @@ export const createDocumentSlice = (set, get) => ({
     currentProjectRevision: null,
     pageLayouts: [{ pageIndex: 0, htmlContent: '', activeTemplate: null }]
     // We specifically omitted history wipes here so the user can Undo a canvas clear!
-  }),
+  }, false, { document: 'detach' }),
   addItem: (item) => set((state) => {
     const nextItem = item.pageIndex === undefined ? { ...item, pageIndex: state.currentPage } : item;
     return {

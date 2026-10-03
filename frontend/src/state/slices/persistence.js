@@ -1,5 +1,6 @@
 import { serializeCanvasDocument } from '../../domain/document';
 import { apiFetch, apiJson, isArrayPayload, isObjectPayload } from '../../utils/apiClient';
+import { documentSnapshot } from '../documentLifecycle';
 import { errorMessage } from '../errors';
 
 let projectLoadRequestId = 0;
@@ -80,6 +81,10 @@ export const createPersistenceSlice = (set, get) => ({
   },
   saveProject: async (name, categoryId = null) => {
     const state = get();
+    if (state.saveStatus === 'saving') return false;
+    const snapshot = documentSnapshot(state);
+    const session = state.documentSessionId;
+    set({ saveStatus: 'saving' }, false, { history: 'skip' });
 
     try {
       const res = await apiFetch('/api/projects', {
@@ -94,17 +99,27 @@ export const createPersistenceSlice = (set, get) => ({
       const data = await res.json();
       if (!isObjectPayload(data) || data.id === undefined) throw new Error('The saved project response is malformed.');
       if (!Number.isInteger(data.revision) || data.revision < 1) throw new Error('The saved project revision is missing.');
-      set({ currentProjectId: data.id, currentProjectRevision: data.revision });
+      if (get().documentSessionId === session) {
+        set({ currentProjectId: data.id, currentProjectRevision: data.revision }, false,
+          { history: 'skip', savedDocument: snapshot });
+      }
       get().fetchProjects();
+      return true;
     } catch (e) {
       console.error(e);
-      set({ apiError: errorMessage(e, 'Failed to save the project.') });
+      if (get().documentSessionId === session) {
+        set({ saveStatus: 'failed', apiError: errorMessage(e, 'Failed to save the project.') }, false, { history: 'skip' });
+      }
+      return false;
     }
   },
   updateProject: async (id, newName = null, newCategoryId = undefined) => {
     const state = get();
 
+    const session = state.documentSessionId;
+    const snapshot = documentSnapshot(state);
     const writesCanvas = newName == null && newCategoryId === undefined;
+    if (writesCanvas && state.saveStatus === 'saving') return false;
     const expectedRevision = state.currentProjectId === id
       ? state.currentProjectRevision
       : state.projects.find((project) => project.id === id)?.revision;
@@ -117,6 +132,7 @@ export const createPersistenceSlice = (set, get) => ({
     if (newName != null) payload.name = newName;
     if (newCategoryId !== undefined) payload.category_id = newCategoryId;
 
+    if (writesCanvas) set({ saveStatus: 'saving' }, false, { history: 'skip' });
     try {
       const response = await apiFetch(`/api/projects/${id}`, {
         method: 'PUT',
@@ -127,11 +143,22 @@ export const createPersistenceSlice = (set, get) => ({
       if (!isObjectPayload(data) || !Number.isInteger(data.revision) || data.revision < 1) {
         throw new Error('The updated project response is malformed. Reload before saving again.');
       }
-      if (get().currentProjectId === id) set({ currentProjectRevision: data.revision });
+      if (get().currentProjectId === id && get().documentSessionId === session) {
+        set({ currentProjectRevision: data.revision }, false,
+          { history: 'skip', ...(writesCanvas ? { savedDocument: snapshot } : {}) });
+      }
+      if (writesCanvas && get().documentSessionId === session && get().currentProjectId !== id) {
+        set({ saveStatus: get().isDocumentDirty ? 'dirty' : 'saved' }, false, { history: 'skip' });
+      }
       get().fetchProjects();
+      return true;
     } catch (e) {
       console.error(e);
-      set({ apiError: errorMessage(e, 'Failed to update the project.') });
+      if (get().documentSessionId === session) {
+        set({ ...(writesCanvas ? { saveStatus: 'failed' } : {}),
+          apiError: errorMessage(e, 'Failed to update the project.') }, false, { history: 'skip' });
+      }
+      return false;
     }
   },
   deleteProject: async (id) => {
@@ -140,7 +167,7 @@ export const createPersistenceSlice = (set, get) => ({
       await apiFetch(`/api/projects/${id}`, { method: 'DELETE' });
       get().fetchProjects();
       if (get().currentProjectId === id) {
-        set({ currentProjectId: null, currentProjectRevision: null });
+        set({ currentProjectId: null, currentProjectRevision: null }, false, { history: 'skip', document: 'detach' });
       }
     } catch (e) {
       console.error(e);
@@ -148,12 +175,18 @@ export const createPersistenceSlice = (set, get) => ({
     }
   },
   loadProject: async (summary) => {
+    if (get().isDocumentDirty && !window.confirm('Open this project and replace your unsaved edits?')) return false;
+    const { documentSessionId: session, documentRevision: revision } = get();
     const requestId = ++projectLoadRequestId;
     try {
       const proj = summary.canvas_state !== undefined ? summary : await apiJson(`/api/projects/${summary.id}`, {}, {
         validate: isObjectPayload, validationMessage: 'Project data is malformed.'
       });
-      if (requestId !== projectLoadRequestId) return;
+      if (requestId !== projectLoadRequestId) return false;
+      if (get().documentSessionId !== session || get().documentRevision !== revision) {
+        set({ apiError: 'The design changed while this project was opening. Your edits were kept; open the project again when ready.' }, false, { history: 'skip' });
+        return false;
+      }
       if (!isObjectPayload(proj.canvas_state)) throw new Error('The project document is malformed.');
       get().hydrateCanvasState(proj.canvas_state, {
         currentProjectId: proj.id,

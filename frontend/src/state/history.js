@@ -15,12 +15,12 @@ export const withHistory = (config) => {
           canUndo: false,
           canRedo: false,
           _isUndoRedo: false
-        }, replace);
+        }, replace, options);
         return;
       }
 
       if (options.history === 'skip') {
-        set(args, replace);
+        set(args, replace, options);
         return;
       }
 
@@ -28,7 +28,7 @@ export const withHistory = (config) => {
         storedPrevState = get();
       }
 
-      set(args, replace);
+      set(args, replace, options);
       const nextState = get();
 
       // If this change was triggered by undo/redo, strip the flag, reset the baseline, and exit.

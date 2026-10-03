@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { useStore } from './store';
 import * as apiClient from './utils/apiClient';
 
+beforeEach(() => { vi.spyOn(window, 'confirm').mockReturnValue(true); });
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -23,7 +24,7 @@ afterEach(() => {
     canvasHeight: 384,
     selectedPrinter: null,
     selectedPrinterInfo: null
-  });
+  }, false, { document: 'replace' });
 });
 
 describe('editor store correctness', () => {
@@ -215,4 +216,65 @@ describe('editor store correctness', () => {
     await useStore.getState().updateProject(42);
     expect(useStore.getState()).toMatchObject({ currentProjectRevision: 3, items: [{ id: 'draft' }], apiError: 'A newer revision is saved.' });
   });
+});
+
+test('undo returns to the saved baseline and active page changes stay clean', async () => {
+  vi.useFakeTimers();
+  useStore.getState().hydrateCanvasState({ items: [{ id: 'base', type: 'text' }] }, { resetHistory: true });
+  useStore.getState().setCurrentPage(1);
+  expect(useStore.getState().isDocumentDirty).toBe(false);
+  useStore.getState().setItems([{ id: 'edited', type: 'text' }]);
+  expect(useStore.getState().isDocumentDirty).toBe(true);
+  await vi.advanceTimersByTimeAsync(450);
+  useStore.getState().undo();
+  expect(useStore.getState().isDocumentDirty).toBe(false);
+});
+
+test('edits during save remain dirty and a late save cannot attach to another project', async () => {
+  let resolveSave;
+  vi.spyOn(apiClient, 'apiFetch').mockImplementation(() => new Promise(resolve => { resolveSave = resolve; }));
+  vi.spyOn(apiClient, 'apiJson').mockImplementation(async url => url.startsWith('/api/projects/summaries') ? { projects: [], next_after_id: null } : []);
+  useStore.getState().hydrateCanvasState({ items: [{ id: 'first', type: 'text' }] }, { resetHistory: true });
+  const saving = useStore.getState().saveProject('First');
+  useStore.getState().setItems([{ id: 'later', type: 'text' }]);
+  resolveSave({ json: async () => ({ id: 7, revision: 1 }) });
+  await saving;
+  expect(useStore.getState()).toMatchObject({ currentProjectId: 7, saveStatus: 'dirty', isDocumentDirty: true });
+  const oldSave = useStore.getState().saveProject('Old');
+  useStore.getState().hydrateCanvasState({ items: [{ id: 'second', type: 'text' }] }, {
+    resetHistory: true, currentProjectId: 8, currentProjectRevision: 2
+  });
+  resolveSave({ json: async () => ({ id: 9, revision: 1 }) });
+  await oldSave;
+  expect(useStore.getState()).toMatchObject({ currentProjectId: 8, currentProjectRevision: 2, isDocumentDirty: false });
+});
+
+test('opening a project protects declined and newly made unsaved edits', async () => {
+  useStore.getState().setItems([{ id: 'kept', type: 'text' }]);
+  vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const fetch = vi.spyOn(apiClient, 'apiJson');
+  await useStore.getState().loadProject({ id: 2 });
+  expect(fetch).not.toHaveBeenCalled();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  let resolveLoad;
+  fetch.mockImplementation(() => new Promise(resolve => { resolveLoad = resolve; }));
+  const opening = useStore.getState().loadProject({ id: 2 });
+  useStore.getState().setItems([{ id: 'newer', type: 'text' }]);
+  resolveLoad({ id: 2, revision: 1, canvas_state: { items: [] } });
+  await opening;
+  expect(useStore.getState().items[0].id).toBe('newer');
+  expect(useStore.getState().apiError).toContain('changed while');
+});
+
+test('clearing during a save detaches the old request and leaves a saveable new design', async () => {
+  let resolveSave;
+  vi.spyOn(apiClient, 'apiFetch').mockImplementation(() => new Promise(resolve => { resolveSave = resolve; }));
+  vi.spyOn(apiClient, 'apiJson').mockImplementation(async url => url.startsWith('/api/projects/summaries') ? { projects: [], next_after_id: null } : []);
+  useStore.getState().setItems([{ id: 'old', type: 'text' }]);
+  const saving = useStore.getState().saveProject('Old');
+  useStore.getState().clearCanvas();
+  expect(useStore.getState().saveStatus).toBe('dirty');
+  resolveSave({ json: async () => ({ id: 70, revision: 1 }) });
+  await saving;
+  expect(useStore.getState()).toMatchObject({ currentProjectId: null, saveStatus: 'dirty', isDocumentDirty: true });
 });

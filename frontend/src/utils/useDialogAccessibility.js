@@ -25,7 +25,9 @@ export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) =
     const focusTarget = dialog?.querySelector('[autofocus], [data-dialog-initial-focus]')
       || dialog?.querySelector(FOCUSABLE)
       || dialog;
-    requestAnimationFrame(() => focusTarget?.focus());
+    const initialFocusFrame = requestAnimationFrame(() => {
+      if (dialog && !dialog.contains(document.activeElement)) focusTarget?.focus();
+    });
     openDialogs.push(dialogRef);
 
     const handleKeyDown = (event) => {
@@ -59,6 +61,7 @@ export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) =
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
+      cancelAnimationFrame(initialFocusFrame);
       document.removeEventListener('keydown', handleKeyDown);
       const stackIndex = openDialogs.lastIndexOf(dialogRef);
       if (stackIndex >= 0) openDialogs.splice(stackIndex, 1);
