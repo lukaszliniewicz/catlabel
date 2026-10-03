@@ -2,6 +2,8 @@ const readOnboardingComplete = () => {
   try { return typeof window !== 'undefined' && localStorage.getItem('catlabel_onboarding_completed_v1') === '1'; }
   catch { return false; }
 };
+const initiallyNarrow = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  ? window.matchMedia('(max-width: 1279px)').matches : false;
 
 export const createUiSlice = (set) => ({
   onboardingComplete: readOnboardingComplete(),
@@ -19,10 +21,16 @@ export const createUiSlice = (set) => ({
   apiError: '',
   clearApiError: () => set({ apiError: '' }),
   setZoomScale: (scale) => set({ zoomScale: Math.max(0.1, Math.min(5, scale)) }),
-  isSidebarCollapsed: false,
-  toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
-  isPropertiesOpen: true,
-  toggleProperties: () => set((state) => ({ isPropertiesOpen: !state.isPropertiesOpen })),
+  isNarrowLayout: initiallyNarrow,
+  setLayoutViewport: (narrow) => set(state => state.isNarrowLayout === narrow ? state : {
+    isNarrowLayout: narrow, isSidebarCollapsed: narrow, isPropertiesOpen: !narrow
+  }),
+  isSidebarCollapsed: initiallyNarrow,
+  toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed,
+    ...(state.isNarrowLayout && state.isSidebarCollapsed ? { isPropertiesOpen: false } : {}) })),
+  isPropertiesOpen: !initiallyNarrow,
+  toggleProperties: () => set((state) => ({ isPropertiesOpen: !state.isPropertiesOpen,
+    ...(state.isNarrowLayout && !state.isPropertiesOpen ? { isSidebarCollapsed: true } : {}) })),
   aiMessages: [{ role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }],
   aiInput: '',
   aiConvId: null,

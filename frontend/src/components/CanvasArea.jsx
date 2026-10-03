@@ -8,6 +8,7 @@ import FloatingToolbar from './FloatingToolbar';
 import HtmlLabel from './HtmlLabel';
 import HeadlessPage from './HeadlessPage';
 import { getPageIndices, getPageItems, getPageLayout, normalizePageIndex } from '../utils/canvasPages';
+import { ignoreCanvasShortcut } from '../utils/canvasShortcuts';
 
 const WORKSPACE_PAD = 40;
 const SNAP_T = 10;
@@ -21,7 +22,8 @@ export default function CanvasArea() {
     updateItem,
     canvasWidth,
     canvasHeight,
-    zoomScale,
+    zoomScale: userZoomScale,
+    isNarrowLayout,
     canvasBorder,
     canvasBorderThickness,
     settings,
@@ -47,6 +49,7 @@ export default function CanvasArea() {
     canvasWidth: state.canvasWidth,
     canvasHeight: state.canvasHeight,
     zoomScale: state.zoomScale,
+    isNarrowLayout: state.isNarrowLayout,
     canvasBorder: state.canvasBorder,
     canvasBorderThickness: state.canvasBorderThickness,
     settings: state.settings,
@@ -71,6 +74,21 @@ export default function CanvasArea() {
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const trRef = useRef(null);
   const containerRef = useRef(null);
+  const [availableWidth, setAvailableWidth] = useState(0);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const measure = () => {
+      const style = getComputedStyle(container);
+      setAvailableWidth(container.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+  const fitScale = isNarrowLayout && availableWidth > 0 ? Math.min(1, availableWidth / (canvasWidth + WORKSPACE_PAD * 2)) : 1;
+  const zoomScale = userZoomScale * fitScale;
   const captureResolverRef = useRef(null);
   const [captureRequest, setCaptureRequest] = useState(null);
   const cvThick = canvasBorderThickness || 4;
@@ -127,7 +145,7 @@ export default function CanvasArea() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (ignoreCanvasShortcut(e)) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -283,15 +301,15 @@ export default function CanvasArea() {
       ref={containerRef}
       className={`flex-1 flex flex-col items-center p-2 sm:p-8 bg-neutral-100 dark:bg-neutral-900 transition-colors duration-300 gap-8 ${isPanning ? 'cursor-grab active:cursor-grabbing overflow-hidden' : 'overflow-auto'}`}
     >
-      <div className="text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold sticky top-0 bg-neutral-100 dark:bg-neutral-900/90 z-10 py-1">
+      <div className="text-neutral-600 dark:text-neutral-300 text-[10px] uppercase tracking-widest font-bold sticky top-0 bg-neutral-100 dark:bg-neutral-900/90 z-10 py-1">
         Canvas Feed Engine: {isRotated ? 'Landscape' : 'Portrait'}
       </div>
 
-      <div className="flex flex-col gap-10 min-h-max min-w-max pb-16">
+      <div className="flex flex-col self-start mx-auto gap-10 min-h-max min-w-max pb-16">
         {visibleRecords.map((record, rIdx) => (
           <div key={rIdx} className="flex flex-col items-center gap-4">
             {batchRecords.length > 1 && (
-              <div className="text-[10px] uppercase tracking-widest font-bold text-neutral-400">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 dark:text-neutral-300">
                 Record {rIdx + 1} {rIdx === 9 && batchRecords.length > 10 ? `(Showing 10 of ${batchRecords.length} records)` : ''}
               </div>
             )}
@@ -317,7 +335,7 @@ export default function CanvasArea() {
                           title="Select for batch printing"
                         />
                       )}
-                      <span className="text-neutral-400 dark:text-neutral-500 text-[10px] uppercase tracking-widest font-bold">
+                      <span className="text-neutral-600 dark:text-neutral-300 text-[10px] uppercase tracking-widest font-bold">
                         Label {pageIdx + 1} {isActive && '(Active)'}
                       </span>
                     </div>
@@ -325,21 +343,21 @@ export default function CanvasArea() {
                       <div className="flex gap-3">
                         <button
                           onClick={() => printPages([pageIndex])}
-                          className="text-[10px] text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 uppercase font-bold tracking-widest transition-colors"
+                          className="text-[10px] text-emerald-700 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400 uppercase font-bold tracking-widest transition-colors"
                           title="Print only this label"
                         >
                           Print
                         </button>
                         <button
                           onClick={() => useStore.getState().duplicatePage(pageIndex)}
-                          className="text-[10px] text-blue-500 hover:text-blue-600 uppercase font-bold tracking-widest transition-colors"
+                          className="text-[10px] text-blue-700 dark:text-blue-300 hover:text-blue-600 uppercase font-bold tracking-widest transition-colors"
                         >
                           Duplicate
                         </button>
                         {(pages.length > 1) && (
                           <button
                             onClick={() => deletePage(pageIndex)}
-                            className="text-[10px] text-red-500 hover:text-red-600 uppercase font-bold tracking-widest transition-colors"
+                            className="text-[10px] text-red-700 dark:text-red-300 hover:text-red-600 uppercase font-bold tracking-widest transition-colors"
                           >
                             Delete
                           </button>
@@ -349,7 +367,7 @@ export default function CanvasArea() {
                   </div>
 
                   <div
-                    className={`relative transition-all duration-300 bg-white shadow-md ${isActive ? 'ring-1 ring-blue-400' : 'opacity-60 hover:opacity-100 cursor-pointer'}`}
+                    className={`relative transition-[box-shadow,opacity] duration-300 bg-white shadow-md ${isActive ? 'ring-1 ring-blue-400' : 'opacity-60 hover:opacity-100 cursor-pointer'}`}
                     style={{
                       width: (canvasWidth + WORKSPACE_PAD * 2) * zoomScale,
                       height: (canvasHeight + WORKSPACE_PAD * 2) * zoomScale,

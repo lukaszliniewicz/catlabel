@@ -27,7 +27,21 @@ function App() {
   const clearApiError = useStore((state) => state.clearApiError);
   const pendingProjectLoad = useStore(state => state.pendingProjectLoad);
   const completeOnboarding = useStore(state => state.completeOnboarding);
+  const isNarrowLayout = useStore(state => state.isNarrowLayout);
+  const isSidebarCollapsed = useStore(state => state.isSidebarCollapsed);
+  const isPropertiesOpen = useStore(state => state.isPropertiesOpen);
+  const toggleSidebar = useStore(state => state.toggleSidebar);
+  const toggleProperties = useStore(state => state.toggleProperties);
   const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
+
+  useEffect(() => {
+    if (isHeadless) return;
+    const media = window.matchMedia('(max-width: 1279px)');
+    const update = () => useStore.getState().setLayoutViewport(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, [isHeadless]);
 
   useEffect(() => {
     if (!isHeadless) {
@@ -57,9 +71,14 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans transition-colors duration-300">
+    <main className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans transition-colors duration-300">
+      {isNarrowLayout && <h1 className="sr-only">CatLabel Studio</h1>}
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
+        {isNarrowLayout && <div className="flex shrink-0 justify-between gap-2 border-b border-neutral-300 px-2 py-1 dark:border-neutral-700">
+          <button type="button" aria-expanded={!isSidebarCollapsed} onClick={toggleSidebar} className="min-h-10 rounded-sm border border-neutral-400 px-3 text-sm">Projects and printers</button>
+          <button type="button" aria-expanded={isPropertiesOpen} onClick={toggleProperties} className="min-h-10 rounded-sm border border-neutral-400 px-3 text-sm">Properties</button>
+        </div>}
         <DocumentStatus />
         <Toolbar />
         <CanvasArea />
@@ -75,7 +94,7 @@ function App() {
       {isPreparingForPrint && <LazyFeature label="print preparation" onClose={() => onLocalRenderComplete([], new Error('Print preparation cancelled before submission.'))} onError={error => onLocalRenderComplete([], error)}><LocalBatchRenderer onComplete={onLocalRenderComplete} /></LazyFeature>}
       {settingsLoaded && (!onboardingComplete || showOnboarding) && <LazyFeature label="welcome setup" onClose={completeOnboarding}><OnboardingWizard /></LazyFeature>}
       {showAiConfig && <LazyFeature label="AI settings" onClose={() => setShowAiConfig(false)}><AIConfigModal onClose={() => setShowAiConfig(false)} /></LazyFeature>}
-    </div>
+    </main>
   );
 }
 

@@ -365,3 +365,32 @@ Phase 5 project switching now uses an in-app guard with Keep editing as initial 
 Phase 6 PDF safeguards are accepted locally. Uploaded PDFs preflight every page geometry and the total pixel budget before allocating a bitmap, then cap accumulated data URL bytes before each base64 allocation. The separate converter rejects out-of-range ranges before expansion and detaches fallback PIL output before closing the bitmap/source, including failures. The Luna/max implementer ran 15 upload and eight rendering-contract tests, scoped Ruff/format and zero-diagnostic typing; the parent inspected every edit. An actual two-page PDF also converts correctly after metadata page handles close/reopen:203×102 and102×203RGB output. [PDF receipt](reviews/2026-10-02/evidence/phase6-pdf-preflight-receipt.json). Upload buffering, worker cancellation and whole-job spooling remain active work; bounded response bytes are not a claim of bounded totalRSS.
 
 Phase 5 lazy features now have visible loading/cancel affordances and isolated error boundaries with Close/Reload recovery. A failed icon chunk in the production browser showed recovery and preserved the editor after Close; the temporary blocked-URL injection was cleared. Normal input remains affected by the earlier native prompt, so this uses DOM activation and is not keyboard/pointer acceptance. Print preparation is a focus-managed modal with explicit cancellation before submission; late readiness cannot complete a cancelled job. All66frontendtests, productionbuild andtenempty staticcategoriespass. [Lazy recovery receipt](reviews/2026-10-02/evidence/phase5-lazy-recovery-receipt.json). Whole-job memory and physicalsubmission cancellation remain separate work.
+
+Phase 5 responsive controls are implemented locally. Below 1280 pixels, the
+editor opens with the canvas visible and panels closed; projects/printers and
+properties use mutually exclusive, focus-managed drawers. Breakpoint changes
+update the layout. Default narrow zoom fits the inner available width, and preview
+geometry changes no longer animate independently of the canvas layers. Numeric
+controls use associated labels and pointer capture with cancellation; properties
+tabs and the saved-project tree support their keyboard navigation. Canvas shortcuts
+leave controls and modal interactions alone. Shared property fields now have
+visible-label associations, including capability-dependent density controls.
+
+All 93 frontend tests in 19 files pass, as do the ten static categories and the
+production build. Parent inspection covers 390, 768, 1222 and 1280 CSS-pixel widths
+at height 843, plus light/dark property drawers. Axe 4.13.0 reports no violations
+on the inspected editor/drawer surfaces, with incomplete contrast results retained.
+Ordinary browser input still has no effect after the earlier stalled native
+prompt; DOM activation and keyboard/pointer unit evidence do not establish a full
+native keyboard-only workflow. That acceptance gap remains explicit.
+
+Build inspection found Tailwind scanning generated bundles and stale chunks in
+reused scratch output. Source detection now names maintained frontend source and
+index HTML explicitly. Two clean 26-file builds match byte-for-byte after replacing
+dist between builds. The retained artifact has digest
+`143e3423f1d083c4d21b01413d14cfb0db94fec8b90d52e88873666ef1e6628d`.
+[Responsive receipt](reviews/2026-10-02/evidence/phase5-responsive-receipt.json).
+These captures establish preview layout, not print fidelity. Object-list selection,
+keyboard file controls, project action/recovery dialogs, component and API/job
+boundaries, and the remaining performance/maintenance work stay active. No printer
+or provider call, external promotion or native foreign-system acceptance occurred.

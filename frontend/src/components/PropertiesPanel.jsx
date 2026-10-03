@@ -1,5 +1,7 @@
+import { MmScrubberInput, ScrubberInput } from './NumericInput';
 import LazyFeature from './LazyFeature';
-import React, { useState, useEffect } from 'react';
+import EditorDrawer from './EditorDrawer';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
 import {
@@ -14,111 +16,12 @@ import BatchDataPanel from './BatchDataPanel';
 const AIAssistant = React.lazy(() => import('./AIAssistant'));
 const IconPicker = React.lazy(() => import('./IconPicker'));
 
-const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
-  const getPxToMm = useStore((state) => state.getPxToMm);
-  const getMmToPx = useStore((state) => state.getMmToPx);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [startVal, setStartVal] = useState(0);
-
-  const currentMm = parseFloat(getPxToMm(value));
-
-  const handleMouseDown = (e) => {
-    if (disabled) return;
-    setIsDragging(true);
-    setStartX(e.clientX);
-    setStartVal(currentMm);
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-    const handleMouseMove = (e) => {
-      const dx = e.clientX - startX;
-      const newMm = Math.max(0, startVal + dx * 0.5);
-      onChange({ target: { name, value: getMmToPx(newMm), type: 'number' } });
-    };
-    const handleMouseUp = () => setIsDragging(false);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [getMmToPx, isDragging, name, onChange, startVal, startX]);
-
-  const handleChange = (e) => {
-    const mm = parseFloat(e.target.value);
-    if (!isNaN(mm)) {
-      onChange({ target: { name, value: getMmToPx(mm), type: 'number' } });
-    }
-  };
-
-  return (
-    <div className="flex-1">
-      <label 
-        className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 truncate transition-colors ${disabled ? 'text-neutral-300 dark:text-neutral-700' : 'text-neutral-400 dark:text-neutral-500 cursor-ew-resize hover:text-blue-500'}`} 
-        onMouseDown={handleMouseDown}
-        title={disabled ? "Locked" : "Drag left/right to adjust"}
-      >
-        {label} (mm) {disabled ? '🔒' : '⇹'}
-      </label>
-      <input 
-        type="number" step="0.1" name={name} value={currentMm.toFixed(1)} onChange={handleChange} disabled={disabled}
-        className={`w-full bg-transparent border rounded-none p-2 text-sm focus:outline-hidden transition-colors ${disabled ? 'border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-600' : 'border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white focus:border-blue-500'}`}
-      />
-    </div>
-  );
-};
-
-const ScrubberInput = ({ name, value, onChange, label, step = 0.5, dragMultiplier = 0.5 }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [startVal, setStartVal] = useState(value);
-
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    setStartX(e.clientX);
-    setStartVal(Number(value));
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-    const handleMouseMove = (e) => {
-      const dx = e.clientX - startX;
-      const factor = 1 / step;
-      const newVal = Math.max(0, Math.round((startVal + dx * dragMultiplier) * factor) / factor);
-      onChange({ target: { name, value: newVal, type: 'number' } });
-    };
-    const handleMouseUp = () => setIsDragging(false);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, startX, startVal, onChange, name, step, dragMultiplier]);
-
-  return (
-    <div className="flex-1">
-      <label 
-        className="block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 truncate cursor-ew-resize hover:text-blue-500 transition-colors" 
-        onMouseDown={handleMouseDown}
-        title="Drag left/right to adjust"
-      >
-        {label} ⇹
-      </label>
-      <input 
-        type="number" step={step} name={name} value={value} onChange={onChange} 
-        className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors"
-      />
-    </div>
-  );
-};
-
 const ToggleBtn = ({ icon: Icon, active, onClick, label }) => (
   <button
     onClick={onClick}
     title={label}
+    aria-label={label}
+    aria-pressed={active}
     className={`flex-1 flex justify-center items-center py-1.5 transition-colors rounded-xs ${
       active
         ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-inner'
@@ -145,6 +48,7 @@ export default function PropertiesPanel() {
     isPropertiesOpen: state.isPropertiesOpen, toggleProperties: state.toggleProperties
   })));
   const selectedItem = items.find(i => i.id === selectedId);
+  const isNarrowLayout = useStore(state => state.isNarrowLayout);
   const isPreCut = selectedPrinterInfo?.media_type === 'pre-cut';
   const pInfo = selectedPrinterInfo || {};
   const caps = pInfo.capabilities || {};
@@ -160,9 +64,11 @@ export default function PropertiesPanel() {
   const recommendedMaxDensity = caps.density?.recommended_max;
 
   const [panelWidth, setPanelWidth] = useState(360);
+  const resize = useRef(null);
 
   // Tab State
   const [activeTab, setActiveTab] = useState('canvas');
+  const tabId = useId();
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [templateIconField, setTemplateIconField] = useState(null);
   
@@ -193,24 +99,14 @@ export default function PropertiesPanel() {
     }
   }, [isPreCut, splitMode, setSplitMode]);
 
-  const handleResizeMouseDown = (e) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = panelWidth;
-    const onMouseMove = (moveEvent) => {
-      const deltaX = startX - moveEvent.clientX; // Moving left makes it wider
-      setPanelWidth(Math.max(250, Math.min(600, startWidth + deltaX)));
-    };
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+  const endResize = event => {
+    if (resize.current?.pointerId !== event.pointerId) return;
+    resize.current = null;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
-  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors";
-  const labelClass = "block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 truncate";
+  const inputClass = "min-h-11 w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-2 focus:outline-blue-600 focus:border-blue-500 transition-colors";
+  const labelClass = "block text-[10px] font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-widest mb-1.5 truncate";
 
   // --- Actions ---
 
@@ -358,12 +254,12 @@ export default function PropertiesPanel() {
 
   if (!isPropertiesOpen) return null;
 
-  return (
+  const content = (
     <div
-      className="fixed inset-y-0 right-0 bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-30 overflow-hidden transition-colors duration-300 shrink-0 shadow-2xl xl:relative xl:inset-auto xl:z-10 xl:shadow-none"
-      style={{ width: panelWidth, maxWidth: '100vw' }}
+      className="relative h-full bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 flex flex-col z-10 overflow-hidden transition-colors duration-300 shrink-0"
+      style={{ width: panelWidth, maxWidth: '100%' }}
     >
-      <div
+      {!isNarrowLayout && <div
         role="separator"
         aria-label="Resize properties panel"
         aria-orientation="vertical"
@@ -371,65 +267,54 @@ export default function PropertiesPanel() {
         aria-valuemax={600}
         aria-valuenow={panelWidth}
         tabIndex={0}
-        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-50 transition-colors"
-        onMouseDown={handleResizeMouseDown}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowLeft') setPanelWidth((width) => Math.min(600, width + 10));
-          if (event.key === 'ArrowRight') setPanelWidth((width) => Math.max(280, width - 10));
+        className="absolute left-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-blue-500 z-50 transition-colors focus-visible:outline-2 focus-visible:outline-blue-600"
+        style={{ touchAction: 'none' }}
+        onPointerDown={event => {
+          if (event.pointerType === 'mouse' && event.button !== 0) return;
+          event.preventDefault();
+          resize.current = { pointerId: event.pointerId, x: event.clientX, width: panelWidth };
+          event.currentTarget.setPointerCapture?.(event.pointerId);
         }}
-      />
+        onPointerMove={event => {
+          const start = resize.current;
+          if (start?.pointerId === event.pointerId) setPanelWidth(Math.max(280, Math.min(600, start.width + start.x - event.clientX)));
+        }}
+        onPointerUp={endResize} onPointerCancel={endResize} onLostPointerCapture={() => { resize.current = null; }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') { event.preventDefault(); setPanelWidth((width) => Math.min(600, width + 10)); }
+          if (event.key === 'ArrowRight') { event.preventDefault(); setPanelWidth((width) => Math.max(280, width - 10)); }
+        }}
+      />}
 
-      <button type="button" onClick={toggleProperties} aria-label="Close properties panel" className="absolute right-2 top-2 z-50 rounded-sm p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white xl:hidden">×</button>
       
-      {/* TABS */}
-      <div className="flex border-b border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="Properties sections">
-        <button
-          type="button" role="tab" aria-selected={activeTab === 'element'} aria-label="Element and layout"
-          onClick={() => setActiveTab('element')}
-          className={`flex-1 flex justify-center py-4 transition-colors relative group
-            ${activeTab === 'element' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
-          `}
-        >
-          <Sliders size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Element / Layout</span>
-        </button>
-        
-        <button
-          type="button" role="tab" aria-selected={activeTab === 'canvas'} aria-label="Canvas and printer"
-          onClick={() => setActiveTab('canvas')}
-          className={`flex-1 flex justify-center py-4 transition-colors relative group
-            ${activeTab === 'canvas' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
-          `}
-        >
-          <Printer size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Canvas & Printer</span>
-        </button>
-
-        <button
-          type="button" role="tab" aria-selected={activeTab === 'data'} aria-label="Batch data"
-          onClick={() => setActiveTab('data')}
-          className={`flex-1 flex justify-center py-4 transition-colors relative group
-            ${activeTab === 'data' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
-          `}
-        >
-          <Database size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Batch Data</span>
-        </button>
-
-        <button
-          type="button" role="tab" aria-selected={activeTab === 'assistant'} aria-label="AI assistant"
-          onClick={() => setActiveTab('assistant')}
-          className={`flex-1 flex justify-center py-4 transition-colors relative group
-            ${activeTab === 'assistant' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900'}
-          `}
-        >
-          <Sparkles size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">AI Assistant</span>
-        </button>
+      <div className="flex shrink-0 border-b border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="Properties sections">
+        {[
+          { id: 'element', label: 'Element and layout', Icon: Sliders },
+          { id: 'canvas', label: 'Canvas and printer', Icon: Printer },
+          { id: 'data', label: 'Batch data', Icon: Database },
+          { id: 'assistant', label: 'AI assistant', Icon: Sparkles }
+        ].map(({ id, label, Icon }, index, tabs) => (
+          <button key={id} id={`${tabId}-tab-${id}`} type="button" role="tab"
+            aria-selected={activeTab === id} aria-label={label} aria-controls={`${tabId}-panel-${id}`}
+            tabIndex={activeTab === id ? 0 : -1} onClick={() => setActiveTab(id)}
+            onKeyDown={event => {
+              let next;
+              if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+              else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+              else if (event.key === 'Home') next = 0;
+              else if (event.key === 'End') next = tabs.length - 1;
+              else return;
+              event.preventDefault();
+              setActiveTab(tabs[next].id);
+              document.getElementById(`${tabId}-tab-${tabs[next].id}`)?.focus();
+            }}
+            className={`flex min-h-12 flex-1 justify-center items-center border-b-2 transition-colors focus-visible:outline-2 focus-visible:outline-blue-600 ${activeTab === id ? 'border-blue-600 text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300' : 'border-transparent text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900'}`}>
+            <Icon size={20} />
+          </button>
+        ))}
       </div>
+      <div role="tabpanel" id={`${tabId}-panel-${activeTab}`} aria-labelledby={`${tabId}-tab-${activeTab}`} className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
 
-      <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
-        
         {/* === CANVAS & PRINTER TAB === */}
         {activeTab === 'canvas' && (
           <>
@@ -485,8 +370,8 @@ export default function PropertiesPanel() {
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Canvas Styling</h2>
               <div className="flex gap-4">
                 <div className="flex flex-col justify-end flex-1">
-                  <label className={labelClass} title="Canvas Border / Cut line">Canvas Border</label>
-                  <select value={canvasBorder} onChange={(e) => setCanvasBorder(e.target.value)} className={inputClass}>
+                  <label className={labelClass} title="Canvas Border / Cut line" htmlFor={`${tabId}-canvas-border`}>Canvas Border</label>
+                  <select id={`${tabId}-canvas-border`} value={canvasBorder} onChange={(e) => setCanvasBorder(e.target.value)} className={inputClass}>
                     <option value="none">None</option>
                     <option value="box">Full Box</option>
                     <option value="top">Top Border</option>
@@ -506,11 +391,11 @@ export default function PropertiesPanel() {
 
             <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Duplicate Label</h2>
-              <p className="text-[10px] text-neutral-500">Easily create identical copies of this label as new pages.</p>
+              <p className="text-[11px] text-neutral-600 dark:text-neutral-300">Easily create identical copies of this label as new pages.</p>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-1">Copies to Add</label>
-                  <input type="number" min="1" value={multCopies} onChange={e => setMultCopies(parseInt(e.target.value) || 1)} className={inputClass} />
+                  <label className="block text-[10px] text-neutral-600 dark:text-neutral-300 font-bold uppercase mb-1" htmlFor={`${tabId}-page-copies`}>Copies to Add</label>
+                  <input id={`${tabId}-page-copies`} type="number" min="1" value={multCopies} onChange={e => setMultCopies(parseInt(e.target.value) || 1)} className={inputClass} />
                 </div>
               </div>
               <button onClick={() => useStore.getState().multiplyWorkspace(multCopies)} className="w-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-200 dark:border-blue-800 text-[10px] uppercase tracking-widest font-bold">
@@ -559,11 +444,11 @@ export default function PropertiesPanel() {
 
               {caps.density?.available && (
                 <div>
-                  <label className={labelClass}>
+                  <label className={labelClass} htmlFor={`${tabId}-density`}>
                     {usesRawDensity ? 'Print Density Override' : 'Print Darkness'} ({minDensity} - {maxDensity})
                   </label>
                   {usesRawDensity ? (
-                    <input
+                    <input id={`${tabId}-density`}
                       type="number"
                       name="energy"
                       min={allowsAutomaticDensity ? 0 : minDensity}
@@ -575,7 +460,7 @@ export default function PropertiesPanel() {
                       className={inputClass}
                     />
                   ) : (
-                    <select
+                    <select id={`${tabId}-density`}
                       name="energy"
                       value={printerProfile?.energy ?? caps.density.default ?? 3}
                       onChange={handleProfileChange}
@@ -590,7 +475,7 @@ export default function PropertiesPanel() {
                     </select>
                   )}
                   {usesRawDensity && (
-                    <p className="text-[9px] text-neutral-400 mt-1">
+                    <p className="text-[11px] text-neutral-600 dark:text-neutral-300 mt-1">
                       {allowsAutomaticDensity ? `0 = Auto${caps.density.default != null ? ` (${caps.density.default})` : ''}. ` : ''}
                       Protocol range: {minDensity} - {maxDensity}.
                       {recommendedMinDensity != null && recommendedMaxDensity != null
@@ -604,8 +489,8 @@ export default function PropertiesPanel() {
 
               {caps.speed?.available && (
                 <div>
-                  <label className={labelClass}>Speed Override (0 = Auto)</label>
-                  <input
+                  <label className={labelClass} htmlFor={`${tabId}-speed`}>Speed Override (0 = Auto)</label>
+                  <input id={`${tabId}-speed`}
                     type="number"
                     name="speed"
                     min={0}
@@ -615,7 +500,7 @@ export default function PropertiesPanel() {
                     disabled={!selectedPrinter}
                     className={inputClass}
                   />
-                  <p className="text-[9px] text-neutral-400 mt-1">
+                  <p className="text-[11px] text-neutral-600 dark:text-neutral-300 mt-1">
                     {pInfo.model ? `Hardware Default: ${caps.speed.default || 0}. Max: ${maxSpeed}.` : 'Select a printer to view limits.'}
                   </p>
                 </div>
@@ -623,8 +508,8 @@ export default function PropertiesPanel() {
 
               {caps.energy?.available && (
                 <div>
-                  <label className={labelClass}>Energy Override (0 = Auto)</label>
-                  <input
+                  <label className={labelClass} htmlFor={`${tabId}-energy`}>Energy Override (0 = Auto)</label>
+                  <input id={`${tabId}-energy`}
                     type="number"
                     name="energy"
                     min={0}
@@ -635,7 +520,7 @@ export default function PropertiesPanel() {
                     disabled={!selectedPrinter}
                     className={inputClass}
                   />
-                  <p className="text-[9px] text-neutral-400 mt-1">
+                  <p className="text-[11px] text-neutral-600 dark:text-neutral-300 mt-1">
                     {pInfo.model ? `Safe Range: ${minEnergy} - ${maxEnergy}. Default: ${caps.energy.default || 5000}.` : 'Select a printer to view limits.'}
                   </p>
                 </div>
@@ -643,8 +528,8 @@ export default function PropertiesPanel() {
 
               {caps.feed?.available && (
                 <div>
-                  <label className={labelClass}>Feed Lines (Tear Padding)</label>
-                  <input
+                  <label className={labelClass} htmlFor={`${tabId}-feed`}>Feed Lines (Tear Padding)</label>
+                  <input id={`${tabId}-feed`}
                     type="number"
                     name="feed_lines"
                     min={0}
@@ -658,8 +543,8 @@ export default function PropertiesPanel() {
 
               {supportedPaperModes.length > 0 && (
                 <div>
-                  <label className={labelClass}>Paper Mode</label>
-                  <select
+                  <label className={labelClass} htmlFor={`${tabId}-paper-mode`}>Paper Mode</label>
+                  <select id={`${tabId}-paper-mode`}
                     name="paper_mode"
                     value={printerProfile?.paper_mode || supportedPaperModes[0]?.value || ''}
                     onChange={handleProfileChange}
@@ -672,7 +557,7 @@ export default function PropertiesPanel() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[9px] text-neutral-400 mt-1">
+                  <p className="text-[11px] text-neutral-600 dark:text-neutral-300 mt-1">
                     Controls media alignment for printers whose firmware supports labels, marks, folders, or tattoo paper.
                   </p>
                 </div>
@@ -693,19 +578,19 @@ export default function PropertiesPanel() {
             <div className="space-y-4 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white pb-2 border-b border-neutral-100 dark:border-neutral-800">Global Defaults</h2>
               <div className="pt-2">
-                <label className={labelClass}>AI Media Assumption</label>
-                <select name="intended_media_type" value={localSettings.intended_media_type || 'unknown'} onChange={(e) => setLocalSettings({ ...localSettings, intended_media_type: e.target.value })} className={inputClass}>
+                <label className={labelClass} htmlFor={`${tabId}-media`}>AI Media Assumption</label>
+                <select id={`${tabId}-media`} name="intended_media_type" value={localSettings.intended_media_type || 'unknown'} onChange={(e) => setLocalSettings({ ...localSettings, intended_media_type: e.target.value })} className={inputClass}>
                   <option value="unknown">Not Set (AI will ask)</option>
                   <option value="continuous">Continuous Roll (Generic)</option>
                   <option value="pre-cut">Pre-cut Labels (Niimbot)</option>
                   <option value="both">Both / Mixed</option>
                 </select>
-                <p className="text-[9px] text-neutral-400 mt-1 mb-2">Guides the AI Assistant if no printer is connected.</p>
+                <p className="text-[11px] text-neutral-600 dark:text-neutral-300 mt-1 mb-2">Guides the AI Assistant if no printer is connected.</p>
               </div>
               <div className="pt-2">
-                <label className={labelClass}>Global Default Font</label>
+                <label className={labelClass} htmlFor={`${tabId}-default-font`}>Global Default Font</label>
                 <div className="flex gap-2">
-                  <select name="default_font" value={localSettings.default_font || 'RobotoCondensed.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
+                  <select id={`${tabId}-default-font`} name="default_font" value={localSettings.default_font || 'RobotoCondensed.ttf'} onChange={(e) => setLocalSettings({ ...localSettings, default_font: e.target.value })} className={inputClass}>
                     <option value="arial.ttf">System Arial</option>
                     {fonts.map(f => (
                       <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
@@ -713,10 +598,10 @@ export default function PropertiesPanel() {
                   </select>
                   <label className="flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 px-3 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors" title="Upload Custom Font">
                     <Plus size={16} className="text-neutral-500 dark:text-neutral-400" />
-                    <input type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
+                    <input aria-label="Upload custom font" type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
                   </label>
                 </div>
-                <p className="text-[9px] text-neutral-400 mt-1">Applies to all newly created text items.</p>
+                <p className="text-[11px] text-neutral-600 dark:text-neutral-300 mt-1">Applies to all newly created text items.</p>
               </div>
               <button 
                 onClick={handleSaveSettings} 
@@ -752,7 +637,7 @@ export default function PropertiesPanel() {
                           if (field.type === 'icon') {
                             return (
                               <div key={field.name}>
-                                <label className={labelClass}>{field.label}</label>
+                                <label className={labelClass} htmlFor={`${tabId}-template-${field.name}`}>{field.label}</label>
                                 <div className="flex items-center gap-3 mb-3">
                                   {value ? (
                                     <img
@@ -761,11 +646,11 @@ export default function PropertiesPanel() {
                                       className="w-10 h-10 object-contain bg-white border border-neutral-300 dark:border-neutral-700 p-1 rounded-sm"
                                     />
                                   ) : (
-                                    <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-sm flex items-center justify-center text-[10px] text-neutral-400">
+                                    <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-sm flex items-center justify-center text-[10px] text-neutral-600 dark:text-neutral-300">
                                       None
                                     </div>
                                   )}
-                                  <button
+                                  <button id={`${tabId}-template-${field.name}`} aria-label={`Choose ${field.label}`}
                                     onClick={() => setTemplateIconField(field.name)}
                                     className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors dark:text-white rounded-sm"
                                   >
@@ -779,9 +664,9 @@ export default function PropertiesPanel() {
                           if (field.type === 'textarea') {
                             return (
                               <div key={field.name}>
-                                <label className={labelClass}>{field.label}</label>
+                                <label className={labelClass} htmlFor={`${tabId}-template-${field.name}`}>{field.label}</label>
                                 <textarea
-                                  value={value}
+                                  id={`${tabId}-template-${field.name}`} value={value}
                                   onChange={(e) => handleParamChange(e.target.value)}
                                   className={inputClass}
                                   rows={3}
@@ -793,9 +678,9 @@ export default function PropertiesPanel() {
                           if (field.type === 'select') {
                             return (
                               <div key={field.name}>
-                                <label className={labelClass}>{field.label}</label>
+                                <label className={labelClass} htmlFor={`${tabId}-template-${field.name}`}>{field.label}</label>
                                 <select
-                                  value={value}
+                                  id={`${tabId}-template-${field.name}`} value={value}
                                   onChange={(e) => handleParamChange(e.target.value)}
                                   className={inputClass}
                                 >
@@ -811,9 +696,9 @@ export default function PropertiesPanel() {
 
                           return (
                             <div key={field.name}>
-                              <label className={labelClass}>{field.label}</label>
+                              <label className={labelClass} htmlFor={`${tabId}-template-${field.name}`}>{field.label}</label>
                               <input
-                                type="text"
+                                id={`${tabId}-template-${field.name}`} type="text"
                                 value={value}
                                 onChange={(e) => handleParamChange(e.target.value)}
                                 className={inputClass}
@@ -825,8 +710,8 @@ export default function PropertiesPanel() {
                     </div>
 
                     <div className="mt-auto pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                      <label className={labelClass}>Generated HTML (Read-Only)</label>
-                      <textarea value={htmlContent} readOnly className={`${inputClass} opacity-70 bg-neutral-100 dark:bg-neutral-900 cursor-not-allowed`} rows={6} />
+                      <label className={labelClass} htmlFor={`${tabId}-generated-html`}>Generated HTML (Read-Only)</label>
+                      <textarea id={`${tabId}-generated-html`} value={htmlContent} readOnly className={`${inputClass} opacity-70 bg-neutral-100 dark:bg-neutral-900 cursor-not-allowed`} rows={6} />
                     </div>
                   </>
                 ) : (
@@ -837,10 +722,10 @@ export default function PropertiesPanel() {
                         Auto-Format
                       </button>
                     </div>
-                    <p className="text-[10px] text-neutral-500">
+                    <p className="text-[11px] text-neutral-600 dark:text-neutral-300">
                       Wrap text in <code>&lt;div class=&quot;auto-text&quot;&gt;</code> to automatically scale it to fit the container.
                     </p>
-                    <textarea
+                    <textarea aria-label="Background layout HTML"
                       value={htmlContent}
                       onChange={(e) => setHtmlContent(e.target.value)}
                       className="w-full flex-1 bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm font-mono dark:text-white focus:outline-hidden focus:border-blue-500"
@@ -877,8 +762,8 @@ export default function PropertiesPanel() {
               {selectedItem.type === 'text' && (
                 <>
                   <div>
-                    <label className={labelClass}>Text Content</label>
-                    <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
+                    <label className={labelClass} htmlFor={`${tabId}-text`}>Text Content</label>
+                    <textarea id={`${tabId}-text`} name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
                   </div>
 
                   <div className="flex gap-2 mt-2 border border-neutral-200 dark:border-neutral-800 rounded-sm p-1 bg-neutral-50 dark:bg-neutral-900/50">
@@ -888,9 +773,9 @@ export default function PropertiesPanel() {
                   </div>
 
                   <div className="mt-3">
-                    <label className={labelClass}>Font Family</label>
+                    <label className={labelClass} htmlFor={`${tabId}-font`}>Font Family</label>
                     <div className="flex gap-2">
-                      <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                      <select id={`${tabId}-font`} name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
                         <option value="arial.ttf">System Arial</option>
                         {fonts.map(f => (
                           <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
@@ -898,7 +783,7 @@ export default function PropertiesPanel() {
                       </select>
                       <label className="flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 px-3 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors" title="Upload Custom Font">
                         <Plus size={16} className="text-neutral-500 dark:text-neutral-400" />
-                        <input type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
+                        <input aria-label="Upload custom font" type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
                       </label>
                     </div>
                   </div>
@@ -918,15 +803,15 @@ export default function PropertiesPanel() {
 
                   <div className="flex gap-4 mt-2">
                     <div className="flex-1">
-                      <label className={labelClass}>Text Color</label>
-                      <select name="color" value={selectedItem.color || (selectedItem.invert ? 'white' : 'black')} onChange={handleChange} className={inputClass}>
+                      <label className={labelClass} htmlFor={`${tabId}-color`}>Text Color</label>
+                      <select id={`${tabId}-color`} name="color" value={selectedItem.color || (selectedItem.invert ? 'white' : 'black')} onChange={handleChange} className={inputClass}>
                         <option value="black">Black</option>
                         <option value="white">White</option>
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className={labelClass}>Background</label>
-                      <select name="bgColor" value={selectedItem.bgColor || (selectedItem.invert ? 'black' : (selectedItem.bg_white ? 'white' : 'transparent'))} onChange={handleChange} className={inputClass}>
+                      <label className={labelClass} htmlFor={`${tabId}-background`}>Background</label>
+                      <select id={`${tabId}-background`} name="bgColor" value={selectedItem.bgColor || (selectedItem.invert ? 'black' : (selectedItem.bg_white ? 'white' : 'transparent'))} onChange={handleChange} className={inputClass}>
                         <option value="transparent">Transparent</option>
                         <option value="black">Black</option>
                         <option value="white">White</option>
@@ -940,16 +825,16 @@ export default function PropertiesPanel() {
 
                   <div className="flex gap-4 mt-2">
                     <div className="flex-1">
-                      <label className={labelClass}>Horizontal</label>
-                      <select name="align" value={selectedItem.align || 'center'} onChange={handleChange} className={inputClass}>
+                      <label className={labelClass} htmlFor={`${tabId}-horizontal`}>Horizontal</label>
+                      <select id={`${tabId}-horizontal`} name="align" value={selectedItem.align || 'center'} onChange={handleChange} className={inputClass}>
                         <option value="left">Left</option>
                         <option value="center">Center</option>
                         <option value="right">Right</option>
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className={labelClass}>Vertical</label>
-                      <select name="verticalAlign" value={selectedItem.verticalAlign || 'middle'} onChange={handleChange} className={inputClass}>
+                      <label className={labelClass} htmlFor={`${tabId}-vertical`}>Vertical</label>
+                      <select id={`${tabId}-vertical`} name="verticalAlign" value={selectedItem.verticalAlign || 'middle'} onChange={handleChange} className={inputClass}>
                         <option value="top">Top</option>
                         <option value="middle">Middle</option>
                         <option value="bottom">Bottom</option>
@@ -1002,8 +887,8 @@ export default function PropertiesPanel() {
                     </button>
                   </div>
                   <div>
-                    <label className={labelClass}>Group Text</label>
-                    <input type="text" name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} />
+                    <label className={labelClass} htmlFor={`${tabId}-group-text`}>Group Text</label>
+                    <input id={`${tabId}-group-text`} type="text" name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} />
                   </div>
                   <div className="flex gap-4 mt-2">
                     <ScrubberInput name="size" label="Text Size" value={Number(selectedItem.size || 0)} onChange={handleChange} />
@@ -1026,9 +911,9 @@ export default function PropertiesPanel() {
               {selectedItem.type === 'html' && (
                 <>
                   <div>
-                    <label className={labelClass}>Font Family</label>
+                    <label className={labelClass} htmlFor={`${tabId}-font`}>Font Family</label>
                     <div className="flex gap-2">
-                      <select name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
+                      <select id={`${tabId}-font`} name="font" value={selectedItem.font || settings?.default_font || 'RobotoCondensed.ttf'} onChange={handleChange} className={inputClass}>
                         <option value="arial.ttf">System Arial</option>
                         {fonts.map(f => (
                           <option key={f.id} value={f.name}>{f.name.split('.')[0]}</option>
@@ -1036,16 +921,16 @@ export default function PropertiesPanel() {
                       </select>
                       <label className="flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 px-3 cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors" title="Upload Custom Font">
                         <Plus size={16} className="text-neutral-500 dark:text-neutral-400" />
-                        <input type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
+                        <input aria-label="Upload custom font" type="file" accept=".ttf,.otf" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { if(e.target.files[0]) uploadFont(e.target.files[0]); }} />
                       </label>
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className={labelClass.replace('mb-1.5', 'mb-0')}>HTML Content</label>
+                      <label className={labelClass.replace('mb-1.5', 'mb-0')} htmlFor={`${tabId}-html`}>HTML Content</label>
                       <button onClick={() => handleFormatHtml('item')} className="text-[9px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm font-bold uppercase hover:bg-blue-100 transition-colors">Format</button>
                     </div>
-                    <textarea name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={8} />
+                    <textarea id={`${tabId}-html`} name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={8} />
                   </div>
                   <div className="flex gap-4">
                     <MmScrubberInput name="width" label="Frame Width" value={selectedItem.width} onChange={handleChange} />
@@ -1070,16 +955,16 @@ export default function PropertiesPanel() {
                   </div>
                   <div className="flex gap-4 mt-2">
                     <div className="flex-1">
-                      <label className={labelClass}>Fill</label>
-                      <select name="fill" value={selectedItem.fill} onChange={handleChange} className={inputClass}>
+                      <label className={labelClass} htmlFor={`${tabId}-fill`}>Fill</label>
+                      <select id={`${tabId}-fill`} name="fill" value={selectedItem.fill} onChange={handleChange} className={inputClass}>
                         <option value="black">Black</option>
                         <option value="white">White</option>
                         <option value="transparent">Transparent</option>
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className={labelClass}>Stroke</label>
-                      <select name="stroke" value={selectedItem.stroke} onChange={handleChange} className={inputClass}>
+                      <label className={labelClass} htmlFor={`${tabId}-stroke`}>Stroke</label>
+                      <select id={`${tabId}-stroke`} name="stroke" value={selectedItem.stroke} onChange={handleChange} className={inputClass}>
                         <option value="transparent">Transparent</option>
                         <option value="black">Black</option>
                         <option value="white">White</option>
@@ -1093,8 +978,8 @@ export default function PropertiesPanel() {
               {selectedItem.type === 'qrcode' && (
                 <>
                   <div>
-                    <label className={labelClass}>QR Data (Supports {'{{ var }}'})</label>
-                    <textarea name="data" value={selectedItem.data} onChange={handleChange} className={inputClass} rows={3} />
+                    <label className={labelClass} htmlFor={`${tabId}-qr-data`}>QR Data (Supports {'{{ var }}'})</label>
+                    <textarea id={`${tabId}-qr-data`} name="data" value={selectedItem.data} onChange={handleChange} className={inputClass} rows={3} />
                   </div>
                   <div className="flex gap-4">
                     {/* Scrubbing one axis updates both to maintain the square aspect ratio */}
@@ -1109,12 +994,12 @@ export default function PropertiesPanel() {
               {selectedItem.type === 'barcode' && (
                 <>
                   <div>
-                    <label className={labelClass}>Barcode Data</label>
-                    <input type="text" name="data" value={selectedItem.data} onChange={handleChange} className={inputClass} />
+                    <label className={labelClass} htmlFor={`${tabId}-barcode-data`}>Barcode Data</label>
+                    <input id={`${tabId}-barcode-data`} type="text" name="data" value={selectedItem.data} onChange={handleChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className={labelClass}>Type</label>
-                    <select name="barcode_type" value={selectedItem.barcode_type} onChange={handleChange} className={inputClass}>
+                    <label className={labelClass} htmlFor={`${tabId}-barcode-type`}>Type</label>
+                    <select id={`${tabId}-barcode-type`} name="barcode_type" value={selectedItem.barcode_type} onChange={handleChange} className={inputClass}>
                       <option value="code128">Code 128</option>
                       <option value="code39">Code 39</option>
                       <option value="ean13">EAN-13</option>
@@ -1132,12 +1017,12 @@ export default function PropertiesPanel() {
                   <label className={labelClass}>Duplicate Element Only</label>
                   <div className="flex gap-4 mb-2">
                     <div className="flex-1">
-                      <label className="block text-[10px] text-neutral-400 mb-1">Copies</label>
-                      <input type="number" min="1" value={dupCopies} onChange={e => setDupCopies(parseInt(e.target.value)||1)} className={inputClass} />
+                      <label className="block text-[10px] text-neutral-600 dark:text-neutral-300 mb-1" htmlFor={`${tabId}-item-copies`}>Copies</label>
+                      <input id={`${tabId}-item-copies`} type="number" min="1" value={dupCopies} onChange={e => setDupCopies(parseInt(e.target.value)||1)} className={inputClass} />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] text-neutral-400 mb-1">Gap (mm)</label>
-                      <input type="number" min="0" value={dupGap} onChange={e => setDupGap(parseInt(e.target.value)||0)} className={inputClass} />
+                      <label className="block text-[10px] text-neutral-600 dark:text-neutral-300 mb-1" htmlFor={`${tabId}-gap`}>Gap (mm)</label>
+                      <input id={`${tabId}-gap`} type="number" min="0" value={dupGap} onChange={e => setDupGap(parseInt(e.target.value)||0)} className={inputClass} />
                     </div>
                   </div>
                   <button onClick={() => useStore.getState().duplicateItem(selectedId, dupCopies, dupGap)} className="w-full bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-200 text-[10px] uppercase tracking-widest font-bold">
@@ -1147,8 +1032,8 @@ export default function PropertiesPanel() {
               )}
               <div className="mt-2 mb-2 flex gap-4">
                   <div className="flex-1">
-                    <label className={labelClass}>Styling Lines</label>
-                    <select name="border_style" value={selectedItem.border_style || 'none'} onChange={handleChange} className={inputClass}>
+                    <label className={labelClass} htmlFor={`${tabId}-border-style`}>Styling Lines</label>
+                    <select id={`${tabId}-border-style`} name="border_style" value={selectedItem.border_style || 'none'} onChange={handleChange} className={inputClass}>
                       <option value="none">None</option>
                       <option value="box">Box (Full)</option>
                       <option value="top">Top Border</option>
@@ -1204,4 +1089,5 @@ export default function PropertiesPanel() {
         )}
     </div>
   );
+  return isNarrowLayout ? <EditorDrawer label="Properties" width={panelWidth} onClose={toggleProperties}>{content}</EditorDrawer> : content;
 }

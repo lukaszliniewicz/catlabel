@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
@@ -39,6 +39,7 @@ const InlineEdit = ({ initialValue, onSave, onCancel }) => {
 
   return (
     <input
+      aria-label="Project or folder name"
       ref={inputRef}
       value={val}
       onChange={(e) => setVal(e.target.value)}
@@ -52,7 +53,9 @@ const InlineEdit = ({ initialValue, onSave, onCancel }) => {
 };
 
 // --- Recursive Tree Node Component ---
-const TreeNode = ({ node, level, onImport, onMove }) => {
+const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) => {
+  const nodeId = useId();
+  const nodeKey = `${node.type}-${node.id}`;
   const {
     currentProjectId, loadProject, updateProject, deleteProject,
     createCategory, updateCategory, deleteCategory, saveProject
@@ -143,7 +146,12 @@ const TreeNode = ({ node, level, onImport, onMove }) => {
     <div className="w-full">
       <div
         role="treeitem"
-        tabIndex={0}
+        id={nodeId}
+        aria-label={node.name}
+        aria-level={level + 1}
+        aria-owns={isFolder && isOpen ? `${nodeId}-children` : undefined}
+        tabIndex={focusedKey === nodeKey ? 0 : -1}
+        onFocus={event => { if (event.target === event.currentTarget) onFocusNode(nodeKey); }}
         aria-expanded={isFolder ? isOpen : undefined}
         aria-current={isLoaded ? 'page' : undefined}
         className={`flex items-center justify-between py-1.5 px-2 group cursor-pointer border border-transparent transition-colors
@@ -156,10 +164,33 @@ const TreeNode = ({ node, level, onImport, onMove }) => {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => {
+          onFocusNode(nodeKey);
           if (isFolder) setIsOpen(!isOpen);
           else loadProject(node);
         }}
         onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          const row = event.currentTarget;
+          const rows = [...row.closest('[role=tree]').querySelectorAll('[role=treeitem]')];
+          const index = rows.indexOf(row);
+          if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const target = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+            rows[target]?.focus();
+            return;
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            if (isFolder && !isOpen) setIsOpen(true);
+            else if (isFolder) document.getElementById(`${nodeId}-children`)?.querySelector('[role=treeitem]')?.focus();
+            return;
+          }
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            if (isFolder && isOpen) setIsOpen(false);
+            else document.getElementById(row.closest('[role=group]')?.getAttribute('aria-labelledby'))?.focus();
+            return;
+          }
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           if (isFolder) setIsOpen(!isOpen);
@@ -289,7 +320,7 @@ const TreeNode = ({ node, level, onImport, onMove }) => {
       </div>
 
       {isFolder && isOpen && node.children && (
-        <div className="flex flex-col border-l border-neutral-100 dark:border-neutral-800 ml-3">
+        <div role="group" id={`${nodeId}-children`} aria-labelledby={nodeId} className="flex flex-col border-l border-neutral-100 dark:border-neutral-800 ml-3">
           {creating && (
             <div className="flex items-center gap-2 py-1.5 px-2" style={{ paddingLeft: `${(level + 1) * 12 + 8}px` }}>
               {creating.type === 'category' ? <Folder size={14} className="text-blue-500 shrink-0" /> : <FileText size={14} className="text-neutral-500 shrink-0" />}
@@ -304,7 +335,7 @@ const TreeNode = ({ node, level, onImport, onMove }) => {
             </div>
           )}
           {node.children.map(child => (
-            <TreeNode key={`${child.type}-${child.id}`} node={child} level={level + 1} onImport={onImport} onMove={onMove} />
+            <TreeNode key={`${child.type}-${child.id}`} node={child} level={level + 1} onImport={onImport} onMove={onMove} focusedKey={focusedKey} onFocusNode={onFocusNode} />
           ))}
         </div>
       )}
@@ -319,6 +350,7 @@ export default function ProjectTree() {
   })));
   const [creatingRoot, setCreatingRoot] = useState(null);
   const [isRootDragOver, setIsRootDragOver] = useState(false);
+  const [focusedKey, setFocusedKey] = useState(null);
 
   const treeNodes = useMemo(() => {
     const rootNodes = [];
@@ -356,6 +388,9 @@ export default function ProjectTree() {
 
     return rootNodes;
   }, [projects, categories]);
+
+  const hasFocusedNode = nodes => nodes.some(node => `${node.type}-${node.id}` === focusedKey || hasFocusedNode(node.children || []));
+  const effectiveFocusedKey = hasFocusedNode(treeNodes) ? focusedKey : treeNodes[0] && `${treeNodes[0].type}-${treeNodes[0].id}`;
 
   const handleImport = async (e, targetCategoryId = null) => {
     const file = e.target.files[0];
@@ -418,6 +453,7 @@ export default function ProjectTree() {
       </div>
 
       <div 
+        role="tree" aria-label="Saved projects and folders"
         className={`flex flex-col flex-1 max-h-64 overflow-y-auto border border-neutral-100 dark:border-neutral-800 rounded-sm transition-colors ${isRootDragOver ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-neutral-950'}`}
         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsRootDragOver(true); }}
         onDragLeave={(e) => { e.stopPropagation(); setIsRootDragOver(false); }}
@@ -440,7 +476,7 @@ export default function ProjectTree() {
           <div className="text-xs text-neutral-400 text-center py-4 pointer-events-none">No projects saved yet. Drag items here to move them to the root.</div>
         ) : (
           treeNodes.map(node => (
-            <TreeNode key={`${node.type}-${node.id}`} node={node} level={0} onImport={handleImport} onMove={handleMove} />
+            <TreeNode key={`${node.type}-${node.id}`} node={node} level={0} onImport={handleImport} onMove={handleMove} focusedKey={effectiveFocusedKey} onFocusNode={setFocusedKey} />
           ))
         )}
       </div>

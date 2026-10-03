@@ -1,4 +1,7 @@
-@import 'tailwindcss';
+/* Build only from maintained source, never previously generated dist chunks. */
+@import 'tailwindcss' source(none);
+@source './';
+@source '../index.html';
 
 @custom-variant dark (&:is(.dark *));
 

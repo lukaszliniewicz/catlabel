@@ -5,6 +5,7 @@ import ProjectTree from './ProjectTree';
 import SavePresetModal from './SavePresetModal';
 import PrinterDropdown from './PrinterDropdown';
 import PresetPickerModal from './PresetPickerModal';
+import EditorDrawer from './EditorDrawer';
 import { getPageIndices } from '../utils/canvasPages';
 import { apiJson } from '../utils/apiClient';
 import {
@@ -70,6 +71,7 @@ export default function Sidebar() {
   const [isScanning, setIsScanning] = useState(false);
   const scanController = useRef(null);
   const selectedPrinterInfo = useStore(state => state.selectedPrinterInfo);
+  const isNarrowLayout = useStore(state => state.isNarrowLayout);
   const setShowOnboarding = useStore(state => state.setShowOnboarding);
   const [showProjects, setShowProjects] = useState(true);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
@@ -114,8 +116,8 @@ export default function Sidebar() {
 
 
 
-  return (
-    <div className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-4 flex flex-col gap-6 z-10 overflow-y-auto overflow-x-hidden transition-all duration-300 shrink-0`}>
+  const content = (
+    <div className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} max-w-full h-full bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 p-4 flex flex-col gap-6 z-10 overflow-y-auto overflow-x-hidden transition-all duration-300 shrink-0`}>
       <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} mb-2`}>
         {!isSidebarCollapsed && (
           <div className="flex items-center gap-3 min-w-0">
@@ -134,7 +136,7 @@ export default function Sidebar() {
       </div>
 
       {!isSidebarCollapsed && (
-        <div className="flex gap-3 text-[10px] uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+        <div className="flex gap-3 text-[10px] uppercase tracking-widest text-neutral-600 dark:text-neutral-300">
           <button onClick={() => setTheme('light')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'light' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Light</button>
           <button onClick={() => setTheme('dark')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'dark' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Dark</button>
           <button onClick={() => setTheme('auto')} className={`hover:text-neutral-900 dark:hover:text-white transition-colors ${theme === 'auto' ? 'text-neutral-900 dark:text-white font-bold' : ''}`}>Auto</button>
@@ -143,7 +145,7 @@ export default function Sidebar() {
 
       {!isSidebarCollapsed ? (
         <div className="space-y-3">
-          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
+          <h2 className="text-[10px] font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Printers</h2>
 
           <SidebarButton collapsed={isSidebarCollapsed} icon={Wifi} disabled={isScanning} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
 
@@ -182,7 +184,7 @@ export default function Sidebar() {
           ) : (
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-1 mb-1">
-                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Copies per Label</span>
+                <span className="text-[10px] font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-widest">Copies per Label</span>
                 <div className={`flex items-center border rounded-xs overflow-hidden ${isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline' ? 'border-neutral-300 dark:border-neutral-700 opacity-50' : 'border-neutral-300 dark:border-neutral-700'}`}>
                   <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline'} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">-</button>
                   <span className="text-[10px] font-bold w-6 text-center select-none dark:text-white">{printCopies}</span>
@@ -204,7 +206,7 @@ export default function Sidebar() {
 
       {!isSidebarCollapsed ? (
         <div className="space-y-3">
-          <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas Presets</h2>
+          <h2 className="text-[10px] font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-widest border-b border-neutral-100 dark:border-neutral-800 pb-2">Canvas Presets</h2>
           <button
             onClick={() => setShowPresetPicker(true)}
             className="w-full flex items-center justify-between bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-xs text-neutral-900 dark:text-white hover:border-blue-500 transition-colors mb-2"
@@ -236,7 +238,7 @@ export default function Sidebar() {
             className="flex w-full items-center justify-between cursor-pointer border-b border-neutral-100 dark:border-neutral-800 pb-2 group"
             onClick={() => setShowProjects(!showProjects)}
           >
-            <h2 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">Saved Projects</h2>
+            <h2 className="text-[10px] font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-widest group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">Saved Projects</h2>
             {showProjects ? (
               <ChevronDown size={14} className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors" />
             ) : (
@@ -258,4 +260,6 @@ export default function Sidebar() {
       )}
     </div>
   );
+  if (!isNarrowLayout) return content;
+  return isSidebarCollapsed ? null : <EditorDrawer label="Projects and printers" side="left" width={288} onClose={toggleSidebar}>{content}</EditorDrawer>;
 }
