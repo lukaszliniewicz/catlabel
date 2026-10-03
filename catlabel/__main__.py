@@ -37,6 +37,7 @@ def main() -> None:
         host=settings.host,
         port=port,
         reload=False,
+        timeout_graceful_shutdown=5,
     )
     server = uvicorn.Server(config)
     threading.Thread(

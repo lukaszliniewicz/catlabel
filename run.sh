@@ -2,7 +2,7 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 cd -- "$root"
-setup_only=0 install_headless=0 skip_headless=0 install_ai=0 skip_ai=0 repair=0 diagnose=0
+setup_only=0 install_headless=0 skip_headless=0 install_ai=0 skip_ai=0 install_mcp=0 skip_mcp=0 repair=0 diagnose=0
 for option in "$@"; do
     case "$option" in
         --setup-only) setup_only=1 ;;
@@ -10,9 +10,11 @@ for option in "$@"; do
         --skip-headless) skip_headless=1 ;;
         --install-ai) install_ai=1 ;;
         --skip-ai) skip_ai=1 ;;
+        --install-mcp) install_mcp=1 ;;
+        --skip-mcp) skip_mcp=1 ;;
         --repair) repair=1 ;;
         --diagnose) diagnose=1 ;;
-        --help) echo 'Usage: ./run.sh [--setup-only] [--install-headless | --skip-headless] [--install-ai | --skip-ai] [--repair] [--diagnose]'; exit 0 ;;
+        --help) echo 'Usage: ./run.sh [--setup-only] [--install-headless | --skip-headless] [--install-ai | --skip-ai] [--install-mcp | --skip-mcp] [--repair] [--diagnose]'; exit 0 ;;
         *) echo "Unknown option: $option" >&2; exit 2 ;;
     esac
  done
@@ -21,6 +23,9 @@ if (( install_headless && skip_headless )); then
 fi
 if (( install_ai && skip_ai )); then
     echo 'Choose either --install-ai or --skip-ai.' >&2; exit 2
+fi
+if (( install_mcp && skip_mcp )); then
+    echo 'Choose either --install-mcp or --skip-mcp.' >&2; exit 2
 fi
 data="${CATLABEL_DATA_DIR-$root/data}"
 case "$data" in
@@ -69,8 +74,13 @@ hash_input() {
 verified_binary() {
     [[ -f "$1" ]] && [[ "$(wc -c < "$1" | tr -d '[:space:]')" == "$size" ]] && [[ "$(hash_file "$1")" == "$digest" ]]
 }
-headless_enabled=0 ai_enabled=0
-if [[ -f "$state/.headless-enabled" ]] || (( install_headless )); then headless_enabled=1; fi
+headless_enabled=0 ai_enabled=0 mcp_enabled=0
+if [[ -f "$state/.mcp-enabled" ]] || (( install_mcp )); then mcp_enabled=1; fi
+if (( skip_mcp )); then mcp_enabled=0; fi
+if (( skip_headless && mcp_enabled )); then
+    echo 'MCP requires headless support. Disable MCP with --skip-mcp before using --skip-headless.' >&2; exit 2
+fi
+if [[ -f "$state/.headless-enabled" ]] || (( install_headless || mcp_enabled )); then headless_enabled=1; fi
 if (( skip_headless )); then headless_enabled=0; fi
 if [[ -f "$state/.ai-enabled" ]] || (( install_ai )); then ai_enabled=1; fi
 if (( skip_ai )); then ai_enabled=0; fi
@@ -78,6 +88,9 @@ environment=default
 if (( headless_enabled )); then environment=headless; fi
 if (( ai_enabled )); then
     if (( headless_enabled )); then environment=ai-headless; else environment=ai; fi
+fi
+if (( mcp_enabled )); then
+    if (( ai_enabled )); then environment=ai-mcp-headless; else environment=mcp-headless; fi
 fi
 identity="$(printf 'catlabel-bootstrap-v1\n%s\n%s\n%s\n%s\n' "$version" "$environment" \
     "$(hash_file "$root/pixi.toml")" "$(hash_file "$root/pixi.lock")" | hash_input)"
@@ -143,7 +156,7 @@ if ! verified_binary "$pixi"; then
     download=''
 fi
 if [[ ! -x "$pixi" ]]; then chmod 755 -- "$pixi"; fi
-if (( repair )) || [[ ! -f "$python" || "$saved_identity" != "$identity" ]] || (( install_headless || install_ai )); then
+if (( repair )) || [[ ! -f "$python" || "$saved_identity" != "$identity" ]] || (( install_headless || install_ai || install_mcp )); then
     rm -f -- "$stamp"
     if (( repair )); then
         echo "Repairing the locked $environment environment..."
@@ -162,8 +175,12 @@ if (( headless_enabled )); then printf '1\n' > "$state/.headless-enabled"
 elif (( skip_headless )); then rm -f -- "$state/.headless-enabled"; fi
 if (( ai_enabled )); then printf '1\n' > "$state/.ai-enabled"
 elif (( skip_ai )); then rm -f -- "$state/.ai-enabled"; fi
+if (( mcp_enabled )); then printf '1\n' > "$state/.mcp-enabled"
+elif (( skip_mcp )); then rm -f -- "$state/.mcp-enabled"; fi
 cleanup
 trap - EXIT INT TERM
 echo "CatLabel is ready ($environment)."
 if (( setup_only )); then exit 0; fi
+if (( mcp_enabled )); then export CATLABEL_MCP_ENABLED=1
+else unset CATLABEL_MCP_ENABLED; fi
 exec "$pixi" run --environment "$environment" --locked --no-install python -m catlabel

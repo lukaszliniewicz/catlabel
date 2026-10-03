@@ -688,35 +688,27 @@ def tool_set_batch_records(args, canvas_state, cw, ch):
 
 @ToolRegistry.register("list_directory")
 def tool_list_directory(args, canvas_state, cw, ch):
-    from sqlmodel import Session, select
-
-    from ..core.database import engine
-    from ..core.models import Category, Project
+    from ..core import database
+    from . import projects as project_service
 
     cat_id = args.get("category_id")
-    with Session(engine) as session:
-        cats = session.exec(select(Category).where(Category.parent_id == cat_id)).all()
-        projs = session.exec(select(Project).where(Project.category_id == cat_id)).all()
-        return json.dumps(
-            {
-                "sub_folders": [{"id": c.id, "name": c.name} for c in cats],
-                "projects": [{"id": p.id, "name": p.name} for p in projs],
-            }
-        )
+    return json.dumps(project_service.list_directory(cat_id, db_engine=database.engine))
 
 
 @ToolRegistry.register("create_category")
 def tool_create_category(args, canvas_state, cw, ch):
-    from ..api.routes_project import CategoryCreate, create_category
+    from ..core import database
+    from . import projects as project_service
 
     try:
-        category = create_category(
-            CategoryCreate(
+        category = project_service.create_category(
+            project_service.CategoryCreate(
                 name=args.get("name", "New Folder"),
                 parent_id=args.get("parent_id"),
-            )
+            ),
+            db_engine=database.engine,
         )
-    except HTTPException as exc:
+    except (HTTPException, project_service.ProjectServiceError) as exc:
         return _safe_api_error(exc, operation="create the folder")
     except ValidationError:
         return "Error: The folder request is invalid."
@@ -727,35 +719,38 @@ def tool_create_category(args, canvas_state, cw, ch):
 
 @ToolRegistry.register("load_project")
 def tool_load_project(args, canvas_state, cw, ch):
-    from sqlmodel import Session
+    from ..core import database
+    from . import projects as project_service
 
-    from ..core.database import engine
-    from ..core.models import Project
-
-    with Session(engine) as session:
-        proj = session.get(Project, args.get("project_id"))
-        if not proj:
-            return "Error: Project ID not found."
-
-        loaded_state = json.loads(proj.canvas_state_json)
-        canvas_state.clear()
-        canvas_state.update(loaded_state)
-        assert proj.id is not None
-        canvas_state["__project_id__"] = proj.id
-        canvas_state["__project_revision__"] = proj.revision
-        canvas_state.setdefault("__actions__", []).append(
-            {
-                "action": "loaded_project_id",
-                "project_id": proj.id,
-                "revision": proj.revision,
-            }
+    try:
+        proj = project_service.get_project(
+            args.get("project_id"), db_engine=database.engine
         )
-        return f"Successfully loaded '{proj.name}'. The canvas state is now populated with this design."
+    except project_service.ProjectServiceError as exc:
+        if exc.status_code == 404:
+            return "Error: Project ID not found."
+        return _safe_api_error(exc, operation="load the project")
+
+    loaded_state = json.loads(proj.canvas_state_json)
+    canvas_state.clear()
+    canvas_state.update(loaded_state)
+    assert proj.id is not None
+    canvas_state["__project_id__"] = proj.id
+    canvas_state["__project_revision__"] = proj.revision
+    canvas_state.setdefault("__actions__", []).append(
+        {
+            "action": "loaded_project_id",
+            "project_id": proj.id,
+            "revision": proj.revision,
+        }
+    )
+    return f"Successfully loaded '{proj.name}'. The canvas state is now populated with this design."
 
 
 @ToolRegistry.register("save_project")
 def tool_save_project(args, canvas_state, cw, ch):
-    from ..api.routes_project import ProjectCreate, create_project
+    from ..core import database
+    from . import projects as project_service
 
     cat_id = args.get("category_id")
     state_to_save = {
@@ -764,14 +759,15 @@ def tool_save_project(args, canvas_state, cw, ch):
         if key not in {"__actions__", "__project_id__", "__project_revision__"}
     }
     try:
-        proj = create_project(
-            ProjectCreate(
+        proj = project_service.create_project(
+            project_service.ProjectCreate(
                 name=args.get("name", "New Project"),
                 category_id=cat_id,
                 canvas_state=state_to_save,
-            )
+            ),
+            db_engine=database.engine,
         )
-    except HTTPException as exc:
+    except (HTTPException, project_service.ProjectServiceError) as exc:
         return _safe_api_error(exc, operation="save the project")
     except ValidationError:
         return "Error: The project request is invalid."
@@ -792,7 +788,8 @@ def tool_save_project(args, canvas_state, cw, ch):
 
 @ToolRegistry.register("update_project")
 def tool_update_project(args, canvas_state, cw, ch):
-    from ..api.routes_project import ProjectUpdate, update_project
+    from ..core import database
+    from . import projects as project_service
 
     project_id = args.get("project_id")
     loaded_project_id = canvas_state.get("__project_id__")
@@ -822,9 +819,11 @@ def tool_update_project(args, canvas_state, cw, ch):
         payload["name"] = name
 
     try:
-        update_request = ProjectUpdate.model_validate(payload)
-        proj = update_project(project_id, update_request)
-    except HTTPException as exc:
+        update_request = project_service.ProjectUpdate.model_validate(payload)
+        proj = project_service.update_project(
+            project_id, update_request, db_engine=database.engine
+        )
+    except (HTTPException, project_service.ProjectServiceError) as exc:
         return _safe_api_error(
             exc, operation="update the project", revision_conflict=True
         )
@@ -845,33 +844,34 @@ def tool_update_project(args, canvas_state, cw, ch):
 
 
 def _safe_api_error(
-    exc: HTTPException, *, operation: str, revision_conflict: bool = False
+    exc: HTTPException | Exception,
+    *,
+    operation: str,
+    revision_conflict: bool = False,
 ) -> str:
-    if revision_conflict and exc.status_code in (409, 428):
+    status_code = getattr(exc, "status_code", None)
+    detail = getattr(exc, "detail", None)
+    if revision_conflict and status_code in (409, 428):
         return (
             "Error: The project changed or its revision could not be verified. "
             "Reload it and review the latest contents before updating."
         )
-    if isinstance(exc.detail, str):
-        return f"Error: {exc.detail}"
+    if isinstance(detail, str):
+        return f"Error: {detail}"
     return f"Error: Could not {operation} because the request was invalid."
 
 
 def _defer_saved_delete(args, canvas_state, *, kind):
-    from sqlmodel import Session
-
     from ..core import database
-    from ..core.models import Category, Project
+    from . import projects as project_service
 
     if kind == "project":
         target_id = args.get("project_id")
-        model = Project
         target_kind = "project"
         invalid_message = _AI_DELETION_INVALID_PROJECT
         missing_message = _AI_DELETION_MISSING_PROJECT
     else:
         target_id = args.get("category_id")
-        model = Category
         target_kind = "folder"
         invalid_message = _AI_DELETION_INVALID_CATEGORY
         missing_message = _AI_DELETION_MISSING_CATEGORY
@@ -879,11 +879,16 @@ def _defer_saved_delete(args, canvas_state, *, kind):
     if type(target_id) is not int or target_id <= 0:
         return invalid_message
 
-    with Session(database.engine) as session:
-        record = session.get(model, target_id)
-        if record is None:
+    try:
+        if kind == "project":
+            record = project_service.get_project(target_id, db_engine=database.engine)
+        else:
+            record = project_service.get_category(target_id, db_engine=database.engine)
+    except project_service.ProjectServiceError as exc:
+        if exc.status_code == 404:
             return missing_message
-        name = record.name
+        return _safe_api_error(exc, operation="find the saved content")
+    name = record.name
 
     action = {
         "action": "deletion_review_required",

@@ -3,18 +3,19 @@ import logging
 import os
 import shutil
 import urllib.request
-from contextlib import asynccontextmanager, suppress
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session, select
+from starlette.responses import Response
 
 from ..core.database import create_db_and_tables, engine
-from ..core.models import Address, Font, LabelPreset, Settings
+from ..core.models import Address, Font, LabelPreset, Project, Settings
 from ..core.paths import (
     APPLICATION_ROOT,
     DATA_DIRECTORY,
@@ -27,9 +28,12 @@ from ..core.runtime_lease import RuntimeLease
 from ..core.server_security import ServerSecurity
 from ..rendering.template import close_browser_renderer
 from ..services.agent_context import build_agent_context
+from ..services.artifacts import ArtifactError, ArtifactStore
+from ..services.harness import HarnessServices
 from ..services.layout_engine import TEMPLATE_METADATA
 from ..services.prepared_prints import PreparedPrintStore
 from ..services.uploads import convert_uploaded_pdf, store_uploaded_font
+from . import routes_print
 from .request_limits import RequestLimitsMiddleware
 from .routes_ai import migrate_legacy_provider
 from .routes_ai import router as ai_router
@@ -128,7 +132,34 @@ async def lifespan(app: FastAPI):
             seed_default_presets()
             if os.environ.get("CATLABEL_ACCEPTANCE_PROBE") != "1":
                 download_default_fonts()
-            yield
+            artifacts = ArtifactStore(engine, DATA_DIRECTORY / "artifacts")
+            services = HarnessServices(engine, artifacts, principal="local-editor")
+            app.state.harness_services = services
+            routes_print.configure_harness(services)
+            try:
+                async with AsyncExitStack() as stack:
+                    if os.environ.get("CATLABEL_MCP_ENABLED") == "1":
+                        from ..mcp.auth import credential_path, load_credential
+                        from ..mcp.integration import build_mcp
+
+                        credential = load_credential(
+                            credential_path(DATA_DIRECTORY), create=True
+                        )
+                        services.principal = credential.principal
+                        registry, asgi = build_mcp(
+                            services, credential, security_settings.port
+                        )
+                        await stack.enter_async_context(
+                            registry.server.session_manager.run()
+                        )
+                        app.state.mcp_asgi = asgi
+                    yield
+            finally:
+                routes_print.configure_harness(None)
+                app.state.mcp_asgi = None
+                await services.jobs.close()
+                artifacts.close()
+                app.state.harness_services = None
         finally:
             try:
                 reaper_task.cancel()
@@ -152,6 +183,10 @@ async def _reap_prepared_print_sessions(store: PreparedPrintStore) -> None:
         await asyncio.sleep(30)
         try:
             store.reap()
+            services = getattr(app.state, "harness_services", None)
+            if services is not None:
+                services.jobs.reap()
+                services.artifacts.reap()
         except Exception:
             logger.exception("Failed to reap expired prepared print sessions")
 
@@ -172,10 +207,47 @@ app.add_middleware(
 )
 app.add_middleware(LocalSecurityMiddleware, settings=security_settings)
 
+if os.environ.get("CATLABEL_MCP_ENABLED") == "1":
+    if security_settings.host not in {"127.0.0.1", "::1"}:
+        raise RuntimeError("The local MCP requires CATLABEL_HOST=127.0.0.1 or ::1.")
+    from ..mcp.integration import MCPMount
+
+    app.mount("/mcp", MCPMount(app), name="mcp")
+
 app.include_router(print_router)
 app.include_router(prepared_print_router)
 app.include_router(project_router)
 app.include_router(ai_router)
+
+
+@app.get("/api/projects/{project_id}/revision")
+def get_project_revision(project_id: int):
+    with Session(engine) as session:
+        revision = session.exec(
+            select(Project.revision).where(Project.id == project_id)
+        ).first()
+        if revision is None:
+            raise HTTPException(404, "Project not found.")
+        return {"id": project_id, "revision": revision}
+
+
+@app.get("/api/assets/{artifact_id}")
+def get_managed_asset(artifact_id: str):
+    services = getattr(app.state, "harness_services", None)
+    if services is None:
+        raise HTTPException(503, "Asset service is not ready.")
+    try:
+        metadata = services.artifacts.get(artifact_id)
+        data = services.artifacts.read_bytes(artifact_id)
+    except ArtifactError as exc:
+        raise HTTPException(404, "Image asset not found.") from exc
+    if metadata["mime_type"] != "image/png":
+        raise HTTPException(404, "Image asset not found.")
+    return Response(
+        data,
+        media_type="image/png",
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @app.get("/api/health", tags=["Diagnostics"])

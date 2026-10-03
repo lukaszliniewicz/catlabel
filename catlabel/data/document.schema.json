@@ -1,0 +1,373 @@
+{
+  "$defs": {
+    "CanvasElement": {
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "icon_text",
+            "image",
+            "html",
+            "barcode",
+            "qrcode",
+            "shape",
+            "cut_line_indicator",
+            "group",
+            "label_template"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "pageIndex": {
+          "default": 0,
+          "exclusiveMaximum": 500,
+          "minimum": 0,
+          "title": "Pageindex",
+          "type": "integer"
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^-?\\d+(?:\\.\\d+)?%$",
+              "type": "string"
+            }
+          ],
+          "default": 0.0,
+          "title": "X"
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^-?\\d+(?:\\.\\d+)?%$",
+              "type": "string"
+            }
+          ],
+          "default": 0.0,
+          "title": "Y"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^-?\\d+(?:\\.\\d+)?%$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^-?\\d+(?:\\.\\d+)?%$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
+        "rotation": {
+          "default": 0.0,
+          "title": "Rotation",
+          "type": "number"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Data"
+        },
+        "src": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src"
+        },
+        "html": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Html"
+        },
+        "font": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Font"
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Icon"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "barcodeType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Barcodetype"
+        },
+        "shapeType": {
+          "anyOf": [
+            {
+              "enum": [
+                "rect",
+                "circle",
+                "ellipse",
+                "line"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shapetype"
+        },
+        "children": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/CanvasElement"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Children"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "CanvasElement",
+      "type": "object"
+    },
+    "PageLayout": {
+      "additionalProperties": true,
+      "properties": {
+        "pageIndex": {
+          "exclusiveMaximum": 500,
+          "minimum": 0,
+          "title": "Pageindex",
+          "type": "integer"
+        },
+        "htmlContent": {
+          "default": "",
+          "title": "Htmlcontent",
+          "type": "string"
+        },
+        "activeTemplate": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activetemplate"
+        }
+      },
+      "required": [
+        "pageIndex"
+      ],
+      "title": "PageLayout",
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "properties": {
+    "document_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Document Version",
+      "type": "integer"
+    },
+    "dpi": {
+      "default": 203,
+      "exclusiveMinimum": 0,
+      "maximum": 2400,
+      "title": "Dpi",
+      "type": "number"
+    },
+    "width": {
+      "default": 384,
+      "exclusiveMinimum": 0,
+      "maximum": 20000,
+      "title": "Width",
+      "type": "number"
+    },
+    "height": {
+      "default": 384,
+      "exclusiveMinimum": 0,
+      "maximum": 20000,
+      "title": "Height",
+      "type": "number"
+    },
+    "canvasBorder": {
+      "default": "none",
+      "enum": [
+        "none",
+        "box",
+        "top",
+        "bottom",
+        "cut_line"
+      ],
+      "title": "Canvasborder",
+      "type": "string"
+    },
+    "canvasBorderThickness": {
+      "default": 4,
+      "exclusiveMinimum": 0,
+      "maximum": 20000,
+      "title": "Canvasborderthickness",
+      "type": "number"
+    },
+    "isRotated": {
+      "default": false,
+      "title": "Isrotated",
+      "type": "boolean"
+    },
+    "splitMode": {
+      "default": false,
+      "title": "Splitmode",
+      "type": "boolean"
+    },
+    "pageLayouts": {
+      "items": {
+        "$ref": "#/$defs/PageLayout"
+      },
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Pagelayouts",
+      "type": "array"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/CanvasElement"
+      },
+      "maxItems": 10000,
+      "title": "Items",
+      "type": "array"
+    },
+    "currentPage": {
+      "default": 0,
+      "exclusiveMaximum": 500,
+      "minimum": 0,
+      "title": "Currentpage",
+      "type": "integer"
+    },
+    "batchRecords": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Batchrecords",
+      "type": "array"
+    },
+    "printCopies": {
+      "default": 1,
+      "maximum": 100,
+      "minimum": 1,
+      "title": "Printcopies",
+      "type": "integer"
+    }
+  },
+  "title": "CanvasDocument",
+  "type": "object"
+}

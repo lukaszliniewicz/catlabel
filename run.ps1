@@ -5,6 +5,8 @@ $InstallHeadless = $false
 $SkipHeadless = $false
 $InstallAI = $false
 $SkipAI = $false
+$InstallMCP = $false
+$SkipMCP = $false
 $Repair = $false
 $Diagnose = $false
 foreach ($Option in $Options) {
@@ -14,14 +16,17 @@ foreach ($Option in $Options) {
         '--skip-headless' { $SkipHeadless = $true }
         '--install-ai' { $InstallAI = $true }
         '--skip-ai' { $SkipAI = $true }
+        '--install-mcp' { $InstallMCP = $true }
+        '--skip-mcp' { $SkipMCP = $true }
         '--repair' { $Repair = $true }
         '--diagnose' { $Diagnose = $true }
-        '--help' { Write-Output 'Usage: run.bat [--setup-only] [--install-headless | --skip-headless] [--install-ai | --skip-ai] [--repair] [--diagnose]'; exit 0 }
+        '--help' { Write-Output 'Usage: run.bat [--setup-only] [--install-headless | --skip-headless] [--install-ai | --skip-ai] [--install-mcp | --skip-mcp] [--repair] [--diagnose]'; exit 0 }
         default { throw "Unknown option: $Option" }
     }
 }
 if ($InstallHeadless -and $SkipHeadless) { throw 'Choose either --install-headless or --skip-headless.' }
 if ($InstallAI -and $SkipAI) { throw 'Choose either --install-ai or --skip-ai.' }
+if ($InstallMCP -and $SkipMCP) { throw 'Choose either --install-mcp or --skip-mcp.' }
 $Root = $PSScriptRoot
 Set-Location -LiteralPath $Root
 $Data = $env:CATLABEL_DATA_DIR
@@ -45,7 +50,12 @@ $Version = '0.72.2'
 $Digest = '3f6e03db3cb275c028035ed3975180198064d8bb6d0352b5ab958c1fcfbddc4e'
 $Size = 90571192
 $Pixi = Join-Path $Root 'bin/pixi.exe'
-$HeadlessEnabled = (Test-Path -LiteralPath (Join-Path $State '.headless-enabled')) -or $InstallHeadless
+$MCPEnabled = (Test-Path -LiteralPath (Join-Path $State '.mcp-enabled')) -or $InstallMCP
+if ($SkipMCP) { $MCPEnabled = $false }
+if ($SkipHeadless -and $MCPEnabled) {
+    throw 'MCP requires headless support. Disable MCP with --skip-mcp before using --skip-headless.'
+}
+$HeadlessEnabled = (Test-Path -LiteralPath (Join-Path $State '.headless-enabled')) -or $InstallHeadless -or $MCPEnabled
 if ($SkipHeadless) { $HeadlessEnabled = $false }
 $AIEnabled = (Test-Path -LiteralPath (Join-Path $State '.ai-enabled')) -or $InstallAI
 if ($SkipAI) { $AIEnabled = $false }
@@ -53,6 +63,9 @@ $Environment = 'default'
 if ($HeadlessEnabled) { $Environment = 'headless' }
 if ($AIEnabled) {
     if ($HeadlessEnabled) { $Environment = 'ai-headless' } else { $Environment = 'ai' }
+}
+if ($MCPEnabled) {
+    if ($AIEnabled) { $Environment = 'ai-mcp-headless' } else { $Environment = 'mcp-headless' }
 }
 $Python = Join-Path $Root ".pixi/envs/$Environment/python.exe"
 function Get-Identity {
@@ -109,7 +122,7 @@ try {
         } else { [IO.File]::Move($Download, $Pixi) }
         $Download = $null
     }
-    if ($Repair -or -not (Test-Path -LiteralPath $Python -PathType Leaf) -or $SavedIdentity -ne $Identity -or $InstallHeadless -or $InstallAI) {
+    if ($Repair -or -not (Test-Path -LiteralPath $Python -PathType Leaf) -or $SavedIdentity -ne $Identity -or $InstallHeadless -or $InstallAI -or $InstallMCP) {
         if (Test-Path -LiteralPath $Stamp) { Remove-Item -LiteralPath $Stamp }
         if ($Repair) { Invoke-Pixi -Arguments @('reinstall', '--environment', $Environment, '--locked') }
         else { Invoke-Pixi -Arguments @('install', '--environment', $Environment, '--locked') }
@@ -126,11 +139,17 @@ try {
     elseif ($SkipAI -and (Test-Path -LiteralPath (Join-Path $State '.ai-enabled'))) {
         Remove-Item -LiteralPath (Join-Path $State '.ai-enabled')
     }
+    if ($MCPEnabled) { [IO.File]::WriteAllText((Join-Path $State '.mcp-enabled'), "1`n") }
+    elseif ($SkipMCP -and (Test-Path -LiteralPath (Join-Path $State '.mcp-enabled'))) {
+        Remove-Item -LiteralPath (Join-Path $State '.mcp-enabled')
+    }
 } finally {
     if ($Download -and (Test-Path -LiteralPath $Download)) { Remove-Item -LiteralPath $Download -Force }
     if ($LockStream) { $LockStream.Dispose() }
 }
 Write-Output "CatLabel is ready ($Environment)."
 if ($SetupOnly) { exit 0 }
+if ($MCPEnabled) { $env:CATLABEL_MCP_ENABLED = '1' }
+else { Remove-Item Env:CATLABEL_MCP_ENABLED -ErrorAction SilentlyContinue }
 & $Pixi run --environment $Environment --locked --no-install python -m catlabel
 exit $LASTEXITCODE

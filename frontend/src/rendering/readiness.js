@@ -1,3 +1,5 @@
+import { apiBlob } from '../utils/apiClient';
+
 // Readiness belongs to one immutable render job. Never reuse it across snapshots.
 export function createRenderReadiness() {
   const resources = new Map();
@@ -39,6 +41,7 @@ export function createRenderReadiness() {
 }
 
 export function loadRenderImage(src, signal) {
+  if (src.startsWith('catlabel://artifacts/')) return loadManagedImage(src, signal);
   return new Promise((resolve, reject) => {
     const image = new window.Image();
     let settled = false;
@@ -59,6 +62,20 @@ export function loadRenderImage(src, signal) {
     signal?.addEventListener('abort', abort, { once: true });
     image.src = src;
   });
+}
+
+async function loadManagedImage(src, signal) {
+  const assetId = encodeURIComponent(src.split('/').at(-1));
+  const blob = await apiBlob(`/api/assets/${assetId}`, { signal }, {
+    timeoutMs: 8_000, fallback: 'The design image could not be loaded.'
+  });
+  if (signal?.aborted) throw signal.reason;
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    return await loadRenderImage(objectUrl, signal);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 export const nextPaint = () => new Promise((resolve) => requestAnimationFrame(resolve));

@@ -1,54 +1,12 @@
-type Dimension = number | `${number}%`;
+import type { CanvasDocument, CanvasElement, PageLayout } from './generated/document';
+export type CanvasItem = CanvasElement;
 type RecordData = Record<string, unknown>;
 type Border = 'none' | 'box' | 'top' | 'bottom' | 'cut_line';
-
-interface ItemGeometry extends RecordData {
-  id: string;
-  pageIndex?: number;
-  x?: Dimension;
-  y?: Dimension;
-  width?: Dimension;
-  height?: Dimension;
-  rotation?: number;
-}
-
-export type CanvasItem = ItemGeometry & (
-  | { type: 'text'; text?: string; size?: number; font?: string }
-  | { type: 'icon_text'; text?: string; icon?: string; size?: number }
-  | { type: 'image'; src?: string }
-  | { type: 'html'; html?: string; font?: string }
-  | { type: 'barcode' | 'qrcode'; data?: string; barcodeType?: string }
-  | { type: 'shape'; shapeType?: 'rect' | 'circle' | 'ellipse' | 'line' }
-  | { type: 'cut_line_indicator' }
-  | { type: 'group'; children: CanvasItem[] }
-);
-
-interface PageLayout {
-  pageIndex: number;
-  htmlContent: string;
-  activeTemplate: { id: string; params: RecordData } | null;
-}
 
 interface EditorDocumentState {
   canvasWidth: number;
   canvasHeight: number;
   currentDpi: number;
-  canvasBorder: Border;
-  canvasBorderThickness: number;
-  isRotated: boolean;
-  splitMode: boolean;
-  pageLayouts: PageLayout[];
-  items: CanvasItem[];
-  currentPage: number;
-  batchRecords: RecordData[];
-  printCopies: number;
-}
-
-interface CanvasDocument {
-  document_version: 1;
-  dpi: number;
-  width: number;
-  height: number;
   canvasBorder: Border;
   canvasBorderThickness: number;
   isRotated: boolean;

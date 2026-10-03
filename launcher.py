@@ -21,6 +21,8 @@ BOOTSTRAP_FLAGS = (
     "--skip-headless",
     "--install-ai",
     "--skip-ai",
+    "--install-mcp",
+    "--skip-mcp",
     "--repair",
     "--diagnose",
 )
@@ -54,9 +56,14 @@ def _bootstrap_command(target_dir: Path, options: Sequence[str]) -> list[str]:
 
 def _runtime_environment(data_directory: Path) -> str:
     ai = (data_directory / ".ai-enabled").is_file()
-    headless = (data_directory / ".headless-enabled").is_file()
+    mcp = (data_directory / ".mcp-enabled").is_file()
+    headless = (data_directory / ".headless-enabled").is_file() or mcp
     if ai:
+        if mcp:
+            return "ai-mcp-headless"
         return "ai-headless" if headless else "ai"
+    if mcp:
+        return "mcp-headless"
     return "headless" if headless else "default"
 
 
@@ -65,9 +72,14 @@ def _child_environment(data_directory: Path, target_dir: Path) -> dict[str, str]
     environment["CATLABEL_DATA_DIR"] = str(data_directory)
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
     if (target_dir / "release-manifest.json").is_file():
-        environment["CATLABEL_BOOTSTRAP_STATE_DIR"] = str(
-            target_dir / ".bootstrap-state"
-        )
+        bootstrap_state = target_dir / ".bootstrap-state"
+        environment["CATLABEL_BOOTSTRAP_STATE_DIR"] = str(bootstrap_state)
+    else:
+        bootstrap_state = data_directory
+    if (bootstrap_state / ".mcp-enabled").is_file():
+        environment["CATLABEL_MCP_ENABLED"] = "1"
+    else:
+        environment.pop("CATLABEL_MCP_ENABLED", None)
     environment.setdefault("LITELLM_MODE", "PROD")
     environment.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
     return environment
@@ -82,7 +94,7 @@ def prepare_release(
     state = target_dir / ".bootstrap-state"
     if not state.exists():
         state.mkdir()
-        for marker in (".ai-enabled", ".headless-enabled"):
+        for marker in (".ai-enabled", ".headless-enabled", ".mcp-enabled"):
             source = (selection_source or data_directory) / marker
             if source.is_file():
                 (state / marker).write_text("1\n", encoding="ascii")
@@ -195,6 +207,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("Choose either --install-ai or --skip-ai")
     if arguments.install_headless and arguments.skip_headless:
         parser.error("Choose either --install-headless or --skip-headless")
+    if arguments.install_mcp and arguments.skip_mcp:
+        parser.error("Choose either --install-mcp or --skip-mcp")
     if arguments.diagnose and (arguments.artifact or arguments.rollback):
         parser.error("Run diagnosis separately from promotion or rollback")
     root = (arguments.installation_root or launcher_directory()).resolve()

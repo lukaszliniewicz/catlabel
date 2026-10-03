@@ -515,8 +515,8 @@ class BrowserRendererTests(unittest.IsolatedAsyncioTestCase):
         renderer = template.BrowserRenderer()
         with (
             factory.patch_import(),
-            patch.object(template, "RENDER_BASE_TIMEOUT_SECONDS", 0.02),
-            patch.object(template, "RENDER_PER_JOB_TIMEOUT_SECONDS", 0.05),
+            patch.object(template, "RENDER_BASE_TIMEOUT_SECONDS", 5.0),
+            patch.object(template, "RENDER_PER_JOB_TIMEOUT_SECONDS", 0.0),
         ):
             factory.outputs = [_png(), _png()]
             active = [
@@ -525,9 +525,12 @@ class BrowserRendererTests(unittest.IsolatedAsyncioTestCase):
             ]
             await asyncio.wait_for(factory.started.get(), 1)
             await asyncio.wait_for(factory.started.get(), 1)
-            queued = asyncio.create_task(renderer.render({}, [{}]))
-            with self.assertRaises(TimeoutError):
-                await asyncio.wait_for(queued, 1)
+            # Only the queued job gets the short deadline. The blocked active
+            # jobs must not race that timeout on a busy check runner.
+            with patch.object(template, "RENDER_BASE_TIMEOUT_SECONDS", 0.02):
+                queued = asyncio.create_task(renderer.render({}, [{}]))
+                with self.assertRaises(TimeoutError):
+                    await asyncio.wait_for(queued, 1)
             self.assertEqual(len(factory.contexts), 2)
             self.assertEqual(renderer._admitted, 2)
             gate.set()

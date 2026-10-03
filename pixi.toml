@@ -35,10 +35,16 @@ playwright = ">=1.40.0"
 google-cloud-aiplatform = "==2.3.0"
 litellm = "==1.103.2"
 
+[feature.mcp.pypi-dependencies]
+mcp = "==2.3.0"
+jsonschema = "==4.25.1"
+
 [environments]
 headless = ["headless"]
 ai = ["ai"]
 ai-headless = ["ai", "headless"]
+mcp-headless = ["mcp", "headless"]
+ai-mcp-headless = ["ai", "mcp", "headless"]
 
 [tasks]
 start = "python -m catlabel"

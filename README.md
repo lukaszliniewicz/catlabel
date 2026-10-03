@@ -43,7 +43,7 @@ https://github.com/user-attachments/assets/4e784645-0ccf-478c-a6e1-0c41a3519624
 3. Run `bash ./run.sh`.
 4. The script downloads verified Pixi, installs the locked dependencies, and starts the server. The compiled frontend is included. macOS support is best effort; native execution has not been verified in this maintenance run.
 
-Both scripts accept `--setup-only`, `--install-headless`, `--skip-headless`, `--install-ai`, `--skip-ai`, `--repair` and `--diagnose`. Headless Chromium is an explicit add-on for backend HTML rendering. Normal browser design and printing do not need it. Cloud chat SDKs are another independent add-on, enabled with `--install-ai`. See [installation and recovery](docs/installation.md) for data paths, optional setup and diagnostics.
+Both scripts accept `--setup-only`, `--install-headless`, `--skip-headless`, `--install-ai`, `--skip-ai`, `--install-mcp`, `--skip-mcp`, `--repair` and `--diagnose`. Headless Chromium is an explicit add-on for backend HTML rendering. Normal browser design and printing do not need it. Cloud chat SDKs are another independent add-on, enabled with `--install-ai`. See [installation and recovery](docs/installation.md) for data paths, optional setup and diagnostics. Harness workflows use the optional [MCP add-on](docs/mcp.md), which supports saved design editing, PNG previews and printing through the same backend.
 
 *The app runs at [http://localhost:8000](http://localhost:8000).*
 

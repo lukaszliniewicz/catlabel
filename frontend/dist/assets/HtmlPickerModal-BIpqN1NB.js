@@ -1,4 +1,4 @@
-import{r as e}from"./rolldown-runtime-hePW80VL.js";import{a as t,t as n}from"./react-vendor-C-eDKiZx.js";import{n as r}from"./createLucideIcon-BiPzs9Xc.js";import{$ as i,a}from"./index-AJIqg62g.js";var o=e(t(),1),s=n();function c({onClose:e,onSelect:t}){let n=r(e),[c,l]=(0,o.useState)(`<div style="display:flex; flex-direction:column; width:100%; height:100%; text-align:center;">
+import{r as e}from"./rolldown-runtime-hePW80VL.js";import{a as t,t as n}from"./react-vendor-C-eDKiZx.js";import{n as r}from"./createLucideIcon-BiPzs9Xc.js";import{$ as i,a}from"./index-E5L-wgTw.js";var o=e(t(),1),s=n();function c({onClose:e,onSelect:t}){let n=r(e),[c,l]=(0,o.useState)(`<div style="display:flex; flex-direction:column; width:100%; height:100%; text-align:center;">
   <div style="flex:1; min-width:0; min-height:0; overflow:hidden;">
     <div class="auto-text">
       <h1>HELLO WORLD</h1>

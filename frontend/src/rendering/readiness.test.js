@@ -56,3 +56,33 @@ test('image failure and deadline reject, and cancelled loads cannot complete lat
     vi.unstubAllGlobals();
   }
 });
+
+test.each(['success', 'failure', 'cancel'])('managed images use authenticated API loading and release blobs on %s', async (outcome) => {
+  const images = [];
+  const createObjectURL = vi.fn(() => 'blob:managed-image');
+  const revokeObjectURL = vi.fn();
+  const fetchMock = vi.fn(async (_url, init) => {
+    if (init.headers.get('X-CatLabel-Client') !== '1') return new Response('', { status: 403 });
+    return new Response(new Blob(['png'], { type: 'image/png' }));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+  vi.stubGlobal('Image', class { constructor() { images.push(this); } });
+  const controller = new AbortController();
+  try {
+    const loading = loadRenderImage('catlabel://artifacts/fixture-image', controller.signal);
+    const completion = outcome === 'success'
+      ? expect(loading).resolves.toEqual(expect.objectContaining({ src: 'blob:managed-image' }))
+      : expect(loading).rejects.toThrow(outcome === 'cancel' ? 'cancelled' : 'could not be loaded');
+    await vi.waitFor(() => expect(images).toHaveLength(1));
+    if (outcome === 'success') images[0].onload();
+    else if (outcome === 'failure') images[0].onerror();
+    else controller.abort();
+    await completion;
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/assets/fixture-image');
+    expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:managed-image');
+  } finally {
+    controller.abort();
+    vi.unstubAllGlobals();
+  }
+});

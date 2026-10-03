@@ -18,7 +18,12 @@ class RequestLimitsMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         path = scope.get("path", "")
-        if scope["type"] != "http" or not (path == "/api" or path.startswith("/api/")):
+        if scope["type"] != "http" or not (
+            path == "/api"
+            or path.startswith("/api/")
+            or path == "/mcp"
+            or path.startswith("/mcp/")
+        ):
             await self.app(scope, receive, send)
             return
 

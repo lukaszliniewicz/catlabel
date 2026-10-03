@@ -452,9 +452,30 @@ class BrowserRenderer:
             check_active()
             browser = await self._ensure_browser()
             check_active()
-            context = await browser.new_context()
+            access_token = os.environ.get("CATLABEL_ACCESS_TOKEN", "")
+            if canvas_state.get("__secure_network__") is True and access_token:
+                context = await browser.new_context(
+                    extra_http_headers={"Authorization": "Bearer " + access_token}
+                )
+            else:
+                context = await browser.new_context()
             job.context = context
             check_active()
+            if canvas_state.get("__secure_network__") is True:
+                allowed = urlsplit(job.url)
+
+                async def filter_network(route: Any) -> None:
+                    requested = urlsplit(route.request.url)
+                    if requested.scheme in {"data", "blob"} or (
+                        requested.scheme == allowed.scheme
+                        and requested.hostname == allowed.hostname
+                        and requested.port == allowed.port
+                    ):
+                        await route.continue_()
+                    else:
+                        await route.abort("blockedbyclient")
+
+                await context.route("**/*", filter_network)
             page = await context.new_page()
             check_active()
 

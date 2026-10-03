@@ -32,11 +32,13 @@ Use the same options with either script:
 | `--skip-headless` | Disable backend Chromium rendering; retain installed files for reuse. |
 | `--install-ai` | Install cloud provider SDKs and remember the selection. |
 | `--skip-ai` | Disable the AI add-on; preserve provider settings/history and installed files. |
+| `--install-mcp` | Install the official MCP SDK and Chromium, remember the selection and enable the authenticated local `/mcp/` endpoint. |
+| `--skip-mcp` | Disable the MCP endpoint; keep saved designs, jobs and installed packages. |
 | `--repair` | Reinstall the selected environment from the lock and verify it. User data is preserved. |
 | `--diagnose` | Report code/data paths, selected environment, binary verification and setup identity without installing or downloading. |
 
 `--install-headless` and `--skip-headless` cannot be combined. The same applies
-to `--install-ai` and `--skip-ai`. AI and headless selections are independent. There is no timed
+to `--install-ai` and `--skip-ai`. AI and headless selections are independent. MCP requires headless support, so disable MCP before `--skip-headless`. `--install-mcp` and `--skip-mcp` cannot be combined. There is no timed
 installation prompt. First setup, changed locks, repair and explicit add-ons need
 internet access. A verified repeat launch uses `pixi run --locked --no-install`;
 it does not synchronize packages or install Chromium again.
@@ -70,7 +72,7 @@ AI SDK candidates are pinned to LiteLLM 1.103.2 and Google AI Platform 2.3.0 aft
 credentials-free import/request/response probes. Live authentication and paid
 provider acceptance are separate checks. Basic installation omits both AI SDKs. Cloud chat needs `--install-ai`; provider
 settings, history and external prompt/JSON workflows remain available without it.
-The four locked environments are `default`, `headless`, `ai` and `ai-headless`.
+The locked environments are `default`, `headless`, `ai`, `ai-headless`, `mcp-headless` and `ai-mcp-headless`. See [MCP setup](mcp.md) for harness configuration and readiness checks.
 
 ## Selected release updates
 
@@ -87,7 +89,7 @@ python launcher.py --installation-root /absolute/path/to/CatLabel \
 
 Use `--setup-only` to install and accept a release without opening the normal
 server. Add-on flags also apply to the candidate. Each release keeps its own
-remembered AI/headless selection; a failed candidate does not change the previous
+remembered AI/headless/MCP selection; a failed candidate does not change the previous
 release's selection. `CATLABEL_BOOTSTRAP_STATE_DIR` is an internal absolute-path
 override for this state. Source-folder installations continue storing selections
 in their data directory.

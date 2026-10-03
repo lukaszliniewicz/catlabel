@@ -1,3 +1,4 @@
+import TEMPLATE_CATALOG from '../../../catlabel/data/templates.json';
 import { applyVars } from './variables';
 import { sanitizeLabelHtml } from '../utils/htmlSecurity';
 
@@ -58,43 +59,11 @@ const buildJarFarmhouseMarkup = (p) => {
 };
 
 export const TEMPLATE_METADATA = [
-  {
-    id: 'spice_jar',
-    category: 'Dedicated',
-    name: 'Pantry / Spice Jar',
-    description: 'Elegant typography for home organization. Highly adaptable.',
-    fields: [
-      {
-        name: 'style',
-        label: 'Design Style',
-        type: 'select',
-        options: [
-          { label: 'Apothecary (Classic)', value: 'jar_apothecary' },
-          { label: 'Farmhouse (Stripes & Clean)', value: 'jar_farmhouse' },
-        ],
-        default: 'jar_apothecary',
-      },
-      { name: 'show_header', label: 'Include Top Header', type: 'boolean', default: true },
-      { name: 'header_text', label: 'Top Header Text', type: 'text', default: 'PREMIUM' },
-      { name: 'title', label: 'Main Label', type: 'text', default: 'BASIL' },
-      { name: 'show_subtitle', label: 'Include Subtitle', type: 'boolean', default: true },
-      { name: 'subtitle_text', label: 'Subtitle / Details', type: 'text', default: 'Sweet & Aromatic' },
-    ],
-    html: (p) => {
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'spice_jar'), html: (p) => {
       const isFarmhouse = p.style === 'jar_farmhouse';
       return isFarmhouse ? buildJarFarmhouseMarkup(p) : buildJarApothecaryMarkup(p);
-    },
-  },
-  {
-    id: 'title_subtitle',
-    category: 'Layout',
-    name: 'Title & Subtitle',
-    description: 'Stacked text with a large bold title.',
-    fields: [
-      { name: 'title', label: 'Title', type: 'text', default: 'MAIN TITLE' },
-      { name: 'subtitle', label: 'Subtitle', type: 'text', default: 'Subheading text goes here' },
-    ],
-    html: (p) => `
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'title_subtitle'), html: (p) => `
       <div class="label-canvas-container" style="display: flex; flex-direction: column; padding: 6%; gap: 4%;">
         <div class="bound-box" style="flex: 2.0;">
           <div class="auto-text" style="font-weight: 900; text-transform: uppercase; white-space: nowrap;">${p.title || ''}</div>
@@ -103,28 +72,8 @@ export const TEMPLATE_METADATA = [
         <div class="bound-box" style="flex: 1.0;">
           <div class="auto-text" style="font-weight: 700;">${p.subtitle || ''}</div>
         </div>
-      </div>`,
-  },
-  {
-    id: 'icon_text',
-    category: 'Layout',
-    name: 'Icon + Text',
-    description: 'A clean icon next to your text.',
-    fields: [
-      { name: 'icon_src', label: 'Icon', type: 'icon' },
-      { name: 'text', label: 'Text', type: 'text', default: 'Label' },
-      {
-        name: 'direction',
-        label: 'Layout',
-        type: 'select',
-        options: [
-          { label: 'Row (Left to Right)', value: 'row' },
-          { label: 'Column (Top to Bottom)', value: 'col' },
-        ],
-        default: 'row',
-      },
-    ],
-    html: (p) => {
+      </div>` },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'icon_text'), html: (p) => {
       const isRow = p.direction !== 'col';
       const iconSrc = p.icon_src || DEFAULT_ICON_SRC;
 
@@ -137,18 +86,8 @@ export const TEMPLATE_METADATA = [
             <div class="auto-text" style="font-weight: 900; text-align: ${isRow ? 'left' : 'center'};">${p.text || ''}</div>
           </div>
         </div>`;
-    },
-  },
-  {
-    id: 'qr_text',
-    category: 'Layout',
-    name: 'QR Code + Text',
-    description: 'A QR code with adjacent text.',
-    fields: [
-      { name: 'data', label: 'QR Data', type: 'text', default: 'https://google.com' },
-      { name: 'text', label: 'Text', type: 'textarea', default: 'Scan Me' },
-    ],
-    html: (p, isLandscape) => {
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'qr_text'), html: (p, isLandscape) => {
       const qrHtml = p.data ? `<div class="catlabel-code" data-type="qrcode" data-value="${p.data}"></div>` : '';
 
       if (!qrHtml) {
@@ -168,33 +107,8 @@ export const TEMPLATE_METADATA = [
           <div style="flex: 0 1 auto; width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;">${qrHtml}</div>
           <div class="bound-box" style="flex: 1;"><div class="auto-text" style="font-weight: 900;">${p.text || ''}</div></div>
         </div>`;
-    },
-  },
-  {
-    id: 'price_tag',
-    category: 'Dedicated',
-    name: 'Price Tag with Barcode',
-    description: 'Retail price tag. Automatically adapts to square or wide labels.',
-    fields: [
-      { name: 'currency_symbol', label: 'Currency Symbol', type: 'text', default: '$' },
-      { name: 'price_main', label: 'Main Price', type: 'text', default: '19' },
-      { name: 'price_cents', label: 'Cents', type: 'text', default: '99' },
-      { name: 'unit', label: 'Unit (e.g. /ea)', type: 'text', default: '' },
-      { name: 'product_name', label: 'Product Name', type: 'text', default: 'Product Name' },
-      {
-        name: 'code_type',
-        label: 'Code Type',
-        type: 'select',
-        options: [
-          { label: 'Barcode', value: 'barcode' },
-          { label: 'QR Code', value: 'qrcode' },
-          { label: 'None', value: 'none' },
-        ],
-        default: 'barcode',
-      },
-      { name: 'code_data', label: 'Code Data', type: 'text', default: '123456789' },
-    ],
-    html: (p, isLandscape) => {
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'price_tag'), html: (p, isLandscape) => {
       const hasCode = p.code_type && p.code_type !== 'none' && p.code_data;
       const isQR = p.code_type === 'qrcode';
       const codeHtml = hasCode ? `<div class="catlabel-code" data-type="${isQR ? 'qrcode' : 'barcode'}" data-format="code128" data-value="${p.code_data}"></div>` : '';
@@ -234,30 +148,8 @@ export const TEMPLATE_METADATA = [
           </div>
           ${hasCode ? `<div class="bound-box" style="${isQR ? 'flex: 0 1 auto; width: 100%; aspect-ratio: 1/1; margin: 0 auto;' : 'flex: 0.6; min-height: 0;'}">${codeHtml}</div>` : ''}
         </div>`;
-    },
-  },
-  {
-    id: 'inventory_tag',
-    category: 'Dedicated',
-    name: 'Inventory Tag',
-    description: 'Professional asset tag with inverted department header and QR/Barcode.',
-    fields: [
-      { name: 'department', label: 'Department / Category', type: 'text', default: 'WAREHOUSE' },
-      { name: 'title', label: 'Item Name', type: 'text', default: 'Item Name' },
-      { name: 'sku', label: 'SKU / Subtext', type: 'text', default: 'SKU-123' },
-      {
-        name: 'code_type',
-        label: 'Code Type',
-        type: 'select',
-        options: [
-          { label: 'QR Code', value: 'qrcode' },
-          { label: 'Barcode', value: 'barcode' },
-        ],
-        default: 'qrcode',
-      },
-      { name: 'code_data', label: 'Code Data', type: 'text', default: 'INV-001' },
-    ],
-    html: (p, isLandscape) => {
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'inventory_tag'), html: (p, isLandscape) => {
       const isQR = p.code_type !== 'barcode';
       const codeHtml = p.code_data ? `<div class="catlabel-code" data-type="${isQR ? 'qrcode' : 'barcode'}" data-format="code128" data-value="${p.code_data}"></div>` : '';
       
@@ -283,32 +175,14 @@ export const TEMPLATE_METADATA = [
             </div>
           </div>
         </div>`;
-    },
-  },
-  {
-    id: 'cable_flag',
-    category: 'Dedicated',
-    name: 'Cable Flag',
-    description: 'Fold-over tag with a dashed center line. Repeats text on both sides.',
-    fields: [{ name: 'text', label: 'Cable ID / Text', type: 'text', default: 'CABLE-01' }],
-    html: (p, isLandscape) => `
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'cable_flag'), html: (p, isLandscape) => `
       <div class="label-canvas-container" style="position: relative; display: flex; flex-direction: ${isLandscape ? 'row' : 'column'}; padding: 0;">
         <div style="position: absolute; z-index: 10; ${isLandscape ? 'top: 0; bottom: 0; left: 50%; border-left: 3px dashed black; transform: translateX(-50%);' : 'left: 0; right: 0; top: 50%; border-top: 3px dashed black; transform: translateY(-50%);'}"></div>
         <div style="flex: 1; min-width: 0; min-height: 0; padding: 6%; display: flex; align-items: center; justify-content: center;"><div class="bound-box"><div class="auto-text" style="font-weight: 900; text-align: center;">${p.text || ''}</div></div></div>
         <div style="flex: 1; min-width: 0; min-height: 0; padding: 6%; display: flex; align-items: center; justify-content: center;"><div class="bound-box"><div class="auto-text" style="font-weight: 900; text-align: center;">${p.text || ''}</div></div></div>
-      </div>`,
-  },
-  {
-    id: 'shipping_address',
-    category: 'Dedicated',
-    name: 'Shipping Address',
-    description: 'Professional shipping label with service banner and sender/recipient blocks.',
-    fields: [
-      { name: 'service', label: 'Service Type', type: 'text', default: 'PRIORITY' },
-      { name: 'sender', label: 'Sender Address', type: 'textarea', default: 'John Doe\n123 Sender St.' },
-      { name: 'recipient', label: 'Recipient Address', type: 'textarea', default: 'Jane Smith\n456 Recipient Ave.' },
-    ],
-    html: (p, isLandscape) => {
+      </div>` },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'shipping_address'), html: (p, isLandscape) => {
       if (isLandscape) {
         return `
           <div class="label-canvas-container" style="display: flex; flex-direction: row; padding: 0;">
@@ -355,33 +229,14 @@ export const TEMPLATE_METADATA = [
             </div>
           </div>
         </div>`;
-    },
-  },
-  {
-    id: 'warning_banner',
-    category: 'Dedicated',
-    name: 'Warning Banner',
-    description: 'Inverted black background with bold white text.',
-    fields: [{ name: 'text', label: 'Warning Text', type: 'text', default: 'FRAGILE' }],
-    html: (p) => `
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'warning_banner'), html: (p) => `
       <div class="label-canvas-container" style="background: black; color: white; padding: 4%;">
         <div class="bound-box" style="border: max(2px, 4cqmin) solid white; padding: 4%;">
           <div class="auto-text" style="font-weight: 900; text-transform: uppercase; letter-spacing: 2px; white-space: pre-wrap;">${p.text || ''}</div>
         </div>
-      </div>`,
-  },
-  {
-    id: 'sale_tag',
-    category: 'Dedicated',
-    name: 'Retail Sale Tag',
-    description: 'High contrast inverted price box.',
-    fields: [
-      { name: 'product_name', label: 'Product', type: 'text', default: 'Sale Item' },
-      { name: 'old_price', label: 'Old Price', type: 'text', default: '29.99' },
-      { name: 'new_price', label: 'New Price', type: 'text', default: '19.99' },
-      { name: 'currency', label: 'Currency', type: 'text', default: '$' },
-    ],
-    html: (p, isLandscape) => {
+      </div>` },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'sale_tag'), html: (p, isLandscape) => {
       if (isLandscape) {
         return `
           <div class="label-canvas-container" style="display: flex; flex-direction: row; padding: 0;">
@@ -413,30 +268,8 @@ export const TEMPLATE_METADATA = [
             <div class="bound-box"><div class="auto-text" style="font-weight: 900; white-space: nowrap;">${p.currency || ''}${p.new_price || ''}</div></div>
           </div>
         </div>`;
-    },
-  },
-  {
-    id: 'asset_tag',
-    category: 'Dedicated',
-    name: 'IT Asset Tag',
-    description: 'Header bar, QR code, and details.',
-    fields: [
-      { name: 'department', label: 'Department', type: 'text', default: 'IT DEPT' },
-      { name: 'asset_id', label: 'Asset ID', type: 'text', default: 'AST-0001' },
-      { name: 'description', label: 'Description', type: 'text', default: 'Laptop Computer' },
-      {
-        name: 'code_type',
-        label: 'Code Type',
-        type: 'select',
-        options: [
-          { label: 'QR Code', value: 'qrcode' },
-          { label: 'Barcode', value: 'barcode' },
-          { label: 'None', value: 'none' },
-        ],
-        default: 'qrcode',
-      },
-    ],
-    html: (p, isLandscape) => {
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'asset_tag'), html: (p, isLandscape) => {
       const hasCode = p.code_type !== 'none';
       const isQR = p.code_type === 'qrcode';
       const codeHtml = hasCode ? `<div class="catlabel-code" data-type="${isQR ? 'qrcode' : 'barcode'}" data-format="code128" data-value="${p.asset_id}"></div>` : '';
@@ -470,26 +303,14 @@ export const TEMPLATE_METADATA = [
           <div class="bound-box" style="flex: 1.5;"><div class="auto-text" style="font-weight: 900; white-space: nowrap; font-family: monospace;">${p.asset_id || ''}</div></div>
           <div class="bound-box" style="flex: 1;"><div class="auto-text" style="font-weight: 500; font-style: italic;">${p.description || ''}</div></div>
         </div>`;
-    },
-  },
-  {
-    id: 'expiration_date',
-    category: 'Dedicated',
-    name: 'Expiration / Batch Date',
-    description: 'Prominent expiration date.',
-    fields: [
-      { name: 'product_name', label: 'Product Name (Optional)', type: 'text', default: '' },
-      { name: 'exp_date', label: 'Expiration Date', type: 'date', default: '2025-12-31' },
-      { name: 'made_date', label: 'Mfg / Made On (Optional)', type: 'date', default: '' },
-    ],
-    html: (p) => {
+    } },
+  { ...TEMPLATE_CATALOG.find(template => template.id === 'expiration_date'), html: (p) => {
       let html = `<div class="label-canvas-container" style="display: flex; flex-direction: column; padding: 6%; gap: 4%;">`;
       if (p.product_name) html += `<div class="bound-box" style="flex: 1.5;"><div class="auto-text" style="font-weight: 800; text-transform: uppercase;">${p.product_name}</div></div>`;
       if (p.made_date) html += `<div class="bound-box" style="flex: 1;"><div class="auto-text" style="font-weight: 600; white-space: nowrap;">MFG: ${p.made_date}</div></div>`;
       html += `<div class="bound-box" style="flex: 2.5; background: black; color: white; padding: 2%; border-radius: 4px;"><div class="auto-text" style="font-weight: 900; white-space: nowrap; letter-spacing: 1px;">EXP: ${p.exp_date || ''}</div></div></div>`;
       return html;
-    },
-  },
+    } },
 ];
 
 const escapeHtml = (value = '') => String(value)

@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 ai = ["google-cloud-aiplatform==2.3.0", "litellm==1.103.2"]
 headless = ["playwright>=1.40.0"]
+mcp = ["mcp==2.3.0", "jsonschema==4.25.1"]
 launcher = ["pyinstaller==6.21.0"]
 
 [dependency-groups]
@@ -51,6 +52,14 @@ strict = [
   "tools/import_graph.py",
   "tools/sync_dependencies.py",
   "tools/bootstrap_runtime.py",
+  "catlabel/services/harness.py",
+  "catlabel/services/documents.py",
+  "catlabel/services/artifacts.py",
+  "catlabel/services/print_jobs.py",
+  "catlabel/services/projects.py",
+  "catlabel/services/printers.py",
+  "catlabel/services/print_executor.py",
+  "catlabel/mcp/**/*.py",
   "catlabel/core/paths.py",
   "catlabel/core/release_artifacts.py",
   "catlabel/core/runtime_lease.py",
@@ -113,3 +122,23 @@ name = "Transport avoids protocol parsing and runtime selection"
 type = "forbidden"
 source_modules = ["catlabel.transport"]
 forbidden_modules = ["catlabel.protocol", "catlabel.printing.runtime"]
+
+[[tool.importlinter.contracts]]
+name = "Shared services avoid API and MCP adapters"
+type = "forbidden"
+source_modules = [
+  "catlabel.services.harness",
+  "catlabel.services.documents",
+  "catlabel.services.artifacts",
+  "catlabel.services.print_jobs",
+  "catlabel.services.projects",
+  "catlabel.services.printers",
+  "catlabel.services.print_executor",
+]
+forbidden_modules = ["catlabel.api", "catlabel.mcp"]
+
+[[tool.importlinter.contracts]]
+name = "MCP adapters avoid API route modules"
+type = "forbidden"
+source_modules = ["catlabel.mcp"]
+forbidden_modules = ["catlabel.api"]

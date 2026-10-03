@@ -1,0 +1,211 @@
+{
+  "additionalProperties": false,
+  "description": "A supported atomic edit. Geometry is in document pixels except set_geometry's millimetres.",
+  "properties": {
+    "op": {
+      "enum": [
+        "add_element",
+        "update_element",
+        "remove_element",
+        "add_page",
+        "duplicate_page",
+        "remove_page",
+        "set_geometry",
+        "set_border",
+        "apply_template",
+        "set_batch"
+      ],
+      "title": "Op",
+      "type": "string"
+    },
+    "element": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Required for add_element; type, geometry and content; id generated when omitted.",
+      "title": "Element"
+    },
+    "id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Existing element ID for update/remove.",
+      "title": "Id"
+    },
+    "patch": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Changed element fields for update_element.",
+      "title": "Patch"
+    },
+    "width_mm": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Width Mm"
+    },
+    "height_mm": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Height Mm"
+    },
+    "dpi": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 2400,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dpi"
+    },
+    "border": {
+      "anyOf": [
+        {
+          "enum": [
+            "none",
+            "box",
+            "top",
+            "bottom",
+            "cut_line"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Border"
+    },
+    "thickness": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Thickness"
+    },
+    "records": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "maxItems": 1000,
+          "minItems": 1,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Records"
+    },
+    "copies": {
+      "anyOf": [
+        {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Copies"
+    },
+    "page_index": {
+      "anyOf": [
+        {
+          "exclusiveMaximum": 500,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page Index"
+    },
+    "template_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Template Id"
+    },
+    "params": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Params"
+    }
+  },
+  "required": [
+    "op"
+  ],
+  "title": "EditOperation",
+  "type": "object"
+}

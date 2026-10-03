@@ -129,7 +129,7 @@ class LocalSecurityMiddleware:
             response = await self._login(request)
         elif request.method == "OPTIONS":
             pass  # Validated preflight; the inner CORS middleware handles it.
-        elif not self._authorized(request):
+        elif not request.url.path.startswith("/mcp/") and not self._authorized(request):
             if (
                 request.method == "GET"
                 and request.url.path == "/"

@@ -110,3 +110,17 @@ test('Status cancels preparation through the guarded job callback before physica
     isPrinting: false, printPreparationProgress: null });
   expect(useStore.getState().apiError).toContain('cancelled before submission');
 });
+
+test('external revision notice preserves dirty canvas and undo history', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 42, revision: 3 }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+  useStore.setState({ currentProjectId: 42, currentProjectRevision: 2 });
+  useStore.getState().setItems([{ id: 'local-edit', type: 'text', text: 'Keep this' }]);
+  const before = useStore.getState();
+  await mount();
+  expect(container.textContent).toContain('changed outside the editor');
+  expect(useStore.getState().items).toBe(before.items);
+  expect(useStore.getState().history).toBe(before.history);
+  expect(useStore.getState().currentProjectRevision).toBe(2);
+  expect(useStore.getState().isDocumentDirty).toBe(true);
+  vi.unstubAllGlobals();
+});

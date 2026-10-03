@@ -21,7 +21,7 @@ export function centerElement(item: CanvasItem, width: number, height: number): 
   let itemHeight = resolveElementDimension(item.height, height);
   if (!itemHeight && item.type === 'text') {
     const padding = finite(item.padding, item.invert || item.bg_white ? 4 : 0);
-    const lines = String(item.text || '').split('\n').length;
+    const lines = (item.text || '').split('\n').length;
     const lineHeight = finite(item.lineHeight, lines > 1 ? 1.15 : 1);
     itemHeight = finite(item.size, 12) * lineHeight * lines + 2 * padding;
   }
@@ -29,7 +29,7 @@ export function centerElement(item: CanvasItem, width: number, height: number): 
 }
 
 export function fitElementWidth(item: CanvasItem, width: number, height: number): GeometryPatch {
-  let nextHeight = item.height;
+  let nextHeight = item.height ?? undefined;
   const itemWidth = resolveElementDimension(item.width, width);
   const itemHeight = resolveElementDimension(item.height, height);
   if (item.type === 'qrcode') nextHeight = width;

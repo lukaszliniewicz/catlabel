@@ -11,6 +11,7 @@ from sqlmodel import SQLModel
 from catlabel.api import routes_project
 from catlabel.core.models import Project
 from catlabel.services import ai_tools
+from catlabel.services import projects as project_services
 
 
 class ProjectToolRevisionTests(unittest.TestCase):
@@ -215,9 +216,9 @@ class ProjectToolRevisionTests(unittest.TestCase):
     def test_category_and_project_tools_defer_saved_deletion(self) -> None:
         canvas_state = {"__actions__": []}
         with patch.object(
-            routes_project,
+            project_services,
             "create_category",
-            wraps=routes_project.create_category,
+            wraps=project_services.create_category,
         ) as create_category_api:
             create_result = ai_tools.tool_create_category(
                 {"name": "Parent"}, canvas_state, 384, 384

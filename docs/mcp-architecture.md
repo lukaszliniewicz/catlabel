@@ -1,7 +1,7 @@
 # Harness workflow and MCP architecture
 
 Date: 3 October 2026. First acceptance target: OpenCode on Linux.
-Status: architecture and implementation contract; the MCP is not implemented yet.
+Status: initial Streamable HTTP implementation completed. The sections below retain the architecture contract; deferred capabilities are listed under Delivery scope.
 Baseline: `fc95a0a9cbf499fb8e7f70f1ae947ef530e59968`.
 
 ## Decision
@@ -157,7 +157,7 @@ tab open, after the headless add-on is installed.
 Previews are immutable artifacts bound to the normalized document hash, revision,
 selected pages, variable records, DPI and renderer/bundle identity. Return physical
 dimensions, selected pages and a raster image; include renderer warnings. Support
-a selected-page preview and bounded batch contact sheets rather than returning
+selected-page and selected-image previews, with bounded batch contact sheets deferred rather than returning
 hundreds of inline images.
 
 Print preparation freezes the exact rendered source pages, explicit printer
@@ -390,3 +390,25 @@ OpenCode acceptance. No Tasks support or client installation is claimed yet.
 Some SDK ASGI examples describe legacy GET/session behavior while the July
 changelog uses POST subscriptions. Verify transport behavior against the pinned
 SDK in executable acceptance; do not copy examples without a version gate.
+
+
+## Delivery scope
+
+The initial implementation provides 22 tools through the official Python SDK,
+shared project/printer/execution services, canonical schema and generated frontend
+types, the shared template catalog, managed image/PDF imports, PNG previews,
+portable JSON export with embedded managed images, frozen plans and durable jobs.
+The existing REST print submission uses the same coordinator. The GUI offers an
+external-revision notice and retains its local canvas until the user reloads.
+
+The local HTTP endpoint, Linux installation and PD01 submission path have been
+accepted. Both July 2026-07-28 and legacy 2025-11-25 were exercised through the
+SDK client. OpenCode v2 native tool calls exercised create, catalog, edit, preview
+and export; its preview result retained a PNG file block and artifact URI. Native
+Windows/macOS installation, credential ACLs and hardware acceptance remain
+unverified. A resolved lock is not a native acceptance result.
+
+Deferred from this slice: stdio gateway, SSE, LAN/OAuth access, Tasks extension,
+contact sheets, and fully printer-transformed proofs. Print manifests explicitly
+mark unresolved vendor transformations. No auto-replay is allowed after delivery
+has started. See [MCP setup and workflow](mcp.md) for operational instructions.

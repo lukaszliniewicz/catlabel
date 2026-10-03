@@ -93,6 +93,12 @@ export const apiFetch = (
   options: ApiRequestOptions = {},
 ): Promise<Response> => requestWithDeadline(input, init, options, (response) => response);
 
+export const apiBlob = (
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  options: ApiRequestOptions = {},
+): Promise<Blob> => requestWithDeadline(input, init, options, (response) => response.blob());
+
 export function apiJson<T>(
   input: RequestInfo | URL,
   init: RequestInit | undefined,

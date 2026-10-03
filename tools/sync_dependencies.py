@@ -48,7 +48,7 @@ def _requirements(value: object, label: str) -> list[str]:
 
 def _requirement_lists(
     pyproject: dict[str, Any],
-) -> tuple[str, list[str], list[str], list[str], list[str]]:
+) -> tuple[str, list[str], list[str], list[str], list[str], list[str] | None]:
     project = pyproject.get("project")
     if not isinstance(project, dict):
         raise DependencyManifestError("pyproject.toml must contain a [project] table")
@@ -66,8 +66,9 @@ def _requirement_lists(
     headless = _requirements(optional.get("headless", []), "headless")
     ai = _requirements(optional.get("ai", []), "ai")
     launcher = _requirements(optional.get("launcher", []), "launcher")
+    mcp = _requirements(optional["mcp"], "mcp") if "mcp" in optional else None
 
-    return project_name, base, headless, ai, launcher
+    return project_name, base, headless, ai, launcher, mcp
 
 
 def _parse_requirement(requirement: str) -> tuple[str, str, str | None]:
@@ -149,12 +150,16 @@ def _check_feature_overlaps(
     base: tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]],
     headless: tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]],
     ai: tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]],
+    mcp: tuple[list[_RequirementEntry], dict[str, list[_RequirementEntry]]]
+    | None = None,
 ) -> None:
     feature_requirements = [
         ("[project].dependencies", base),
         ("headless", headless),
         ("ai", ai),
     ]
+    if mcp is not None:
+        feature_requirements.append(("mcp", mcp))
     for index, (left_name, (left_common, left_targets)) in enumerate(
         feature_requirements
     ):
@@ -192,6 +197,7 @@ def _render_pixi(
     base_requirements: list[str],
     headless_requirements: list[str],
     ai_requirements: list[str],
+    mcp_requirements: list[str] | None = None,
 ) -> bytes:
     base_common, base_targets = _platform_entries(
         base_requirements,
@@ -205,10 +211,16 @@ def _render_pixi(
         ai_requirements,
         source="ai",
     )
+    mcp_entries = (
+        _platform_entries(mcp_requirements, source="mcp")
+        if mcp_requirements is not None
+        else None
+    )
     _check_feature_overlaps(
         (base_common, base_targets),
         (headless_common, headless_targets),
         (ai_common, ai_targets),
+        mcp_entries,
     )
 
     lines = [
@@ -236,10 +248,13 @@ def _render_pixi(
                 f"{name} = {json.dumps(specifier)}" for name, specifier in entries
             )
 
-    for feature_name, common, targets in (
+    features = [
         ("headless", headless_common, headless_targets),
         ("ai", ai_common, ai_targets),
-    ):
+    ]
+    if mcp_entries is not None:
+        features.append(("mcp", *mcp_entries))
+    for feature_name, common, targets in features:
         lines.extend(["", f"[feature.{feature_name}.pypi-dependencies]"])
         lines.extend(f"{name} = {json.dumps(specifier)}" for name, specifier in common)
         for platform in PIXI_PLATFORMS:
@@ -254,13 +269,23 @@ def _render_pixi(
                 lines.extend(
                     f"{name} = {json.dumps(specifier)}" for name, specifier in entries
                 )
+    environments = [
+        "",
+        "[environments]",
+        'headless = ["headless"]',
+        'ai = ["ai"]',
+        'ai-headless = ["ai", "headless"]',
+    ]
+    if mcp_entries is not None:
+        environments.extend(
+            [
+                'mcp-headless = ["mcp", "headless"]',
+                'ai-mcp-headless = ["ai", "mcp", "headless"]',
+            ]
+        )
     lines.extend(
         [
-            "",
-            "[environments]",
-            'headless = ["headless"]',
-            'ai = ["ai"]',
-            'ai-headless = ["ai", "headless"]',
+            *environments,
             "",
             "[tasks]",
             'start = "python -m catlabel"',
@@ -278,12 +303,12 @@ def expected_outputs(root: Path) -> dict[Path, bytes]:
     except (OSError, tomllib.TOMLDecodeError) as error:
         raise DependencyManifestError(f"cannot read pyproject.toml: {error}") from error
 
-    project_name, base, headless, ai, launcher = _requirement_lists(pyproject)
+    project_name, base, headless, ai, launcher, mcp = _requirement_lists(pyproject)
     return {
         root / "requirements.txt": _render_requirements(base),
         root / "requirements-ai.txt": _render_requirements(ai),
         root / "launcher-requirements.txt": _render_requirements(launcher),
-        root / "pixi.toml": _render_pixi(project_name, base, headless, ai),
+        root / "pixi.toml": _render_pixi(project_name, base, headless, ai, mcp),
     }
 
 

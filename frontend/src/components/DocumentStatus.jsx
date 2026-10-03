@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
+import { apiFetch } from '../utils/apiClient';
 import { serializeCanvasDocument } from '../domain/document';
 import ConfirmActionDialog from './ConfirmActionDialog';
 import EditorDrawer from './EditorDrawer';
@@ -34,6 +35,8 @@ export default function DocumentStatus({ open = false, onClose, onAttentionChang
   const updateProject = useStore(state => state.updateProject);
   const [draft, setDraft] = useState(readDraft);
   const [notice, setNotice] = useState('');
+  const [revisionNotice, setRevisionNotice] = useState(null);
+  const externalRevision = revisionNotice?.projectId === projectId ? revisionNotice.revision : null;
   const [recoveryConfirmation, setRecoveryConfirmation] = useState(null);
   const pendingDraft = useRef(draft);
   const flushDraft = useRef(null);
@@ -43,8 +46,29 @@ export default function DocumentStatus({ open = false, onClose, onAttentionChang
     ? lastPrintReceipt.status === 'submitted'
       ? `${lastPrintReceipt.submitted} label${lastPrintReceipt.submitted === 1 ? '' : 's'} submitted. Check the physical output; completion is unverified.`
       : 'No labels were submitted.' : '';
-  const needsAttention = Boolean(draft || notice || status === 'failed');
+  const needsAttention = Boolean(externalRevision || draft || notice || status === 'failed');
   useEffect(() => { onAttentionChange?.(needsAttention); }, [needsAttention, onAttentionChange]);
+
+  useEffect(() => {
+    if (projectId == null) return undefined;
+    let active = true;
+    const controller = new AbortController();
+    const inspect = async () => {
+      try {
+        const response = await apiFetch(`/api/projects/${projectId}/revision`, { signal: controller.signal });
+        const project = await response.json();
+        const current = useStore.getState();
+        if (active && current.currentProjectId === projectId && Number.isInteger(project.revision)) {
+          setRevisionNotice(project.revision !== current.currentProjectRevision ? { projectId, revision: project.revision } : null);
+        }
+      } catch { /* Revision polling must not disrupt editing or offline recovery. */ }
+    };
+    void inspect();
+    const interval = window.setInterval(inspect, 15000);
+    window.addEventListener('focus', inspect);
+    return () => { active = false; controller.abort(); window.clearInterval(interval); window.removeEventListener('focus', inspect); };
+  }, [projectId]);
+
 
   useEffect(() => {
     let timer;
@@ -131,6 +155,10 @@ export default function DocumentStatus({ open = false, onClose, onAttentionChang
         onClick={() => updateProject(projectId)} className="border border-neutral-400 dark:border-neutral-600 px-3 py-1 disabled:opacity-50">Save changes</button>}
       {projectId == null && dirty && <span>Use Projects → Save to name this design.</span>}
     </div>
+    {externalRevision != null && <section role="status" className="border-t border-amber-400 pt-3">
+      <p>This saved design changed outside the editor. Your current canvas and undo history have been kept.</p>
+      <button type="button" className="mt-2 min-h-10 border border-neutral-400 px-3" onClick={() => useStore.getState().loadProject({ id: projectId })}>Review and reload saved design</button>
+    </section>}
     {printMessage && <section className="border-t border-neutral-200 pt-4 dark:border-neutral-800"><h3 className="mb-2 text-sm font-semibold">Printing</h3><p>{printMessage}</p>
       {isPreparing && <>
         {progress && <progress aria-label="Label rendering progress" max={progress.total} value={progress.completed} className="mt-2 w-full accent-blue-600" />}

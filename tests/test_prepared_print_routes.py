@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.testclient import TestClient
-from httpx import Response
 from PIL import Image
 
 from catlabel.api import routes_prepared_print, routes_print
@@ -74,7 +73,7 @@ class PreparedPrintRouteTests(unittest.TestCase):
         self.assertEqual(payload["next_index"], 0)
         return payload["prepared_id"]
 
-    def _append(self, prepared_id: str, index: int, payload: bytes) -> Response:
+    def _append(self, prepared_id: str, index: int, payload: bytes):
         return self.client.post(
             f"/api/print/prepared/{prepared_id}/pages/{index}",
             files={"file": ("ignored-client-name.png", payload, "image/png")},

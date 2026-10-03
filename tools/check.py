@@ -346,6 +346,11 @@ def main() -> int:
         generated = run([sys.executable, "-m", "tools.sync_dependencies", "--check"])
         if generated.returncode:
             raise RuntimeError(generated.stdout + generated.stderr)
+        document_contract = run(
+            [sys.executable, "-m", "tools.sync_document_contract", "--check"]
+        )
+        if document_contract.returncode:
+            raise RuntimeError(document_contract.stdout + document_contract.stderr)
         if args.lane == "audit" and args.write_baseline:
             raise RuntimeError(
                 "Audit exceptions require individual written review, not baseline capture"
