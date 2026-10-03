@@ -5,4 +5,4 @@ pixi.toml text eol=lf
 pyproject.toml text eol=lf
 requirements-dev.lock text eol=lf
 requirements-check.lock text eol=lf
-checks/*.json text eol=lf
+*.json text eol=lf

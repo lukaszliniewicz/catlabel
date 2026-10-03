@@ -181,6 +181,7 @@ class LauncherTests(unittest.TestCase):
         candidate = self.root / "candidate"
         candidate.mkdir()
         (candidate / "run.sh").touch()
+        (candidate / "run.ps1").touch()
         (candidate / "release-manifest.json").touch()
         with mock.patch.object(launcher.subprocess, "run") as run:
             launcher.prepare_release(
@@ -433,12 +434,13 @@ class LauncherTests(unittest.TestCase):
                 self.assertEqual(environment["CATLABEL_DATA_DIR"], str(self.data))
 
     def test_nonwindows_child_preserves_powershell_module_path(self) -> None:
+        module_key = "PSMODULEPATH" if os.name == "nt" else "PSModulePath"
         with (
-            mock.patch.dict(os.environ, {"PSModulePath": "existing-path"}),
+            mock.patch.dict(os.environ, {module_key: "existing-path"}),
             mock.patch.object(launcher.platform, "system", return_value="Linux"),
         ):
             environment = launcher._child_environment(self.data, self.root)
-        self.assertEqual(environment["PSModulePath"], "existing-path")
+        self.assertEqual(environment[module_key], "existing-path")
 
     def test_frozen_linux_child_restores_original_library_path(self) -> None:
         with (
@@ -589,6 +591,7 @@ class LauncherTests(unittest.TestCase):
 
     def test_interrupt_terminates_and_waits_for_owned_child(self) -> None:
         (self.root / "run.sh").touch()
+        (self.root / "run.ps1").touch()
         process = mock.Mock()
         process.wait.side_effect = [KeyboardInterrupt, 0]
         with mock.patch.object(launcher.subprocess, "Popen", return_value=process):

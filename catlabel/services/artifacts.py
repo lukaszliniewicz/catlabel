@@ -380,12 +380,13 @@ class ArtifactStore:
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary_path, final_path)
-            directory_flag = getattr(os, "O_DIRECTORY", 0)
-            directory_fd = os.open(self._root, os.O_RDONLY | directory_flag)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            if os.name != "nt":
+                directory_flag = getattr(os, "O_DIRECTORY", 0)
+                directory_fd = os.open(self._root, os.O_RDONLY | directory_flag)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
         except OSError as exc:
             with suppress(OSError):
                 temporary_path.unlink(missing_ok=True)

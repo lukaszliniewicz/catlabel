@@ -325,6 +325,7 @@ class MCPReleaseLauncherTests(unittest.TestCase):
             target = root / "candidate"
             target.mkdir()
             (target / "run.sh").touch()
+            (target / "run.ps1").touch()
             (target / "release-manifest.json").touch()
 
             with (

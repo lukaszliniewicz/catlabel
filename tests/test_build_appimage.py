@@ -261,6 +261,7 @@ class AppImageMaterializationTests(unittest.TestCase):
                 path.chmod(0o755)
         self.git("init", "-q")
         self.git("add", ".")
+        self.git("update-index", "--chmod=+x", "packaging/linux/AppRun")
         self.git("commit", "-qm", "fixture")
         self.source_commit = self.git("rev-parse", "HEAD").decode("ascii").strip()
 

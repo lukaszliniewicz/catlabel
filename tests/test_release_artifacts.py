@@ -3,12 +3,14 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import sqlite3
 import stat
 import tempfile
 import unittest
 import warnings
 import zipfile
+from contextlib import closing
 from pathlib import Path
 from unittest import mock
 
@@ -263,6 +265,13 @@ class ReleaseArtifactArchiveTests(unittest.TestCase):
         with mock.patch.object(
             release_artifacts, "_hash_archive_stream", side_effect=replace_after_hash
         ):
+            if os.name == "nt":
+                # Windows locks the open ZIP against replacement; POSIX permits it.
+                with self.assertRaises(PermissionError):
+                    extract_artifact(archive, digest, self.staging_parent)
+                self.assertEqual(hash_file(archive), digest)
+                self.assert_only_sentinel_remains()
+                return
             stage, manifest = extract_artifact(archive, digest, self.staging_parent)
         self.assertEqual(manifest.release_id, "release-2026.10.03")
         self.assertNotEqual(hash_file(archive), digest)
@@ -432,7 +441,7 @@ class DatabaseBackupTests(unittest.TestCase):
             self.assertTrue(Path(f"{source}-wal").exists())
 
             self.assertTrue(backup_database(source, destination))
-            with sqlite3.connect(destination) as backup:
+            with closing(sqlite3.connect(destination)) as backup:
                 rows = backup.execute("SELECT value FROM records").fetchall()
             self.assertEqual(rows, [("visible through WAL",)])
         finally:
@@ -468,8 +477,9 @@ class DatabaseBackupTests(unittest.TestCase):
 
     def test_source_and_destination_must_not_resolve_to_same_path(self) -> None:
         source = self.root / "source.sqlite"
-        with sqlite3.connect(source) as connection:
+        with closing(sqlite3.connect(source)) as connection:
             connection.execute("CREATE TABLE records (value TEXT)")
+            connection.commit()
         before = source.read_bytes()
 
         with self.assertRaises(ValueError):

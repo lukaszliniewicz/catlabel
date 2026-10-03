@@ -48,9 +48,9 @@ The launcher installs an isolated, locked Python environment and opens
 system Python or Node.js.** The compiled frontend is included. First setup needs
 internet access; subsequent verified launches reuse the installed environment.
 
-Linux is the currently verified platform. Windows and macOS are supported on a
-best-effort basis; their native installation and Bluetooth paths need further
-verification. The runtime targets Linux x86_64/ARM64, Windows x86_64 and macOS
+Linux has been verified with printer hardware. Windows launcher packaging and
+fresh setup are checked on a native CI runner. macOS installation and
+Windows/macOS Bluetooth printing remain best effort. The runtime targets Linux x86_64/ARM64, Windows x86_64 and macOS
 Intel/Apple Silicon. See [installation and recovery](docs/installation.md) for
 platform requirements, diagnostics, data paths, updates and rollback.
 

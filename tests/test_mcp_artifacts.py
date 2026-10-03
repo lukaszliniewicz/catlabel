@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import os
 import tempfile
 import unittest
 import uuid
@@ -60,6 +62,65 @@ class ArtifactStoreTests(unittest.TestCase):
         with self.assertRaises(ArtifactError) as raised:
             self.store.read_bytes(metadata["id"])
         self.assertEqual(raised.exception.code, "artifact_hash_mismatch")
+
+    def test_windows_storage_skips_unavailable_directory_open(self) -> None:
+        payload = b"windows-compatible-managed-source"
+        real_open = os.open
+        real_fsync = os.fsync
+        root_path = os.fspath(self.artifact_root)
+        directory_open_attempts: list[str] = []
+        file_open_calls: list[tuple[str, int, int]] = []
+
+        def guarded_open(path, flags, mode=0o777):
+            path_value = os.fspath(path)
+            if path_value == root_path:
+                directory_open_attempts.append(path_value)
+                raise PermissionError("directory opens are unavailable")
+            file_open_calls.append((path_value, flags, mode))
+            return real_open(path, flags, mode)
+
+        with (
+            patch("catlabel.services.artifacts.os.name", "nt"),
+            patch("catlabel.services.artifacts.os.open", side_effect=guarded_open),
+            patch("catlabel.services.artifacts.os.fsync", wraps=real_fsync) as fsync,
+        ):
+            metadata = self.store.put_bytes(
+                payload,
+                mime_type="application/octet-stream",
+                kind="windows_fixture",
+            )
+
+        self.assertEqual(directory_open_attempts, [])
+        self.assertEqual(len(file_open_calls), 1)
+        self.assertTrue(file_open_calls[0][1] & os.O_EXCL)
+        self.assertEqual(fsync.call_count, 1)
+        self.assertEqual(metadata["sha256"], hashlib.sha256(payload).hexdigest())
+        self.assertEqual(self.store.read_bytes(metadata["id"]), payload)
+        self.assertEqual(self.store.get(metadata["id"]), metadata)
+
+    @unittest.skipIf(os.name == "nt", "directory fsync is unavailable on Windows")
+    def test_posix_storage_fsyncs_artifact_directory(self) -> None:
+        real_open = os.open
+        real_fsync = os.fsync
+        root_path = os.fspath(self.artifact_root)
+        opened_paths: list[str] = []
+
+        def recording_open(path, flags, mode=0o777):
+            opened_paths.append(os.fspath(path))
+            return real_open(path, flags, mode)
+
+        with (
+            patch("catlabel.services.artifacts.os.open", side_effect=recording_open),
+            patch("catlabel.services.artifacts.os.fsync", wraps=real_fsync) as fsync,
+        ):
+            self.store.put_bytes(
+                b"posix-directory-fsync",
+                mime_type="application/octet-stream",
+                kind="posix_fixture",
+            )
+
+        self.assertIn(root_path, opened_paths)
+        self.assertEqual(fsync.call_count, 2)
 
     def test_quota_counts_all_records_until_unpinned_expired_content_is_reaped(
         self,
