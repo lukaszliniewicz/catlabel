@@ -1,0 +1,61 @@
+{
+  "source_parent": "f165735658c46d4b73d7d42efe07de46258a49a7",
+  "accepted_at_utc": "2026-10-03T06:11:16.626343+00:00",
+  "scope": "Bounded immutable QR/barcode data-URL cache shared by canvas and HTML; coalesce duplicate generation",
+  "source_sha256": {
+    "frontend/src/utils/rendering.js": "1c89b4f56f757ba72ca040db30bf00c23ea4e2338987466ea9dfbe2e2b4de4c4",
+    "frontend/src/utils/codeCache.ts": "c778be3b4e044d4b7d85d17701d0c5e7f4b8033d28e10592902e09fe415ea003",
+    "frontend/src/utils/codeCache.test.js": "5bfc15dc5d248d4c59faf93b03f2da06a615b0ddcdb7c5d5d90bdc661ec91116",
+    "frontend/src/utils/renderingCodes.test.jsx": "8f12df6ac531c770eff8189c6c3bb6217b03c8a29e62a71aef5d6fdf996afd74"
+  },
+  "budget": {
+    "completed_entries": 128,
+    "retained_utf16_string_bytes": 8388608,
+    "tracked_pending_entries": 128,
+    "note": "String-byte accounting includes keys and values; does not measure JS heap overhead. Overflow/oversized renders are unretained."
+  },
+  "checks": {
+    "frontend_tests": 192,
+    "test_files": 36,
+    "focused_cache_hook_tests": 7,
+    "typescript": "passed",
+    "scoped_eslint": "passed",
+    "frontend_static": {
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "frontend-cycles": []
+    },
+    "root_static_note": "Five frontend categories empty; root collection also found two concurrent backend I001 edits. Those are outside this frontend-only acceptance and corrected separately. No baseline change.",
+    "build": "passed; clean output"
+  },
+  "browser": {
+    "baseline": "f165735 accepted artifact on18245",
+    "current": "Clean cache build on18247",
+    "fixture": "Normal toolbar Barcode with123456789, then QR https://example.com; no document injection/database save/device/provider call",
+    "full_resolution_png": {
+      "barcode_bytes": 5138,
+      "combined_bytes": 7774,
+      "baseline_matches_cached_exactly": true,
+      "sha256": {
+        "barcode-baseline.png": "bcb6e90b5ef9ff31580215538e34b2abd5cf2ca8184cf3a833c48d187206b495",
+        "barcode-cached.png": "bcb6e90b5ef9ff31580215538e34b2abd5cf2ca8184cf3a833c48d187206b495",
+        "combined-baseline.png": "c1b83f01ecf4cd9946f01195b2efa825cb456dfbfea83407a039edc987e1944c",
+        "combined-cached.png": "c1b83f01ecf4cd9946f01195b2efa825cb456dfbfea83407a039edc987e1944c"
+      }
+    },
+    "screenshot": "check-results/phase6-code-cache/code-fixture.png",
+    "native_keyboard_pointer": "unverified"
+  },
+  "frontend": {
+    "files": 27,
+    "sha256": "4b72cc1831e45dd2f13a4586de2d26b61bc19ae867d293a538a7f2bdd85905c7",
+    "ship_matches_inspected_build": true
+  },
+  "limitations": [
+    "100 identical mounted barcode hooks generate once in a mocked producer test, not timing/heap evidence",
+    "Full HTML raster caching, render endpoint streaming and physical throughput are separate work",
+    "No physical/provider/foreign native acceptance or promotion"
+  ]
+}

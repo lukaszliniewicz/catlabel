@@ -591,3 +591,22 @@ remain unverified. The shipped27-file frontend matches the inspected build.
 Stronger element typing, code caching, whole-job spooling, broader performance and
 phase7remain active. No physical printer/provider call, foreign native acceptance
 or external promotion occurred.
+
+Phase6 adds a shared immutable QR/barcode data-URL cache, bounded to128 completed
+entries and8MiB of UTF-16 key/value strings, with at most128 tracked pending
+generations. Duplicate requests share generation; failed generations retry, oversized
+results render without retention, and LRU eviction bounds completed strings. Canvas
+and HTML preserve their different scale/options keys. Module-load failures can retry.
+This is not a measured JS-heap limit or full HTML raster cache.
+
+All192 frontend tests in36files pass; seven focused cache/hook cases include100
+mounted identical codes using one mocked producer call and stale QR completion.
+TypeScript, scoped ESLint and five frontend static categories pass. Root static
+collection found two concurrent backend import-order edits outside this frontend
+acceptance, corrected separately without baseline changes. Clean build passes. Parent
+inspected toolbar-created real barcode/QR output:5138-byte barcode and7774-byte
+combined full-resolution PNGs match the accepted uncached build byte-for-byte.
+The shipped27-file frontend matches the inspected artifact.
+[Code cache receipt](reviews/2026-10-02/evidence/phase6-code-cache-receipt.json).
+Stronger element typing, whole-job spooling, broader performance and phase7remain
+active. No physical printer/provider call, foreign native acceptance or promotion.

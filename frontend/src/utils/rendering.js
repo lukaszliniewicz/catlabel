@@ -2,17 +2,30 @@ import { useEffect, useState } from 'react';
 import Konva from 'konva';
 import { applyVars } from '../domain/variables';
 import { useResourceReady } from '../rendering/useResourceReady';
+import { CodeRenderCache } from './codeCache';
 
 let barcodeModulePromise;
 let qrCodeModulePromise;
 const getBarcodeModule = () => {
-  barcodeModulePromise ||= import('bwip-js').then((module) => module.default || module);
+  barcodeModulePromise ||= import('bwip-js').then((module) => module.default || module).catch(error => { barcodeModulePromise = null; throw error; });
   return barcodeModulePromise;
 };
 const getQrCodeModule = () => {
-  qrCodeModulePromise ||= import('qrcode').then((module) => module.default || module);
+  qrCodeModulePromise ||= import('qrcode').then((module) => module.default || module).catch(error => { qrCodeModulePromise = null; throw error; });
   return qrCodeModulePromise;
 };
+
+const codeCache = new CodeRenderCache();
+const renderCode = (type, value, format, scale) => codeCache.getOrCreate(JSON.stringify([type, value, format, scale]), async () => {
+  if (type === 'barcode') {
+    const bwipjs = await getBarcodeModule();
+    const canvas = document.createElement('canvas');
+    bwipjs.toCanvas(canvas, { bcid: format, text: value, scale, includetext: false, backgroundcolor: 'FFFFFF' });
+    return canvas.toDataURL('image/png');
+  }
+  const QRCode = await getQrCodeModule();
+  return QRCode.toDataURL(value, { margin: 1, scale, color: { dark: '#000000', light: '#FFFFFF' } });
+});
 
 const IMAGE_LOAD_TIMEOUT_MS = 8_000;
 
@@ -51,23 +64,9 @@ export const processHtmlDynamicElements = async (container, width, height, isCan
       let dataUrl = null;
 
       if (type === 'barcode') {
-        const bwipjs = await getBarcodeModule();
-        const canvas = document.createElement('canvas');
-        bwipjs.toCanvas(canvas, {
-          bcid: format,
-          text: value,
-          scale: 8,
-          includetext: false,
-          backgroundcolor: 'FFFFFF'
-        });
-        dataUrl = canvas.toDataURL('image/png');
+        dataUrl = await renderCode(type, value, format, 8);
       } else if (type === 'qrcode') {
-        const QRCode = await getQrCodeModule();
-        dataUrl = await QRCode.toDataURL(value, {
-          margin: 1,
-          scale: 16,
-          color: { dark: '#000000', light: '#FFFFFF' }
-        });
+        dataUrl = await renderCode(type, value, '', 16);
       }
 
       if (dataUrl) {
@@ -212,24 +211,14 @@ export const useCodeGenerator = (type, data, barcodeType) => {
       }
 
       if (type === 'barcode') {
-        const canvas = document.createElement('canvas');
-
         try {
-          const bwipjs = await getBarcodeModule();
           let bcid = 'code128';
           if (barcodeType === 'code39') bcid = 'code39';
           if (barcodeType === 'ean13') bcid = 'ean13';
 
-          bwipjs.toCanvas(canvas, {
-            bcid,
-            text: String(data),
-            scale: 12,
-            includetext: false,
-            backgroundcolor: 'FFFFFF'
-          });
-
+          const dataUrl = await renderCode(type, String(data), bcid, 12);
           if (!cancelled) {
-            setSrc(canvas.toDataURL('image/png'));
+            setSrc(dataUrl);
           }
         } catch (error) {
           console.error('Failed to generate barcode', error);
@@ -240,12 +229,7 @@ export const useCodeGenerator = (type, data, barcodeType) => {
       }
 
       try {
-        const QRCode = await getQrCodeModule();
-        const dataUrl = await QRCode.toDataURL(String(data), {
-          margin: 1,
-          scale: 24,
-          color: { dark: '#000000', light: '#FFFFFF' }
-        });
+        const dataUrl = await renderCode(type, String(data), '', 24);
 
         if (!cancelled) {
           setSrc(dataUrl);
