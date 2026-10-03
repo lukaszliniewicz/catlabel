@@ -394,3 +394,35 @@ These captures establish preview layout, not print fidelity. Object-list selecti
 keyboard file controls, project action/recovery dialogs, component and API/job
 boundaries, and the remaining performance/maintenance work stay active. No printer
 or provider call, external promotion or native foreign-system acceptance occurred.
+
+Phase 5 project actions and typed request boundaries are accepted locally. Saved
+project export fetches document detail rather than relying on blob-free tree
+summaries. Overwrite, deletion and dirty recovery use explicit in-app confirmations;
+failed actions retain contextual errors, and intervening document/saved revisions
+prevent stale replacement. Deleting a saved folder/project detaches its write
+identity while preserving the current canvas as dirty unsaved work. Nested actions
+return focus to their named trigger.
+
+API utilities now use strict TypeScript and type-aware ESLint. JSON decoding and
+validation remain inside the request deadline, with external abort reasons and
+structured errors narrowed defensively. Model/scan/profile responses are validated;
+all 155 actual local model profiles pass the guard. Print receipts require a
+positive integral submitted count and nonempty job identity, explicitly retain
+physical completion as unverified, and are visible above the canvas. Preparation
+snapshots use the central versioned DPI serializer. Cancelled/superseded or duplicate
+preparation callbacks cannot submit a second job.
+
+All 124 frontend tests in 24 files, ten empty static categories, refreshed Python
+and npm advisory checks, and the clean production build pass. Axe reports zero
+violations on final action, overwrite and recovery dialogs; incomplete contrast
+results remain recorded. Parent DOM activation verifies confirmation/cancellation
+and focus return at 390 CSS pixels. Browser download observation timed out; export
+contents and blob disposal are unit-tested, but a downloaded file is not claimed.
+Native keyboard/pointer acceptance remains affected by the earlier stalled prompt.
+The shipped 26-file artifact matches the inspected build, with digest
+`82c166eea65f449ca4bf6f0340cc9f6493bfcfeeb8596d785cf84aada1acc0d0`.
+[Project actions and transport receipt](reviews/2026-10-02/evidence/phase5-project-actions-receipt.json).
+Component decomposition, keyboard file/object workflows, backend preflight/spooling,
+the broader performance matrix and phase 7 remain active. No physical print,
+provider call or external promotion occurred; Windows/macOS native acceptance is
+best effort and physical printer outcomes remain unverified.

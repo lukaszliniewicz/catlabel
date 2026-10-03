@@ -53,7 +53,7 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
 
   useEffect(() => {
     if (pendingPrintJob && jobs.length === 0) {
-      onComplete([]);
+      onComplete([], null, pendingPrintJob.id);
     }
   }, [jobs.length, onComplete, pendingPrintJob]);
 
@@ -65,24 +65,24 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
 
     if (next.length === jobs.length) {
       completedRef.current = true;
-      onComplete(next, null);
+      onComplete(next, null, pendingPrintJob.id);
       return;
     }
 
     setCurrentIndex((idx) => idx + 1);
-  }, [jobs.length, onComplete]);
+  }, [jobs.length, onComplete, pendingPrintJob.id]);
 
   const handlePageError = useCallback((error) => {
     if (completedRef.current) return;
     completedRef.current = true;
-    onComplete([], error);
-  }, [onComplete]);
+    onComplete([], error, pendingPrintJob.id);
+  }, [onComplete, pendingPrintJob.id]);
 
   const cancelPreparation = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
-    onComplete([], new Error('Print preparation cancelled before submission.'));
-  }, [onComplete]);
+    onComplete([], new Error('Print preparation cancelled before submission.'), pendingPrintJob.id);
+  }, [onComplete, pendingPrintJob.id]);
   const dialogRef = useDialogAccessibility(cancelPreparation);
 
   if (!pendingPrintJob || jobs.length === 0) {

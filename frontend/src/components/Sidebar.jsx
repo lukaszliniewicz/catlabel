@@ -8,6 +8,7 @@ import PresetPickerModal from './PresetPickerModal';
 import EditorDrawer from './EditorDrawer';
 import { getPageIndices } from '../utils/canvasPages';
 import { apiJson } from '../utils/apiClient';
+import { isPrinterScanResponse } from '../domain/printer';
 import {
   ChevronDown, ChevronRight, LayoutTemplate,
   Menu, Printer, Wifi, Archive
@@ -32,7 +33,7 @@ function SidebarButton({ icon: Icon, label, onClick, primary = false, collapsed,
 
 function scanPrinters(signal) {
   return apiJson('/api/printers/scan', { signal }, {
-    validate: (value) => value && Array.isArray(value.devices),
+    validate: isPrinterScanResponse,
     validationMessage: 'Printer scan data is malformed.'
   });
 }

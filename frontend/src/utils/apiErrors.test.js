@@ -4,7 +4,7 @@ import {
   ApiRequestError,
   apiErrorFromResponse,
   describePrintError,
-} from './apiErrors.js';
+} from './apiErrors';
 
 test('structured print errors retain the backend stage and cause', async () => {
   const response = {
@@ -71,4 +71,38 @@ test('structured delivery uncertainty survives parsing', async () => {
     } }),
   });
   expect(error.deliveryUncertain).toBe(true);
+});
+
+test('validation-list details remain readable', async () => {
+  const error = await apiErrorFromResponse({
+    status: 422,
+    text: async () => JSON.stringify({ detail: [
+      { loc: ['body', 'mac_address'], msg: 'Field required' },
+      { loc: ['body', 'images'], msg: 'Input should be a valid list' },
+    ] }),
+  });
+
+  expect(error.message).toBe('Field required; Input should be a valid list');
+});
+
+test('malformed structured error metadata is narrowed defensively', async () => {
+  const error = await apiErrorFromResponse({
+    status: 400,
+    text: async () => JSON.stringify({ detail: {
+      message: 7,
+      stage: { name: 'connect' },
+      error: ['bad field'],
+      suggestion: false,
+      error_id: 123,
+      delivery_uncertain: 'yes',
+    } }),
+  });
+
+  expect(error.status).toBe(400);
+  expect(error.message).toContain('"message":7');
+  expect(error.stage).toBeUndefined();
+  expect(error.technicalDetail).toBeUndefined();
+  expect(error.suggestion).toBeUndefined();
+  expect(error.errorId).toBeUndefined();
+  expect(error.deliveryUncertain).toBeUndefined();
 });

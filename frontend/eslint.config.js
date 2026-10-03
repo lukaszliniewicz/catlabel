@@ -3,9 +3,16 @@ import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import react from 'eslint-plugin-react';
+import tseslint from 'typescript-eslint';
 
 export default [
   { ignores: ['dist/**', 'node_modules/**'] },
+  ...tseslint.configs.recommendedTypeChecked.map(config => ({ ...config, files: ['src/**/*.ts'] })),
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname }, globals: globals.browser },
+    rules: { '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }] }
+  },
   {
     files: ['src/**/*.{js,jsx}'],
     languageOptions: {

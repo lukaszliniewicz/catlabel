@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
 import { useDialogAccessibility } from '../utils/useDialogAccessibility';
-import { apiFetch } from '../utils/apiClient';
+import { apiJson } from '../utils/apiClient';
+import { isPrinterSupportedModelsResponse, isPrinterScanResponse } from '../domain/printer';
 import { Printer, Sparkles, Search, ChevronRight, Loader2, Bot, ArrowLeft, CheckCircle, Globe, Tag } from 'lucide-react';
 
 export default function OnboardingWizard() {
@@ -34,11 +35,11 @@ export default function OnboardingWizard() {
 
   useEffect(() => {
     const controller = new AbortController();
-    apiFetch('/api/printers/supported_models', { signal: controller.signal })
-      .then((res) => res.json())
+    apiJson('/api/printers/supported_models', { signal: controller.signal }, {
+      validate: isPrinterSupportedModelsResponse, validationMessage: 'Printer model data is malformed. Try reopening setup.'
+    })
       .then((data) => {
         if (controller.signal.aborted) return;
-        if (!Array.isArray(data.models)) throw new Error('Printer model data is malformed. Try reopening setup.');
         setSupportedModels(data.models);
       })
       .catch((error) => {
@@ -60,8 +61,9 @@ export default function OnboardingWizard() {
     setManualStep('off');
 
     try {
-      const res = await apiFetch('/api/printers/scan', { signal: controller.signal });
-      const data = await res.json();
+      const data = await apiJson('/api/printers/scan', { signal: controller.signal }, {
+        validate: isPrinterScanResponse, validationMessage: 'Printer scan data is malformed.'
+      });
       if (!controller.signal.aborted) setScannedPrinters(data.devices || []);
     } catch (e) {
       if (controller.signal.aborted) return;

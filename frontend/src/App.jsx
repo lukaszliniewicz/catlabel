@@ -22,6 +22,7 @@ function App() {
   const showAiConfig = useStore((state) => state.showAiConfig);
   const setShowAiConfig = useStore((state) => state.setShowAiConfig);
   const isPreparingForPrint = useStore((state) => state.isPreparingForPrint);
+  const pendingPrintJob = useStore(state => state.pendingPrintJob);
   const onLocalRenderComplete = useStore((state) => state.onLocalRenderComplete);
   const apiError = useStore((state) => state.apiError);
   const clearApiError = useStore((state) => state.clearApiError);
@@ -91,7 +92,7 @@ function App() {
           <button type="button" onClick={clearApiError} className="font-bold" aria-label="Dismiss error">×</button>
         </div>
       )}
-      {isPreparingForPrint && <LazyFeature label="print preparation" onClose={() => onLocalRenderComplete([], new Error('Print preparation cancelled before submission.'))} onError={error => onLocalRenderComplete([], error)}><LocalBatchRenderer onComplete={onLocalRenderComplete} /></LazyFeature>}
+      {isPreparingForPrint && <LazyFeature label="print preparation" onClose={() => onLocalRenderComplete([], new Error('Print preparation cancelled before submission.'), pendingPrintJob?.id)} onError={error => onLocalRenderComplete([], error, pendingPrintJob?.id)}><LocalBatchRenderer onComplete={onLocalRenderComplete} /></LazyFeature>}
       {settingsLoaded && (!onboardingComplete || showOnboarding) && <LazyFeature label="welcome setup" onClose={completeOnboarding}><OnboardingWizard /></LazyFeature>}
       {showAiConfig && <LazyFeature label="AI settings" onClose={() => setShowAiConfig(false)}><AIConfigModal onClose={() => setShowAiConfig(false)} /></LazyFeature>}
     </main>

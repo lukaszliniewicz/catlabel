@@ -36,7 +36,7 @@ const coverBackground = (dialog) => {
   };
 };
 
-export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) => {
+export const useDialogAccessibility = (onClose, { closeOnEscape = true, returnFocusRef } = {}) => {
   const dialogRef = useRef(null);
   const onCloseRef = useRef(onClose);
 
@@ -46,6 +46,7 @@ export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) =
 
   useEffect(() => {
     const previouslyFocused = document.activeElement;
+    const fallbackFocusTarget = returnFocusRef?.current;
     const dialog = dialogRef.current;
     if (!dialog) return;
     const uncoverBackground = coverBackground(dialog);
@@ -98,9 +99,10 @@ export const useDialogAccessibility = (onClose, { closeOnEscape = true } = {}) =
       const stackIndex = openDialogs.lastIndexOf(dialogRef);
       if (stackIndex >= 0) openDialogs.splice(stackIndex, 1);
       uncoverBackground();
-      if (previouslyFocused?.isConnected && !previouslyFocused.closest('[inert]')) previouslyFocused.focus?.();
+      const target = fallbackFocusTarget?.isConnected ? fallbackFocusTarget : previouslyFocused;
+      if (target?.isConnected && !target.closest('[inert]')) target.focus?.();
     };
-  }, [closeOnEscape]);
+  }, [closeOnEscape, returnFocusRef]);
 
   return dialogRef;
 };

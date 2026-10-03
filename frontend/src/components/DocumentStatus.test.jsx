@@ -15,7 +15,6 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 afterEach(async () => {
   await act(() => root.unmount());
@@ -63,4 +62,24 @@ test('storage failure keeps unsaved edits visible and unload protects them', asy
   await act(() => window.dispatchEvent(event));
   expect(event.defaultPrevented).toBe(true);
   expect(useStore.getState().items[0].id).toBe('kept');
+});
+
+test('dirty recovery requires explicit replacement and fences later edits', async () => {
+  const canvas = serializeCanvasDocument({ ...original, items: [{ id: 'recovered', type: 'text' }] });
+  localStorage.setItem('catlabel_document_draft_v1', JSON.stringify({ draft_schema: 1, canvas_state: canvas }));
+  useStore.getState().setItems([{ id: 'kept', type: 'text' }]);
+  await mount(); await click('Recover as new design');
+  const choice = text => act(() => [...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent === text).click());
+  await choice('Keep editing'); expect(useStore.getState().items[0].id).toBe('kept');
+  await click('Recover as new design'); await act(() => useStore.getState().setItems([{ id: 'later', type: 'text' }]));
+  await choice('Replace edits and recover'); expect(useStore.getState().items[0].id).toBe('later');
+  expect(container.textContent).toContain('changed while confirmation');
+  await click('Recover as new design'); await choice('Replace edits and recover');
+  expect(useStore.getState()).toMatchObject({ currentProjectId: null, items: [{ id: 'recovered' }], isDocumentDirty: true });
+});
+
+test('print receipts remain visible with physical completion explicitly unverified', async () => {
+  useStore.setState({ lastPrintReceipt: { status: 'submitted', submitted: 2, physical_completion: 'unverified' } });
+  await mount(); expect(container.textContent).toContain('2 labels submitted'); expect(container.textContent).toContain('completion is unverified');
+  await act(() => useStore.setState({ isPrinting: true })); expect(container.textContent).toContain('Submitting labels');
 });

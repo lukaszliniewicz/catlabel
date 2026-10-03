@@ -1,6 +1,7 @@
 import { resolveDpi, scaleItemForDpi } from '../../domain/document';
 import { buildTemplateHtml, recalcAutoFit } from '../../domain/normalization';
-import { apiFetch } from '../../utils/apiClient';
+import { apiJson } from '../../utils/apiClient';
+import { isPrinterProfile } from '../../domain/printer';
 import { errorMessage } from '../errors';
 
 let printerProfileRequestId = 0;
@@ -139,8 +140,7 @@ export const createPrinterSlice = (set, get) => ({
     }
 
     try {
-      const res = await apiFetch(`/api/printers/${mac}/profile`);
-      let profile = (await res.json()) || {};
+      let profile = await apiJson(`/api/printers/${mac}/profile`, {}, { validate: isPrinterProfile });
       if (requestId !== printerProfileRequestId || get().selectedPrinter !== mac) return;
       const caps = info?.capabilities || {};
 
@@ -179,8 +179,7 @@ export const createPrinterSlice = (set, get) => ({
 
           if (bestMatch) {
             try {
-              const manRes = await apiFetch(`/api/printers/${bestMatch.address}/profile`);
-              const manProfile = (await manRes.json()) || {};
+              const manProfile = await apiJson(`/api/printers/${bestMatch.address}/profile`, {}, { validate: isPrinterProfile });
               if (requestId !== printerProfileRequestId || get().selectedPrinter !== mac) return;
               const migratedSpeed = Number(manProfile?.speed ?? 0);
               const migratedEnergy = Number(manProfile?.energy ?? 0);
@@ -202,11 +201,11 @@ export const createPrinterSlice = (set, get) => ({
                   paper_mode: migratedPaperMode || profile?.paper_mode
                 };
 
-                await apiFetch(`/api/printers/${mac}/profile`, {
+                profile = await apiJson(`/api/printers/${mac}/profile`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(profile)
-                });
+                }, { validate: isPrinterProfile });
 
                 console.log(
                   `[Profile Sync] Safely migrated settings from compatible offline profile (${bestMatch.name}) to physical device ${mac}.`

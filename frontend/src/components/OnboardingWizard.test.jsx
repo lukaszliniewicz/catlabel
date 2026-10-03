@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { beforeEach, afterEach, expect, test, vi } from 'vitest';
 import { useStore } from '../store';
 import * as apiClient from '../utils/apiClient';
+import { ApiRequestError } from '../utils/apiErrors';
 import OnboardingWizard from './OnboardingWizard';
 import Sidebar from './Sidebar';
 
@@ -10,6 +11,7 @@ const original = useStore.getState();
 let container;
 let root;
 const pd01 = { name: 'PD01', model_id: 'pd01_v5g', vendor: 'generic', protocol_family: 'v5g',
+  vendor_display: 'Generic', capabilities: { speed: { available: false }, energy: { available: false }, density: { available: false }, feed: { available: false } },
   width_mm: 48.8, width_px: 384, dpi: 200, media_type: 'continuous' };
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -28,10 +30,11 @@ afterEach(async () => {
 });
 const mount = Component => act(() => root.render(<Component />));
 const click = text => act(() => [...container.querySelectorAll('button')].find(button => button.textContent.includes(text)).click());
-const models = () => vi.spyOn(apiClient, 'apiFetch').mockImplementation(async url => ({
-  json: async () => url.endsWith('supported_models') ? { models: [pd01,
-    { ...pd01, name: 'Other', model_id: 'other', protocol_family: 'classic' }] } : {}
-}));
+const models = () => vi.spyOn(apiClient, 'apiJson').mockImplementation(async url =>
+  url.endsWith('supported_models') ? { models: [pd01,
+    { ...pd01, name: 'Other', model_id: 'other', protocol_family: 'classic' }] } : {
+      id: 1, name: null, mac_address: 'manual-pd01_v5g', transport: 'BLE', default_darkness: 3, speed: 0, energy: 0, feed_lines: 50, paper_mode: null
+    });
 
 test('Start designing completes welcome without scanning, AI configuration or settings writes', async () => {
   const api = models();
@@ -80,7 +83,7 @@ test('Sidebar waits for an explicit scan and discovery preserves the selected of
 });
 
 test('malformed model data shows a setup error while designing remains available', async () => {
-  vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ models: {} }) });
+  vi.spyOn(apiClient, 'apiJson').mockRejectedValue(new ApiRequestError('Printer model data is malformed. Try reopening setup.', { stage: 'response_validation' }));
   await mount(OnboardingWizard);
   expect(container.querySelector('[role=alert]').textContent).toContain('Printer model data is malformed');
   await click('Start designing');
@@ -89,12 +92,12 @@ test('malformed model data shows a setup error while designing remains available
 
 test('closing setup aborts its outstanding discovery request', async () => {
   let scanSignal;
-  vi.spyOn(apiClient, 'apiFetch').mockImplementation(async (url, init) => {
+  vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url, init) => {
     if (url.endsWith('/scan')) {
       scanSignal = init.signal;
       return new Promise(() => {});
     }
-    return { json: async () => ({ models: [pd01] }) };
+    return { models: [pd01] };
   });
   await mount(OnboardingWizard);
   await click('Scan Bluetooth');

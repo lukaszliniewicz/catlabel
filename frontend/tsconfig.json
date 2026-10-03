@@ -13,5 +13,5 @@
     "skipLibCheck": false,
     "types": []
   },
-  "include": ["src/domain/**/*.ts"]
+  "include": ["src/domain/**/*.ts", "src/utils/**/*.ts"]
 }

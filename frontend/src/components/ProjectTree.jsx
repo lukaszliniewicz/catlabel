@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useId } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useMemo, useId, useRef } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
-import { apiFetch } from '../utils/apiClient';
+import { apiFetch, apiJson, isObjectPayload } from '../utils/apiClient';
+import ConfirmActionDialog from './ConfirmActionDialog';
+import ProjectActionsDialog from './ProjectActionsDialog';
 import {
   Folder, FolderOpen, FileText, Layers, MoreVertical,
   Download, Upload, Plus, Trash, Edit2, Save, Play
@@ -72,6 +73,9 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
   const [isEditing, setIsEditing] = useState(false);
   const [creating, setCreating] = useState(null); // { type: 'category'|'project' }
   const [isDragOver, setIsDragOver] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
+  const [actionError, setActionError] = useState('');
+  const actionTrigger = useRef(null);
 
   const isFolder = node.type === 'category';
   const isLoaded = !isFolder && currentProjectId === node.id;
@@ -82,32 +86,51 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
 
   const handleExport = async () => {
     setMenuOpen(false);
+    setActionError('');
     try {
-      const url = isFolder
-        ? `/api/export?category_id=${node.id}`
-        : `/api/export`;
-
-      if (!isFolder) {
-        const payload = { catlabel_export_version: "1.0", data: { type: "project", name: node.name, canvas_state: node.canvas_state } };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${node.name}.json`;
-        link.click();
-        return;
+      let data;
+      let name;
+      if (isFolder) {
+        data = await apiJson(`/api/export?category_id=${node.id}`, {}, { validate: isObjectPayload });
+        name = `${node.name}_export`;
+      } else {
+        const project = await apiJson(`/api/projects/${node.id}`, {}, { validate: isObjectPayload });
+        if (project.id !== node.id || !isObjectPayload(project.canvas_state)) throw new Error('The saved project document is missing or malformed.');
+        data = { catlabel_export_version: '1.0', data: { type: 'project', name: project.name, canvas_state: project.canvas_state } };
+        name = project.name;
       }
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${name}.json`;
+        link.click();
+      } finally { setTimeout(() => URL.revokeObjectURL(url), 0); }
+    } catch (error) { setActionError(`Export failed: ${error.message || 'The saved project could not be retrieved.'}`); }
+  };
 
-      const res = await apiFetch(url);
-      const data = await res.json();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${node.name}_export.json`;
-      link.click();
-    } catch (e) {
-      console.error(e);
-      alert("Failed to export.");
+  const requestConfirmation = type => {
+    const state = useStore.getState();
+    setMenuOpen(false);
+    setConfirmation({ type, session: state.documentSessionId, revision: state.documentRevision,
+      targetRevision: state.currentProjectId === node.id ? state.currentProjectRevision : node.revision,
+      busy: false, error: '' });
+  };
+  const confirmAction = async () => {
+    if (!confirmation || confirmation.busy) return;
+    const state = useStore.getState();
+    if (confirmation.type === 'overwrite' && (state.documentSessionId !== confirmation.session || state.documentRevision !== confirmation.revision)) {
+      setConfirmation({ ...confirmation, error: 'The current design changed while confirmation was open. Cancel and reopen the action to review it again.' });
+      return;
     }
+    setConfirmation({ ...confirmation, busy: true, error: '' });
+    try {
+      const result = confirmation.type === 'overwrite'
+        ? await updateProject(node.id, null, undefined, confirmation.targetRevision)
+        : await (isFolder ? deleteCategory(node.id) : deleteProject(node.id));
+      if (result === true) setConfirmation(null);
+      else setConfirmation({ ...confirmation, busy: false, error: useStore.getState().apiError || 'The action failed. Your current design is still here.' });
+    } catch (error) { setConfirmation({ ...confirmation, busy: false, error: error.message || 'The action failed.' }); }
   };
 
   const handleDragStart = (e) => {
@@ -223,7 +246,8 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
           <button
             type="button"
             aria-label={`Actions for ${node.name}`}
-            aria-haspopup="menu"
+            ref={actionTrigger}
+            aria-haspopup="dialog"
             aria-expanded={menuOpen}
             onClick={(e) => {
               if (menuOpen) {
@@ -234,7 +258,7 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
               const rect = e.currentTarget.getBoundingClientRect();
               const menuWidth = 192;
               const viewportPadding = 8;
-              const estimatedMenuHeight = isFolder ? 300 : 220;
+              const estimatedMenuHeight = isFolder ? 390 : 325;
               const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
               const availableAbove = rect.top - viewportPadding;
               const renderAbove = availableBelow < estimatedMenuHeight && availableAbove > availableBelow;
@@ -251,35 +275,21 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
               });
               setMenuOpen(true);
             }}
-            className={`p-1 rounded-sm transition-colors ${menuOpen ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
+            className={`min-h-8 min-w-8 p-1 rounded-sm transition-colors ${menuOpen ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
           >
             <MoreVertical size={14} />
           </button>
 
-          {menuOpen && createPortal(
-            <>
-              <button type="button" aria-label="Close project actions" className="fixed inset-0 z-9998 cursor-default" onClick={() => setMenuOpen(false)} />
-              
-              <div
-                role="menu"
-                className="fixed w-48 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl rounded-md z-9999 py-1 flex flex-col overflow-y-auto"
-                style={{
-                  top: menuCoords.top ?? undefined,
-                  bottom: menuCoords.bottom ?? undefined,
-                  left: menuCoords.left,
-                  maxHeight: menuCoords.maxHeight
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
+          {menuOpen && <ProjectActionsDialog name={node.name} coordinates={menuCoords} onClose={() => setMenuOpen(false)} returnFocusRef={actionTrigger}>
                 {isFolder && (
                   <>
-                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); setCreating({ type: 'category' }); }}>
+                    <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); setCreating({ type: 'category' }); }}>
                       <Folder size={12} /> New Subfolder
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); setCreating({ type: 'project' }); }}>
+                    <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); setCreating({ type: 'project' }); }}>
                       <Save size={12} /> Save Current Here
                     </button>
-                    <label className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer dark:text-white">
+                    <label className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer dark:text-white">
                       <Upload size={12} /> Import Package Here
                       <input type="file" accept=".json" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { setMenuOpen(false); setIsOpen(true); onImport(e, node.id); }} />
                     </label>
@@ -289,35 +299,39 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
 
                 {!isFolder && (
                   <>
-                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); loadProject(node); }}>
+                    <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); loadProject(node); }}>
                       <Play size={12} /> Load to Canvas
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); if(window.confirm("WARNING: This will permanently overwrite this saved file with whatever is currently on your canvas. Proceed?")) updateProject(node.id); }}>
+                    <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => requestConfirmation('overwrite')}>
                       <Save size={12} /> Overwrite with Current
                     </button>
                     <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
                   </>
                 )}
 
-                <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsEditing(true); }}>
+                <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsEditing(true); }}>
                   <Edit2 size={12} /> Rename
                 </button>
 
-                <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={handleExport}>
+                <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={handleExport}>
                   <Download size={12} /> Export JSON
                 </button>
 
                 <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
 
-                <button className="flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 text-left" onClick={() => { setMenuOpen(false); isFolder ? deleteCategory(node.id) : deleteProject(node.id); }}>
+                <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 text-left" onClick={() => requestConfirmation('delete')}>
                   <Trash size={12} /> Delete
                 </button>
-              </div>
-            </>,
-            document.body
-          )}
+          </ProjectActionsDialog>}
         </div>
       </div>
+
+      {actionError && <p role="alert" className="px-2 py-2 text-xs text-red-800 dark:text-red-300">{actionError}</p>}
+      {confirmation && <ConfirmActionDialog title={confirmation.type === 'overwrite' ? `Overwrite ${node.name}?` : `Delete ${node.name}?`}
+        message={confirmation.type === 'overwrite' ? 'Replace this saved project with the current canvas. Its previous document will be lost.' : isFolder ? 'Delete this folder and all its saved projects and subfolders. This cannot be undone. Your current canvas stays in the editor.' : 'Delete this saved project. This cannot be undone. Your current canvas stays in the editor.'}
+        actionLabel={confirmation.type === 'overwrite' ? 'Overwrite saved project' : isFolder ? 'Delete folder and contents' : 'Delete saved project'}
+        busy={confirmation.busy} error={confirmation.error} onConfirm={confirmAction}
+        onClose={() => { if (!confirmation.busy) setConfirmation(null); }} returnFocusRef={actionTrigger} />}
 
       {isFolder && isOpen && node.children && (
         <div role="group" id={`${nodeId}-children`} aria-labelledby={nodeId} className="flex flex-col border-l border-neutral-100 dark:border-neutral-800 ml-3">

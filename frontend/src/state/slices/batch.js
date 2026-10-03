@@ -1,6 +1,8 @@
 import { recalcAutoFit } from '../../domain/normalization';
 import { describePrintError } from '../../utils/apiErrors';
-import { apiFetch } from '../../utils/apiClient';
+import { apiJson } from '../../utils/apiClient';
+import { isPrintReceipt } from '../../domain/print';
+import { serializeCanvasDocument } from '../../domain/document';
 import { buildBatchMatrix, buildBatchSequence, getPrintJobCount, getRenderPixelCount, MAX_BATCH_RECORDS, MAX_PRINT_COPIES, MAX_PRINT_JOBS, MAX_RENDER_PIXELS } from '../../utils/batchData';
 
 let nextPrintJobId = 0;
@@ -18,6 +20,7 @@ export const createBatchSlice = (set, get) => ({
   isPreparingForPrint: false,
   pendingPrintJob: null,
   isPrinting: false,
+  lastPrintReceipt: null,
   setIsPrinting: (val) => set({ isPrinting: val }),
   togglePageForPrint: (pageIndex) => set((state) => {
     const current = state.selectedPagesForPrint;
@@ -79,6 +82,7 @@ export const createBatchSlice = (set, get) => ({
 
     set({
       isPreparingForPrint: true,
+      lastPrintReceipt: null,
       pendingPrintJob: {
         id: ++nextPrintJobId,
         macAddress: state.selectedPrinter,
@@ -87,28 +91,16 @@ export const createBatchSlice = (set, get) => ({
         copies: state.printCopies || 1,
         batchRecords: finalBatchRecords,
         dither: state.dither,
-        canvasState: {
-          width: state.canvasWidth,
-          height: state.canvasHeight,
-          isRotated: state.isRotated,
-          canvasBorder: state.canvasBorder,
-          canvasBorderThickness: state.canvasBorderThickness || 4,
-          splitMode: state.splitMode,
-          pageLayouts: state.pageLayouts,
-          items: itemsToPrint
-        }
+        canvasState: serializeCanvasDocument({ ...state, items: itemsToPrint })
       }
     });
   },
-  onLocalRenderComplete: async (images, renderError = null) => {
+  onLocalRenderComplete: async (images, renderError = null, jobId) => {
     const state = get();
     const pendingPrintJob = state.pendingPrintJob;
 
+    if (!pendingPrintJob || pendingPrintJob.id !== jobId || state.isPrinting || !state.isPreparingForPrint) return false;
     set({ isPreparingForPrint: false });
-
-    if (!pendingPrintJob) {
-      return;
-    }
 
     if (renderError) {
       set({ pendingPrintJob: null });
@@ -124,7 +116,7 @@ export const createBatchSlice = (set, get) => ({
     set({ isPrinting: true });
 
     try {
-      await apiFetch(`/api/print/images`, {
+      const receipt = await apiJson(`/api/print/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,7 +126,9 @@ export const createBatchSlice = (set, get) => ({
           is_rotated: pendingPrintJob.canvasState.isRotated || false,
           dither: pendingPrintJob.dither
         })
-      }, { timeoutMs: 120_000, fallback: 'Print failed' });
+      }, { timeoutMs: 120_000, fallback: 'Print failed', validate: isPrintReceipt,
+        validationMessage: 'The server returned an unexpected print receipt. Some labels may already have printed. Check the physical output before submitting again.' });
+      set({ lastPrintReceipt: { ...receipt, printerAddress: pendingPrintJob.macAddress } });
     } catch (e) {
       console.error(e);
       const message = await describePrintError(e);

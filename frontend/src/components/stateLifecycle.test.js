@@ -61,7 +61,7 @@ test('replacement render jobs reset progress and reject old callbacks and timers
   await act(() => vi.advanceTimersByTime(50));
   expect(pages.at(-1).pageIndex).toBe(1);
   await act(() => pages.at(-1).onReady('new-second'));
-  expect(onComplete).toHaveBeenCalledExactlyOnceWith(['new-first', 'new-second'], null);
+  expect(onComplete).toHaveBeenCalledExactlyOnceWith(['new-first', 'new-second'], null, 2);
 });
 
 test('headless payloads publish their own completion once', async () => {

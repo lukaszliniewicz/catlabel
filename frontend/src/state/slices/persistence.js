@@ -77,13 +77,23 @@ export const createPersistenceSlice = (set, get) => ({
     }
   },
   deleteCategory: async (id) => {
-    if (!window.confirm("Delete this folder AND all its contents recursively?")) return;
     try {
+      const descendants = new Set([id]);
+      for (let previous = 0; previous !== descendants.size;) {
+        previous = descendants.size;
+        for (const category of get().categories) if (descendants.has(category.parent_id)) descendants.add(category.id);
+      }
+      const deletedProjects = new Set(get().projects.filter(project => descendants.has(project.category_id)).map(project => project.id));
       await apiFetch(`/api/categories/${id}`, { method: 'DELETE' });
+      if (deletedProjects.has(get().currentProjectId)) {
+        set({ currentProjectId: null, currentProjectRevision: null }, false, { history: 'skip', document: 'detach' });
+      }
       get().fetchProjects();
+      return true;
     } catch (e) {
       console.error(e);
       set({ apiError: errorMessage(e, 'Failed to delete the folder.') });
+      return false;
     }
   },
   saveProject: async (name, categoryId = null) => {
@@ -120,7 +130,7 @@ export const createPersistenceSlice = (set, get) => ({
       return false;
     }
   },
-  updateProject: async (id, newName = null, newCategoryId = undefined) => {
+  updateProject: async (id, newName = null, newCategoryId = undefined, approvedRevision = undefined) => {
     const state = get();
 
     const session = state.documentSessionId;
@@ -130,9 +140,13 @@ export const createPersistenceSlice = (set, get) => ({
     const expectedRevision = state.currentProjectId === id
       ? state.currentProjectRevision
       : state.projects.find((project) => project.id === id)?.revision;
+    if (approvedRevision !== undefined && approvedRevision !== expectedRevision) {
+      set({ apiError: 'The saved project changed while confirmation was open. Reload it before deciding whether to overwrite.' });
+      return false;
+    }
     if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
       set({ apiError: 'Reload the saved project before updating it; its revision is unavailable.' });
-      return;
+      return false;
     }
     const payload = { expected_revision: expectedRevision };
     if (writesCanvas) payload.canvas_state = serializeCanvasDocument(state);
@@ -169,16 +183,17 @@ export const createPersistenceSlice = (set, get) => ({
     }
   },
   deleteProject: async (id) => {
-    if (!window.confirm("Are you sure you want to delete this project?")) return;
     try {
       await apiFetch(`/api/projects/${id}`, { method: 'DELETE' });
       get().fetchProjects();
       if (get().currentProjectId === id) {
         set({ currentProjectId: null, currentProjectRevision: null }, false, { history: 'skip', document: 'detach' });
       }
+      return true;
     } catch (e) {
       console.error(e);
       set({ apiError: errorMessage(e, 'Failed to delete the project.') });
+      return false;
     }
   },
   loadProject: async (summary, approval = null) => {

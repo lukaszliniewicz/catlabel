@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { serializeCanvasDocument } from '../domain/document';
+import ConfirmActionDialog from './ConfirmActionDialog';
 
 const DRAFT_KEY = 'catlabel_document_draft_v1';
 const MAX_DRAFT_CHARACTERS = 1_500_000;
@@ -20,12 +21,15 @@ const readDraft = () => {
 };
 
 export default function DocumentStatus() {
+  const lastPrintReceipt = useStore(state => state.lastPrintReceipt);
+  const isPrinting = useStore(state => state.isPrinting);
   const dirty = useStore(state => state.isDocumentDirty);
   const status = useStore(state => state.saveStatus);
   const projectId = useStore(state => state.currentProjectId);
   const updateProject = useStore(state => state.updateProject);
   const [draft, setDraft] = useState(readDraft);
   const [notice, setNotice] = useState('');
+  const [recoveryConfirmation, setRecoveryConfirmation] = useState(null);
   const pendingDraft = useRef(draft);
   const flushDraft = useRef(null);
 
@@ -80,9 +84,18 @@ export default function DocumentStatus() {
     setDraft(null);
     flushDraft.current?.();
   };
-  const recover = () => {
+  const recover = approval => {
     const state = useStore.getState();
-    if (state.isDocumentDirty && !window.confirm('Recover this copy and replace your current unsaved edits?')) return;
+    if (approval && (state.documentSessionId !== approval.session || state.documentRevision !== approval.revision)) {
+      setRecoveryConfirmation(null);
+      setNotice('The design changed while confirmation was open. Your edits were kept. Review the recovery copy again when ready.');
+      return;
+    }
+    if (state.isDocumentDirty && !approval) {
+      setRecoveryConfirmation({ session: state.documentSessionId, revision: state.documentRevision });
+      return;
+    }
+    setRecoveryConfirmation(null);
     try {
       // Always recover as a new design, even offline. Never overwrite its saved ancestor.
       state.hydrateCanvasState(draft.canvas_state, { currentProjectId: null,
@@ -100,11 +113,17 @@ export default function DocumentStatus() {
         onClick={() => updateProject(projectId)} className="border border-neutral-400 dark:border-neutral-600 px-3 py-1 disabled:opacity-50">Save changes</button>}
       {projectId == null && dirty && <span>Use Projects → Save to name this design.</span>}
     </div>
+    {(isPrinting || lastPrintReceipt) && <p role="status" aria-live="polite" className="mt-2">
+      {isPrinting ? 'Submitting labels…' : lastPrintReceipt.status === 'submitted'
+        ? `${lastPrintReceipt.submitted} label${lastPrintReceipt.submitted === 1 ? '' : 's'} submitted. Check the physical output; completion is unverified.` : 'No labels were submitted.'}
+    </p>}
     {draft && <div className="mt-2 flex flex-wrap items-center gap-2" role="status">
       <span>{draft.invalid ? 'A browser recovery copy could not be read.' : 'A browser recovery copy is available. Recovering creates a new design.'}</span>
-      {!draft.invalid && <button type="button" onClick={recover} className="border border-blue-500 px-3 py-1">Recover as new design</button>}
+      {!draft.invalid && <button type="button" onClick={() => recover()} className="border border-blue-500 px-3 py-1">Recover as new design</button>}
       <button type="button" onClick={releaseDraft} className="border border-neutral-400 dark:border-neutral-600 px-3 py-1">Discard recovery copy</button>
     </div>}
     {notice && (dirty || !notice.startsWith('Recovered as a new unsaved design.')) && <p role="status" className="mt-2 text-amber-800 dark:text-amber-200">{notice}</p>}
+    {recoveryConfirmation && <ConfirmActionDialog title="Recover the browser copy?" message="Recovery creates a new design and replaces the unsaved edits currently in the editor. Save those edits first if you want to keep them."
+      actionLabel="Replace edits and recover" cancelLabel="Keep editing" onClose={() => setRecoveryConfirmation(null)} onConfirm={() => recover(recoveryConfirmation)} />}
   </div>;
 }

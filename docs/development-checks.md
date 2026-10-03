@@ -53,4 +53,17 @@ The GitHub workflow runs shared checks/tests/builds on Linux, Windows and macOS 
 
 Current acceptance availability (user-confirmed): Linux only. Windows and macOS validation is best effort; successful lock resolution, script/interface checks and configured CI are evidence about those artifacts, not proof of a native install or print. Unavailable native runs are recorded without blocking local implementation.
 
-TypeScript 5.9.3 checks `src/domain/**/*.ts` strictly with no emit, unused declarations, implicit returns or unchecked indexed access. This gate is always enabled, including native lanes that omit the Linux-owned Python typing check. Compiler diagnostics cannot acquire debt allowances. The remaining JavaScript/JSX is outside this typing scope; a typed serializer does not validate its callers. Expand the checked boundary deliberately as decomposition proceeds. TypeScript 7 is deferred until the installed analysis tools declare compatible peer ranges.
+TypeScript 5.9.3 checks `src/domain/**/*.ts` and `src/utils/**/*.ts` strictly with no emit, unused declarations, implicit returns or unchecked indexed access. This gate is always enabled, including native lanes that omit the Linux-owned Python typing check. Compiler diagnostics cannot acquire debt allowances. The remaining JavaScript/JSX is outside this typing scope; a typed serializer does not validate its callers. Expand the checked boundary deliberately as decomposition proceeds. TypeScript 7 is deferred until the installed analysis tools declare compatible peer ranges.
+
+TypeScript source is also covered by the pinned typescript-eslint 8.71.0
+`recommendedTypeChecked` rules, scoped to `src/**/*.ts` with project service.
+Unknown response bodies must be narrowed before access; unsafe assignments and
+unhandled promises are checked. The existing React/Hooks policy applies to JS/JSX.
+Both scopes run through the same ESLint command; there is no ignored-TypeScript
+success. [Official flat-config setup](https://typescript-eslint.io/getting-started/).
+
+The typed JSON request boundary includes response body consumption and validation
+in its deadline and preserves caller cancellation. Raw `apiFetch` returns at
+successful headers; callers that consume a body should use `apiJson` to keep that
+consumption inside the deadline. These checks cover the boundary contracts, not
+whole-app JavaScript typing.

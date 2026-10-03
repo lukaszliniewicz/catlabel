@@ -121,7 +121,7 @@ describe('editor store correctness', () => {
   });
 
   test('printer selection and deselection preserve existing document geometry', async () => {
-    vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ speed: 0, energy: 0, feed_lines: 50 }) });
+    vi.spyOn(apiClient, 'apiJson').mockResolvedValue({ id: 1, mac_address: 'offline', name: null, transport: 'BLE', default_darkness: 3, speed: 0, energy: 0, feed_lines: 50, paper_mode: null });
     useStore.setState({ currentDpi: 300, canvasWidth: 600, canvasHeight: 300,
       items: [{ id: 'text', type: 'text', size: 30 }], pageLayouts: [] });
     await useStore.getState().setSelectedPrinter('offline', { address: 'offline', dpi: 203,
