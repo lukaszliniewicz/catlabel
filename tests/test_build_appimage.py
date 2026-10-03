@@ -379,7 +379,7 @@ class AppImageBuildTests(unittest.TestCase):
                 self.assertEqual(env["APPIMAGE_EXTRACT_AND_RUN"], "1")
                 self.assertEqual(
                     command[1:5],
-                    ["--runtime-file", str(self.runtime), "--comp", "gzip"],
+                    ["--runtime-file", str(self.runtime), "--comp", "zstd"],
                 )
                 if appimage_tool_failure:
                     raise subprocess.CalledProcessError(1, command)
@@ -478,7 +478,7 @@ class AppImageBuildTests(unittest.TestCase):
             command for command, _ in calls if command[0] == str(self.appimagetool)
         )
         self.assertEqual(
-            image_command[1:5], ["--runtime-file", str(self.runtime), "--comp", "gzip"]
+            image_command[1:5], ["--runtime-file", str(self.runtime), "--comp", "zstd"]
         )
 
     def test_appimagetool_failure_preserves_existing_output_and_sidecar(self) -> None:

@@ -703,7 +703,7 @@ def _run_appimagetool(
             "--runtime-file",
             str(runtime_file),
             "--comp",
-            "gzip",
+            "zstd",
             str(appdir),
             str(output),
         ],
