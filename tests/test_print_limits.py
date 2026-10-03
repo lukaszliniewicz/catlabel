@@ -3,7 +3,9 @@ from __future__ import annotations
 import asyncio
 import base64
 import unittest
+from contextlib import suppress
 from io import BytesIO
+from threading import Event
 from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
@@ -150,6 +152,51 @@ class PrintInputLimitsTests(unittest.IsolatedAsyncioTestCase):
                 await routes_print.print_images_direct(request)
             with self.assertRaises(ValueError):
                 images[0].getpixel((0, 0))
+
+    async def test_cancel_during_decode_waits_for_and_closes_late_result(self) -> None:
+        started = Event()
+        release = Event()
+        images: list[Image.Image] = []
+
+        def blocked_decode(_payloads, *, rotate: bool = False) -> list[Image.Image]:
+            started.set()
+            if not release.wait(2):
+                raise TimeoutError("test decoder was not released")
+            image = Image.new("RGB", (2, 2), (9, 8, 7))
+            images.append(image)
+            return [image]
+
+        request = routes_print.ImagePrintRequest(mac_address="fixture", images=[_png()])
+        with (
+            patch.object(routes_print, "decode_image_payloads", blocked_decode),
+            patch.object(
+                routes_print, "execute_print_jobs", new=AsyncMock()
+            ) as execute,
+        ):
+            task = asyncio.create_task(routes_print.print_images_direct(request))
+            try:
+                started_in_time = await asyncio.wait_for(
+                    asyncio.to_thread(started.wait, 2), timeout=2
+                )
+                self.assertTrue(started_in_time)
+                task.cancel("caller-stop")
+                done, _ = await asyncio.wait({task}, timeout=0.05)
+                self.assertFalse(done)
+
+                release.set()
+                with self.assertRaises(asyncio.CancelledError) as raised:
+                    await asyncio.wait_for(task, timeout=2)
+                self.assertEqual(raised.exception.args, ("caller-stop",))
+                self.assertEqual(len(images), 1)
+                with self.assertRaises(ValueError):
+                    images[0].getpixel((0, 0))
+                execute.assert_not_awaited()
+            finally:
+                release.set()
+                if not task.done():
+                    task.cancel()
+                    with suppress(BaseException):
+                        await task
 
 
 class ImagePayloadTests(unittest.TestCase):

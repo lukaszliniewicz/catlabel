@@ -12,6 +12,7 @@ from PIL import Image
 
 from ..core.resource_limits import ResourceLimitError, validate_render_budget
 from .image_payload import decode_image_payloads
+from .owned_decode import decode_owned
 
 logger = logging.getLogger(__name__)
 
@@ -594,10 +595,11 @@ class BrowserRenderer:
             if job.aborted or self._stopped:
                 raise _RenderAborted
             assert isinstance(image_payloads, list)
-            images = await asyncio.to_thread(
-                decode_image_payloads,
-                image_payloads,
-                rotate=bool(canvas_state.get("isRotated")),
+            images = await decode_owned(
+                lambda: decode_image_payloads(
+                    image_payloads,
+                    rotate=bool(canvas_state.get("isRotated")),
+                )
             )
             if job.aborted or self._stopped:
                 for image in images:

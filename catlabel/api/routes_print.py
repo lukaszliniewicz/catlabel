@@ -23,6 +23,7 @@ from ..printing.admission import (
     printer_admission,
 )
 from ..rendering.image_payload import decode_image_payloads
+from ..rendering.owned_decode import decode_owned
 from ..rendering.template import (
     RenderBusyError,
     RendererStoppedError,
@@ -551,8 +552,8 @@ async def print_images_direct(request: ImagePrintRequest):
         return {"status": "empty", "submitted": 0, "physical_completion": "unverified"}
 
     try:
-        pil_images = await asyncio.to_thread(
-            decode_image_payloads, request.images, rotate=request.is_rotated
+        pil_images = await decode_owned(
+            lambda: decode_image_payloads(request.images, rotate=request.is_rotated)
         )
     except ResourceLimitError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -1,0 +1,50 @@
+{
+  "source_parent": "b0678e5",
+  "accepted_at_utc": "2026-10-03T05:11:16.574185+00:00",
+  "scope": "Explicit ownership of off-thread decoded images during caller cancellation and independent wrapper cancellation",
+  "source_sha256": {
+    "catlabel/rendering/owned_decode.py": "b0ce60e974923b76c96b32f945da13f0316e4de9dbeb89edd1b65c87d979f90a",
+    "catlabel/rendering/template.py": "30d852885d732fb5a96c64c7a1223a8209c39229e88548d81f243beb95242624",
+    "catlabel/api/routes_print.py": "cbe3cf4e577504ce41819a2ef830349e4c97966cfb72f9155d4d822ecf15f483",
+    "tests/test_owned_decode.py": "18c0987f3d2a1d29f01363e97148106f23c447909e9fba8a779f56f23804ac04",
+    "tests/test_print_limits.py": "6bb4a93d48b948c24d12cf96645c9fae36e9546d37bb6610430ace31418e1a01"
+  },
+  "checks": {
+    "focused_unittest": 38,
+    "full_backend_unittest": 745,
+    "skipped": 1,
+    "ruff_and_format": "passed",
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "advisories": "unchanged dependency locks; prior zero-advisory receipt carried",
+    "diff_check": "passed"
+  },
+  "cancellation_contract": [
+    "Successful decode transfers usable PIL images to caller ownership.",
+    "Normal caller cancellation abandons outputs and drains the same shielded worker task, including repeated cancellation, before preserving the original cancellation.",
+    "Independent wrapper cancellation can finish before the thread; the worker-held locked owner closes any late output.",
+    "Worker errors during cancellation draining are consumed; route execution is never entered for cancelled decode."
+  ],
+  "limitations": [
+    "Task completion does not prove an independently cancelled worker thread stopped.",
+    "PDF sync worker lifecycle, printer admission before preparation, disconnect shielding and whole-job spooling are separate remaining work.",
+    "No physical printer or provider call, foreign native acceptance or external promotion."
+  ],
+  "specialist": {
+    "profile": "implementer",
+    "configured_model": "gpt-6-luna",
+    "configured_effort": "max",
+    "runtime_telemetry": "unavailable",
+    "parent_audit": "all delegated source and tests inspected; parent ran full backend suite and final static checks"
+  }
+}

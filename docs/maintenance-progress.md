@@ -507,3 +507,19 @@ The shipped 26-file frontend matches the inspected build with digest
 Page-preview separation/virtualization, AI decomposition, stronger leaf typing,
 backend preflight/spooling, performance and phase7remain active. No physical print,
 provider call, foreign native acceptance or external promotion occurred.
+
+Phase 6 now gives off-thread image decode an explicit, locked ownership box.
+Successful calls transfer usable images to the caller. Normal caller cancellation
+drains the same shielded task, tolerates repeated cancellation, closes late outputs
+and preserves the original cancellation reason. Independently cancelling the async
+wrapper cannot stop its worker thread; late publication still closes the images.
+The helper is integrated into browser output and direct image printing.
+
+The parent inspected the Luna implementer's helper, integrations and seven new
+regression cases. Focused backend tests pass (38); the full suite passes 745 tests
+with one skip. Final ten static categories are empty; a Vulture advisory for the
+intentional context-manager exception argument remains informational. Dependency
+locks are unchanged. [Owned decode receipt](reviews/2026-10-02/evidence/phase6-owned-decode-receipt.json).
+Device admission before preparation, disconnect cancellation, whole-job spooling,
+PDF worker lifecycle and the broader performance matrix remain active. No physical
+printer/provider call, foreign native acceptance or external promotion occurred.
