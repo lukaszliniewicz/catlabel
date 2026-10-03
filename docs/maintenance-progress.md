@@ -653,3 +653,13 @@ claim is made. The dedicated legacy Phomemo path is unchanged. The fixed memory
 experiment is in progress; this receipt makes no unmeasured performance claim.
 [Protocol spool receipt](reviews/2026-10-02/evidence/phase6-protocol-spool-receipt.json).
 No hardware/provider/foreign native acceptance or promotion occurred.
+
+The fixed PD01 spool matrix passes18valid fresh-process samples (1/20/100labels,
+three repetitions per candidate), with byte/metadata hashes equal at every count.
+At100labels median replay RSS falls195148→137764KiB and process lifetime highwater
+198444→141400KiB (about29%). Median encode+fake replay is4.254→4.400seconds; this
+is a memory improvement, not a speed or physical-throughput claim. At most one
+prepared image/job is live in the streaming candidate. Full source RGB lists remain
+retained. One excluded harness close-verifier failure and its replacement are recorded.
+Spool fstat lengths precede buffered flushing and are not full logical-byte counts.
+[Memory receipt](reviews/2026-10-02/evidence/phase6-spool-memory-receipt.json).
