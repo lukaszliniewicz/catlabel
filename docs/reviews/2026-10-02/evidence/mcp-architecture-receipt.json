@@ -1,0 +1,326 @@
+{
+  "created_utc": "2026-10-03T14:59:42.532872+00:00",
+  "stage": "architecture and disposable SDK feasibility; production MCP not implemented",
+  "source_baseline": "fc95a0a9cbf499fb8e7f70f1ae947ef530e59968",
+  "first_harness": "OpenCode",
+  "live_platform": "Linux",
+  "versions": {
+    "python": "3.11.15",
+    "mcp": "2.3.0",
+    "fastapi": "0.142.2"
+  },
+  "hashes": {
+    "docs/mcp-architecture.md": "cdbb39c76c3110b304610b18d77401886dce0d88c4d372ee8000f214f2394449",
+    "docs/reviews/2026-10-02/evidence/mcp-sdk-probe.py": "2755d4567fef14825b30ce37b1334eb5d6953f6527e4fce3cb5e3c3b6ab3ee29",
+    "docs/reviews/2026-10-02/evidence/mcp-http-probe.py": "8d37e4b93eaeef80d7a38fbac569871ce6d80a63f834c0a080835da3375cf829"
+  },
+  "in_process_probe": {
+    "sdk": "2.3.0",
+    "python": "3.11.15",
+    "fastapi": "0.142.2",
+    "hardware_calls": 0,
+    "cases": [
+      {
+        "mode": "auto",
+        "protocol_version": "2026-07-28",
+        "tool_schema": {
+          "name": "inspect_fixture",
+          "description": "",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "title": "inspect_fixtureArguments"
+          },
+          "output_schema": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "inspect_fixtureDictOutput",
+            "type": "object"
+          },
+          "annotations": {
+            "read_only_hint": true,
+            "destructive_hint": false,
+            "idempotent_hint": true,
+            "open_world_hint": false
+          }
+        },
+        "result": {
+          "meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "CatLabel architecture probe",
+              "version": "0.0.0"
+            }
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"name\": \"test\",\n  \"hardware\": \"disabled\"\n}"
+            }
+          ],
+          "structured_content": {
+            "name": "test",
+            "hardware": "disabled"
+          },
+          "is_error": false,
+          "result_type": "complete"
+        }
+      },
+      {
+        "mode": "legacy",
+        "protocol_version": "2025-11-25",
+        "tool_schema": {
+          "name": "inspect_fixture",
+          "description": "",
+          "input_schema": {
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object",
+            "title": "inspect_fixtureArguments"
+          },
+          "output_schema": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "inspect_fixtureDictOutput"
+          },
+          "annotations": {
+            "read_only_hint": true,
+            "destructive_hint": false,
+            "idempotent_hint": true,
+            "open_world_hint": false
+          }
+        },
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"name\": \"test\",\n  \"hardware\": \"disabled\"\n}"
+            }
+          ],
+          "structured_content": {
+            "name": "test",
+            "hardware": "disabled"
+          },
+          "is_error": false,
+          "result_type": "complete"
+        }
+      }
+    ]
+  },
+  "mounted_http_probe": {
+    "hardware_calls": 0,
+    "cases": [
+      {
+        "mode": "auto",
+        "protocol": "2026-07-28",
+        "tools": [
+          "inspect_fixture",
+          "preview_fixture"
+        ],
+        "structured_content": {
+          "name": "test",
+          "hardware": "disabled"
+        },
+        "preview_content_types": [
+          "text",
+          "image",
+          "resource_link"
+        ],
+        "requests": [
+          {
+            "method": "POST",
+            "rpc": "server/discover",
+            "protocol_header": "2026-07-28",
+            "metadata_keys": [
+              "io.modelcontextprotocol/clientCapabilities",
+              "io.modelcontextprotocol/clientInfo",
+              "io.modelcontextprotocol/protocolVersion"
+            ]
+          },
+          {
+            "method": "POST",
+            "rpc": "tools/list",
+            "protocol_header": "2026-07-28",
+            "metadata_keys": [
+              "io.modelcontextprotocol/clientCapabilities",
+              "io.modelcontextprotocol/clientInfo",
+              "io.modelcontextprotocol/protocolVersion"
+            ]
+          },
+          {
+            "method": "POST",
+            "rpc": "tools/call",
+            "protocol_header": "2026-07-28",
+            "metadata_keys": [
+              "io.modelcontextprotocol/clientCapabilities",
+              "io.modelcontextprotocol/clientInfo",
+              "io.modelcontextprotocol/protocolVersion"
+            ]
+          },
+          {
+            "method": "POST",
+            "rpc": "tools/call",
+            "protocol_header": "2026-07-28",
+            "metadata_keys": [
+              "io.modelcontextprotocol/clientCapabilities",
+              "io.modelcontextprotocol/clientInfo",
+              "io.modelcontextprotocol/protocolVersion"
+            ]
+          }
+        ]
+      },
+      {
+        "mode": "legacy",
+        "protocol": "2025-11-25",
+        "tools": [
+          "inspect_fixture",
+          "preview_fixture"
+        ],
+        "structured_content": {
+          "name": "test",
+          "hardware": "disabled"
+        },
+        "preview_content_types": [
+          "text",
+          "image",
+          "resource_link"
+        ],
+        "requests": [
+          {
+            "method": "POST",
+            "rpc": "initialize",
+            "protocol_header": null,
+            "metadata_keys": []
+          },
+          {
+            "method": "POST",
+            "rpc": "notifications/initialized",
+            "protocol_header": "2025-11-25",
+            "metadata_keys": []
+          },
+          {
+            "method": "POST",
+            "rpc": "tools/list",
+            "protocol_header": "2025-11-25",
+            "metadata_keys": []
+          },
+          {
+            "method": "POST",
+            "rpc": "tools/call",
+            "protocol_header": "2025-11-25",
+            "metadata_keys": []
+          },
+          {
+            "method": "POST",
+            "rpc": "tools/call",
+            "protocol_header": "2025-11-25",
+            "metadata_keys": []
+          }
+        ]
+      }
+    ],
+    "untrusted_origin_status": 403,
+    "untrusted_host_status": 421
+  },
+  "probe_checks": {
+    "ruff_lint": "passed",
+    "ruff_format": "passed",
+    "python_execution": "passed"
+  },
+  "specialists": [
+    {
+      "profile": "researcher",
+      "model_configured": "gpt-6-luna",
+      "effort_configured": "max",
+      "scope": "bounded official protocol/SDK evidence",
+      "runtime_telemetry": "unavailable"
+    },
+    {
+      "profile": "researcher",
+      "model_configured": "gpt-6-luna",
+      "effort_configured": "max",
+      "scope": "bounded backend reuse and lifecycle evidence",
+      "runtime_telemetry": "unavailable"
+    },
+    {
+      "route": "OpenCode subagent MCP",
+      "profile": "plan (read-only contract review)",
+      "model_configured": "opencode-go/muse-spark-1.3-contributor",
+      "opencode_version": "2.0.21",
+      "run_id": "run_225cc565037e4b07",
+      "session_id": "ses_efdc61456ffeJPbM7aW2L1qTMZ",
+      "runtime_telemetry": "unavailable",
+      "scope": "supplied non-UI contract, no repository reads/edits or child sessions"
+    }
+  ],
+  "parent_review_dispositions": {
+    "incorporated": [
+      "stable credential principal and rotation identity",
+      "canonical immutable request hash and atomic unique reservation",
+      "bounded SQLite contention and no transactions during I/O",
+      "explicit crash/cancel state transitions with no automatic delivery replay",
+      "per-printer concurrency with bounded global admission",
+      "artifact ownership, hash verification, quota/retention",
+      "authenticated gateway and exact local bind/Host/Origin",
+      "shared decoder/copy/page/request bounds",
+      "typed transformation and delivery-verification fields",
+      "canonical dependency generator and redacted doctor checks"
+    ],
+    "rejected_or_deferred": [
+      "distributed expiring hardware claim leases under an existing exclusive runtime lease",
+      "compulsory REST-only asset upload instead of bounded MCP bytes import",
+      "extra ensure-defaults tool instead of pure inspection plus explicit update",
+      "general remote OAuth and stdio before first HTTP/OpenCode acceptance"
+    ],
+    "clarified": [
+      "FastAPI 0.1422 in reviewer brief was a typo; installed 0.142.2",
+      "contract questions are not verified repository vulnerabilities",
+      "SDK fixture image round-trip does not establish OpenCode presentation"
+    ]
+  },
+  "unchanged": [
+    "production dependencies and locks",
+    "CatLabel runtime source",
+    "application database and saved projects",
+    "running local application",
+    "printer settings and hardware"
+  ],
+  "not_run": [
+    "CatLabel MCP tool/resource integration",
+    "bearer authentication integration",
+    "full-artifact retrieval",
+    "real OpenCode connection and visual image acceptance",
+    "physical printing",
+    "Windows/macOS native installation",
+    "full application test suite for this documentation-only stage"
+  ],
+  "prior_gate_only": {
+    "backend_tests": 864,
+    "backend_passed": 863,
+    "windows_sdk_skips": 1,
+    "frontend_tests": 226,
+    "static_categories_empty": 10
+  },
+  "reproduction": [
+    "Create a disposable Python 3.11 environment",
+    "Install mcp==2.3.0 and fastapi==0.142.2",
+    "Run the two retained Python fixture scripts; no app or hardware is required"
+  ]
+}

@@ -185,3 +185,23 @@ ATT/L2CAP connection path and tall-page mitigations separately against issues
 checks before any hardware print. No direct ATT adapter is currently present
 locally. Physical Windows/macOS and additional models require their own runs;
 the user's previous Windows success is context rather than current acceptance.
+
+## Harness workflow and MCP addition, 3 October
+
+The [MCP architecture](../../mcp-architecture.md) adds harness access through the
+same project, renderer, printer and job services. OpenCode on Linux is the first
+acceptance target. Preserve the maintenance gates and completed PD01 transport
+repair throughout the staged service extraction. Add the optional locked SDK and
+headless environment through the canonical dependency generator; retain the
+ordinary lightweight installation.
+
+Implement in slices: shared document/edit contracts and services; bounded artifacts
+and durable print plans/jobs; authenticated SDK adapter and installer; actual
+OpenCode design/edit/preview/export/print/status acceptance. Test July discovery
+and November 2025 initialization independently. Pollable application jobs remain
+available without the SDK's currently unimplemented Tasks extension. Reconnection
+must not duplicate a submission; interrupted delivery must never replay silently.
+
+The architecture-stage SDK probes passed without product or hardware changes.
+The MCP and installer are not implemented yet. See the linked architecture and
+receipt for wire evidence, review dispositions, limits and acceptance requirements.

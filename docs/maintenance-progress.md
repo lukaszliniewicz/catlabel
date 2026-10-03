@@ -804,3 +804,26 @@ the parent reviewed all edits, corrected unverified-sizing compatibility and own
 live probes, integration and physical acceptance. Runtime model telemetry was
 unavailable. [Receipt](reviews/2026-10-02/evidence/pd01-mtu-receipt.json) records
 source hashes, negotiated/write sizes, validation and acceptance limits.
+
+### Harness workflow architecture — 3 October
+
+[MCP architecture](mcp-architecture.md) defines a shared-service adapter and an
+OpenCode-first acceptance sequence. The existing app retains sole ownership of
+SQLite, React rendering and hardware. Durable plans/jobs add explicit retries and
+crash recovery without another printing implementation. Installation remains an
+optional locked MCP/headless feature; built-in AI remains optional.
+
+A disposable official SDK 2.3.0 environment resolved with Python 3.11.15 and
+FastAPI 0.142.2. Fixture probes passed July discovery and November 2025 legacy
+initialization, typed results, inline PNG/resource-link results, and untrusted
+Origin/Host rejection. Ruff passed. These are SDK/ASGI feasibility checks, not
+CatLabel integration or real OpenCode preview/printing acceptance. No production
+dependencies, application data or hardware changed. Full app tests were not rerun
+for this documentation stage.
+
+Configured Luna/max researchers gathered bounded backend/protocol evidence;
+OpenCode's configured Muse Spark 1.3 Contributor profile challenged the non-UI
+contract. Runtime model telemetry was unavailable. The parent made the decisions,
+strengthened retry/recovery/ownership requirements and recorded rejected suggestions.
+[Receipt](reviews/2026-10-02/evidence/mcp-architecture-receipt.json) preserves the
+results. MCP implementation and harness installation remain pending.
