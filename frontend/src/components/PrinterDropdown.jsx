@@ -88,7 +88,7 @@ export default function PrinterDropdown({ printers, manualPrinters, selectedPrin
                         removeManualPrinter(p.address);
                         if (selectedPrinter === p.address) onSelect('', null);
                       }}
-                      className="p-1.5 text-neutral-400 hover:text-red-500 transition-colors rounded shrink-0 ml-2"
+                      className="p-1.5 text-neutral-400 hover:text-red-500 transition-colors rounded-sm shrink-0 ml-2"
                       title="Delete Profile"
                     >
                       <Trash2 size={14} />

@@ -55,7 +55,7 @@ export default function DateToolModal({ onClose }) {
   const btnClass = (active) => `flex-1 py-2 text-[10px] font-bold uppercase transition-colors border ${active ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'bg-neutral-50 text-neutral-500 border-transparent hover:bg-neutral-100 dark:bg-neutral-900 dark:hover:bg-neutral-800'}`;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Insert date" tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-sm rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800">
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2">
@@ -77,20 +77,20 @@ export default function DateToolModal({ onClose }) {
           {mode === 'offset' && (
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">Add Days</label>
-              <input type="number" value={offsetDays} onChange={e => setOffsetDays(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500" />
+              <input type="number" value={offsetDays} onChange={e => setOffsetDays(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-hidden focus:border-blue-500" />
             </div>
           )}
 
           {mode === 'custom' && (
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">Select Date</label>
-              <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500 [color-scheme:light] dark:[color-scheme:dark]" />
+              <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-hidden focus:border-blue-500 scheme-light dark:scheme-dark" />
             </div>
           )}
 
           <div>
             <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">Format</label>
-            <select value={format} onChange={e => setFormat(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500">
+            <select value={format} onChange={e => setFormat(e.target.value)} className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-hidden focus:border-blue-500">
               <option value="YYYY-MM-DD">YYYY-MM-DD</option>
               <option value="DD/MM/YYYY">DD/MM/YYYY</option>
               <option value="MM/DD/YYYY">MM/DD/YYYY</option>

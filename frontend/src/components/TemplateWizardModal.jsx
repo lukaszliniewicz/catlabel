@@ -55,11 +55,11 @@ function TemplateWizard({ template, onClose }) {
     onClose();
   };
 
-  const inputClass = 'w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500 mb-3 transition-colors';
+  const inputClass = 'w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-hidden focus:border-blue-500 mb-3 transition-colors';
   const labelClass = 'block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1';
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-100 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={`${template.name} template wizard`} tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-md rounded-xl shadow-2xl flex flex-col max-h-[90vh] border border-neutral-200 dark:border-neutral-800">
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ function TemplateWizard({ template, onClose }) {
           </button>
 
           {showSizeWarning && (
-            <div className="mt-3 flex gap-2 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 rounded border border-amber-200 dark:border-amber-900/50 text-xs leading-relaxed">
+            <div className="mt-3 flex gap-2 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-sm border border-amber-200 dark:border-amber-900/50 text-xs leading-relaxed">
               <AlertTriangle size={16} className="shrink-0 mt-0.5" />
               <p>This template is designed for larger labels. It may look cramped on your currently selected canvas size.</p>
             </div>
@@ -96,7 +96,7 @@ function TemplateWizard({ template, onClose }) {
         <div className="p-6 overflow-y-auto flex-1 flex flex-col">
           <p className="text-xs text-neutral-500 mb-4">{template.description}</p>
 
-          <div className="flex items-center gap-2 p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+          <div className="flex items-center gap-2 p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-sm">
             <Database size={16} className="text-blue-500" />
             <label className="flex-1 flex items-center justify-between cursor-pointer text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest">
               Setup for Batch Print?
@@ -141,22 +141,22 @@ function TemplateWizard({ template, onClose }) {
                     <img
                       src={formData[field.name]}
                       alt="Icon"
-                      className="w-10 h-10 object-contain bg-white border border-neutral-300 dark:border-neutral-700 p-1 rounded"
+                      className="w-10 h-10 object-contain bg-white border border-neutral-300 dark:border-neutral-700 p-1 rounded-sm"
                     />
                   ) : (
-                    <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded flex items-center justify-center text-[10px] text-neutral-400">
+                    <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-sm flex items-center justify-center text-[10px] text-neutral-400">
                       None
                     </div>
                   )}
                   <button
                     onClick={() => setPickerField(field.name)}
-                    className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors dark:text-white rounded"
+                    className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors dark:text-white rounded-sm"
                   >
                     Choose Icon
                   </button>
                 </div>
               ) : field.type === 'boolean' ? (
-                <label className="flex items-center gap-2 text-sm dark:text-neutral-200 cursor-pointer mb-3 bg-neutral-50 dark:bg-neutral-900/30 p-2 border border-neutral-200 dark:border-neutral-800 rounded transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800/50">
+                <label className="flex items-center gap-2 text-sm dark:text-neutral-200 cursor-pointer mb-3 bg-neutral-50 dark:bg-neutral-900/30 p-2 border border-neutral-200 dark:border-neutral-800 rounded-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800/50">
                   <input
                     type="checkbox"
                     checked={!!formData[field.name]}

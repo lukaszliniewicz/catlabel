@@ -52,7 +52,7 @@ function App() {
       </div>
       <PropertiesPanel />
       {apiError && (
-        <div role="alert" className="fixed bottom-4 left-1/2 z-[100] flex max-w-xl -translate-x-1/2 items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-xl dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+        <div role="alert" className="fixed bottom-4 left-1/2 z-100 flex max-w-xl -translate-x-1/2 items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-xl dark:border-red-800 dark:bg-red-950 dark:text-red-100">
           <span className="flex-1">{apiError}</span>
           <button type="button" onClick={clearApiError} className="font-bold" aria-label="Dismiss error">×</button>
         </div>

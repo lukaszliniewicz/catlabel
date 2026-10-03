@@ -77,7 +77,7 @@ export default function BatchPrintModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Import batch data" tabIndex={-1} className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800">
         
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
@@ -98,19 +98,19 @@ export default function BatchPrintModal({ onClose }) {
           </label>
           
           {headers.length > 0 && (
-            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-sm">
               <p className="text-xs text-green-600 font-bold mb-1">✓ File Registered ({csvData.length} records)</p>
             </div>
           )}
 
           {fileError && (
-            <div role="alert" className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+            <div role="alert" className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-sm">
               <p className="text-xs text-red-700 dark:text-red-400 font-bold">{fileError}</p>
             </div>
           )}
 
           {headers.length > 0 && canvasVariables.length > 0 && (
-            <div className="mt-4 border border-neutral-200 dark:border-neutral-700 rounded overflow-hidden">
+            <div className="mt-4 border border-neutral-200 dark:border-neutral-700 rounded-sm overflow-hidden">
               <div className="bg-neutral-100 dark:bg-neutral-800 px-3 py-2 text-xs font-bold dark:text-neutral-300">
                 Map CSV Columns to Canvas Variables
               </div>
@@ -122,7 +122,7 @@ export default function BatchPrintModal({ onClose }) {
                     </div>
                     <ArrowRight size={14} className="text-neutral-400" />
                     <select
-                      className="flex-1 bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-1.5 text-xs focus:outline-none focus:border-blue-500 dark:text-white"
+                      className="flex-1 bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-1.5 text-xs focus:outline-hidden focus:border-blue-500 dark:text-white"
                       value={mapping[v] || ''}
                       onChange={(e) => setMappingOverrides({ ...mappingOverrides, [v]: e.target.value })}
                     >
@@ -138,7 +138,7 @@ export default function BatchPrintModal({ onClose }) {
           )}
 
           {hasExistingBatchRecords && csvData.length === 0 && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-sm">
               <p className="text-xs text-blue-600 font-bold mb-1">ℹ Active Batch Data Detected</p>
               <p className="text-[10px] text-neutral-500">You currently have {batchRecords.length} records loaded.</p>
             </div>

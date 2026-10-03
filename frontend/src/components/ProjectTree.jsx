@@ -44,7 +44,7 @@ const InlineEdit = ({ initialValue, onSave, onCancel }) => {
       onChange={(e) => setVal(e.target.value)}
       onKeyDown={handleKeyDown}
       onBlur={() => submit(val.trim() && val !== initialValue ? val.trim() : '')}
-      className="flex-1 bg-white dark:bg-neutral-900 border border-blue-500 px-1 py-0.5 text-xs outline-none text-neutral-900 dark:text-white rounded-sm w-full"
+      className="flex-1 bg-white dark:bg-neutral-900 border border-blue-500 px-1 py-0.5 text-xs outline-hidden text-neutral-900 dark:text-white rounded-xs w-full"
       onClick={e => e.stopPropagation()}
       onDragStart={e => e.preventDefault()}
     />
@@ -220,18 +220,18 @@ const TreeNode = ({ node, level, onImport, onMove }) => {
               });
               setMenuOpen(true);
             }}
-            className={`p-1 rounded transition-colors ${menuOpen ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
+            className={`p-1 rounded-sm transition-colors ${menuOpen ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
           >
             <MoreVertical size={14} />
           </button>
 
           {menuOpen && createPortal(
             <>
-              <button type="button" aria-label="Close project actions" className="fixed inset-0 z-[9998] cursor-default" onClick={() => setMenuOpen(false)} />
+              <button type="button" aria-label="Close project actions" className="fixed inset-0 z-9998 cursor-default" onClick={() => setMenuOpen(false)} />
               
               <div
                 role="menu"
-                className="fixed w-48 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl rounded-md z-[9999] py-1 flex flex-col overflow-y-auto"
+                className="fixed w-48 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl rounded-md z-9999 py-1 flex flex-col overflow-y-auto"
                 style={{
                   top: menuCoords.top ?? undefined,
                   bottom: menuCoords.bottom ?? undefined,
@@ -418,7 +418,7 @@ export default function ProjectTree() {
       </div>
 
       <div 
-        className={`flex flex-col flex-1 max-h-64 overflow-y-auto border border-neutral-100 dark:border-neutral-800 rounded transition-colors ${isRootDragOver ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-neutral-950'}`}
+        className={`flex flex-col flex-1 max-h-64 overflow-y-auto border border-neutral-100 dark:border-neutral-800 rounded-sm transition-colors ${isRootDragOver ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-neutral-950'}`}
         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsRootDragOver(true); }}
         onDragLeave={(e) => { e.stopPropagation(); setIsRootDragOver(false); }}
         onDrop={handleRootDrop}

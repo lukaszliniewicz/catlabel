@@ -28,11 +28,11 @@ export default function SavePresetModal({ onClose }) {
     onClose();
   };
 
-  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500 transition-colors mb-4";
+  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors mb-4";
   const labelClass = "block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1";
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-100 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Save preset" tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-sm rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800">
 
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">

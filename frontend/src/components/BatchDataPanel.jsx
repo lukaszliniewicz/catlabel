@@ -6,7 +6,7 @@ import { extractTemplateVariables } from '../utils/batchData';
 
 const BatchPrintModal = lazy(() => import('./BatchPrintModal'));
 
-const inputClass = 'w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors';
+const inputClass = 'w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm text-neutral-900 dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors';
 
 export default function BatchDataPanel() {
   const {
@@ -112,7 +112,7 @@ export default function BatchDataPanel() {
                         aria-label={`Row ${index + 1}, ${key}`}
                         value={record[key] || ''}
                         onChange={(event) => updateBatchRecord(index, { ...record, [key]: event.target.value })}
-                        className="w-full h-full p-2 bg-transparent focus:outline-none focus:bg-blue-50 dark:focus:bg-blue-900/20 dark:text-white transition-colors"
+                        className="w-full h-full p-2 bg-transparent focus:outline-hidden focus:bg-blue-50 dark:focus:bg-blue-900/20 dark:text-white transition-colors"
                       />
                     </td>
                   ))}

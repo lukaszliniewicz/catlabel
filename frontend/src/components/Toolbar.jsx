@@ -28,7 +28,7 @@ const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button
   >
     <Icon size={18} strokeWidth={2} />
     {children}
-    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1.5 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[60] shadow-md">
+    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1.5 rounded-sm opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-60 shadow-md">
       {label}
     </div>
   </Component>

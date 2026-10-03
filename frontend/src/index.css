@@ -1,11 +1,55 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-body {
-  margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Preserve the editor's v3 preflight defaults during the framework migration. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility overflow-auto {
+  /* Hide scrollbars by default, making them transparent */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+@utility overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+@utility overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+@layer utilities {
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 @layer base {
@@ -16,12 +60,6 @@ body {
 }
 
 @layer utilities {
-  /* Hide scrollbars by default, making them transparent */
-  .overflow-auto, .overflow-y-auto, .overflow-x-auto {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  }
-  
   /* Webkit Scrollbar Styling */
   ::-webkit-scrollbar {
     width: 6px;
@@ -44,16 +82,16 @@ body {
   *:hover::-webkit-scrollbar-thumb {
     background-color: rgba(163, 163, 163, 0.4); /* Tailwind neutral-400 */
   }
-  
-  .dark *:hover::-webkit-scrollbar-thumb {
-    background-color: rgba(82, 82, 82, 0.6); /* Tailwind neutral-600 */
-  }
 
   /* Firefox scrollbar hover behavior */
   *:hover {
     scrollbar-color: rgba(163, 163, 163, 0.4) transparent;
   }
-  
+
+  .dark *:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(82, 82, 82, 0.6);
+  }
+
   .dark *:hover {
     scrollbar-color: rgba(82, 82, 82, 0.6) transparent;
   }

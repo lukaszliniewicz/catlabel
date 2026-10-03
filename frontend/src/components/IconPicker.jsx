@@ -90,7 +90,7 @@ export default function IconPicker({ onClose, onSelect }) {
   }, [selectedIcon, onSelect]);
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-120 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Select icon" tabIndex={-1} className="bg-white dark:bg-neutral-900 w-full max-w-2xl rounded-xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden border border-neutral-200 dark:border-neutral-800">
         
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
@@ -108,7 +108,7 @@ export default function IconPicker({ onClose, onSelect }) {
               placeholder="Search icons..." 
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
-              className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:text-white transition-colors"
+              className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-sm focus:outline-hidden focus:border-blue-500 dark:text-white transition-colors"
             />
           </div>
         </div>
@@ -133,8 +133,8 @@ export default function IconPicker({ onClose, onSelect }) {
         <div className="flex items-center justify-between gap-3 p-4 border-t border-neutral-100 dark:border-neutral-800 text-sm">
           <span role="status">{iconNames.length} icons · Page {page + 1} of {pageCount}</span>
           <div className="flex gap-2">
-            <button disabled={page === 0} onClick={() => setPage(page - 1)} className="px-3 py-2 rounded border disabled:opacity-40">Previous</button>
-            <button disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)} className="px-3 py-2 rounded border disabled:opacity-40">Next</button>
+            <button disabled={page === 0} onClick={() => setPage(page - 1)} className="px-3 py-2 rounded-sm border disabled:opacity-40">Previous</button>
+            <button disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)} className="px-3 py-2 rounded-sm border disabled:opacity-40">Next</button>
           </div>
         </div>
 

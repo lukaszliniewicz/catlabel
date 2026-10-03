@@ -92,7 +92,7 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
   const activeJob = jobs[currentIndex];
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[200] flex flex-col items-center justify-center backdrop-blur-md">
+    <div className="fixed inset-0 bg-black/80 z-200 flex flex-col items-center justify-center backdrop-blur-md">
       <div role="status" aria-live="polite" aria-busy="true" className="bg-white dark:bg-neutral-900 p-8 rounded-xl shadow-2xl text-center border border-neutral-200 dark:border-neutral-800 min-w-[320px]">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
         <h3 className="text-lg font-serif dark:text-white">Preparing Labels</h3>

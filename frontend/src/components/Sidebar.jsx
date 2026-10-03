@@ -147,7 +147,7 @@ export default function Sidebar() {
             <h1 className="text-3xl font-serif tracking-tight text-neutral-900 dark:text-white">CatLabel.</h1>
           </div>
         )}
-        <button type="button" onClick={toggleSidebar} aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors flex-shrink-0">
+        <button type="button" onClick={toggleSidebar} aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} className="p-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors shrink-0">
           <Menu size={24} />
         </button>
       </div>
@@ -192,7 +192,7 @@ export default function Sidebar() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-1 mb-1">
                 <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Copies per Label</span>
-                <div className={`flex items-center border rounded-sm overflow-hidden ${isPrinting || !selectedPrinter ? 'border-neutral-300 dark:border-neutral-700 opacity-50' : 'border-neutral-300 dark:border-neutral-700'}`}>
+                <div className={`flex items-center border rounded-xs overflow-hidden ${isPrinting || !selectedPrinter ? 'border-neutral-300 dark:border-neutral-700 opacity-50' : 'border-neutral-300 dark:border-neutral-700'}`}>
                   <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">-</button>
                   <span className="text-[10px] font-bold w-6 text-center select-none dark:text-white">{printCopies}</span>
                   <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(printCopies + 1)} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">+</button>

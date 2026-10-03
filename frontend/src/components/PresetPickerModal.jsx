@@ -26,7 +26,7 @@ function PresetCard({ p, recommended, activePresetId, printerMediaType, onSelect
       disabled={disabled}
       className={`flex flex-col items-center p-3 rounded-lg border text-left transition-all relative overflow-hidden ${
         isActive
-          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-500'
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-xs ring-1 ring-blue-500'
           : disabled
             ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-800'
             : 'border-neutral-200 dark:border-neutral-800 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer'
@@ -34,14 +34,14 @@ function PresetCard({ p, recommended, activePresetId, printerMediaType, onSelect
       title={disabled ? 'Incompatible with current printer media type' : p.description || p.name}
     >
       {recommended && (
-        <div className="absolute top-0 right-0 bg-amber-400 text-white p-1 rounded-bl-lg shadow-sm">
+        <div className="absolute top-0 right-0 bg-amber-400 text-white p-1 rounded-bl-lg shadow-xs">
           <Star size={10} fill="currentColor" />
         </div>
       )}
-      <div className="h-16 w-full flex items-center justify-center mb-3 bg-neutral-100 dark:bg-neutral-900 rounded border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+      <div className="h-16 w-full flex items-center justify-center mb-3 bg-neutral-100 dark:bg-neutral-900 rounded-sm border border-neutral-200 dark:border-neutral-800 overflow-hidden">
         <div
           style={{ width: displayW, height: displayH }}
-          className="bg-white border border-neutral-300 shadow-sm relative flex items-center justify-center overflow-hidden"
+          className="bg-white border border-neutral-300 shadow-xs relative flex items-center justify-center overflow-hidden"
         >
           {p.split_mode && (
             <div className="absolute inset-0 flex flex-col justify-evenly">
@@ -96,7 +96,7 @@ export default function PresetPickerModal({ onClose }) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 z-[105] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-105 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Choose label preset" tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl flex flex-col max-h-[85vh] border border-neutral-200 dark:border-neutral-800">
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
           <div className="flex items-center gap-2">

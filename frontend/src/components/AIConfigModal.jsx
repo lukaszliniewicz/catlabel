@@ -202,16 +202,16 @@ export default function AIConfigModal({ onClose }) {
   };
 
   const current = providers.find((provider) => provider.id === selectedProviderId);
-  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500 transition-colors";
+  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors";
   const labelClass = "block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1 mt-3";
 
   const modalContent = (
-    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="AI provider settings" tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-4xl rounded-xl shadow-2xl flex border border-neutral-200 dark:border-neutral-800 h-[85vh] max-h-[700px] overflow-hidden">
         <div className="w-1/3 border-r border-neutral-100 dark:border-neutral-800 flex flex-col bg-neutral-50 dark:bg-neutral-900/50">
           <div className="p-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
             <h3 className="font-serif text-base dark:text-white">AI Providers</h3>
-            <button onClick={handleAddProvider} className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded">
+            <button onClick={handleAddProvider} className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded-sm">
               <Plus size={16} />
             </button>
           </div>
@@ -219,7 +219,7 @@ export default function AIConfigModal({ onClose }) {
             {providers.map((provider) => (
               <div
                 key={provider.id}
-                className={`rounded-lg flex items-center transition-colors ${selectedProviderId === provider.id ? 'bg-white dark:bg-neutral-800 shadow border border-neutral-200 dark:border-neutral-700' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-transparent'}`}
+                className={`rounded-lg flex items-center transition-colors ${selectedProviderId === provider.id ? 'bg-white dark:bg-neutral-800 shadow-sm border border-neutral-200 dark:border-neutral-700' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-transparent'}`}
               >
                 <button type="button" onClick={() => setSelectedProviderId(provider.id)} className="min-w-0 flex-1 p-3 text-left">
                   <div className="text-sm font-bold dark:text-white">{provider.name}</div>
@@ -297,7 +297,7 @@ export default function AIConfigModal({ onClose }) {
                 </div>
 
                 {current.provider === 'custom' && (
-                  <div className="mt-4 p-3 border border-purple-100 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/10 rounded">
+                  <div className="mt-4 p-3 border border-purple-100 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/10 rounded-sm">
                     <label className={labelClass.replace('mt-3', '')}>Custom Base URL</label>
                     <input type="text" value={current.base_url} onChange={(e) => handleUpdateProvider('base_url', e.target.value)} className={inputClass} placeholder="http://localhost:1234/v1" />
                   </div>
@@ -313,7 +313,7 @@ export default function AIConfigModal({ onClose }) {
 
               <div className="flex items-center justify-between mb-4 border-b border-neutral-200 dark:border-neutral-800 pb-2">
                 <h4 className="text-sm font-bold dark:text-white uppercase tracking-widest">Available Models</h4>
-                <button onClick={handleAddModel} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                <button onClick={handleAddModel} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-sm hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
                   <Plus size={14} />
                   Add Model
                 </button>
@@ -321,7 +321,7 @@ export default function AIConfigModal({ onClose }) {
 
               <div className="space-y-4">
                 {current.models.map((model) => (
-                  <div key={model.id} className={`p-4 border rounded-lg transition-colors ${model.is_active ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10 shadow-sm' : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950'}`}>
+                  <div key={model.id} className={`p-4 border rounded-lg transition-colors ${model.is_active ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10 shadow-xs' : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950'}`}>
                     <div className="flex justify-between items-start mb-4">
                       <button
                         onClick={() => handleUpdateModel(model.id, 'is_active', true)}
@@ -346,7 +346,7 @@ export default function AIConfigModal({ onClose }) {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between mt-4 bg-neutral-50 dark:bg-neutral-900/30 p-3 rounded">
+                    <div className="flex items-center justify-between mt-4 bg-neutral-50 dark:bg-neutral-900/30 p-3 rounded-sm">
                       <label className="flex items-center gap-2 text-xs font-bold text-neutral-700 dark:text-neutral-300 cursor-pointer">
                         <input type="checkbox" checked={model.vision_capable} onChange={(e) => handleUpdateModel(model.id, 'vision_capable', e.target.checked)} className="w-4 h-4 accent-blue-600" />
                         <Eye size={16} className={model.vision_capable ? 'text-blue-500' : 'text-neutral-400'} />
@@ -354,7 +354,7 @@ export default function AIConfigModal({ onClose }) {
                       </label>
                       <div className="flex items-center gap-3">
                         <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Reasoning Level:</label>
-                        <select value={model.reasoning_effort || ''} onChange={(e) => handleUpdateModel(model.id, 'reasoning_effort', e.target.value)} className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 text-xs px-2 py-1.5 dark:text-white focus:outline-none focus:border-blue-500">
+                        <select value={model.reasoning_effort || ''} onChange={(e) => handleUpdateModel(model.id, 'reasoning_effort', e.target.value)} className="bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 text-xs px-2 py-1.5 dark:text-white focus:outline-hidden focus:border-blue-500">
                           <option value="">Default / None</option>
                           <option value="low">Low</option>
                           <option value="medium">Medium</option>

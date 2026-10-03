@@ -9,7 +9,7 @@ export default function HtmlPickerModal({ onClose, onSelect }) {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Insert HTML" tabIndex={-1} className="bg-white dark:bg-neutral-900 w-full max-w-2xl rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800">
         
         <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
@@ -29,7 +29,7 @@ export default function HtmlPickerModal({ onClose, onSelect }) {
               value={content} 
               onChange={e => setContent(e.target.value)}
               rows={12}
-              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm dark:text-white focus:outline-none focus:border-blue-500 font-mono" 
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm dark:text-white focus:outline-hidden focus:border-blue-500 font-mono"
               placeholder="<div>...</div>"
             />
             <p className="text-[10px] text-neutral-500 mt-2">

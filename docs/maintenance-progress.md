@@ -268,3 +268,38 @@ are zero. The shipped 26-file frontend matches the accepted production build,
 including exact root-logo bytes. Old generated assets were retained in the
 disposable acceptance backup before replacement.
 [Runtime/toolchain receipt](reviews/2026-10-02/evidence/phase4-frontend-runtime-toolchain-receipt.json).
+
+The remaining phase 4 frontend migrations are accepted as a local source checkpoint:
+bwip-js 4.11.4, globals 17.13.0, React Refresh 0.5.7 and Tailwind/PostCSS 4.3.3.
+The pinned official Tailwind upgrade tool migrated utility names and CSS theme
+configuration. Parent review retained class-based dark mode, font families,
+border/placeholder/cursor defaults and explicit dark scrollbar selectors.
+Autoprefixer and the obsolete JavaScript Tailwind configuration are removed.
+Knip now includes CSS imports; no unused-dependency exception was introduced.
+ESLint 10 remains deferred because the React plugin's declared peer range stops
+at ESLint 9. The resolved tree has no other outdated direct packages.
+
+All 12 barcode fixtures preserve dimensions, exact pixels and PNG hashes. The
+nonblank HTML background fixture also preserves exact print-resolution pixels.
+Light/dark shell inspection covers effective CSS widths 390, 768, 1222 and 1280
+at height 843 (the browser's zoom leaves a one-pixel difference from the planned
+844). Earlier inactive-view JPEG captures are excluded from acceptance.
+The narrow drawer/canvas problems remain phase 5 defects.
+
+The broader headless fixture exposed missing individual HTML elements and
+variable image/code capture in the existing renderer. Matching blank output is
+explicitly rejected as fidelity evidence. Phase 6's resource-readiness contract
+is required before release acceptance, alongside phase 5's save/DPI/draft work.
+These are local maintenance commits, not a promoted release.
+
+The full execution passes 702 backend tests (701 pass, one Windows-only skip),
+34 frontend tests and production build. Its initial Knip CSS-scope finding was
+fixed; the subsequent complete static report is zero across all nine categories.
+Python/npm advisories remain zero with no exceptions. Vulture's two unused
+context-manager protocol parameters are advisory candidates, not removed hooks.
+The shipped 26-file artifact matches the inspected final build and has release
+manifest digest `3429f55d5f3cdce08d225312412eb11e3874763d25ccc6591299f6026c66418b`.
+[CSS/patch receipt](reviews/2026-10-02/evidence/phase4-css-and-patches-receipt.json).
+Linux installation/recovery and dependency work are implemented; native foreign
+systems and physical printers remain best effort/unverified. Phases 5–7 remain
+required work on the active goal.

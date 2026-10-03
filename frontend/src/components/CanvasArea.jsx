@@ -642,7 +642,7 @@ export default function CanvasArea() {
 
       <button
         onClick={addPage}
-        className="py-3 px-8 border-2 border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors rounded text-xs uppercase tracking-widest font-bold"
+        className="py-3 px-8 border-2 border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors rounded-sm text-xs uppercase tracking-widest font-bold"
       >
         + Add New Label Page
       </button>

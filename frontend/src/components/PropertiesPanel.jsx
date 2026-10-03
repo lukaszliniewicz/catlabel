@@ -63,7 +63,7 @@ const MmScrubberInput = ({ name, value, onChange, label, disabled }) => {
       </label>
       <input 
         type="number" step="0.1" name={name} value={currentMm.toFixed(1)} onChange={handleChange} disabled={disabled}
-        className={`w-full bg-transparent border rounded-none p-2 text-sm focus:outline-none transition-colors ${disabled ? 'border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-600' : 'border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white focus:border-blue-500'}`} 
+        className={`w-full bg-transparent border rounded-none p-2 text-sm focus:outline-hidden transition-colors ${disabled ? 'border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-600' : 'border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white focus:border-blue-500'}`}
       />
     </div>
   );
@@ -108,7 +108,7 @@ const ScrubberInput = ({ name, value, onChange, label, step = 0.5, dragMultiplie
       </label>
       <input 
         type="number" step={step} name={name} value={value} onChange={onChange} 
-        className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors" 
+        className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors"
       />
     </div>
   );
@@ -118,7 +118,7 @@ const ToggleBtn = ({ icon: Icon, active, onClick, label }) => (
   <button
     onClick={onClick}
     title={label}
-    className={`flex-1 flex justify-center items-center py-1.5 transition-colors rounded-sm ${
+    className={`flex-1 flex justify-center items-center py-1.5 transition-colors rounded-xs ${
       active
         ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-inner'
         : 'bg-transparent text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -208,7 +208,7 @@ export default function PropertiesPanel() {
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors";
+  const inputClass = "w-full bg-transparent border border-neutral-300 dark:border-neutral-700 rounded-none p-2 text-sm text-neutral-900 dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors";
   const labelClass = "block text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mb-1.5 truncate";
 
   // --- Actions ---
@@ -378,7 +378,7 @@ export default function PropertiesPanel() {
         }}
       />
 
-      <button type="button" onClick={toggleProperties} aria-label="Close properties panel" className="absolute right-2 top-2 z-50 rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white xl:hidden">×</button>
+      <button type="button" onClick={toggleProperties} aria-label="Close properties panel" className="absolute right-2 top-2 z-50 rounded-sm p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white xl:hidden">×</button>
       
       {/* TABS */}
       <div className="flex border-b border-neutral-200 dark:border-neutral-800" role="tablist" aria-label="Properties sections">
@@ -390,7 +390,7 @@ export default function PropertiesPanel() {
           `}
         >
           <Sliders size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Element / Layout</span>
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Element / Layout</span>
         </button>
         
         <button
@@ -401,7 +401,7 @@ export default function PropertiesPanel() {
           `}
         >
           <Printer size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Canvas & Printer</span>
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Canvas & Printer</span>
         </button>
 
         <button
@@ -412,7 +412,7 @@ export default function PropertiesPanel() {
           `}
         >
           <Database size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Batch Data</span>
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">Batch Data</span>
         </button>
 
         <button
@@ -423,7 +423,7 @@ export default function PropertiesPanel() {
           `}
         >
           <Sparkles size={20} />
-          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">AI Assistant</span>
+          <span className="absolute top-full mt-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[10px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-50 pointer-events-none whitespace-nowrap font-bold uppercase tracking-widest">AI Assistant</span>
         </button>
       </div>
 
@@ -457,7 +457,7 @@ export default function PropertiesPanel() {
               )}
 
               <div className="flex gap-4 items-center">
-                <label className="flex items-center gap-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full">
+                <label className="flex items-center gap-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 mt-2 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded-sm hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full">
                   <input type="checkbox" checked={isRotated} onChange={(e) => setIsRotated(e.target.checked)} />
                   Rotate Feed (Landscape View)
                 </label>
@@ -527,19 +527,19 @@ export default function PropertiesPanel() {
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 dark:text-neutral-400 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full mb-4">
+                <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-neutral-600 dark:text-neutral-400 cursor-pointer border px-3 py-2 border-neutral-200 dark:border-neutral-800 rounded-sm hover:bg-neutral-50 dark:hover:bg-neutral-900 w-full mb-4">
                   <input type="checkbox" checked={useStore.getState().dither} onChange={(e) => useStore.getState().setDither(e.target.checked)} />
                   Enable Dithering (Best for Photos)
                 </label>
               </div>
 
               {pInfo.media_type === 'continuous' && pInfo.protocol_family?.includes('p12') && (
-                <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded">
+                <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-sm">
                   <label className={labelClass}>Adjust Tape Length</label>
                   <div className="flex items-center gap-2 mt-2">
                     <button
                       onClick={() => setCanvasGeometry(Math.max(getMmToPx(5), canvasWidth - getMmToPx(5)), canvasHeight, isRotated)}
-                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors rounded text-lg font-bold dark:text-white"
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors rounded-sm text-lg font-bold dark:text-white"
                     >
                       -
                     </button>
@@ -548,7 +548,7 @@ export default function PropertiesPanel() {
                     </span>
                     <button
                       onClick={() => setCanvasGeometry(canvasWidth + getMmToPx(5), canvasHeight, isRotated)}
-                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors rounded text-lg font-bold dark:text-white"
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors rounded-sm text-lg font-bold dark:text-white"
                     >
                       +
                     </button>
@@ -736,7 +736,7 @@ export default function PropertiesPanel() {
                   <>
                     <div className="flex items-center justify-between pb-2 border-b border-neutral-100 dark:border-neutral-800">
                       <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white">Template Settings</h2>
-                      <button onClick={ejectTemplate} className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded font-bold uppercase hover:bg-amber-100 transition-colors">
+                      <button onClick={ejectTemplate} className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded-sm font-bold uppercase hover:bg-amber-100 transition-colors">
                         Eject to Custom HTML
                       </button>
                     </div>
@@ -757,16 +757,16 @@ export default function PropertiesPanel() {
                                     <img
                                       src={value}
                                       alt={field.label}
-                                      className="w-10 h-10 object-contain bg-white border border-neutral-300 dark:border-neutral-700 p-1 rounded"
+                                      className="w-10 h-10 object-contain bg-white border border-neutral-300 dark:border-neutral-700 p-1 rounded-sm"
                                     />
                                   ) : (
-                                    <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded flex items-center justify-center text-[10px] text-neutral-400">
+                                    <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-sm flex items-center justify-center text-[10px] text-neutral-400">
                                       None
                                     </div>
                                   )}
                                   <button
                                     onClick={() => setTemplateIconField(field.name)}
-                                    className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors dark:text-white rounded"
+                                    className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors dark:text-white rounded-sm"
                                   >
                                     Choose Icon
                                   </button>
@@ -832,7 +832,7 @@ export default function PropertiesPanel() {
                   <>
                     <div className="flex items-center justify-between pb-2 border-b border-neutral-100 dark:border-neutral-800">
                       <h2 className="text-lg font-serif tracking-tight text-neutral-900 dark:text-white">Background Layout (HTML)</h2>
-                      <button onClick={() => handleFormatHtml('designMode')} className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded font-bold uppercase hover:bg-blue-100 transition-colors">
+                      <button onClick={() => handleFormatHtml('designMode')} className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded-sm font-bold uppercase hover:bg-blue-100 transition-colors">
                         Auto-Format
                       </button>
                     </div>
@@ -842,7 +842,7 @@ export default function PropertiesPanel() {
                     <textarea
                       value={htmlContent}
                       onChange={(e) => setHtmlContent(e.target.value)}
-                      className="w-full flex-1 bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm font-mono dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full flex-1 bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-3 text-sm font-mono dark:text-white focus:outline-hidden focus:border-blue-500"
                       placeholder="<div class='auto-text'>Hello World</div>"
                     />
                   </>
@@ -880,7 +880,7 @@ export default function PropertiesPanel() {
                     <textarea name="text" value={selectedItem.text} onChange={handleChange} className={inputClass} rows={3} />
                   </div>
 
-                  <div className="flex gap-2 mt-2 border border-neutral-200 dark:border-neutral-800 rounded p-1 bg-neutral-50 dark:bg-neutral-900/50">
+                  <div className="flex gap-2 mt-2 border border-neutral-200 dark:border-neutral-800 rounded-sm p-1 bg-neutral-50 dark:bg-neutral-900/50">
                     <ToggleBtn icon={Bold} label="Bold" active={selectedItem.weight >= 700} onClick={() => updateItem(selectedId, { weight: selectedItem.weight >= 700 ? 400 : 700 })} />
                     <ToggleBtn icon={Italic} label="Italic" active={selectedItem.italic} onClick={() => updateItem(selectedId, { italic: !selectedItem.italic })} />
                     <ToggleBtn icon={Underline} label="Underline" active={selectedItem.underline} onClick={() => updateItem(selectedId, { underline: !selectedItem.underline })} />
@@ -1042,7 +1042,7 @@ export default function PropertiesPanel() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className={labelClass.replace('mb-1.5', 'mb-0')}>HTML Content</label>
-                      <button onClick={() => handleFormatHtml('item')} className="text-[9px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-bold uppercase hover:bg-blue-100 transition-colors">Format</button>
+                      <button onClick={() => handleFormatHtml('item')} className="text-[9px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm font-bold uppercase hover:bg-blue-100 transition-colors">Format</button>
                     </div>
                     <textarea name="html" value={selectedItem.html || ''} onChange={handleChange} className={inputClass} rows={8} />
                   </div>

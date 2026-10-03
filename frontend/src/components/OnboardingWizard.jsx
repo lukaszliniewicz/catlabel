@@ -125,7 +125,7 @@ export default function OnboardingWizard() {
   const selectedMediaType = selectedPrinterInfo?.media_type || 'continuous';
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/60 z-100 flex items-center justify-center p-4 backdrop-blur-xs">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Welcome setup" tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800 overflow-hidden min-h-[480px]">
 
         <div className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 p-6 flex items-center justify-between shrink-0">
@@ -251,7 +251,7 @@ export default function OnboardingWizard() {
 
                  </div>
                  
-                 <div className="mt-6 text-[10px] text-neutral-500 leading-relaxed bg-neutral-50 dark:bg-neutral-900/50 p-3 rounded border border-neutral-100 dark:border-neutral-800">
+                 <div className="mt-6 text-[10px] text-neutral-500 leading-relaxed bg-neutral-50 dark:bg-neutral-900/50 p-3 rounded-sm border border-neutral-100 dark:border-neutral-800">
                     <strong>Hint:</strong> If you bought a generic "Mini Printer" from AliExpress that looks like a cat, it almost always uses the <strong>Generic Chinese</strong> profile (Model: GT01).
                  </div>
               </div>
@@ -285,7 +285,7 @@ export default function OnboardingWizard() {
                                  <div className="text-sm font-bold dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{m.name}</div>
                                  <div className="text-[10px] text-neutral-500 mt-0.5">{m.media_type === 'continuous' ? 'Continuous Roll' : 'Pre-cut Labels'}</div>
                                </div>
-                               <div className="text-[10px] font-bold tracking-widest uppercase text-neutral-400 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-2 py-1 rounded">
+                               <div className="text-[10px] font-bold tracking-widest uppercase text-neutral-400 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-2 py-1 rounded-sm">
                                  {m.dpi} DPI
                                </div>
                              </button>
@@ -333,7 +333,7 @@ export default function OnboardingWizard() {
               <p className="text-sm text-neutral-500 max-w-md mx-auto leading-relaxed mb-4">
                 CatLabel includes an advanced AI Agent that can instantly design labels, configure permutations, and inject variables based on plain English requests.
               </p>
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 p-4 rounded text-left text-xs text-neutral-600 dark:text-neutral-400">
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 p-4 rounded-sm text-left text-xs text-neutral-600 dark:text-neutral-400">
                 <p className="mb-2"><strong>Cloud APIs:</strong> Connect OpenAI, Gemini, or Vertex AI instantly.</p>
                 <p><strong>Local Inference (Free):</strong> You can use apps like <em>LM Studio</em> by selecting the "Custom" provider in the settings and pointing it to <code>http://localhost:1234/v1</code>.</p>
               </div>
@@ -351,7 +351,7 @@ export default function OnboardingWizard() {
                   finishOnboarding(selectedMediaType);
                   setShowAiConfig(true);
                 }}
-                className="flex-[2] py-3 bg-blue-600 text-white text-xs uppercase font-bold tracking-widest hover:bg-blue-700 flex justify-center items-center gap-2 transition-colors"
+                className="flex-2 py-3 bg-blue-600 text-white text-xs uppercase font-bold tracking-widest hover:bg-blue-700 flex justify-center items-center gap-2 transition-colors"
               >
                 <Sparkles size={16} /> Configure AI Keys
               </button>

@@ -4,6 +4,9 @@ Run `run.bat` on Windows or `bash ./run.sh` on Linux/macOS from the downloaded
 CatLabel folder. The scripts resolve their own location, so a terminal opened
 elsewhere is fine. Use a writable folder; spaces in the path are supported.
 The bundled frontend runs without Node.js. Pixi supplies Python 3.11.15.
+The Tailwind 4 frontend requires Chrome 111+, Firefox 128+ or Safari 16.4+.
+Use a current browser on the supported host; these browser floors come from
+[the Tailwind upgrade guide](https://tailwindcss.com/docs/upgrade-guide).
 
 Pixi 0.72.2 is pinned to the official release's SHA-256 digest and file size for
 each supported binary. A replacement downloads to a temporary file and must

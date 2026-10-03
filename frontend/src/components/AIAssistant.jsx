@@ -37,7 +37,7 @@ const MessageRow = ({ m }) => {
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} my-2`}>
       {m.content && typeof m.content === 'string' && (
         <div
-          className={`p-3 rounded-lg max-w-[90%] text-sm shadow-sm ${
+          className={`p-3 rounded-lg max-w-[90%] text-sm shadow-xs ${
             isUser
               ? 'bg-blue-600 text-white'
               : 'bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100'
@@ -558,7 +558,7 @@ export default function AIAssistant() {
             onClick={() => selectAiMode('live')}
             className={`flex-1 py-2 rounded transition-colors ${
               aiMode === 'live'
-                ? 'bg-white dark:bg-neutral-800 shadow-sm text-blue-600 dark:text-blue-400'
+                ? 'bg-white dark:bg-neutral-800 shadow-xs text-blue-600 dark:text-blue-400'
                 : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
             }`}
           >
@@ -568,7 +568,7 @@ export default function AIAssistant() {
             onClick={() => selectAiMode('external')}
             className={`flex-1 py-2 rounded transition-colors ${
               aiMode === 'external'
-                ? 'bg-white dark:bg-neutral-800 shadow-sm text-purple-600 dark:text-purple-400'
+                ? 'bg-white dark:bg-neutral-800 shadow-xs text-purple-600 dark:text-purple-400'
                 : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
             }`}
           >
@@ -622,14 +622,14 @@ export default function AIAssistant() {
                   resetAiChat();
                   setShowHistory(false);
                 }}
-                className="mb-4 text-blue-500 font-bold text-xs uppercase tracking-widest flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors"
+                className="mb-4 text-blue-500 font-bold text-xs uppercase tracking-widest flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-sm transition-colors"
               >
                 <Plus size={16} /> Start New Conversation
               </button>
               {histories.map((history) => (
                 <div
                   key={history.id}
-                  className="flex items-center justify-between p-3 border border-neutral-200 dark:border-neutral-800 mb-2 rounded cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+                  className="flex items-center justify-between p-3 border border-neutral-200 dark:border-neutral-800 mb-2 rounded-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
                   onClick={() => loadHistory(history.id)}
                 >
                   <div className="text-sm font-medium truncate flex-1 dark:text-white pr-4">
@@ -682,7 +682,7 @@ export default function AIAssistant() {
                 onChange={(e) => setInput(e.target.value)}
                 disabled={loading}
                 placeholder="Ask AI to design a label..."
-                className="flex-1 bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+                className="flex-1 bg-transparent border border-neutral-300 dark:border-neutral-700 p-2 text-sm dark:text-white focus:outline-hidden focus:border-blue-500 transition-colors"
               />
               <button
                 id="ai-submit-btn"
@@ -714,7 +714,7 @@ export default function AIAssistant() {
         </>
       ) : (
         <div className="flex-1 overflow-y-auto py-4 pr-2 flex flex-col gap-5">
-          <div className="text-[10px] text-neutral-500 leading-relaxed bg-purple-50 dark:bg-purple-900/10 p-3 rounded border border-purple-100 dark:border-purple-900/30">
+          <div className="text-[10px] text-neutral-500 leading-relaxed bg-purple-50 dark:bg-purple-900/10 p-3 rounded-sm border border-purple-100 dark:border-purple-900/30">
             Use your own ChatGPT Plus or Claude Pro account without consuming CatLabel API credits.
             Generate the full tool-call prompt here, paste it into your external LLM, then paste the
             JSON tool-call response back below. You can also copy the current canvas as an image and
@@ -729,7 +729,7 @@ export default function AIAssistant() {
               value={externalIntent}
               onChange={(e) => setExternalIntent(e.target.value)}
               placeholder={isEmpty ? "E.g. Design a shipping label for a fragile package." : "E.g. Move the product name up, make the barcode wider, and ensure nothing overlaps."}
-              className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-3 text-sm dark:text-white focus:outline-none focus:border-purple-500 transition-colors min-h-[96px]"
+              className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-3 text-sm dark:text-white focus:outline-hidden focus:border-purple-500 transition-colors min-h-[96px]"
             />
             <button
               onClick={handleGenerateExternalPrompt}
@@ -788,7 +788,7 @@ export default function AIAssistant() {
                 value={externalResponse}
                 onChange={(e) => setExternalResponse(e.target.value)}
                 placeholder='Paste the JSON array here, e.g. [{"tool":"add_text_element","arguments":{...}}]'
-                className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-3 text-sm font-mono dark:text-white focus:outline-none focus:border-purple-500 transition-colors min-h-[180px]"
+                className="w-full bg-transparent border border-neutral-300 dark:border-neutral-700 p-3 text-sm font-mono dark:text-white focus:outline-hidden focus:border-purple-500 transition-colors min-h-[180px]"
               />
 
               {externalError && (
@@ -841,7 +841,7 @@ export default function AIAssistant() {
                         {result.status}
                       </span>
                     </div>
-                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400 break-words">
+                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400 wrap-break-word">
                       {result.result}
                     </div>
                   </div>
