@@ -472,3 +472,16 @@ The shipped 26-file frontend matches the final inspected build, digest
 AI/canvas decomposition, stronger leaf typing, keyboard object workflows, backend
 spooling, performance and phase 7 remain active. No physical printer/provider
 call, foreign native acceptance or external promotion occurred.
+
+Phase 6 now retains a focused decode-memory baseline: nine fresh Linux workers,
+three repetitions each for 1, 20 and 100 deterministic384×384RGB PNG payloads.
+The parent inspected the Luna verifier's script, source identities and all count,
+geometry/mode and pixel-hash invariants. The 100-image path takes0.180–0.183s
+and raises the process high-water mark by50620–50816KiB while retaining
+44,236,800decoded RGB bytes. Only165,600base64 bytes were supplied. This supports
+replacing whole-job decoded accumulation; it measures decoder time/high-water RSS,
+not net RSS, render latency, p95, time-to-first-send or physical throughput.
+Imports/fixture creation precede the initial sample and pixel hashing follows the
+final sample. No product/source/test change or hardware call was made.
+[Fixed protocol and baseline](reviews/2026-10-02/evidence/phase6-decode-memory-baseline.json).
+The broader performance matrix and backend ownership/spooling remain active.
