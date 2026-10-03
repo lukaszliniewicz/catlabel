@@ -95,9 +95,11 @@ localhost URL.
 
 When MCP is enabled, CatLabel automatically prepares a private OpenCode v2 file
 for its current port. **Connect AI harness** shows its path. For a new OpenCode
-session, set `OPENCODE_CONFIG` to that file before starting OpenCode. For an
-existing project, merge its `mcp.servers.catlabel` entry into your project config,
-preserving other entries, then reconnect with `/mcps`.
+session, copy the launch command from the sidebar and paste it into your terminal.
+It sets `OPENCODE_CONFIG` and starts `opencode --standalone`, using a private
+server. Check `/mcps` and wait for CatLabel to connect. For an existing shared
+service, merge its `mcp.servers.catlabel` entry into your project config, preserve
+other entries, then run `opencode reload` and reconnect with `/mcps`.
 
 The fragment uses a private token-file reference. It does not print or embed the
 credential. Keep both files on the same computer and outside Git/shared folders.

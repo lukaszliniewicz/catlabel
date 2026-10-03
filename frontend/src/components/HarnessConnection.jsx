@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import EditorDrawer from './EditorDrawer';
 import { apiJson } from '../utils/apiClient';
+import { opencodeLaunchCommand } from '../utils/harnessConnection';
 
 export default function HarnessConnection({ onClose, siteTools }) {
   const [connection, setConnection] = useState(null);
@@ -16,9 +17,17 @@ export default function HarnessConnection({ onClose, siteTools }) {
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(window.location.origin);
-      setCopied(true);
+      setCopied('address');
     } catch {
       setError('Copy the app address from your browser’s address bar.');
+    }
+  };
+  const copyOpenCodeCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(opencodeLaunchCommand(connection.opencode_config_path));
+      setCopied('opencode');
+    } catch {
+      setError('Copy the command below and paste it into your terminal.');
     }
   };
   return <EditorDrawer label="Connect AI harness" width={440} onClose={onClose}>
@@ -35,7 +44,7 @@ export default function HarnessConnection({ onClose, siteTools }) {
           <h3 className="font-semibold text-base">ChatGPT Work / Codex desktop</h3>
           <p>Open this app address in your harness’s built-in browser, then ask it to design a label. Compatible browsers discover CatLabel’s tools automatically.</p>
           <div className="rounded-sm border border-neutral-300 dark:border-neutral-700 p-3 break-all font-mono text-xs">{window.location.origin}</div>
-          <button type="button" onClick={copyAddress} className="min-h-10 border border-neutral-400 rounded-sm px-3">{copied ? 'Address copied' : 'Copy app address'}</button>
+          <button type="button" onClick={copyAddress} className="min-h-10 border border-neutral-400 rounded-sm px-3">{copied === 'address' ? 'Address copied' : 'Copy app address'}</button>
           <p role="status" className="text-xs text-neutral-600 dark:text-neutral-400">{siteTools.state === 'ready'
             ? `${siteTools.count} site tools available in this browser.`
             : siteTools.state === 'failed'
@@ -44,10 +53,11 @@ export default function HarnessConnection({ onClose, siteTools }) {
         </section>
         <section className="space-y-3">
           <h3 className="font-semibold text-base">OpenCode</h3>
-          <p>CatLabel prepares a private connection file automatically. Set OpenCode’s OPENCODE_CONFIG environment variable to this file when starting a new session:</p>
-          {connection.opencode_config_path && <pre className="whitespace-pre-wrap break-all border border-neutral-300 dark:border-neutral-700 p-3 text-xs">{connection.opencode_config_path}</pre>}
+          <p>CatLabel prepares a private connection file automatically. Copy the launch command, paste it into your terminal and start a private OpenCode session:</p>
+          {connection.opencode_config_path && <><pre className="whitespace-pre-wrap break-all border border-neutral-300 dark:border-neutral-700 p-3 text-xs">{opencodeLaunchCommand(connection.opencode_config_path)}</pre>
+            <button type="button" onClick={copyOpenCodeCommand} className="min-h-10 border border-neutral-400 rounded-sm px-3">{copied === 'opencode' ? 'Command copied' : 'Copy OpenCode command'}</button></>}
           {connection.configuration_error && <p className="text-amber-700 dark:text-amber-300">The configuration file could not be prepared. Use the launcher’s <code>--mcp-config --mcp-output /absolute/path/opencode.json</code> command with a new output path.</p>}
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">For an existing project or session, merge the file’s CatLabel entry into its MCP settings and reconnect. Keep the generated file and token on this computer.</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">Check /mcps and wait for CatLabel to connect before asking for a design. For an existing shared service, merge the file’s CatLabel entry into its MCP settings, run opencode reload and reconnect. Keep the generated file and token on this computer.</p>
         </section>
         <section className="space-y-2">
           <h3 className="font-semibold">Other MCP clients</h3>

@@ -68,22 +68,26 @@ checks the authenticated MCP endpoint; it never prints a label.
 
 On normal startup, CatLabel creates `<data directory>/mcp-opencode-PORT.json`
 automatically, with the selected port in its filename. Set `OPENCODE_CONFIG` to
-that file before starting a new OpenCode session:
+that file when starting a private OpenCode session. The sidebar can copy the
+whole command for you:
 
 ```sh
-OPENCODE_CONFIG='/absolute/path/to/data/mcp-opencode-8000.json' opencode
+OPENCODE_CONFIG='/absolute/path/to/data/mcp-opencode-8000.json' opencode --standalone
 ```
 
 In PowerShell:
 
 ```powershell
 $env:OPENCODE_CONFIG = 'C:\absolute\path\to\data\mcp-opencode-8000.json'
-opencode
+opencode --standalone
 ```
 
 `OPENCODE_CONFIG` is an additional config layer, not an isolation switch. An
-already-running OpenCode service or project config may need reconnection or the
-entry merged into its own settings. The app does not edit global harness files.
+already-running shared OpenCode service does not inherit a new terminal’s
+environment. For that service, merge the entry into its project config and run
+`opencode reload`. After launch or reload, inspect `/mcps` and wait for CatLabel
+to connect before asking for a design; status can initially be empty while
+connections load. The app does not edit global harness files.
 
 The explicit `config` command instead creates `<data directory>/mcp-opencode.json`
 (or your `--output` path). Both files contain a `mcp.servers.catlabel` entry.
