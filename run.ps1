@@ -45,7 +45,7 @@ $env:CATLABEL_DATA_DIR = $Data
 $env:PIXI_HOME = Join-Path $Data 'pixi_home'
 $env:PIXI_CACHE_DIR = Join-Path $Data 'pixi_cache'
 $env:PIXI_NO_CONFIG = '1'
-$env:PLAYWRIGHT_BROWSERS_PATH = '0'
+$env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $Data 'playwright-browsers'
 $Version = '0.72.2'
 $Digest = '3f6e03db3cb275c028035ed3975180198064d8bb6d0352b5ab958c1fcfbddc4e'
 $Size = 90571192
@@ -71,7 +71,7 @@ $Python = Join-Path $Root ".pixi/envs/$Environment/python.exe"
 function Get-Identity {
     $ManifestHash = (Get-FileHash -LiteralPath (Join-Path $Root 'pixi.toml') -Algorithm SHA256).Hash.ToLowerInvariant()
     $LockHash = (Get-FileHash -LiteralPath (Join-Path $Root 'pixi.lock') -Algorithm SHA256).Hash.ToLowerInvariant()
-    $Bytes = [Text.Encoding]::UTF8.GetBytes("catlabel-bootstrap-v1`n$Version`n$Environment`n$ManifestHash`n$LockHash`n")
+    $Bytes = [Text.Encoding]::UTF8.GetBytes("catlabel-bootstrap-v2`n$Version`n$Environment`n$ManifestHash`n$LockHash`n")
     $Hasher = [Security.Cryptography.SHA256]::Create()
     try { return ([BitConverter]::ToString($Hasher.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant() }
     finally { $Hasher.Dispose() }

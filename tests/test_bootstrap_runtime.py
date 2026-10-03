@@ -20,7 +20,10 @@ class BootstrapRuntimeTests(unittest.TestCase):
             root = Path(temporary_directory)
             self._write_manifests(root)
 
-            default_identity = bootstrap_runtime.environment_identity(root, "default")
+            with mock.patch.object(bootstrap_runtime.sys, "platform", "linux"):
+                default_identity = bootstrap_runtime.environment_identity(
+                    root, "default"
+                )
             pixi_hash = hashlib.sha256((root / "pixi.toml").read_bytes()).hexdigest()
             lock_hash = hashlib.sha256((root / "pixi.lock").read_bytes()).hexdigest()
             canonical = (
@@ -32,14 +35,39 @@ class BootstrapRuntimeTests(unittest.TestCase):
             )
 
             (root / "pixi.lock").write_bytes(b"changed lock\n")
-            self.assertNotEqual(
-                bootstrap_runtime.environment_identity(root, "default"),
-                default_identity,
+            with mock.patch.object(bootstrap_runtime.sys, "platform", "linux"):
+                self.assertNotEqual(
+                    bootstrap_runtime.environment_identity(root, "default"),
+                    default_identity,
+                )
+                self.assertNotEqual(
+                    bootstrap_runtime.environment_identity(root, "headless"),
+                    default_identity,
+                )
+
+    def test_windows_identity_invalidates_v1_bootstrap_stamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self._write_manifests(root)
+            pixi_hash = hashlib.sha256((root / "pixi.toml").read_bytes()).hexdigest()
+            lock_hash = hashlib.sha256((root / "pixi.lock").read_bytes()).hexdigest()
+            old_canonical = (
+                f"catlabel-bootstrap-v1\n0.72.2\ndefault\n{pixi_hash}\n{lock_hash}\n"
             )
-            self.assertNotEqual(
-                bootstrap_runtime.environment_identity(root, "headless"),
-                default_identity,
+            old_identity = hashlib.sha256(old_canonical.encode("utf-8")).hexdigest()
+
+            with mock.patch.object(bootstrap_runtime.sys, "platform", "win32"):
+                windows_identity = bootstrap_runtime.environment_identity(
+                    root, "default"
+                )
+            windows_canonical = (
+                f"catlabel-bootstrap-v2\n0.72.2\ndefault\n{pixi_hash}\n{lock_hash}\n"
             )
+            self.assertEqual(
+                windows_identity,
+                hashlib.sha256(windows_canonical.encode("utf-8")).hexdigest(),
+            )
+            self.assertNotEqual(windows_identity, old_identity)
 
     def test_identity_rejects_unknown_environment(self) -> None:
         with self.assertRaises(ValueError):
@@ -206,6 +234,73 @@ class BootstrapRuntimeTests(unittest.TestCase):
 
         playwright.sync_playwright.assert_called_once_with()
         runtime.chromium.launch.assert_not_called()
+
+    def test_headless_verification_launches_and_closes_chromium(self) -> None:
+        playwright = mock.Mock()
+        runtime = mock.MagicMock()
+        context = mock.MagicMock()
+        context.__enter__.return_value = runtime
+        runtime.chromium.executable_path = "/fixture/chromium"
+        playwright.sync_playwright.return_value = context
+
+        with (
+            mock.patch.object(bootstrap_runtime.sys, "version_info", (3, 11)),
+            mock.patch.object(bootstrap_runtime.sys, "platform", "linux"),
+            mock.patch.object(
+                bootstrap_runtime.importlib,
+                "import_module",
+                side_effect=lambda name: (
+                    playwright if name == "playwright.sync_api" else mock.Mock()
+                ),
+            ),
+            mock.patch.object(bootstrap_runtime.Path, "is_file", return_value=True),
+        ):
+            bootstrap_runtime.verify_runtime("headless")
+
+        runtime.chromium.launch.assert_called_once_with(headless=True)
+        runtime.chromium.launch.return_value.close.assert_called_once_with()
+
+    def test_chromium_startup_failure_does_not_publish_stamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self._write_manifests(root)
+            executable = root / "chromium"
+            executable.touch()
+            stamp = root / "bootstrap.sha256"
+            playwright = mock.Mock()
+            runtime = mock.MagicMock()
+            context = mock.MagicMock()
+            context.__enter__.return_value = runtime
+            runtime.chromium.executable_path = str(executable)
+            runtime.chromium.launch.side_effect = RuntimeError("browser startup failed")
+            playwright.sync_playwright.return_value = context
+
+            with (
+                mock.patch.object(bootstrap_runtime.sys, "version_info", (3, 11)),
+                mock.patch.object(bootstrap_runtime.sys, "platform", "linux"),
+                mock.patch.object(
+                    bootstrap_runtime.importlib,
+                    "import_module",
+                    side_effect=lambda name: (
+                        playwright if name == "playwright.sync_api" else mock.Mock()
+                    ),
+                ),
+                self.assertRaisesRegex(RuntimeError, "browser startup failed"),
+            ):
+                bootstrap_runtime.main(
+                    [
+                        "--root",
+                        str(root),
+                        "--environment",
+                        "headless",
+                        "--stamp",
+                        str(stamp),
+                    ]
+                )
+
+            runtime.chromium.launch.assert_called_once_with(headless=True)
+            runtime.chromium.launch.return_value.close.assert_not_called()
+            self.assertFalse(stamp.exists())
 
 
 if __name__ == "__main__":

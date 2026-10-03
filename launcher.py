@@ -85,6 +85,11 @@ def _child_environment(data_directory: Path, target_dir: Path) -> dict[str, str]
     environment = dict(os.environ)
     environment["CATLABEL_DATA_DIR"] = str(data_directory)
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["PLAYWRIGHT_BROWSERS_PATH"] = (
+        str(data_directory / "playwright-browsers")
+        if platform.system() == "Windows"
+        else "0"
+    )
     bootstrap_state = _bootstrap_state_directory(data_directory, target_dir)
     if (target_dir / "release-manifest.json").is_file():
         environment["CATLABEL_BOOTSTRAP_STATE_DIR"] = str(bootstrap_state)
@@ -149,7 +154,6 @@ def _run_mcp_command(
 
     environment = _child_environment(data_directory, target_dir)
     environment.pop("PYTHONPATH", None)
-    environment["PLAYWRIGHT_BROWSERS_PATH"] = "0"
     result = subprocess.run(
         arguments,
         cwd=target_dir,

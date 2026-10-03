@@ -28,8 +28,10 @@ editor, REST API and MCP.
 [![Portable application ZIP](https://img.shields.io/badge/Download-Portable_ZIP-475569?style=for-the-badge)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3/CatLabel-0.3.0.zip)
 
 On **Linux x86_64**, make the AppImage executable and open it. On **Windows
-x86_64**, put the launcher in a writable folder and double-click it. Fresh
-packaged installs include MCP and preview support by default. These are small
+x86_64**, put the launcher in a short, writable folder (for example
+`C:\CatLabel`) and double-click it. Deeply nested folders can exceed Windows
+dependency path limits. Fresh packaged installs include MCP and preview support
+by default. These are small
 bootstrap downloads: first setup still needs internet access to install the
 runtime and Chromium. [Checksums and release notes](https://github.com/lukaszliniewicz/catlabel/releases/tag/0.3).
 

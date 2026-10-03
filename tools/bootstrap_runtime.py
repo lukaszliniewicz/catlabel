@@ -54,8 +54,9 @@ def environment_identity(root: Path, environment: str) -> str:
     _validate_environment(environment)
     pixi_hash = hashlib.sha256((root / "pixi.toml").read_bytes()).hexdigest()
     lock_hash = hashlib.sha256((root / "pixi.lock").read_bytes()).hexdigest()
+    identity_version = "v2" if sys.platform == "win32" else "v1"
     canonical = (
-        f"catlabel-bootstrap-v1\n{BOOTSTRAP_VERSION}\n{environment}\n"
+        f"catlabel-bootstrap-{identity_version}\n{BOOTSTRAP_VERSION}\n{environment}\n"
         f"{pixi_hash}\n{lock_hash}\n"
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -90,6 +91,8 @@ def verify_runtime(environment: str) -> None:
                 raise RuntimeError(
                     f"Playwright Chromium executable is missing: {executable}"
                 )
+            browser = playwright_runtime.chromium.launch(headless=True)
+            browser.close()
 
 
 def _publish_stamp(stamp: Path, identity: str) -> None:

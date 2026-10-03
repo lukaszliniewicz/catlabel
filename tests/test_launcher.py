@@ -354,6 +354,25 @@ class LauncherTests(unittest.TestCase):
         ):
             self.assertEqual(self.invoke("--mcp-doctor"), 0)
         self.assertEqual(run.call_args.args[0][0], str(runtime))
+        self.assertEqual(
+            run.call_args.kwargs["env"]["PLAYWRIGHT_BROWSERS_PATH"],
+            str(self.data / "playwright-browsers"),
+        )
+
+    def test_windows_child_uses_data_directory_for_playwright_cache(self) -> None:
+        data_directory = self.root / "Data directory with spaces"
+        target = self.root / ".releases" / ("a" * 64) / ".pixi" / "deep"
+        with mock.patch.object(launcher.platform, "system", return_value="Windows"):
+            environment = launcher._child_environment(data_directory, target)
+        self.assertEqual(
+            environment["PLAYWRIGHT_BROWSERS_PATH"],
+            str(data_directory / "playwright-browsers"),
+        )
+
+    def test_nonwindows_child_uses_hermetic_playwright_cache(self) -> None:
+        with mock.patch.object(launcher.platform, "system", return_value="Linux"):
+            environment = launcher._child_environment(self.data, self.root)
+        self.assertEqual(environment["PLAYWRIGHT_BROWSERS_PATH"], "0")
 
     def test_mcp_missing_runtime_fails_without_launching_or_setup(self) -> None:
         target = self.current.path

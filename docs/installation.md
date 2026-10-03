@@ -7,9 +7,16 @@ through a locked Pixi environment.
 ## Windows launcher
 
 Download `CatLabel-Launcher.exe` from the [latest release](https://github.com/lukaszliniewicz/catlabel/releases/latest),
-place it in a writable folder and double-click it. It installs the locked runtime,
-MCP and preview support on first use. Keep the launcher folder: it also contains
+place it in a short, writable folder (for example `C:\CatLabel`) and double-click
+it. It installs the locked runtime, MCP and preview support on first use. Keep
+the launcher folder: it also contains
 release slots and your projects. Use `--installation-root` to select another folder.
+
+Deeply nested folders can exceed Windows dependency path limits, even with the
+system long-path setting enabled. If setup reports that a dependency path cannot
+be found, retry from a shorter folder. Chromium is stored under the data folder
+to keep preview-browser paths shorter; setup launches it before accepting the
+runtime.
 
 If you used the v0.2 launcher, close CatLabel and replace the executable **in the
 same folder**. The new launcher detects and reuses projects under
