@@ -212,8 +212,8 @@ class ProjectToolRevisionTests(unittest.TestCase):
             [{"pageIndex": 0, "htmlContent": "", "activeTemplate": None}],
         )
 
-    def test_category_and_project_tools_use_public_mutators(self) -> None:
-        canvas_state: dict[str, object] = {"__actions__": []}
+    def test_category_and_project_tools_defer_saved_deletion(self) -> None:
+        canvas_state = {"__actions__": []}
         with patch.object(
             routes_project,
             "create_category",
@@ -274,58 +274,174 @@ class ProjectToolRevisionTests(unittest.TestCase):
                 category_id=child_category.id,
             )
         )
+        neighbor_category = routes_project.create_category(
+            routes_project.CategoryCreate(name="Neighbor")
+        )
+        assert neighbor_category.id is not None
+        neighbor_project = routes_project.create_project(
+            routes_project.ProjectCreate(
+                name="Neighbor project",
+                canvas_state={"value": "neighbor"},
+                category_id=neighbor_category.id,
+            )
+        )
         assert project_to_delete.id is not None
         assert recursive_project.id is not None
+        assert neighbor_project.id is not None
 
-        with patch.object(
-            routes_project,
-            "delete_project",
-            wraps=routes_project.delete_project,
-        ) as delete_project_api:
+        with (
+            patch.object(
+                routes_project,
+                "delete_project",
+                side_effect=AssertionError("AI tools must defer project deletion"),
+            ) as delete_project_api,
+            patch.object(
+                routes_project,
+                "delete_category",
+                side_effect=AssertionError("AI tools must defer folder deletion"),
+            ) as delete_category_api,
+        ):
+            refresh_actions_before = [
+                action
+                for action in canvas_state["__actions__"]
+                if action.get("action") == "refresh_projects"
+            ]
             delete_result = ai_tools.tool_delete_project(
                 {"project_id": project_to_delete.id}, canvas_state, 384, 384
             )
-            self.assertIn("deleted", delete_result)
-            delete_project_api.assert_called_once()
+            self.assertEqual(
+                delete_result,
+                ai_tools._AI_DELETION_REVIEW_MESSAGE.format(
+                    kind="project",
+                    name="Direct delete",
+                    target_id=project_to_delete.id,
+                ),
+            )
+            project_review_action = {
+                "action": "deletion_review_required",
+                "target_kind": "project",
+                "target_id": project_to_delete.id,
+                "name": "Direct delete",
+            }
+            self.assertEqual(canvas_state["__actions__"][-1], project_review_action)
 
-            actions_after_project_delete = copy.deepcopy(canvas_state["__actions__"])
-            missing_project = ai_tools.tool_delete_project(
+            actions_after_project_review = copy.deepcopy(canvas_state["__actions__"])
+            repeated_project_review = ai_tools.tool_delete_project(
                 {"project_id": project_to_delete.id}, canvas_state, 384, 384
             )
-            self.assertEqual(missing_project, "Error: Project ID not found.")
-            self.assertEqual(canvas_state["__actions__"], actions_after_project_delete)
-            self.assertEqual(delete_project_api.call_count, 2)
+            self.assertEqual(repeated_project_review, delete_result)
+            self.assertEqual(canvas_state["__actions__"], actions_after_project_review)
 
-        with patch.object(
-            routes_project,
-            "delete_category",
-            wraps=routes_project.delete_category,
-        ) as delete_category_api:
-            delete_result = ai_tools.tool_delete_category(
+            category_result = ai_tools.tool_delete_category(
                 {"category_id": parent_id}, canvas_state, 384, 384
             )
-            self.assertIn("deleted", delete_result)
-            delete_category_api.assert_called_once()
+            self.assertEqual(
+                category_result,
+                ai_tools._AI_DELETION_REVIEW_MESSAGE.format(
+                    kind="folder", name="Parent", target_id=parent_id
+                ),
+            )
+            category_review_action = {
+                "action": "deletion_review_required",
+                "target_kind": "folder",
+                "target_id": parent_id,
+                "name": "Parent",
+            }
+            self.assertEqual(canvas_state["__actions__"][-1], category_review_action)
 
-            actions_after_category_delete = copy.deepcopy(canvas_state["__actions__"])
-            missing_category = ai_tools.tool_delete_category(
+            actions_after_category_review = copy.deepcopy(canvas_state["__actions__"])
+            repeated_category_review = ai_tools.tool_delete_category(
                 {"category_id": parent_id}, canvas_state, 384, 384
             )
-            self.assertEqual(missing_category, "Error: Folder ID not found.")
-            self.assertEqual(canvas_state["__actions__"], actions_after_category_delete)
-            self.assertEqual(delete_category_api.call_count, 2)
+            self.assertEqual(repeated_category_review, category_result)
+            self.assertEqual(canvas_state["__actions__"], actions_after_category_review)
 
-        self.assertFalse(
-            any(
-                category.id in {parent_id, child_category.id}
-                for category in routes_project.list_categories()
+            actions_before_missing = copy.deepcopy(canvas_state["__actions__"])
+            self.assertEqual(
+                ai_tools.tool_delete_project(
+                    {"project_id": 999_999}, canvas_state, 384, 384
+                ),
+                ai_tools._AI_DELETION_MISSING_PROJECT,
             )
+            self.assertEqual(
+                ai_tools.tool_delete_category(
+                    {"category_id": 999_999}, canvas_state, 384, 384
+                ),
+                ai_tools._AI_DELETION_MISSING_CATEGORY,
+            )
+            self.assertEqual(canvas_state["__actions__"], actions_before_missing)
+
+            invalid_cases = (
+                (
+                    ai_tools.tool_delete_project,
+                    "project_id",
+                    project_to_delete.id,
+                    ai_tools._AI_DELETION_INVALID_PROJECT,
+                ),
+                (
+                    ai_tools.tool_delete_category,
+                    "category_id",
+                    child_category.id,
+                    ai_tools._AI_DELETION_INVALID_CATEGORY,
+                ),
+            )
+            for delete_tool, id_key, valid_id, expected_error in invalid_cases:
+                for invalid_id in (None, 0, -1, True, float(valid_id), str(valid_id)):
+                    with self.subTest(id_key=id_key, invalid_id=invalid_id):
+                        actions_before_invalid = copy.deepcopy(
+                            canvas_state["__actions__"]
+                        )
+                        self.assertEqual(
+                            delete_tool({id_key: invalid_id}, canvas_state, 384, 384),
+                            expected_error,
+                        )
+                        self.assertEqual(
+                            canvas_state["__actions__"], actions_before_invalid
+                        )
+
+            delete_project_api.assert_not_called()
+            delete_category_api.assert_not_called()
+
+            refresh_actions_after = [
+                action
+                for action in canvas_state["__actions__"]
+                if action.get("action") == "refresh_projects"
+            ]
+            self.assertEqual(refresh_actions_after, refresh_actions_before)
+
+        categories_by_id = {
+            category.id: category for category in routes_project.list_categories()
+        }
+        self.assertEqual(
+            {parent_id, child_category.id, neighbor_category.id}
+            & categories_by_id.keys(),
+            {parent_id, child_category.id, neighbor_category.id},
         )
-        self.assertFalse(
-            any(
-                project["id"] == recursive_project.id
-                for project in routes_project.list_projects()
-            )
+        projects_by_id = {
+            project["id"]: project for project in routes_project.list_projects()
+        }
+        self.assertEqual(
+            {
+                project_to_delete.id,
+                recursive_project.id,
+                neighbor_project.id,
+            }
+            & projects_by_id.keys(),
+            {
+                project_to_delete.id,
+                recursive_project.id,
+                neighbor_project.id,
+            },
+        )
+        self.assertEqual(
+            projects_by_id[project_to_delete.id]["canvas_state"], {"value": "one"}
+        )
+        self.assertEqual(
+            projects_by_id[recursive_project.id]["canvas_state"], {"value": "two"}
+        )
+        self.assertEqual(
+            projects_by_id[neighbor_project.id]["canvas_state"],
+            {"value": "neighbor"},
         )
 
     def _create_project(self, name: str, canvas_state: dict[str, object]) -> int:

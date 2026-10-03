@@ -34,6 +34,7 @@ export const createUiSlice = (set) => ({
   aiMessages: [{ role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }],
   aiInput: '',
   aiConvId: null,
+  aiSessionVersion: 0,
   aiSessionUsage: { tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0 },
   setAiInput: (input) => set({ aiInput: input }),
   setAiConvId: (id) => set({ aiConvId: id }),
@@ -52,7 +53,8 @@ export const createUiSlice = (set) => ({
   aiExternalIntent: '',
   setAiExternalIntent: (val) => set({ aiExternalIntent: val }),
   aiExternalPrompt: '',
-  setAiExternalPrompt: (val) => set({ aiExternalPrompt: val }),
+  aiExternalPromptContext: null,
+  setAiExternalPrompt: (val, context = null) => set({ aiExternalPrompt: val, aiExternalPromptContext: context }),
   aiExternalResponse: '',
   setAiExternalResponse: (val) => set({ aiExternalResponse: val }),
   aiExternalError: '',
@@ -61,16 +63,18 @@ export const createUiSlice = (set) => ({
   setAiExternalNotice: (val) => set({ aiExternalNotice: val }),
   aiExternalResults: [],
   setAiExternalResults: (val) => set({ aiExternalResults: val }),
-  resetAiChat: () => set({
+  resetAiChat: () => set(state => ({
+    aiSessionVersion: state.aiSessionVersion + 1,
     aiMessages: [{ role: 'assistant', content: 'Hi! I am the CatLabel AI Assistant. Tell me what kind of label you want to design, and I will generate it for you!' }],
     aiInput: '',
     aiConvId: null,
     aiSessionUsage: { tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0 },
     aiExternalIntent: '',
     aiExternalPrompt: '',
+    aiExternalPromptContext: null,
     aiExternalResponse: '',
     aiExternalError: '',
     aiExternalNotice: '',
     aiExternalResults: []
-  })
+  }))
 });

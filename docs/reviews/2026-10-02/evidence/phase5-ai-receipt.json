@@ -1,0 +1,112 @@
+{
+  "source_parent": "f1ab8821b7b753ecbdbdc0a7999429f6eeccb1aa",
+  "accepted_at_utc": "2026-10-03T05:56:13.963528+00:00",
+  "scope": "Decompose assistant presentation/session/manual flow; own requests by document/conversation/printer context; review saved deletion and physical print",
+  "source_sha256": {
+    "catlabel/api/routes_ai.py": "bd186fffe128b51ac5c0dd5f4c15265690a5425bb6bf056e5a172b7d13f69402",
+    "catlabel/services/ai_tools.py": "cb4bf9c75ed14d5ad1c8ddcf42361f358e39385d4461dad2d2d4371aaf0d58e3",
+    "tests/test_project_tool_revisions.py": "75264a5310df307ff338f11e0a138547472a2a620324bf96afa88678b725ffaf",
+    "tests/test_ai_manual_results.py": "227f75e2ff5ed991bd91698d79d65dba887749caf85e9363bb75a4326b6764d6",
+    "frontend/src/components/AIAssistant.jsx": "acb61685e0084552c13dee7a477c8f6daf715e79135f75cb8e0b6e4e3e58ec1a",
+    "frontend/src/components/AIAssistant.test.jsx": "c412c43ec61e2172371d5de531bf24aade707f6f54ac1b10509aef152634dd69",
+    "frontend/src/components/useAiRequestOwner.js": "462dfad220754a9567aa39dc56b7418bda161ca7a269f8f14dcb6775838e583d",
+    "frontend/src/components/useAiLiveSession.js": "e1e99c21cd6d214f6c37d3c882076b35d44d6b4fc0eb9b5e0744ec4eba4726c5",
+    "frontend/src/components/useExternalAi.js": "691dd268b04a964da1231db077008ae6568ea7d0154f4a70b30bf8775ad0a923",
+    "frontend/src/state/slices/ui.js": "6d3e51b67cdce2c987c9f4278ec8b8eb7be2a05cd861318eddaadce1a45b11b3",
+    "frontend/src/domain/ai.ts": "ad1b2467e39f2b686389774d9ed6cd1895b402b6ffdc05c4e001a7a48f555612",
+    "frontend/src/utils/aiCanvas.js": "6796372ed2c53245fb983def7e78b9780da4cc9502e9ccdd0eb0f0f73c42c465",
+    "frontend/src/utils/aiTranscript.js": "f4e1a314146d52e5e619826c377ae6eb154833b2d81f61662baecfb3937ebd28",
+    "frontend/src/components/ai/ChatMessage.jsx": "46fc76dfdc75ad966f9a0f94543448ffaaa133859a0f1b5be8f40ea00e3bbd24",
+    "frontend/src/components/ai/LiveChatPanel.jsx": "afb0243ffb733c9a1a770ebd6f71b70bad55ca4e5214465bb7995cda920dd3cb",
+    "frontend/src/components/ai/ExternalAiPanel.jsx": "e0f75186ee6b3dc58228d8a7b94fbeb31116bf830508445af74ac091e2c04399",
+    "frontend/src/components/ai/chat.css": "8d27c09cfd0c0f7b60826270859438510f07c3c783209895643f8288f158da3f"
+  },
+  "checks": {
+    "frontend_tests": 185,
+    "test_files": 34,
+    "focused_ai_frontend_tests": 19,
+    "backend_tests": 757,
+    "backend_skips": 1,
+    "focused_ai_backend_tests": 7,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "build": "passed; clean output",
+    "diff_check": "passed",
+    "advisories": "Locks unchanged; previous accepted zero-advisory result carried"
+  },
+  "browser": {
+    "viewport_css": [
+      390,
+      843
+    ],
+    "axe": {
+      "live": {
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "targets": [
+              [
+                ".font-semibold"
+              ]
+            ]
+          }
+        ],
+        "passes": 35,
+        "violations": []
+      },
+      "external": {
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "targets": [
+              [
+                ".font-semibold"
+              ]
+            ]
+          }
+        ],
+        "passes": 35,
+        "violations": []
+      },
+      "viewport": [
+        390,
+        843
+      ]
+    },
+    "inspection": "Final compiled live/external drawer visually inspected; developer DOM button activation; no state injection/provider request",
+    "native_keyboard_pointer": "Unverified; earlier controller stall retained",
+    "screenshots": [
+      "check-results/phase5-ai/live-final-390.png",
+      "check-results/phase5-ai/external-final-390.png"
+    ]
+  },
+  "frontend": {
+    "files": 27,
+    "sha256": "aa1359809d1c5c04fa757a19d7a4506dbca9aaf14de4f25285b01e7c49e7cd80",
+    "ship_matches_inspected_build": true
+  },
+  "behavior": [
+    "Late replies cannot hydrate, update history, print, or attach conversation IDs after context replacement/cancellation",
+    "Request deadline covers response body and DTO validation through shared apiJson",
+    "Visual follow-up uses fresh awaited capture and stops after three follow-ups",
+    "AI saved deletion only appends review action; direct project/folder deletion confirmation remains in Projects",
+    "AI print request and legacy print action show review instruction; physical submission uses normal Print control",
+    "Manual tool errors and required confirmation have separate statuses"
+  ],
+  "limitations": [
+    "Already-started server work can continue after client cancellation; UI states this",
+    "Direct saved-content deletion API still lacks expected-state deletion fences",
+    "No live provider, physical printer, foreign native acceptance or external promotion",
+    "Typed AI/domain boundaries do not make all JSX/store code TypeScript-checked"
+  ]
+}

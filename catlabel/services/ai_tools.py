@@ -5,6 +5,16 @@ from collections.abc import Mapping
 from fastapi import HTTPException
 from pydantic import ValidationError
 
+_AI_DELETION_REVIEW_MESSAGE = (
+    "Confirmation required: Open Projects, find {kind} '{name}' (ID {target_id}), "
+    "and choose Actions > Delete to review and confirm deletion. "
+    "The assistant has not deleted any saved content."
+)
+_AI_DELETION_INVALID_PROJECT = "Error: The project ID is invalid."
+_AI_DELETION_INVALID_CATEGORY = "Error: The folder ID is invalid."
+_AI_DELETION_MISSING_PROJECT = "Error: Project ID not found."
+_AI_DELETION_MISSING_CATEGORY = "Error: Folder ID not found."
+
 
 def _as_int(value, default):
     try:
@@ -340,7 +350,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "delete_project",
-            "description": "Deletes a project from the database.",
+            "description": "Requests deletion review for a saved project. No content is deleted by this tool. The user must open Projects > Actions > Delete and confirm deletion there.",
             "parameters": {
                 "type": "object",
                 "properties": {"project_id": {"type": "integer"}},
@@ -352,7 +362,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "delete_category",
-            "description": "Deletes a folder AND all its contents recursively. Use with extreme caution.",
+            "description": "Requests deletion review for a folder and its contents. No content is deleted by this tool. The user must open Projects > Actions > Delete and confirm recursive deletion there.",
             "parameters": {
                 "type": "object",
                 "properties": {"category_id": {"type": "integer"}},
@@ -371,7 +381,7 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "trigger_ui_action",
-            "description": "Executes physical actions on behalf of the user.",
+            "description": "Requests print review. No job is sent by this tool. The user must review labels, copies and printer, then use Print in the app.",
             "parameters": {
                 "type": "object",
                 "properties": {"action": {"type": "string", "enum": ["print"]}},
@@ -847,40 +857,62 @@ def _safe_api_error(
     return f"Error: Could not {operation} because the request was invalid."
 
 
+def _defer_saved_delete(args, canvas_state, *, kind):
+    from sqlmodel import Session
+
+    from ..core import database
+    from ..core.models import Category, Project
+
+    if kind == "project":
+        target_id = args.get("project_id")
+        model = Project
+        target_kind = "project"
+        invalid_message = _AI_DELETION_INVALID_PROJECT
+        missing_message = _AI_DELETION_MISSING_PROJECT
+    else:
+        target_id = args.get("category_id")
+        model = Category
+        target_kind = "folder"
+        invalid_message = _AI_DELETION_INVALID_CATEGORY
+        missing_message = _AI_DELETION_MISSING_CATEGORY
+
+    if type(target_id) is not int or target_id <= 0:
+        return invalid_message
+
+    with Session(database.engine) as session:
+        record = session.get(model, target_id)
+        if record is None:
+            return missing_message
+        name = record.name
+
+    action = {
+        "action": "deletion_review_required",
+        "target_kind": target_kind,
+        "target_id": target_id,
+        "name": name,
+    }
+    actions = canvas_state.setdefault("__actions__", [])
+    if not any(
+        isinstance(existing, dict)
+        and existing.get("action") == action["action"]
+        and existing.get("target_kind") == target_kind
+        and type(existing.get("target_id")) is int
+        and existing["target_id"] == target_id
+        for existing in actions
+    ):
+        actions.append(action)
+
+    return _AI_DELETION_REVIEW_MESSAGE.format(kind=kind, name=name, target_id=target_id)
+
+
 @ToolRegistry.register("delete_project")
 def tool_delete_project(args, canvas_state, cw, ch):
-    from ..api.routes_project import delete_project
-
-    project_id = args.get("project_id")
-    try:
-        delete_project(project_id)
-    except HTTPException as exc:
-        if exc.status_code == 404:
-            return "Error: Project ID not found."
-        return _safe_api_error(exc, operation="delete the project")
-    except ValidationError:
-        return "Error: The project ID is invalid."
-
-    canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
-    return f"Project ID {project_id} deleted."
+    return _defer_saved_delete(args, canvas_state, kind="project")
 
 
 @ToolRegistry.register("delete_category")
 def tool_delete_category(args, canvas_state, cw, ch):
-    from ..api.routes_project import delete_category
-
-    category_id = args.get("category_id")
-    try:
-        delete_category(category_id)
-    except HTTPException as exc:
-        if exc.status_code == 404:
-            return "Error: Folder ID not found."
-        return _safe_api_error(exc, operation="delete the folder")
-    except ValidationError:
-        return "Error: The folder ID is invalid."
-
-    canvas_state.setdefault("__actions__", []).append({"action": "refresh_projects"})
-    return f"Folder ID {category_id} and all contents recursively deleted."
+    return _defer_saved_delete(args, canvas_state, kind="folder")
 
 
 @ToolRegistry.register("clear_canvas")
@@ -897,10 +929,12 @@ def tool_clear_canvas(args, canvas_state, cw, ch):
 
 @ToolRegistry.register("trigger_ui_action")
 def tool_trigger_ui_action(args, canvas_state, cw, ch):
+    if args.get("action") != "print":
+        return "Error: Unsupported UI action."
     canvas_state.setdefault("__actions__", []).append(
-        {"action": args.get("action"), "project_name": args.get("project_name")}
+        {"action": "print_review_required"}
     )
-    return f"Instructed UI to {args.get('action')}."
+    return "Confirmation required: Review the labels, copies and printer, then use Print in the app. The assistant has not sent a print job."
 
 
 def execute_tool(name: str, args: dict, canvas_state: dict) -> str:

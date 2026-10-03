@@ -602,11 +602,17 @@ def execute_manual_tools(req: ManualExecuteRequest):
         try:
             tool_name, arguments = _normalize_manual_tool_call(call)
             result = execute_tool(tool_name, arguments, canvas_state_copy)
+            status = "success"
+            if isinstance(result, str):
+                if result.startswith("Error:"):
+                    status = "error"
+                elif result.startswith("Confirmation required:"):
+                    status = "confirmation_required"
             results.append(
                 {
                     "index": index,
                     "tool": tool_name,
-                    "status": "success",
+                    "status": status,
                     "result": result,
                 }
             )

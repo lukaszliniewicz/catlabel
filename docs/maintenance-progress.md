@@ -565,3 +565,29 @@ spool/paper-stream additions are excluded from this acceptance. Locks are unchan
 [Admission/PDF receipt](reviews/2026-10-02/evidence/phase6-admission-pdf-cancellation-receipt.json).
 Whole-job spooling, code caches, broader performance and phase 7 remain active. No
 physical printer/provider call, foreign native acceptance or promotion occurred.
+
+Phase 5 separates assistant chat presentation, live-session ownership, external JSON
+flow, validated response boundaries and canvas application. Request identity includes
+document session/revision/page, conversation/reset epoch, mode and printer. Late or
+cancelled replies cannot apply canvas state, history or side effects. External prompts
+become stale when their captured context changes. Visual review awaits fresh capture
+and stops after three follow-ups. History deletion uses the existing confirmation
+dialog. Already-started server work may continue after client cancellation.
+
+AI deletion tools now only look up saved targets and request review through Projects
+→ Actions → Delete. No saved content is deleted by them. AI print requests show a
+review instruction; the user submits through the normal Print control. Manual tool
+errors, success and confirmation-required outcomes are distinct. Direct deletion
+routes still lack expected-state fences; this is not a claim that all deletion races
+are solved. Parent inspected the Luna backend implementation and all UI work.
+
+All 185 frontend tests in 34 files pass, including 19 assistant cases. The accepted
+backend snapshot passes 757 tests with one skip; the focused AI backend tests pass
+(7). Ten static categories are empty; clean build passes. Parent inspected the final
+compiled live/external drawers at390×843CSS pixels: Axe reports zero violations,
+retaining incomplete contrast. Native keyboard/pointer and live provider behavior
+remain unverified. The shipped27-file frontend matches the inspected build.
+[Assistant receipt](reviews/2026-10-02/evidence/phase5-ai-receipt.json).
+Stronger element typing, code caching, whole-job spooling, broader performance and
+phase7remain active. No physical printer/provider call, foreign native acceptance
+or external promotion occurred.
