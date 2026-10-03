@@ -523,3 +523,28 @@ locks are unchanged. [Owned decode receipt](reviews/2026-10-02/evidence/phase6-o
 Device admission before preparation, disconnect cancellation, whole-job spooling,
 PDF worker lifecycle and the broader performance matrix remain active. No physical
 printer/provider call, foreign native acceptance or external promotion occurred.
+
+Phase 5/6 separates CanvasPagePreview from its container and mounts HTML/canvas
+content near the scroll viewport, retaining the primary active page for editing.
+Secondary batch records have no item hit testing, transform, selection overlays
+or editing toolbar. Primary page headers provide named native editing and print/
+duplicate/delete controls. Selection handles now reattach when panning ends.
+
+All 166 frontend tests in33files pass, including four visibility/ownership cases
+and the pan reattachment regression; the final affected three interaction tests
+also pass. Final ten static categories are empty and a clean production build
+passes. Parent browser acceptance at390×843CSS pixels uses20identical text labels:
+the previous build mounts20stages; the new build mounts3at the same zoom/top view,
+5while viewing the middle with an offscreen active page, and4after selecting the
+visible page. Canvas backing pixels drop941780→141267at the matched top view.
+This is an85%resource-count reduction for that fixture, not heap/RSS or latency
+evidence. Full-resolution378×378PNG output matches byte-for-byte across builds
+and after scrolling, changing page and zoom. Axe reports zero violations while
+retaining an incomplete contrast result. Native keyboard/pointer acceptance remains
+unverified; developer DOM activation and unit semantics are distinct evidence.
+
+The shipped frontend matches the inspected artifact. [Preview receipt](reviews/2026-10-02/evidence/phase6-preview-receipt.json).
+Headers/placeholders remain mounted; inactive raster thumbnails, stronger typing,
+AI decomposition, backend admission/spooling, broader benchmarks and phase7remain
+active. No physical print/provider call, foreign native acceptance or external
+promotion occurred.

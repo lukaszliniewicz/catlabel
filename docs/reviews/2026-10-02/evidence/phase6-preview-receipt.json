@@ -1,0 +1,176 @@
+{
+  "source_parent": "a659422",
+  "accepted_at_utc": "2026-10-03T05:12:12.179607+00:00",
+  "scope": "Separated page previews; mount canvas/HTML content near viewport or for primary editing page; one primary-record transformer; pan selection reattachment",
+  "source_sha256": {
+    "frontend/src/components/CanvasArea.jsx": "3b73b902c7a85df61881eb5a209c18c757a92aa1edf16ab7f96853fb4b9360cc",
+    "frontend/src/components/CanvasPagePreview.jsx": "4c84f7ebfef82610dfded748294b52992f0678f8d2d01ffac9beb825366a9fe2",
+    "frontend/src/components/CanvasPagePreview.test.jsx": "d178bf67f40f4147d3aacb337e05975adf03b2f782420f668900d42e9d48ad0c",
+    "frontend/src/components/useCanvasInteractions.js": "a61fbec19d5c7f2ba7af1cde158e8ecc6c4d487076b2cdadcfa521d9b890024e",
+    "frontend/src/components/useCanvasInteractions.test.jsx": "ae40b13b541f383e560daf89c2218d008da89d5349f6d87256f5e1ef822c0d70"
+  },
+  "checks": {
+    "frontend_tests": 166,
+    "test_files": 33,
+    "final_affected_interaction_tests": 3,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "build": "passed; clean output directory",
+    "backend_tests": "745 with one skip in separate owned-decode receipt",
+    "advisories": "unchanged locks; prior zero-advisory receipt carried",
+    "diff_check": "passed",
+    "excluded": "Initial Hooks ref diagnostics in the new test harness were corrected; final scoped tests/lint/static passed."
+  },
+  "browser": {
+    "fixture": "20 labels, each containing the same toolbar-created default Text object; no database saves or hardware calls",
+    "baseline_build": "f2a4fe9 accepted artifact",
+    "viewport_css": [
+      390,
+      843
+    ],
+    "baseline": {
+      "backingPixels": 941780,
+      "canvases": 20,
+      "firstCanvas": [
+        [
+          217,
+          217
+        ]
+      ],
+      "stages": 20,
+      "viewport": [
+        390,
+        843
+      ]
+    },
+    "current": {
+      "initial": {
+        "backingPixels": 250563,
+        "canvases": 3,
+        "firstCanvas": [
+          [
+            289,
+            289
+          ]
+        ],
+        "stages": 3,
+        "viewport": [
+          390,
+          843
+        ]
+      },
+      "matchedZoomTop": {
+        "backingPixels": 141267,
+        "canvases": 3,
+        "firstCanvas": [
+          [
+            217,
+            217
+          ]
+        ],
+        "stages": 3,
+        "viewport": [
+          390,
+          843
+        ]
+      },
+      "middle": {
+        "active": "Edit label 20",
+        "backingPixels": 235445,
+        "canvases": 5,
+        "stages": 5
+      },
+      "editing": {
+        "active": "Edit label 10",
+        "backingPixels": 188356,
+        "canvases": 4,
+        "stages": 4
+      },
+      "returnTop": {
+        "active": "Edit label 1",
+        "backingPixels": 141267,
+        "canvases": 3,
+        "stages": 3
+      },
+      "captureExact": true,
+      "captureAfterScrollExact": true
+    },
+    "canvas_backing_pixel_reduction_at_matched_top_view": 0.85,
+    "axe": {
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "targets": [
+            [
+              "span[aria-live=\"polite\"]"
+            ]
+          ]
+        }
+      ],
+      "passes": 31,
+      "violations": []
+    },
+    "screenshot": "check-results/phase6-preview/previews-390.png",
+    "capture": {
+      "png_bytes": 5676,
+      "geometry": [
+        378,
+        378
+      ],
+      "baseline_sha256": "02e543b073b237c277808d45fc19214d567f2c98f3f1f6e9b419873147f7b409",
+      "current_sha256": "02e543b073b237c277808d45fc19214d567f2c98f3f1f6e9b419873147f7b409",
+      "exact_match_before_and_after_scroll_page_selection": true
+    },
+    "activation": "Developer DOM activation; native keyboard/pointer controller acceptance remains unverified"
+  },
+  "generated_frontend": {
+    "files": {
+      "assets/AIAssistant-Cxf5lcJT.js": "ae7e20a6c086ff4f9dc05d7f4110f8ed1092fc8e469f50c3427679c1764145ff",
+      "assets/AIConfigModal-CSydQwm1.js": "245e3d8f1b45c2e3825f50374aa9d35d5e28d49e2c9c94a70e7d911a7fac7c8c",
+      "assets/BatchPrintModal-DA2u5fKo.js": "42089e622c9739298f05ac6e15ca8d6767305fdefbd7e436160c09e64baea898",
+      "assets/DateToolModal-sQqR23vi.js": "25a1d33f8f955c767ff0f3374db8c7fa350734330b69aa40e24bf410420fe199",
+      "assets/HtmlPickerModal-CIVMJi4g.js": "992797739d772d42e0e46bda51b24dfd2810a910edb6428f7688a63e3cd220b1",
+      "assets/IconPicker-D2ULqFRX.js": "87103d9e71f83217ae7ec275f3494190feec97789c68c6bc2b192573eb8eb9b2",
+      "assets/LocalBatchRenderer-BWvxW3qu.js": "b16874143077f5ac806373d564192e1c24057d98ec017aca47f16473077f4eb6",
+      "assets/OnboardingWizard-C-ZnIf5e.js": "8137444601832288f5287d247a8eae6212afb5ac833f749cef88c0929c4180be",
+      "assets/TemplateWizardModal-CA22Gs1h.js": "781f01ed6c1f18d3e3fc2023fe6d926b72bbff973b5f47e939acbc3387b1aedd",
+      "assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+      "assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+      "assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+      "assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+      "assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+      "assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+      "assets/index-O7q3OjOU.js": "59dab2f13fbfb1fa632f3fa5e57a300eed60f60b0a64a1a960412255362c457c",
+      "assets/index-xDv-cPrP.css": "bae9ed044f3f3b024d9b80aa0f902c3dfd19f31ab3c5da4ee9178057b5a040e6",
+      "assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+      "assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+      "assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+      "assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+      "assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+      "assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+      "assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+      "index.html": "58ac461f12271456ec2d265be03bce22556c17d1e1baa8232841a43cf07ba61b",
+      "logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+    },
+    "file_count": 26,
+    "canonical_digest": "653fdaf8beefb0124fd29998b4e414f1856a308d4f17988eeb0abd11068bb7da",
+    "digest_format": "SHA256 of compact sorted relative-path-to-SHA256 JSON",
+    "matches_inspected_artifact": true
+  },
+  "limitations": [
+    "Stage count/backing pixels are measured; heap/RSS, p50/p95 and general latency improvement are not claimed.",
+    "Header/placeholder DOM stays mounted; inactive raster thumbnails and broader record/item matrix remain later work.",
+    "The active primary editing page remains mounted offscreen; secondary records never own hit testing or transforms.",
+    "Physical PD01/Niimbot and Windows/macOS native checks remain unverified; no provider or external promotion calls."
+  ]
+}

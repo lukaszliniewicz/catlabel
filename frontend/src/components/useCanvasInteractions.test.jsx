@@ -1,15 +1,19 @@
-import React, { act, useEffect } from 'react';
+import React, { act, useEffect, useImperativeHandle } from 'react';
 import { createRoot } from 'react-dom/client';
-import { beforeEach, afterEach, expect, test } from 'vitest';
+import { beforeEach, afterEach, expect, test, vi } from 'vitest';
 import useCanvasInteractions from './useCanvasInteractions';
 import { useStore } from '../store';
 let root, container, interactions;
 const original = useStore.getState();
-function Harness({ isPanning = false }) {
+function TransformerStub({ ref, transformer }) {
+  useImperativeHandle(ref, () => transformer, [transformer]);
+  return null;
+}
+function Harness({ isPanning = false, transformer }) {
   const state = useStore();
-  const current = useCanvasInteractions({ ...state, isPanning });
-  useEffect(() => { interactions = current; }, [current]);
-  return <output>{current.snapLines.length}</output>;
+  const { snapLines, trRef, handleDragMove, handleDragEnd, handleItemPointerDown } = useCanvasInteractions({ ...state, isPanning });
+  useEffect(() => { interactions = { snapLines, trRef, handleDragMove, handleDragEnd, handleItemPointerDown }; }, [snapLines, trRef, handleDragMove, handleDragEnd, handleItemPointerDown]);
+  return <><output>{snapLines.length}</output>{!isPanning && transformer && <TransformerStub ref={trRef} transformer={transformer} />}</>;
 }
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -39,4 +43,15 @@ test('pointer selection normalizes legacy pages and stays unchanged while pannin
   await act(() => root.render(<Harness isPanning />));
   await act(() => interactions.handleItemPointerDown({ evt: {} }, useStore.getState().items[0]));
   expect(useStore.getState().selectedIds).toEqual(['legacy']);
+});
+test('ending pan reattaches selection to the replacement transformer without a document edit', async () => {
+  useStore.setState({ selectedIds: ['legacy'] });
+  const node = {}, nodes = vi.fn(), batchDraw = vi.fn();
+  const transformer = { getStage: () => ({ findOne: () => node }), nodes, getLayer: () => ({ batchDraw }) };
+  await act(() => root.render(<Harness transformer={transformer} />));
+  expect(nodes).toHaveBeenCalledWith([node]); nodes.mockClear();
+  await act(() => root.render(<Harness transformer={transformer} isPanning />));
+  expect(nodes).not.toHaveBeenCalled();
+  await act(() => root.render(<Harness transformer={transformer} />));
+  expect(nodes).toHaveBeenCalledOnce(); expect(nodes).toHaveBeenCalledWith([node]);
 });

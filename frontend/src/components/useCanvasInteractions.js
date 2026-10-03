@@ -14,7 +14,7 @@ export default function useCanvasInteractions({ items, selectedIds, currentPage,
     const selectedNodes = selectedIds.map((id) => stage.findOne(`#node-${id}`)).filter(Boolean);
     trRef.current.nodes(selectedNodes);
     trRef.current.getLayer()?.batchDraw();
-  }, [selectedIds, currentPage, items]);
+  }, [selectedIds, currentPage, items, isPanning]);
 
   const getBoundingBox = useCallback((item) => {
     const w = item.width || 100;
