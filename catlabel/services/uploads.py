@@ -25,6 +25,7 @@ from ..core.paths import FONTS_DIRECTORY
 from ..core.resource_limits import (
     MAX_IMAGE_BYTES,
     MAX_PRINT_JOBS,
+    MAX_REQUEST_BYTES,
     MAX_UPLOAD_BYTES,
     ResourceLimitError,
     validate_image_budget,
@@ -33,6 +34,9 @@ from ..core.resource_limits import (
 _FONT_DIRECTORY = FONTS_DIRECTORY
 _FONT_PROMOTION_LOCK = threading.Lock()
 _PDF_SCALE = 203 / 72
+_PDF_RESPONSE_OVERHEAD_BYTES = 1024
+_PDF_DATA_URL_JSON_OVERHEAD_BYTES = 3
+_PDF_DATA_URL_PREFIX = "data:image/png;base64,"
 
 
 async def store_uploaded_font(file: UploadFile, engine: Engine) -> Font:
@@ -245,6 +249,17 @@ def _convert_uploaded_pdf_sync(data: bytes) -> list[str]:
                     pixel_width, pixel_height, pixels_so_far
                 )
 
+        response_bytes = 0
+        response_byte_limit = MAX_REQUEST_BYTES - _PDF_RESPONSE_OVERHEAD_BYTES
+        for page_index in range(page_count):
+            try:
+                page = document[page_index]
+            except Exception as exc:
+                raise _InvalidUploadedPDF from exc
+
+            with ExitStack() as page_stack:
+                page_stack.callback(page.close)
+
                 try:
                     bitmap = page.render(_PDF_SCALE)
                     page_stack.callback(bitmap.close)
@@ -264,8 +279,19 @@ def _convert_uploaded_pdf_sync(data: bytes) -> list[str]:
                     raise ResourceLimitError(
                         "Rendered PDF page exceeds the image limit."
                     )
+                base64_length = 4 * ((len(png_bytes) + 2) // 3)
+                data_url_length = len(_PDF_DATA_URL_PREFIX) + base64_length
+                next_response_bytes = (
+                    response_bytes + data_url_length + _PDF_DATA_URL_JSON_OVERHEAD_BYTES
+                )
+                if next_response_bytes > response_byte_limit:
+                    raise ResourceLimitError(
+                        "Converted PDF response exceeds the request size limit."
+                    )
+
                 encoded_png = base64.b64encode(png_bytes).decode("ascii")
-                images.append(f"data:image/png;base64,{encoded_png}")
+                images.append(f"{_PDF_DATA_URL_PREFIX}{encoded_png}")
+                response_bytes = next_response_bytes
 
     return images
 

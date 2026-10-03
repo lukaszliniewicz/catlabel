@@ -93,11 +93,22 @@ class PdfConverter(RasterConverter):
         except TypeError:
             bitmap = page.render(scale)
         to_pil = getattr(bitmap, "to_pil", None)
-        if callable(to_pil):
-            image = to_pil()
-            if isinstance(image, Image.Image):
-                return image
-        raise RuntimeError("pypdfium2 render did not return a PIL image")
+        source_image: object | None = None
+        try:
+            if callable(to_pil):
+                source_image = to_pil()
+                if isinstance(source_image, Image.Image):
+                    return source_image.copy()
+            raise RuntimeError("pypdfium2 render did not return a PIL image")
+        finally:
+            try:
+                close_source = getattr(source_image, "close", None)
+                if callable(close_source):
+                    close_source()
+            finally:
+                close_bitmap = getattr(bitmap, "close", None)
+                if callable(close_bitmap):
+                    close_bitmap()
 
     def _select_page_indexes(self, total_pages: int) -> Sequence[int]:
         selection = (self._page_selection or "").strip()
@@ -120,6 +131,12 @@ class PdfConverter(RasterConverter):
                     raise ValueError("PDF pages start at 1")
                 if start > end:
                     raise ValueError(f"Invalid PDF page range: {token}")
+                if start > total_pages:
+                    raise ValueError(f"PDF page {start} out of range (1-{total_pages})")
+                if end > total_pages:
+                    raise ValueError(
+                        f"PDF page {total_pages + 1} out of range (1-{total_pages})"
+                    )
                 requested.extend(range(start, end + 1))
                 continue
             if not token.isdigit():

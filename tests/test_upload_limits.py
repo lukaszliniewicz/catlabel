@@ -318,11 +318,46 @@ class UploadLimitsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(uploaded.read_sizes, [uploads.MAX_UPLOAD_BYTES + 1])
         self.assertEqual(uploaded.close_calls, 1)
 
+    async def test_valid_multipage_pdf_preserves_scaled_pixels_and_order(self) -> None:
+        first_page = FakePdfPage((1.1, 2.1))
+        second_page = FakePdfPage((2.1, 1.1))
+        document = FakePdfDocument([first_page, second_page])
+        uploaded = TrackingUploadFile("multipage.pdf", b"fake pdf")
+        with patch(
+            "catlabel.services.uploads.pdfium.PdfDocument",
+            return_value=document,
+        ):
+            images = await uploads.convert_uploaded_pdf(uploaded)
+
+        self.assertEqual(len(images), 2)
+        self.assertTrue(
+            all(image.startswith("data:image/png;base64,") for image in images)
+        )
+        expected_sizes = [(4, 6), (6, 4)]
+        for data_url, expected_size in zip(images, expected_sizes, strict=True):
+            png_bytes = base64.b64decode(data_url.split(",", 1)[1])
+            with PILImage.open(BytesIO(png_bytes)) as image:
+                self.assertEqual(image.size, expected_size)
+                self.assertEqual(
+                    [
+                        image.getpixel((x, y))
+                        for y in range(image.height)
+                        for x in range(image.width)
+                    ],
+                    [(255, 255, 255)] * (image.width * image.height),
+                )
+        self.assertEqual(first_page.render_scales, [uploads._PDF_SCALE])
+        self.assertEqual(second_page.render_scales, [uploads._PDF_SCALE])
+        self.assertEqual([first_page.close_calls, second_page.close_calls], [2, 2])
+        self.assertEqual(document.close_calls, 1)
+        self.assertEqual(uploaded.close_calls, 1)
+
     async def test_pdf_invalid_geometry_and_processing_errors_close_resources(
         self,
     ) -> None:
+        valid_page = FakePdfPage((1.1, 2.1))
         invalid_page = FakePdfPage((math.nan, 2.0))
-        invalid_document = FakePdfDocument([invalid_page])
+        invalid_document = FakePdfDocument([valid_page, invalid_page])
         invalid_upload = TrackingUploadFile("invalid.pdf", b"fake pdf")
         with patch(
             "catlabel.services.uploads.pdfium.PdfDocument",
@@ -335,8 +370,12 @@ class UploadLimitsTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(error.detail, "Invalid PDF file.")
         self.assertEqual(invalid_document.close_calls, 1)
-        self.assertEqual(invalid_page.close_calls, 1)
-        self.assertEqual(invalid_page.render_scales, [])
+        self.assertEqual([valid_page.close_calls, invalid_page.close_calls], [1, 1])
+        self.assertEqual(
+            [valid_page.render_scales, invalid_page.render_scales], [[], []]
+        )
+        self.assertIsNone(valid_page.bitmap)
+        self.assertIsNone(invalid_page.bitmap)
         self.assertEqual(invalid_upload.close_calls, 1)
 
         failed_page = FakePdfPage((1.1, 2.1), fail_render=True)
@@ -357,7 +396,7 @@ class UploadLimitsTests(unittest.IsolatedAsyncioTestCase):
                 status=400,
             )
         self.assertEqual(failed_document.close_calls, 1)
-        self.assertEqual(failed_page.close_calls, 1)
+        self.assertEqual(failed_page.close_calls, 2)
         self.assertEqual(failed_page.render_scales, [203 / 72])
         self.assertEqual(close_image.call_count, 0)
         self.assertEqual(failed_upload.close_calls, 1)
@@ -395,7 +434,7 @@ class UploadLimitsTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(page.bitmap)
         assert page.bitmap is not None
         self.assertEqual(page.bitmap.close_calls, 1)
-        self.assertEqual(page.close_calls, 1)
+        self.assertEqual(page.close_calls, 2)
         self.assertEqual(document.close_calls, 1)
         self.assertEqual(len(closed_images), 2)
         self.assertEqual(uploaded.close_calls, 1)
@@ -448,12 +487,14 @@ class UploadLimitsTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(page.bitmap)
         assert page.bitmap is not None
         self.assertEqual(page.bitmap.close_calls, 1)
-        self.assertEqual(page.close_calls, 1)
+        self.assertEqual(page.close_calls, 2)
         self.assertEqual(document.close_calls, 1)
         self.assertEqual(len(closed_images), 2)
         self.assertEqual(upload.close_calls, 1)
 
-    async def test_pdf_cumulative_pixel_budget_stops_before_next_bitmap(self) -> None:
+    async def test_pdf_cumulative_pixel_budget_preflights_before_any_bitmap(
+        self,
+    ) -> None:
         first_page = FakePdfPage((1.1, 2.1))
         second_page = FakePdfPage((1.1, 2.1))
         document = FakePdfDocument([first_page, second_page])
@@ -471,13 +512,55 @@ class UploadLimitsTests(unittest.IsolatedAsyncioTestCase):
                 status=413,
             )
 
-        self.assertEqual(first_page.render_scales, [203 / 72])
-        self.assertIsNotNone(first_page.bitmap)
-        assert first_page.bitmap is not None
-        self.assertEqual(first_page.bitmap.close_calls, 1)
+        self.assertEqual(first_page.render_scales, [])
+        self.assertIsNone(first_page.bitmap)
         self.assertEqual(second_page.render_scales, [])
         self.assertIsNone(second_page.bitmap)
         self.assertEqual([first_page.close_calls, second_page.close_calls], [1, 1])
+        self.assertEqual(document.close_calls, 1)
+        self.assertEqual(uploaded.close_calls, 1)
+
+    async def test_pdf_aggregate_encoded_limit_rejects_before_base64_and_closes(
+        self,
+    ) -> None:
+        pages = [FakePdfPage((1.1, 2.1)), FakePdfPage((1.1, 2.1))]
+        document = FakePdfDocument(pages)
+        uploaded = TrackingUploadFile("aggregate-response.pdf", b"fake pdf")
+        png_bytes = b"png!"
+        entry_size = len("data:image/png;base64,") + 4 * ((len(png_bytes) + 2) // 3) + 3
+
+        def write_fixed_png(
+            image: PILImage.Image, stream: BytesIO, *, format: str
+        ) -> None:
+            del image, format
+            stream.write(png_bytes)
+
+        with (
+            patch(
+                "catlabel.services.uploads.pdfium.PdfDocument",
+                return_value=document,
+            ),
+            patch.object(uploads, "MAX_REQUEST_BYTES", 1024 + entry_size),
+            patch.object(PILImage.Image, "save", write_fixed_png),
+            patch.object(
+                uploads.base64,
+                "b64encode",
+                wraps=base64.b64encode,
+            ) as encode,
+        ):
+            error = await self._assert_upload_error(
+                uploads.convert_uploaded_pdf,
+                uploaded,
+                status=413,
+            )
+
+        self.assertEqual(error.detail, "Uploaded PDF exceeds a processing limit.")
+        self.assertEqual(encode.call_count, 1)
+        self.assertEqual([page.render_scales for page in pages], [[203 / 72]] * 2)
+        self.assertEqual(
+            [page.bitmap.close_calls for page in pages if page.bitmap], [1, 1]
+        )
+        self.assertEqual([page.close_calls for page in pages], [2, 2])
         self.assertEqual(document.close_calls, 1)
         self.assertEqual(uploaded.close_calls, 1)
 
