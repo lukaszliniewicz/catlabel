@@ -1,0 +1,83 @@
+{
+  "source_parent": "08ec12ef6698e35226a504bc4b9db9816abacb5b",
+  "scope": "Optional onboarding, searchable offline models and explicit discovery",
+  "source_sha256": {
+    "frontend/src/App.jsx": "c0ae4cffbcbc5275a326aa2413cc8db468d841c066dff3da030cdaa5ff380614",
+    "frontend/src/components/OnboardingWizard.jsx": "3a4e5df0902c107312dd0a1da0b3e2669aff15b9328a05442287fcfc63faf6b2",
+    "frontend/src/components/PrinterDropdown.jsx": "183884a123d69063fb7d4485c90638dd055a4e2cc507584c4cdd1db86591a464",
+    "frontend/src/components/Sidebar.jsx": "c9dcc0ece08bab73bd71861c9e761074b68779614dd1ee9872d4938c9876521b",
+    "frontend/src/state/slices/batch.js": "7c456a6382f9918d15ad4f765e17385b7d09350d3564c7a720cf35ceb68bc9ea",
+    "frontend/src/state/slices/printer.js": "9245924f8bc4166a9722986859ed8b2279a7ba540bce017ead791609a58bec66",
+    "frontend/src/state/slices/ui.js": "09feff44d31390c15b6e1224939702c14e40a4e93596697595ade55bce9e4917",
+    "frontend/src/components/OnboardingWizard.test.jsx": "19be00703d4c467dbf2e7c36c57f25f94de0ea6966b5c8f9025c78a30ef942e1"
+  },
+  "checks": {
+    "frontend_tests": 59,
+    "files": 11,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "production_build_seconds": 1.08,
+    "backend": "No backend changes; carry rendering foundation and Phomemo cleanup receipts",
+    "advisories": "Locks unchanged; preceding zero-advisory receipt carries forward"
+  },
+  "browser": {
+    "accepted": [
+      "Start designing exits welcome without printer/AI setup",
+      "Printer setup can be reopened",
+      "PD01 search shows 48.8 mm, v5g, 200 DPI",
+      "Offline PD01 selection persists in a fresh page",
+      "Sidebar physical-print control disabled for offline choice"
+    ],
+    "screenshots": [
+      "check-results/phase5-onboarding/pd01-search.png",
+      "check-results/phase5-onboarding/persisted-profile.png"
+    ],
+    "limitations": [
+      "Native confirmation stalled controller; saved document switching remains unit-tested pending in-app guard",
+      "Per-page print click produced no observable alert in controller; offline rejection is unit-tested",
+      "Responsive/accessibility acceptance remains",
+      "No physical scan, printer or provider call"
+    ]
+  },
+  "frontend": {
+    "sha256": "2cf6aabd99f480302f8b33538362be6fe96a20a9c2fb71b4414efac17c2d917f",
+    "files": {
+      "frontend/dist/assets/AIAssistant-CoHaBq7_.js": "2a9b1e01d0072c156ca1eabab9098b1f2852e333518065c6a5778102317c373d",
+      "frontend/dist/assets/AIConfigModal-q9LZB-r2.js": "a5fbb88ae0c8ec0b8c0c3ece10d3e072badaffb7a9d3d4698847f0ba4abfa9d5",
+      "frontend/dist/assets/BatchPrintModal-u0JKQzt9.js": "bb56aa41e0402c27e5b315639f787f3235c12a65b626cf80b6e8a7397e943b22",
+      "frontend/dist/assets/DateToolModal-BSI_p8GC.js": "6deaf0ae8d833424a1afa10d006207415e1c0c296adb2aff1d54eaf24c434b52",
+      "frontend/dist/assets/HtmlPickerModal-BLRGLdmN.js": "17c9e6c62bf8a57f6fe7f470a01a21e33dd094c3901207ab51ff10ae78871b14",
+      "frontend/dist/assets/IconPicker-CoNNBAjO.js": "84f4250861de659b4421a952974488356cba79aede9dbb0b02d350192912f1ac",
+      "frontend/dist/assets/LocalBatchRenderer-CVocc97U.js": "52e6aa309a755ccbe5ba589f321caeaaa8ef269a7837e72a54d6ce140859420f",
+      "frontend/dist/assets/OnboardingWizard-BxF2076p.js": "787f4d6090f18d01a6628252d2d36978fb78a71f3814d6c8b2a1061ee36eb56e",
+      "frontend/dist/assets/TemplateWizardModal-C7wOC4_Z.js": "bb4b7a8517a664b177d592845e153afc705ce29b1752ffc9d46cb831035feee2",
+      "frontend/dist/assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+      "frontend/dist/assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+      "frontend/dist/assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+      "frontend/dist/assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+      "frontend/dist/assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+      "frontend/dist/assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+      "frontend/dist/assets/index-BCRGtYtT.css": "694408941c1252ac37342aaebeb252600ff554e805c801bcc3578f791e1f26bc",
+      "frontend/dist/assets/index-C0KMhMfC.js": "cc4dc111962a516392d22b7c4f7beb54b2f3eb8b84e85bfbf8efcc0e3a0047b9",
+      "frontend/dist/assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+      "frontend/dist/assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+      "frontend/dist/assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+      "frontend/dist/assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+      "frontend/dist/assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+      "frontend/dist/assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+      "frontend/dist/assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+      "frontend/dist/index.html": "1b231727a7f7596531a21bc28f54d9e300bd611411bb98797a376f3f25280d5b",
+      "frontend/dist/logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+    }
+  }
+}

@@ -23,20 +23,34 @@ export const createPrinterSlice = (set, get) => ({
   addManualPrinter: (printer) => set((state) => {
     const newManual = [...state.manualPrinters.filter((p) => p.address !== printer.address), printer];
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('catlabel_manual_printers', JSON.stringify(newManual));
+      try { window.localStorage.setItem('catlabel_manual_printers', JSON.stringify(newManual)); }
+      catch { return { manualPrinters: newManual, apiError: 'Offline profiles are available for this session, but browser storage could not retain them.' }; }
     }
     return { manualPrinters: newManual };
   }),
   removeManualPrinter: (address) => set((state) => {
     const newManual = state.manualPrinters.filter((p) => p.address !== address);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('catlabel_manual_printers', JSON.stringify(newManual));
+      try { window.localStorage.setItem('catlabel_manual_printers', JSON.stringify(newManual)); }
+      catch { return { manualPrinters: newManual, apiError: 'Offline profiles are available for this session, but browser storage could not retain them.' }; }
     }
     return { manualPrinters: newManual };
   }),
+  restorePrinterChoice: async () => {
+    if (get().selectedPrinter) return;
+    try {
+      const address = localStorage.getItem('catlabel_selected_offline_profile_v1');
+      const profile = get().manualPrinters.find(printer => printer.address === address && printer.transport === 'offline');
+      if (profile) await get().setSelectedPrinter(profile.address, profile);
+    } catch (error) { set({ apiError: errorMessage(error, 'The remembered offline profile could not be restored.') }); }
+  },
   printerProfile: { speed: 0, energy: 0, feed_lines: 50, paper_mode: null },
   setSelectedPrinter: async (mac, info) => {
     const requestId = ++printerProfileRequestId;
+    try {
+      if (info?.transport === 'offline') localStorage.setItem('catlabel_selected_offline_profile_v1', mac);
+      else if (!mac) localStorage.removeItem('catlabel_selected_offline_profile_v1');
+    } catch { set({ apiError: 'This printer choice could not be remembered in browser storage.' }); }
     const currentState = get();
     let newW = currentState.canvasWidth;
     let newH = currentState.canvasHeight;

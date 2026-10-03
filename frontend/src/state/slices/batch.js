@@ -34,12 +34,12 @@ export const createBatchSlice = (set, get) => ({
     }
 
     if (!state.selectedPrinter) {
-      alert("Please select a printer first!");
+      set({ apiError: 'Select an available printer before printing. You can keep designing without one.' });
       return;
     }
 
     if (state.selectedPrinterInfo?.transport === 'offline') {
-      alert("This is an offline/manual printer profile. Scan and select a connected printer before printing.");
+      set({ apiError: 'This is an offline profile. Scan and select the physical printer before printing.' });
       return;
     }
 
@@ -54,10 +54,8 @@ export const createBatchSlice = (set, get) => ({
       pages: normalizedPageIndices.length
     });
     if (printJobCount > MAX_PRINT_JOBS) {
-      alert(
-        `This print request would create ${printJobCount.toLocaleString()} labels. `
-        + `Reduce pages, records, or copies to ${MAX_PRINT_JOBS.toLocaleString()} jobs or fewer.`
-      );
+      set({ apiError: `This print request would create ${printJobCount.toLocaleString()} labels. `
+        + `Reduce pages, records, or copies to ${MAX_PRINT_JOBS.toLocaleString()} jobs or fewer.` });
       return;
     }
     const renderPixels = getRenderPixelCount({
@@ -66,10 +64,8 @@ export const createBatchSlice = (set, get) => ({
       jobs: printJobCount
     });
     if (renderPixels > MAX_RENDER_PIXELS) {
-      alert(
-        'This print request is too large to render safely in memory. '
-        + 'Reduce the label dimensions, pages, records, or copies and try again.'
-      );
+      set({ apiError: 'This print request is too large to render safely in memory. '
+        + 'Reduce the label dimensions, pages, records, or copies and try again.' });
       return;
     }
 
@@ -116,7 +112,7 @@ export const createBatchSlice = (set, get) => ({
 
     if (renderError) {
       set({ pendingPrintJob: null });
-      alert(`Failed to prepare labels for printing:\n\n${renderError.message || renderError}`);
+      set({ apiError: `Could not prepare labels for printing: ${renderError.message || renderError}` });
       return;
     }
 
@@ -142,7 +138,7 @@ export const createBatchSlice = (set, get) => ({
     } catch (e) {
       console.error(e);
       const message = await describePrintError(e);
-      alert(`Failed to print:\n\n${message}`);
+      set({ apiError: `Print failed: ${message}` });
     } finally {
       set({ isPrinting: false, pendingPrintJob: null });
     }

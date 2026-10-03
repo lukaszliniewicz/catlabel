@@ -15,7 +15,8 @@ function App() {
   const theme = useStore((state) => state.theme);
   const fetchFonts = useStore((state) => state.fetchFonts);
   const settingsLoaded = useStore((state) => state.settingsLoaded);
-  const settings = useStore((state) => state.settings);
+  const onboardingComplete = useStore(state => state.onboardingComplete);
+  const showOnboarding = useStore(state => state.showOnboarding);
   const showAiConfig = useStore((state) => state.showAiConfig);
   const setShowAiConfig = useStore((state) => state.setShowAiConfig);
   const isPreparingForPrint = useStore((state) => state.isPreparingForPrint);
@@ -25,7 +26,14 @@ function App() {
   const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
 
   useEffect(() => {
-    if (!isHeadless) fetchFonts();
+    if (!isHeadless) {
+      fetchFonts();
+      const state = useStore.getState();
+      state.fetchProjects();
+      state.fetchAddresses();
+      state.fetchPresets();
+      state.fetchSettings().then(() => state.restorePrinterChoice());
+    }
   }, [fetchFonts, isHeadless]);
 
   useEffect(() => {
@@ -61,7 +69,7 @@ function App() {
       )}
       <Suspense fallback={null}>
         {isPreparingForPrint && <LocalBatchRenderer onComplete={onLocalRenderComplete} />}
-        {settingsLoaded && (!settings.intended_media_type || settings.intended_media_type === 'unknown') && <OnboardingWizard />}
+        {settingsLoaded && (!onboardingComplete || showOnboarding) && <OnboardingWizard />}
         {showAiConfig && <AIConfigModal onClose={() => setShowAiConfig(false)} />}
       </Suspense>
     </div>

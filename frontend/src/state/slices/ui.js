@@ -1,4 +1,18 @@
+const readOnboardingComplete = () => {
+  try { return typeof window !== 'undefined' && localStorage.getItem('catlabel_onboarding_completed_v1') === '1'; }
+  catch { return false; }
+};
+
 export const createUiSlice = (set) => ({
+  onboardingComplete: readOnboardingComplete(),
+  showOnboarding: false,
+  setShowOnboarding: (value) => set({ showOnboarding: value }),
+  completeOnboarding: () => {
+    let apiError = '';
+    try { localStorage.setItem('catlabel_onboarding_completed_v1', '1'); }
+    catch { apiError = 'Setup is complete for this session. Browser storage is unavailable, so the welcome screen may return after restart.'; }
+    set({ onboardingComplete: true, showOnboarding: false, ...(apiError ? { apiError } : {}) });
+  },
   zoomScale: 1,
   showAiConfig: false,
   setShowAiConfig: (val) => set({ showAiConfig: val }),

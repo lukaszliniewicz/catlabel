@@ -2,34 +2,40 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Trash2, Printer as PrinterIcon } from 'lucide-react';
 import { useStore } from '../store';
 
-export default function PrinterDropdown({ printers, manualPrinters, selectedPrinter, onSelect }) {
+export default function PrinterDropdown({ printers, manualPrinters, selectedPrinter, selectedPrinterInfo, onSelect }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const removeManualPrinter = useStore((state) => state.removeManualPrinter);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      if (event.key === 'Escape') setIsOpen(false);
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleClickOutside);
+    };
   }, []);
 
   const allPrinters = [...printers, ...manualPrinters];
-  const selectedData = allPrinters.find((p) => p.address === selectedPrinter);
+  const selectedData = allPrinters.find((p) => p.address === selectedPrinter) || selectedPrinterInfo;
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <button
+        type="button" aria-expanded={isOpen} aria-label="Choose printer or offline profile"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 p-2.5 text-xs text-neutral-900 dark:text-white transition-colors hover:border-blue-500"
       >
         <div className="flex items-center gap-2 truncate">
           {selectedData ? (
             <>
-              <div className={`w-2 h-2 rounded-full shrink-0 ${selectedData.transport === 'offline' ? 'bg-neutral-300 dark:bg-neutral-600' : 'bg-green-500'}`} />
+              <div className={`w-2 h-2 rounded-full shrink-0 ${selectedData.transport === 'offline' ? 'bg-neutral-300 dark:bg-neutral-600' : 'bg-blue-500'}`} />
               <span className="truncate font-bold uppercase tracking-wider">
                 {selectedData.name || selectedData.display_address} ({selectedData.width_mm}mm)
               </span>
@@ -48,7 +54,7 @@ export default function PrinterDropdown({ printers, manualPrinters, selectedPrin
             {printers.length > 0 && (
               <div className="py-1">
                 <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-widest text-neutral-400 dark:text-neutral-500 bg-neutral-50 dark:bg-neutral-950/50">
-                  Bluetooth Printers
+                  Discovered Bluetooth Devices
                 </div>
                 {printers.map((p) => (
                   <button
@@ -57,7 +63,7 @@ export default function PrinterDropdown({ printers, manualPrinters, selectedPrin
                     className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-left transition-colors ${selectedPrinter === p.address ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200'}`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <div className="w-2 h-2 rounded-full shrink-0 bg-green-500" />
+                      <div className="w-2 h-2 rounded-full shrink-0 bg-blue-500" />
                       <span className="truncate font-bold uppercase tracking-wider">{p.name || p.display_address} ({p.width_mm}mm)</span>
                     </div>
                   </button>
@@ -89,7 +95,7 @@ export default function PrinterDropdown({ printers, manualPrinters, selectedPrin
                         if (selectedPrinter === p.address) onSelect('', null);
                       }}
                       className="p-1.5 text-neutral-400 hover:text-red-500 transition-colors rounded-sm shrink-0 ml-2"
-                      title="Delete Profile"
+                      aria-label={`Delete offline profile ${p.name}`} title="Delete Profile"
                     >
                       <Trash2 size={14} />
                     </button>

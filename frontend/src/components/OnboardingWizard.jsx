@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
 import { useDialogAccessibility } from '../utils/useDialogAccessibility';
@@ -6,22 +6,23 @@ import { apiFetch } from '../utils/apiClient';
 import { Printer, Sparkles, Search, ChevronRight, Loader2, Bot, ArrowLeft, CheckCircle, Globe, Tag } from 'lucide-react';
 
 export default function OnboardingWizard() {
-  const dialogRef = useDialogAccessibility(null, { closeOnEscape: false });
+  const apiError = useStore(state => state.apiError);
+  const clearApiError = useStore(state => state.clearApiError);
+  const completeOnboarding = useStore(state => state.completeOnboarding);
+  const dialogRef = useDialogAccessibility(completeOnboarding);
   const {
-    updateSettingsAPI,
-    settings,
     selectedPrinterInfo,
     setSelectedPrinter,
     addManualPrinter,
     setShowAiConfig
   } = useStore(useShallow((state) => ({
-    updateSettingsAPI: state.updateSettingsAPI, settings: state.settings,
     selectedPrinterInfo: state.selectedPrinterInfo, setSelectedPrinter: state.setSelectedPrinter,
     addManualPrinter: state.addManualPrinter, setShowAiConfig: state.setShowAiConfig
   })));
 
   const [step, setStep] = useState(1);
   const [isScanning, setIsScanning] = useState(false);
+  const scanController = useRef(null);
   const [hasScanned, setHasScanned] = useState(false);
   const [scannedPrinters, setScannedPrinters] = useState([]);
   
@@ -29,37 +30,47 @@ export default function OnboardingWizard() {
   const [manualStep, setManualStep] = useState('off'); // 'off', 'vendor', 'model', 'added'
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [supportedModels, setSupportedModels] = useState([]);
+  const [modelSearch, setModelSearch] = useState('');
 
   useEffect(() => {
-    apiFetch('/api/printers/supported_models')
+    const controller = new AbortController();
+    apiFetch('/api/printers/supported_models', { signal: controller.signal })
       .then((res) => res.json())
-      .then((data) => setSupportedModels(data.models || []))
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        if (!Array.isArray(data.models)) throw new Error('Printer model data is malformed. Try reopening setup.');
+        setSupportedModels(data.models);
+      })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         console.error('Failed to fetch supported printer models', error);
         useStore.setState({ apiError: error.message || 'Failed to load supported printer models.' });
       });
+    return () => { controller.abort(); scanController.current?.abort(); };
   }, []);
 
-  const finishOnboarding = (mediaTypeAssumption) => {
-    updateSettingsAPI({ ...settings, intended_media_type: mediaTypeAssumption });
-  };
+  const finishOnboarding = () => completeOnboarding();
 
   const handleScan = async () => {
+    scanController.current?.abort();
+    const controller = new AbortController();
+    scanController.current = controller;
     setIsScanning(true);
     setHasScanned(true);
     setManualStep('off');
 
     try {
-      const res = await apiFetch('/api/printers/scan');
+      const res = await apiFetch('/api/printers/scan', { signal: controller.signal });
       const data = await res.json();
-      setScannedPrinters(data.devices || []);
+      if (!controller.signal.aborted) setScannedPrinters(data.devices || []);
     } catch (e) {
+      if (controller.signal.aborted) return;
       console.error(e);
       useStore.setState({ apiError: e.message || 'Failed to scan for printers.' });
       // If scan crashes, gently encourage manual mode
       setManualStep('vendor');
     } finally {
-      setIsScanning(false);
+      if (!controller.signal.aborted) setIsScanning(false);
     }
   };
 
@@ -95,19 +106,22 @@ export default function OnboardingWizard() {
 
   const getGroupedModels = () => {
     if (!selectedVendor) return {};
-    const vendorModels = supportedModels.filter(m => m.vendor === selectedVendor);
+    const vendorModels = supportedModels.filter(m => m.vendor === selectedVendor &&
+      [m.name, m.model_id, m.protocol_family, m.protocol_variant, m.width_mm].join(' ').toLowerCase().includes(modelSearch.trim().toLowerCase()));
     
     const groups = {
       'Small Labels (12-15mm)': [],
       'Medium Labels (25-30mm)': [],
       'Standard / 2-inch (48-58mm)': [],
       'Large / 3-inch (72-80mm)': [],
-      'Extra Large / 4-inch (100mm+)': []
+      'Extra Large / 4-inch (100mm+)': [],
+      'Geometry unavailable': []
     };
 
     vendorModels.forEach(m => {
-      const w = m.width_mm || 48;
-      if (w <= 15) groups['Small Labels (12-15mm)'].push(m);
+      const w = Number(m.width_mm);
+      if (!(w > 0)) groups['Geometry unavailable'].push(m);
+      else if (w <= 15) groups['Small Labels (12-15mm)'].push(m);
       else if (w <= 30) groups['Medium Labels (25-30mm)'].push(m);
       else if (w <= 58) groups['Standard / 2-inch (48-58mm)'].push(m);
       else if (w <= 80) groups['Large / 3-inch (72-80mm)'].push(m);
@@ -122,16 +136,15 @@ export default function OnboardingWizard() {
     return groups;
   };
 
-  const selectedMediaType = selectedPrinterInfo?.media_type || 'continuous';
 
   return (
     <div className="fixed inset-0 bg-black/60 z-100 flex items-center justify-center p-4 backdrop-blur-xs">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Welcome setup" tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800 overflow-hidden min-h-[480px]">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Welcome setup" tabIndex={-1} className="bg-white dark:bg-neutral-950 w-full max-w-3xl rounded-xl shadow-2xl flex flex-col border border-neutral-200 dark:border-neutral-800 overflow-y-auto max-h-[90dvh]">
 
         <div className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 p-6 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-2xl font-serif tracking-tight dark:text-white">Welcome to CatLabel Studio</h2>
-            <p className="text-sm text-neutral-500 mt-1">Let's configure your workspace.</p>
+            <p className="text-sm text-neutral-500 mt-1">Printer and AI setup are optional. You can start designing immediately.</p>
           </div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
             <span className={step >= 1 ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}>1. Printer</span>
@@ -252,7 +265,7 @@ export default function OnboardingWizard() {
                  </div>
                  
                  <div className="mt-6 text-[10px] text-neutral-500 leading-relaxed bg-neutral-50 dark:bg-neutral-900/50 p-3 rounded-sm border border-neutral-100 dark:border-neutral-800">
-                    <strong>Hint:</strong> If you bought a generic "Mini Printer" from AliExpress that looks like a cat, it almost always uses the <strong>Generic Chinese</strong> profile (Model: GT01).
+                    <strong>Hint:</strong> Match the advertised Bluetooth name and exact model on the printer label. Similar-looking printers may use different protocols; do not guess from the case alone.
                  </div>
               </div>
             )}
@@ -268,7 +281,12 @@ export default function OnboardingWizard() {
                    <div className="bg-neutral-50 dark:bg-neutral-900 px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 text-xs font-bold uppercase tracking-widest text-neutral-500 shrink-0">
                      Select Specific Model
                    </div>
+                   <label className="px-4 py-3 text-sm" htmlFor="printer-model-search">Search model, protocol or width
+                     <input id="printer-model-search" type="search" value={modelSearch} onChange={event => setModelSearch(event.target.value)} className="mt-2 w-full border border-neutral-400 dark:border-neutral-600 bg-transparent p-2" />
+                   </label>
+                   <p className="px-4 pb-3 text-xs text-neutral-600 dark:text-neutral-300">Offline profiles configure layout. Device transport and availability are determined by scanning. If your exact model is missing or ambiguous, keep designing offline and check its identity before printing.</p>
                    <div className="overflow-y-auto flex-1 bg-white dark:bg-neutral-950">
+                     {Object.keys(getGroupedModels()).length === 0 && <p className="p-4 text-sm" role="status">No exact matching profile. Try another search or keep designing without a printer.</p>}
                      {Object.entries(getGroupedModels()).map(([groupName, models]) => (
                        <div key={groupName}>
                          <div className="px-4 py-1.5 bg-neutral-100 dark:bg-neutral-900/50 text-[10px] font-bold uppercase tracking-widest text-neutral-400 border-y border-neutral-100 dark:border-neutral-800/50 sticky top-0 backdrop-blur-md">
@@ -283,7 +301,7 @@ export default function OnboardingWizard() {
                              >
                                <div>
                                  <div className="text-sm font-bold dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{m.name}</div>
-                                 <div className="text-[10px] text-neutral-500 mt-0.5">{m.media_type === 'continuous' ? 'Continuous Roll' : 'Pre-cut Labels'}</div>
+                                 <div className="text-[10px] text-neutral-500 mt-0.5">{m.width_mm ?? '?'} mm · {m.media_type === 'continuous' ? 'Continuous roll' : m.media_type === 'pre-cut' ? 'Pre-cut labels' : 'Media unknown'} · {m.protocol_family || 'Protocol unknown'}{m.protocol_variant ? ` / ${m.protocol_variant}` : ''}</div>
                                </div>
                                <div className="text-[10px] font-bold tracking-widest uppercase text-neutral-400 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-2 py-1 rounded-sm">
                                  {m.dpi} DPI
@@ -329,6 +347,7 @@ export default function OnboardingWizard() {
               <Bot size={32} />
             </div>
             <div>
+              {selectedPrinterInfo && <p className="mb-4 text-sm">Selected: {selectedPrinterInfo.name} — {selectedPrinterInfo.transport === 'offline' ? 'offline profile' : 'discovered device, connects when printing'}</p>}
               <h3 className="text-xl font-serif dark:text-white mb-2">Configure Your AI Layout Assistant</h3>
               <p className="text-sm text-neutral-500 max-w-md mx-auto leading-relaxed mb-4">
                 CatLabel includes an advanced AI Agent that can instantly design labels, configure permutations, and inject variables based on plain English requests.
@@ -341,14 +360,14 @@ export default function OnboardingWizard() {
 
             <div className="flex w-full gap-4 mt-4 max-w-md">
               <button
-                onClick={() => finishOnboarding(selectedMediaType)}
+                onClick={() => finishOnboarding()}
                 className="flex-1 py-3 text-xs uppercase font-bold tracking-widest border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
               >
                 Skip For Now
               </button>
               <button
                 onClick={() => {
-                  finishOnboarding(selectedMediaType);
+                  finishOnboarding();
                   setShowAiConfig(true);
                 }}
                 className="flex-2 py-3 bg-blue-600 text-white text-xs uppercase font-bold tracking-widest hover:bg-blue-700 flex justify-center items-center gap-2 transition-colors"
@@ -359,6 +378,12 @@ export default function OnboardingWizard() {
           </div>
         )}
 
+        {apiError && <div role="alert" className="mx-4 mb-4 border border-red-400 p-3 text-sm text-red-800 dark:text-red-200">
+          <p>{apiError}</p><button type="button" onClick={clearApiError} className="mt-2 underline">Dismiss setup error</button>
+        </div>}
+        <div className="shrink-0 border-t border-neutral-200 dark:border-neutral-800 p-4 flex justify-end">
+          <button type="button" onClick={completeOnboarding} className="border border-blue-500 px-4 py-3 text-sm font-semibold text-blue-700 dark:text-blue-300">Start designing</button>
+        </div>
       </div>
     </div>
   );

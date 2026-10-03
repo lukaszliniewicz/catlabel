@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
 import ProjectTree from './ProjectTree';
@@ -38,7 +38,7 @@ function scanPrinters(signal) {
 
 function reportScanError(error) {
   console.error(error);
-  alert('Failed to scan for printers. Is the backend running on port 8000?');
+  useStore.setState({ apiError: error.message || 'Printer scan failed. Check Bluetooth access and try again, or choose an offline profile.' });
 }
 
 export default function Sidebar() {
@@ -67,50 +67,31 @@ export default function Sidebar() {
   })));
 
   const [printers, setPrinters] = useState([]);
-  const [isScanning, setIsScanning] = useState(true);
+  const [isScanning, setIsScanning] = useState(false);
+  const scanController = useRef(null);
+  const selectedPrinterInfo = useStore(state => state.selectedPrinterInfo);
+  const setShowOnboarding = useStore(state => state.setShowOnboarding);
   const [showProjects, setShowProjects] = useState(true);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [showPresetPicker, setShowPresetPicker] = useState(false);
   const activePreset = useStore((state) => state.getActivePreset());
 
-  const applyScan = useCallback(async (data) => {
-    setPrinters(data.devices);
-    if (data.devices.length > 0 && !useStore.getState().selectedPrinter) {
-      await setSelectedPrinter(data.devices[0].address, data.devices[0]);
-    }
-  }, [setSelectedPrinter]);
-
   const handleScan = async () => {
+    scanController.current?.abort();
+    const controller = new AbortController();
+    scanController.current = controller;
     setIsScanning(true);
     try {
-      await applyScan(await scanPrinters());
+      const data = await scanPrinters(controller.signal);
+      if (!controller.signal.aborted) setPrinters(data.devices);
     } catch (error) {
-      reportScanError(error);
+      if (!controller.signal.aborted) reportScanError(error);
     } finally {
-      setIsScanning(false);
+      if (!controller.signal.aborted) setIsScanning(false);
     }
   };
 
-  useEffect(() => {
-    if (window.matchMedia('(max-width: 767px)').matches && !useStore.getState().isSidebarCollapsed) {
-      useStore.getState().toggleSidebar();
-    }
-    useStore.getState().fetchProjects();
-    useStore.getState().fetchSettings();
-    useStore.getState().fetchAddresses();
-    useStore.getState().fetchPresets();
-
-    const controller = new AbortController();
-    let active = true;
-    scanPrinters(controller.signal)
-      .then((data) => { if (active) return applyScan(data); })
-      .catch((error) => { if (active) reportScanError(error); })
-      .finally(() => { if (active) setIsScanning(false); });
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [applyScan]);
+  useEffect(() => () => scanController.current?.abort(), []);
 
   const pageIndices = getPageIndices({ items, pageLayouts, currentPage });
   const pageCount = pageIndices.length;
@@ -166,25 +147,35 @@ export default function Sidebar() {
 
           <SidebarButton collapsed={isSidebarCollapsed} icon={Wifi} disabled={isScanning} label={isScanning ? 'Scanning...' : 'Scan for Printers'} onClick={handleScan} />
 
-          {(printers.length > 0 || manualPrinters.length > 0) && (
+          <SidebarButton collapsed={false} icon={Printer} label="Printer setup" onClick={() => setShowOnboarding(true)} />
+
+          {(printers.length > 0 || manualPrinters.length > 0 || selectedPrinterInfo) && (
             <PrinterDropdown
               printers={printers}
               manualPrinters={manualPrinters}
               selectedPrinter={selectedPrinter}
+              selectedPrinterInfo={selectedPrinterInfo}
               onSelect={(mac, info) => {
                 setSelectedPrinter(mac, info);
               }}
             />
           )}
 
+          <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+            {selectedPrinterInfo?.transport === 'offline'
+              ? 'Offline profile: design and export now. Scan and select the physical printer when ready to print.'
+              : selectedPrinter ? 'Discovered device: connects when printing. Check the loaded paper before submitting.'
+              : 'You can design without a printer. Scan or choose an offline profile when ready.'}
+          </p>
+
           {pageCount === 1 ? (
-            <div className={`flex items-center w-full border ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-500' : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} rounded-none transition-colors`}>
-              <div className={`flex items-center border-r ${isPrinting || !selectedPrinter ? 'border-neutral-300 dark:border-neutral-700' : 'border-blue-200 dark:border-blue-800'}`}>
-                <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">-</button>
+            <div className={`flex items-center w-full border ${isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline' ? 'opacity-50 cursor-not-allowed border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 text-neutral-500' : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} rounded-none transition-colors`}>
+              <div className={`flex items-center border-r ${isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline' ? 'border-neutral-300 dark:border-neutral-700' : 'border-blue-200 dark:border-blue-800'}`}>
+                <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline'} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">-</button>
                 <span className="text-xs font-bold w-6 text-center select-none">{printCopies}</span>
-                <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(printCopies + 1)} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">+</button>
+                <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline'} onClick={() => setPrintCopies(printCopies + 1)} className="px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors disabled:pointer-events-none">+</button>
               </div>
-              <button disabled={isPrinting || !selectedPrinter} onClick={handlePrintSingle} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-bold transition-colors disabled:pointer-events-none">
+              <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline'} onClick={handlePrintSingle} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-xs uppercase tracking-wider font-bold transition-colors disabled:pointer-events-none">
                 <Printer size={16} /> {isPrinting ? 'Printing...' : 'Print'}
               </button>
             </div>
@@ -192,16 +183,16 @@ export default function Sidebar() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-1 mb-1">
                 <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Copies per Label</span>
-                <div className={`flex items-center border rounded-xs overflow-hidden ${isPrinting || !selectedPrinter ? 'border-neutral-300 dark:border-neutral-700 opacity-50' : 'border-neutral-300 dark:border-neutral-700'}`}>
-                  <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">-</button>
+                <div className={`flex items-center border rounded-xs overflow-hidden ${isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline' ? 'border-neutral-300 dark:border-neutral-700 opacity-50' : 'border-neutral-300 dark:border-neutral-700'}`}>
+                  <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline'} onClick={() => setPrintCopies(Math.max(1, printCopies - 1))} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">-</button>
                   <span className="text-[10px] font-bold w-6 text-center select-none dark:text-white">{printCopies}</span>
-                  <button disabled={isPrinting || !selectedPrinter} onClick={() => setPrintCopies(printCopies + 1)} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">+</button>
+                  <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline'} onClick={() => setPrintCopies(printCopies + 1)} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors">+</button>
                 </div>
               </div>
-              <button disabled={isPrinting || !selectedPrinter} onClick={handlePrintAll} className={`flex items-center justify-center gap-2 w-full border px-4 py-2.5 text-xs uppercase tracking-wider font-bold transition-colors ${isPrinting || !selectedPrinter ? 'opacity-50 cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40'}`}>
+              <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline'} onClick={handlePrintAll} className={`flex items-center justify-center gap-2 w-full border px-4 py-2.5 text-xs uppercase tracking-wider font-bold transition-colors ${isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline' ? 'opacity-50 cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40'}`}>
                 <Printer size={16} /> Print All ({pageCount})
               </button>
-              <button disabled={isPrinting || !selectedPrinter || selectedPagesForPrint.length === 0} onClick={handlePrintSelected} className={`flex items-center justify-center gap-2 w-full border px-4 py-2.5 text-xs uppercase tracking-wider font-bold transition-colors ${isPrinting || !selectedPrinter || selectedPagesForPrint.length === 0 ? 'opacity-50 cursor-not-allowed border-neutral-300 bg-transparent text-neutral-400 dark:border-neutral-800 dark:text-neutral-600' : 'border-blue-200 bg-transparent text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20'}`}>
+              <button disabled={isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline' || selectedPagesForPrint.length === 0} onClick={handlePrintSelected} className={`flex items-center justify-center gap-2 w-full border px-4 py-2.5 text-xs uppercase tracking-wider font-bold transition-colors ${isPrinting || !selectedPrinter || selectedPrinterInfo?.transport === 'offline' || selectedPagesForPrint.length === 0 ? 'opacity-50 cursor-not-allowed border-neutral-300 bg-transparent text-neutral-400 dark:border-neutral-800 dark:text-neutral-600' : 'border-blue-200 bg-transparent text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20'}`}>
                 <Printer size={16} /> Print Selected ({selectedPagesForPrint.length})
               </button>
             </div>
