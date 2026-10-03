@@ -1,0 +1,75 @@
+{
+  "source_parent": "3cc939aca1b80a9999d153d5966ce3750a9d225c",
+  "scope": "One Zustand store with seven named slices; no field or action-body changes",
+  "owned_fields": 146,
+  "syntax_comparison": "All property AST bodies match parent after replacing internal useStore.getState() with passed get()",
+  "source_sha256": {
+    "frontend/src/store.js": "ccb58d30bfd27f33cf6141aacc8d9110a4c819a37087c7190665403db0a5e9cb",
+    "frontend/src/state/errors.js": "d4779b515b39a676a59264ca803ef6cfd24f9632e9403d25f618e2bb8e71411c",
+    "frontend/src/state/slices/batch.js": "0a454fb62c79083cffd58fff0c269b94b02835204b32e3b01d10a449c4356064",
+    "frontend/src/state/slices/document.js": "312ed3bef53707256f854bacf7d847092196fe0514eb93c01fcb1beff1090dcc",
+    "frontend/src/state/slices/persistence.js": "9f1727f88d4e1910bc52ae4b45e21ab2d60b4c527d34b8319664c82f0d46f989",
+    "frontend/src/state/slices/printer.js": "8379f2787f66db0b4162183d339a46ce85f4ae47d9b9a0c7b161f79374d3ab8f",
+    "frontend/src/state/slices/selection.js": "a45865c28b0f7be92eaddc52623a15cfd580a9ab67427b0a6d8599f3c2b299d7",
+    "frontend/src/state/slices/settings.js": "29058327ec6df8038c6f41153fac9b489cb1ba6d60261a7d4ada1561edab3aa1",
+    "frontend/src/state/slices/ui.js": "cd9703aba171cadbc2a875724c116b28b629f1c8c6d1fa5fb8d3553bc671c82d"
+  },
+  "checks": {
+    "frontend_tests": {
+      "passed": 47,
+      "files": 9
+    },
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "production_build_seconds": 1.94,
+    "backend": "Unchanged; carry 730-run/729-pass/1-Windows-skip receipt at source parent",
+    "advisories": "Locks unchanged; preceding zero-advisory receipt carries forward"
+  },
+  "browser": "Compiled editor opens saved DPI document; existing narrow-layout issues remain",
+  "screenshot": "check-results/phase5-slices/editor.png",
+  "frontend": {
+    "sha256": "52c9d3fc851e8e783371eafde293afa92afe9d014fe535a311135660def23e49",
+    "files": {
+      "frontend/dist/assets/AIAssistant-Ow-_KWeD.js": "189c2b5c9e4fc8182e84a60471ae203d3d2d3bc037a0d682785afdbe1c39ca93",
+      "frontend/dist/assets/AIConfigModal-Bs7CfkPt.js": "456ed20bc9714335014ad92d8b5202347918d4815022972c6ae70cc696e0d021",
+      "frontend/dist/assets/BatchPrintModal-U-BWhPM7.js": "65dddc674680e01499776041e4ec3101a8890eef05e89295e522bd33a486efd3",
+      "frontend/dist/assets/DateToolModal-Bk26FjKw.js": "3747967173f383fbb4a13511a589f3ff59a7628b9d933558ff25e60db24eb8d5",
+      "frontend/dist/assets/HtmlPickerModal-OlpEY05y.js": "926b8e6d9c1db643ca0847fa944be18a092e1f926c8c860f7da1c44a99b83326",
+      "frontend/dist/assets/IconPicker-DqIKqFYR.js": "0798f33ede4575e645e28d9fa6d3b80a2f1e638d166d8b0542eef2c1305d17ea",
+      "frontend/dist/assets/LocalBatchRenderer-D1ErcAxB.js": "447bc9c7917069ba8d8a64eaf5828db12f8fad2e210c21b581d714be4de951ba",
+      "frontend/dist/assets/OnboardingWizard-B0y9Pj3J.js": "fecb458b23e3735c97782e4a8733e1af6f70a85ab557748c40b8d82b1e65c925",
+      "frontend/dist/assets/TemplateWizardModal-5oOLxd08.js": "5ac3ecf07f3128c3bbee687d523c8b05b83cf37b63a6b30a6dda4167ae83192d",
+      "frontend/dist/assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+      "frontend/dist/assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+      "frontend/dist/assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+      "frontend/dist/assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+      "frontend/dist/assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+      "frontend/dist/assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+      "frontend/dist/assets/index-BqBjMTqZ.css": "7cc44d105140c041c92f7a99ffdf91655a24764d0e5af3b0a2eebf9fbdbcd48e",
+      "frontend/dist/assets/index-DVTg5QzL.js": "8097e9410fb6ac5013a220e0405fd477d89283fe300a3b02f71887aae728dbac",
+      "frontend/dist/assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+      "frontend/dist/assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+      "frontend/dist/assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+      "frontend/dist/assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+      "frontend/dist/assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+      "frontend/dist/assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+      "frontend/dist/assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+      "frontend/dist/index.html": "2b3f1e2047bf959656ca80a390e8de9cfe9d175d6acd9fe3ff329ca9aca6fdaf",
+      "frontend/dist/logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+    }
+  },
+  "limitations": [
+    "UI UX work and component decomposition remain",
+    "Native Windows/macOS and physical printers unverified"
+  ]
+}

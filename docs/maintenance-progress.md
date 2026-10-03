@@ -349,3 +349,5 @@ Named store/component decomposition, draft and accessibility UX, preview
 virtualization, batch memory/chunking, the broader performance matrix and phase 7
 remain required. No printer or provider calls were made in acceptance; foreign
 native systems and physical printer outcomes remain best effort/unverified.
+
+Phase 5 store decomposition is accepted locally. One Zustand store and one history wrapper compose document/history, selection, printer, settings, persistence, batch and UI slices. All 146 fields and action bodies match the previous parsed syntax trees, apart from passing the existing store getter through each factory. There are no new cycles. The 47 frontend tests, ten empty static categories and production build pass; backend and dependency locks are unchanged. The compiled editor opens the saved DPI document. The 26-file shipped build matches the inspected scratch build. [Store slice receipt](reviews/2026-10-02/evidence/phase5-store-slices-receipt.json). Unsaved-work/recovery UX, component decomposition and the remaining phase 5–7 acceptance stay active.
