@@ -236,20 +236,23 @@ class AppImageMaterializationTests(unittest.TestCase):
                 path.chmod(0o755)
         self.git("init", "-q")
         self.git("add", ".")
-        self.git(
-            "-c",
-            "user.name=CatLabel fixture",
-            "-c",
-            "user.email=fixture@example.invalid",
-            "commit",
-            "-qm",
-            "fixture",
-        )
+        self.git("commit", "-qm", "fixture")
         self.source_commit = self.git("rev-parse", "HEAD").decode("ascii").strip()
 
     def git(self, *arguments: str) -> bytes:
         return subprocess.run(
-            ["git", "-C", str(self.root), *arguments], check=True, capture_output=True
+            [
+                "git",
+                "-C",
+                str(self.root),
+                "-c",
+                "user.name=CatLabel fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                *arguments,
+            ],
+            check=True,
+            capture_output=True,
         ).stdout
 
     def test_only_requested_committed_blobs_are_materialized(self) -> None:
@@ -273,7 +276,8 @@ class AppImageMaterializationTests(unittest.TestCase):
         self.assertEqual(
             (appdir / "AppRun").read_bytes(), self.committed["packaging/linux/AppRun"]
         )
-        self.assertEqual((appdir / "AppRun").stat().st_mode & 0o777, 0o755)
+        if sys.platform != "win32":
+            self.assertEqual((appdir / "AppRun").stat().st_mode & 0o777, 0o755)
         self.assertEqual(
             (appdir / "catlabel.desktop").read_bytes(),
             self.committed["packaging/linux/catlabel.desktop"],
