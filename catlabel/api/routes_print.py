@@ -1,9 +1,11 @@
 import asyncio
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from PIL import Image
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
@@ -267,9 +269,10 @@ def update_printer_profile(mac_address: str, update: PrinterProfileUpdate):
         return profile
 
 
-async def execute_print_jobs(
-    mac_address: str, images: list[Any], split_mode: bool = False, dither: bool = True
-):
+async def _with_print_admission(
+    mac_address: str,
+    action: Callable[[str], Awaitable[dict[str, Any]]],
+) -> dict[str, Any]:
     job_id = uuid.uuid4().hex[:8]
     try:
         canonical_device_address(mac_address)
@@ -283,9 +286,7 @@ async def execute_print_jobs(
         ) from exc
     try:
         async with printer_admission.claim(mac_address):
-            return await _execute_claimed_print_jobs(
-                mac_address, images, split_mode, dither, job_id
-            )
+            return await action(job_id)
     except DeviceBusyError as exc:
         raise _print_http_error(
             job_id=job_id,
@@ -295,6 +296,43 @@ async def execute_print_jobs(
             exc=exc,
             suggestion="Wait for the current job to finish before submitting another.",
         ) from exc
+
+
+async def execute_print_jobs(
+    mac_address: str, images: list[Any], split_mode: bool = False, dither: bool = True
+) -> dict[str, Any]:
+    """Print borrowed images without taking ownership of or closing them."""
+
+    async def execute(job_id: str) -> dict[str, Any]:
+        return await _execute_claimed_print_jobs(
+            mac_address, images, split_mode, dither, job_id
+        )
+
+    return await _with_print_admission(mac_address, execute)
+
+
+async def _execute_owned_print_jobs(
+    mac_address: str,
+    prepare: Callable[[], Awaitable[list[Image.Image]]],
+    split_mode: bool = False,
+    dither: bool = True,
+) -> dict[str, Any]:
+    async def execute(job_id: str) -> dict[str, Any]:
+        images = await prepare()
+        try:
+            return await _execute_claimed_print_jobs(
+                mac_address, images, split_mode, dither, job_id
+            )
+        finally:
+            for image in images:
+                try:
+                    image.close()
+                except Exception:
+                    logger.exception(
+                        "Print job %s failed while closing an owned image", job_id
+                    )
+
+    return await _with_print_admission(mac_address, execute)
 
 
 async def _execute_claimed_print_jobs(
@@ -403,6 +441,7 @@ async def _execute_claimed_print_jobs(
             delivery_uncertain=False,
         ) from exc
 
+    pending_cancellation: asyncio.CancelledError | None = None
     try:
         try:
             connected = await client.connect()
@@ -456,12 +495,16 @@ async def _execute_claimed_print_jobs(
                     else "Check the printer and media settings before submitting again."
                 ),
             ) from exc
+    except asyncio.CancelledError as exc:
+        pending_cancellation = exc
+        raise
     finally:
         try:
-            await client.disconnect()
-        except Exception:
-            # Cleanup must not hide the original failure or retain admission.
-            logger.exception("Print job %s failed while disconnecting", job_id)
+            await _disconnect_owned(client, job_id)
+        except asyncio.CancelledError as cleanup_cancellation:
+            if pending_cancellation is not None:
+                raise pending_cancellation from cleanup_cancellation
+            raise
     return {
         "status": "submitted",
         "submitted": submitted_labels,
@@ -469,6 +512,45 @@ async def _execute_claimed_print_jobs(
         "job_id": job_id,
         "message": "Label data sent. Check the printer for the physical output.",
     }
+
+
+async def _disconnect_owned(client: Any, job_id: str) -> None:
+    """Drain one owned disconnect task without losing the first cancellation.
+
+    An independently cancelled task or event-loop shutdown does not establish
+    that the physical transport disconnected; task completion only describes
+    the asyncio wrapper's state.
+    """
+    task = asyncio.create_task(client.disconnect())
+    cancellation: asyncio.CancelledError | None = None
+
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError as exc:
+            caller_task = asyncio.current_task()
+            if caller_task is not None and caller_task.cancelling() > 0:
+                if cancellation is None:
+                    cancellation = exc
+                if task.done():
+                    break
+            else:
+                if cancellation is None:
+                    cancellation = exc
+                break
+        except Exception:
+            break
+
+    try:
+        task.result()
+    except asyncio.CancelledError as exc:
+        if cancellation is None:
+            cancellation = exc
+    except Exception:
+        logger.exception("Print job %s failed while disconnecting", job_id)
+
+    if cancellation is not None:
+        raise cancellation
 
 
 async def execute_print_job(
@@ -484,22 +566,21 @@ async def print_direct(request: DirectPrintRequest):
     except ResourceLimitError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     split_mode = request.canvas_state.get("splitMode", False)
-    try:
-        images = await render_via_browser_async(
-            request.canvas_state,
-            [request.variables or {}],
-            1,
-        )
-    except Exception as exc:
-        raise _render_http_error(exc) from exc
-    try:
-        receipt = await execute_print_jobs(
-            request.mac_address, images, split_mode, dither=request.dither
-        )
-        return {**receipt, "mac_address": request.mac_address}
-    finally:
-        for image in images:
-            image.close()
+
+    async def prepare() -> list[Image.Image]:
+        try:
+            return await render_via_browser_async(
+                request.canvas_state,
+                [request.variables or {}],
+                1,
+            )
+        except Exception as exc:
+            raise _render_http_error(exc) from exc
+
+    receipt = await _execute_owned_print_jobs(
+        request.mac_address, prepare, split_mode, dither=request.dither
+    )
+    return {**receipt, "mac_address": request.mac_address}
 
 
 @router.post("/api/print/batch")
@@ -528,22 +609,19 @@ async def print_batch(request: BatchPrintRequest):
     if not variables_collection:
         variables_collection = [{}]
 
-    try:
-        images = await render_via_browser_async(
-            request.canvas_state,
-            variables_collection,
-            request.copies,
-        )
-    except Exception as exc:
-        raise _render_http_error(exc) from exc
+    async def prepare() -> list[Image.Image]:
+        try:
+            return await render_via_browser_async(
+                request.canvas_state,
+                variables_collection,
+                request.copies,
+            )
+        except Exception as exc:
+            raise _render_http_error(exc) from exc
 
-    try:
-        return await execute_print_jobs(
-            request.mac_address, images, split_mode, dither=request.dither
-        )
-    finally:
-        for image in images:
-            image.close()
+    return await _execute_owned_print_jobs(
+        request.mac_address, prepare, split_mode, dither=request.dither
+    )
 
 
 @router.post("/api/print/images")
@@ -551,21 +629,21 @@ async def print_images_direct(request: ImagePrintRequest):
     if not request.images:
         return {"status": "empty", "submitted": 0, "physical_completion": "unverified"}
 
-    try:
-        pil_images = await decode_owned(
-            lambda: decode_image_payloads(request.images, rotate=request.is_rotated)
-        )
-    except ResourceLimitError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=400, detail="Invalid image payload supplied."
-        ) from exc
+    async def prepare() -> list[Image.Image]:
+        try:
+            return await decode_owned(
+                lambda: decode_image_payloads(request.images, rotate=request.is_rotated)
+            )
+        except ResourceLimitError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400, detail="Invalid image payload supplied."
+            ) from exc
 
-    try:
-        return await execute_print_jobs(
-            request.mac_address, pil_images, request.split_mode, dither=request.dither
-        )
-    finally:
-        for image in pil_images:
-            image.close()
+    return await _execute_owned_print_jobs(
+        request.mac_address,
+        prepare,
+        request.split_mode,
+        dither=request.dither,
+    )

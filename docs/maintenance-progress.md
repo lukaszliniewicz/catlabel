@@ -548,3 +548,20 @@ Headers/placeholders remain mounted; inactive raster thumbnails, stronger typing
 AI decomposition, backend admission/spooling, broader benchmarks and phase7remain
 active. No physical print/provider call, foreign native acceptance or external
 promotion occurred.
+
+Phase 6 claims the printer before rendering or decoding, so same-device contenders
+return 409 before preparation. The public executor retains borrowed-image behavior;
+route-owned outputs close on success, failure and cancellation. Disconnect drains
+the same shielded task through repeated caller cancellation and preserves the first
+reason. PDF cancellation signals its synchronous worker, stops later pages and
+drains normal caller cancellation before closing the upload. Native resources still
+belong to the worker until it exits; independently cancelled wrappers and shutdown
+do not prove thread or physical disconnect completion.
+
+Parent inspected the Luna implementations and tests. Focused admission tests pass
+(58), PDF/upload tests pass (17), and the current accepted backend snapshot passes
+757 tests with one skip. Ten static categories are empty. Concurrent unintegrated
+spool/paper-stream additions are excluded from this acceptance. Locks are unchanged.
+[Admission/PDF receipt](reviews/2026-10-02/evidence/phase6-admission-pdf-cancellation-receipt.json).
+Whole-job spooling, code caches, broader performance and phase 7 remain active. No
+physical printer/provider call, foreign native acceptance or promotion occurred.

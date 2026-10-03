@@ -177,12 +177,40 @@ def _remove_own_file(path: Path) -> None:
 
 
 async def convert_uploaded_pdf(file: UploadFile) -> list[str]:
-    """Render a bounded PDF upload into PNG data URLs."""
+    """Render a bounded PDF upload into PNG data URLs.
+
+    Caller cancellation requests that the synchronous worker stop and drains
+    its task before returning. Independent cancellation of that task, or event
+    loop shutdown, can end the asyncio wrapper while the worker thread is still
+    running; task completion alone does not prove the thread has finished.
+    """
     try:
         data = await file.read(MAX_UPLOAD_BYTES + 1)
         if len(data) > MAX_UPLOAD_BYTES:
             raise ResourceLimitError("Uploaded file exceeds the size limit.")
-        return await asyncio.to_thread(_convert_uploaded_pdf_sync, data)
+
+        stop_event = threading.Event()
+        conversion_task = asyncio.create_task(
+            asyncio.to_thread(_convert_uploaded_pdf_sync, data, stop_event=stop_event)
+        )
+        try:
+            return await asyncio.shield(conversion_task)
+        except asyncio.CancelledError as cancellation:
+            stop_event.set()
+            caller_task = asyncio.current_task()
+            if caller_task is not None and caller_task.cancelling() > 0:
+                while not conversion_task.done():
+                    try:
+                        await asyncio.shield(conversion_task)
+                    except asyncio.CancelledError:
+                        if conversion_task.done():
+                            break
+                    except BaseException:
+                        break
+
+            with suppress(BaseException):
+                conversion_task.result()
+            raise cancellation
     except ResourceLimitError as exc:
         raise HTTPException(
             status_code=413, detail="Uploaded PDF exceeds a processing limit."
@@ -201,7 +229,19 @@ class _InvalidUploadedPDF(ValueError):
     """Raised when uploaded bytes or page geometry cannot represent a PDF."""
 
 
-def _convert_uploaded_pdf_sync(data: bytes) -> list[str]:
+class _PdfConversionAborted(Exception):
+    """Raised when an asynchronous caller asks the worker to stop."""
+
+
+def _raise_if_pdf_conversion_stopped(stop_event: threading.Event | None) -> None:
+    if stop_event is not None and stop_event.is_set():
+        raise _PdfConversionAborted
+
+
+def _convert_uploaded_pdf_sync(
+    data: bytes, *, stop_event: threading.Event | None = None
+) -> list[str]:
+    _raise_if_pdf_conversion_stopped(stop_event)
     try:
         document = pdfium.PdfDocument(data)
     except Exception as exc:
@@ -221,6 +261,7 @@ def _convert_uploaded_pdf_sync(data: bytes) -> list[str]:
 
         pixels_so_far = 0
         for page_index in range(page_count):
+            _raise_if_pdf_conversion_stopped(stop_event)
             try:
                 page = document[page_index]
             except Exception as exc:
@@ -252,6 +293,7 @@ def _convert_uploaded_pdf_sync(data: bytes) -> list[str]:
         response_bytes = 0
         response_byte_limit = MAX_REQUEST_BYTES - _PDF_RESPONSE_OVERHEAD_BYTES
         for page_index in range(page_count):
+            _raise_if_pdf_conversion_stopped(stop_event)
             try:
                 page = document[page_index]
             except Exception as exc:
@@ -275,6 +317,7 @@ def _convert_uploaded_pdf_sync(data: bytes) -> list[str]:
                 except Exception as exc:
                     raise _InvalidUploadedPDF from exc
 
+                _raise_if_pdf_conversion_stopped(stop_event)
                 if len(png_bytes) > MAX_IMAGE_BYTES:
                     raise ResourceLimitError(
                         "Rendered PDF page exceeds the image limit."
@@ -290,6 +333,7 @@ def _convert_uploaded_pdf_sync(data: bytes) -> list[str]:
                     )
 
                 encoded_png = base64.b64encode(png_bytes).decode("ascii")
+                _raise_if_pdf_conversion_stopped(stop_event)
                 images.append(f"{_PDF_DATA_URL_PREFIX}{encoded_png}")
                 response_bytes = next_response_bytes
 

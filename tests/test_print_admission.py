@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 import unittest
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
+from PIL import Image
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
@@ -211,6 +213,110 @@ class PrintAdmissionRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first_client.connect_calls, 1)
         self.assertEqual(second_client.connect_calls, 1)
 
+    async def test_owned_route_claims_before_preparation_and_rejects_same_mac(self):
+        preparing = asyncio.Event()
+        release_preparation = asyncio.Event()
+        images: list[Image.Image] = []
+
+        async def block_render(*_args):
+            preparing.set()
+            await release_preparation.wait()
+            image = Image.new("RGB", (2, 2), (1, 2, 3))
+            images.append(image)
+            return [image]
+
+        request = routes_print.DirectPrintRequest(
+            mac_address=self.device.address, canvas_state={}
+        )
+        with patch.object(
+            routes_print,
+            "render_via_browser_async",
+            new=AsyncMock(side_effect=block_render),
+        ) as render:
+            first_job = asyncio.create_task(routes_print.print_direct(request))
+            try:
+                await asyncio.wait_for(preparing.wait(), timeout=2)
+                with self.assertRaises(HTTPException) as raised:
+                    await asyncio.wait_for(
+                        routes_print.print_direct(request), timeout=2
+                    )
+                self.assertEqual(raised.exception.status_code, 409)
+                self.assertEqual(_error_detail(raised.exception)["stage"], "admission")
+                render.assert_awaited_once()
+                self.assertEqual(self.client.connect_calls, 0)
+            except BaseException:
+                release_preparation.set()
+                if not first_job.done():
+                    first_job.cancel()
+                with suppress(BaseException):
+                    await first_job
+                raise
+            release_preparation.set()
+
+            receipt = await first_job
+
+        self.assertEqual(receipt["status"], "submitted")
+        self.assertEqual(receipt["mac_address"], self.device.address)
+        self.assertEqual(self.client.print_calls, 1)
+        self.assertEqual(len(images), 1)
+        with self.assertRaises(ValueError):
+            images[0].getpixel((0, 0))
+
+    async def test_distinct_printer_routes_can_prepare_concurrently(self):
+        first_device = self.device
+        second_device, first_other_client = self._add_device("11:22:33:44:55:66")
+        routes_print._scanned_devices_cache = [first_device, second_device]
+        render_started = [asyncio.Event(), asyncio.Event()]
+        release_preparation = asyncio.Event()
+        images: list[Image.Image] = []
+        render_count = 0
+
+        async def block_each_render(*_args):
+            nonlocal render_count
+            index = render_count
+            render_count += 1
+            render_started[index].set()
+            await release_preparation.wait()
+            image = Image.new("RGB", (2, 2), (index, index, index))
+            images.append(image)
+            return [image]
+
+        first_request = routes_print.DirectPrintRequest(
+            mac_address=first_device.address, canvas_state={}
+        )
+        second_request = routes_print.DirectPrintRequest(
+            mac_address=second_device.address, canvas_state={}
+        )
+        with patch.object(
+            routes_print,
+            "render_via_browser_async",
+            new=AsyncMock(side_effect=block_each_render),
+        ) as render:
+            first_job = asyncio.create_task(routes_print.print_direct(first_request))
+            second_job = asyncio.create_task(routes_print.print_direct(second_request))
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*(event.wait() for event in render_started)),
+                    timeout=2,
+                )
+                self.assertEqual(render_count, 2)
+                self.assertEqual(self.client.connect_calls, 0)
+                self.assertEqual(first_other_client.connect_calls, 0)
+            finally:
+                release_preparation.set()
+
+            first_receipt, second_receipt = await asyncio.gather(first_job, second_job)
+            self.assertEqual(render.await_count, 2)
+
+        self.assertEqual(first_receipt["status"], "submitted")
+        self.assertEqual(second_receipt["status"], "submitted")
+        self.assertEqual(self.client.connect_calls, 1)
+        self.assertEqual(first_other_client.connect_calls, 1)
+        self.assertEqual(len(images), 2)
+        for image in images:
+            with self.assertRaises(ValueError):
+                image.getpixel((0, 0))
+
     async def test_opaque_ids_differing_in_punctuation_are_independent(self):
         first_started = asyncio.Event()
         release_first = asyncio.Event()
@@ -279,6 +385,30 @@ class PrintAdmissionRouteTests(unittest.IsolatedAsyncioTestCase):
         receipt = await self._execute()
         self.assertEqual(receipt["status"], "submitted")
 
+    async def test_owned_images_close_after_print_failure(self):
+        image = Image.new("RGB", (2, 2), (3, 4, 5))
+
+        async def fail_write() -> None:
+            raise RuntimeError("printer rejected the owned image")
+
+        self.client.print_hook = fail_write
+        request = routes_print.DirectPrintRequest(
+            mac_address=self.device.address, canvas_state={}
+        )
+        with (
+            patch.object(
+                routes_print,
+                "render_via_browser_async",
+                new=AsyncMock(return_value=[image]),
+            ),
+            self.assertRaises(HTTPException) as raised,
+        ):
+            await routes_print.print_direct(request)
+
+        self.assertEqual(_error_detail(raised.exception)["stage"], "print")
+        with self.assertRaises(ValueError):
+            image.getpixel((0, 0))
+
     async def test_cancellation_during_connect_disconnects_and_releases_claim(self):
         connecting = asyncio.Event()
         hold_connection = asyncio.Event()
@@ -319,6 +449,104 @@ class PrintAdmissionRouteTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(self.client.disconnect_calls, 1)
         self.client.print_hook = None
+        receipt = await self._execute()
+        self.assertEqual(receipt["status"], "submitted")
+
+    async def test_repeated_cancel_during_disconnect_holds_claim_and_closes_owned_image(
+        self,
+    ):
+        printing = asyncio.Event()
+        release_print = asyncio.Event()
+        disconnecting = asyncio.Event()
+        release_disconnect = asyncio.Event()
+        image = Image.new("RGB", (2, 2), (6, 7, 8))
+
+        async def hold_print() -> None:
+            printing.set()
+            await release_print.wait()
+
+        async def hold_disconnect() -> None:
+            disconnecting.set()
+            await release_disconnect.wait()
+
+        self.client.print_hook = hold_print
+        self.client.disconnect_hook = hold_disconnect
+        request = routes_print.DirectPrintRequest(
+            mac_address=self.device.address, canvas_state={}
+        )
+        with patch.object(
+            routes_print,
+            "render_via_browser_async",
+            new=AsyncMock(return_value=[image]),
+        ) as render:
+            first_job = asyncio.create_task(routes_print.print_direct(request))
+            try:
+                await asyncio.wait_for(printing.wait(), timeout=2)
+                first_job.cancel("print-cancel-first")
+                await asyncio.wait_for(disconnecting.wait(), timeout=2)
+                first_job.cancel("print-cancel-second")
+                await asyncio.sleep(0.05)
+                self.assertFalse(first_job.done())
+
+                with self.assertRaises(HTTPException) as busy:
+                    await routes_print.print_direct(request)
+                self.assertEqual(busy.exception.status_code, 409)
+                self.assertEqual(_error_detail(busy.exception)["stage"], "admission")
+                render.assert_awaited_once()
+
+                release_print.set()
+                release_disconnect.set()
+                with self.assertRaises(asyncio.CancelledError) as raised:
+                    await asyncio.wait_for(first_job, timeout=2)
+                self.assertEqual(raised.exception.args, ("print-cancel-first",))
+            finally:
+                release_print.set()
+                release_disconnect.set()
+                if not first_job.done():
+                    first_job.cancel()
+                    with suppress(BaseException):
+                        await asyncio.wait_for(first_job, timeout=2)
+
+        with self.assertRaises(ValueError):
+            image.getpixel((0, 0))
+        self.assertEqual(self.client.disconnect_calls, 1)
+        self.client.print_hook = None
+        self.client.disconnect_hook = None
+        receipt = await self._execute()
+        self.assertEqual(receipt["status"], "submitted")
+
+    async def test_cancel_during_success_disconnect_drains_and_holds_claim(self):
+        disconnecting = asyncio.Event()
+        release_disconnect = asyncio.Event()
+
+        async def hold_disconnect() -> None:
+            disconnecting.set()
+            await release_disconnect.wait()
+
+        self.client.disconnect_hook = hold_disconnect
+        first_job = asyncio.create_task(self._execute())
+        try:
+            await asyncio.wait_for(disconnecting.wait(), timeout=2)
+            self.assertEqual(self.client.print_calls, 1)
+            first_job.cancel("disconnect-cancel-first")
+            await asyncio.sleep(0.05)
+            self.assertFalse(first_job.done())
+
+            busy = await self._execute_error()
+            self.assertEqual(busy.status_code, 409)
+            self.assertEqual(_error_detail(busy)["stage"], "admission")
+
+            release_disconnect.set()
+            with self.assertRaises(asyncio.CancelledError) as raised:
+                await asyncio.wait_for(first_job, timeout=2)
+            self.assertEqual(raised.exception.args, ("disconnect-cancel-first",))
+        finally:
+            release_disconnect.set()
+            if not first_job.done():
+                first_job.cancel()
+                with suppress(BaseException):
+                    await asyncio.wait_for(first_job, timeout=2)
+        self.client.disconnect_hook = None
         receipt = await self._execute()
         self.assertEqual(receipt["status"], "submitted")
 
@@ -394,6 +622,21 @@ class PrintAdmissionRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(receipt["physical_completion"], "unverified")
         self.assertNotIn("printed", receipt)
         self.assertEqual(self.client.print_arguments[0][0], images)
+
+    async def test_borrowed_execute_print_jobs_does_not_close_inputs(self):
+        class BorrowedImage:
+            def __init__(self) -> None:
+                self.close_calls = 0
+
+            def close(self) -> None:
+                self.close_calls += 1
+
+        image = BorrowedImage()
+        receipt = await routes_print.execute_print_jobs(self.device.address, [image])
+
+        self.assertEqual(receipt["status"], "submitted")
+        self.assertEqual(image.close_calls, 0)
+        self.assertIs(self.client.print_arguments[0][0][0], image)
 
 
 if __name__ == "__main__":
