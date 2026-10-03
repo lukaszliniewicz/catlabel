@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Iterator
+from contextlib import ExitStack
 
 from PIL import Image, ImageOps
 
@@ -286,11 +287,16 @@ class PhomemoClient(BasePrinterClient):
         invert: bool = False,
         dither: bool = True,
     ) -> tuple[bytes, int, int]:
-        if rotate_cw:
-            img = img.rotate(-90, expand=True)
-        if invert:
-            img = ImageOps.invert(img.convert("L"))
-        raster = image_to_raster(img, PixelFormat.BW1, dither=dither)
+        with ExitStack() as owned_images:
+            if rotate_cw:
+                img = img.rotate(-90, expand=True)
+                owned_images.callback(img.close)
+            if invert:
+                grayscale_image = img.convert("L")
+                owned_images.callback(grayscale_image.close)
+                img = ImageOps.invert(grayscale_image)
+                owned_images.callback(img.close)
+            raster = image_to_raster(img, PixelFormat.BW1, dither=dither)
         width_bytes = (raster.width + 7) // 8
         packed_rows = [
             pack_line(
@@ -348,53 +354,59 @@ class PhomemoClient(BasePrinterClient):
 
         for img in images:
             working_image = img.copy()
+            try:
+                if dpi > _BASE_DPI:
+                    scaled_width, scaled_height = self._dpi_scaled_size(
+                        working_image.width,
+                        working_image.height,
+                        dpi,
+                    )
+                    previous_image = working_image
+                    working_image = previous_image.resize(
+                        (scaled_width, scaled_height),
+                        Image.Resampling.LANCZOS,
+                    )
+                    previous_image.close()
 
-            if dpi > _BASE_DPI:
-                scaled_width, scaled_height = self._dpi_scaled_size(
-                    working_image.width,
-                    working_image.height,
-                    dpi,
-                )
-                working_image = working_image.resize(
-                    (scaled_width, scaled_height),
-                    Image.Resampling.LANCZOS,
-                )
+                if working_image.width > print_width_px and not split_mode:
+                    scaled_width, scaled_height = self._head_scaled_size(
+                        working_image.width,
+                        working_image.height,
+                        print_width_px,
+                    )
+                    previous_image = working_image
+                    working_image = previous_image.resize(
+                        (scaled_width, scaled_height),
+                        Image.Resampling.LANCZOS,
+                    )
+                    previous_image.close()
 
-            if working_image.width > print_width_px and not split_mode:
-                scaled_width, scaled_height = self._head_scaled_size(
-                    working_image.width,
-                    working_image.height,
-                    print_width_px,
-                )
-                working_image = working_image.resize(
-                    (scaled_width, scaled_height),
-                    Image.Resampling.LANCZOS,
-                )
-
-            if "tspl" in protocol:
-                await self._print_tspl(
-                    working_image, width_bytes, density, dither=False
-                )
-            elif "p12" in protocol:
-                await self._print_p12(working_image, dither=dither)
-            elif protocol.split("_")[-1] == "d":
-                await self._print_d_series(working_image, density, dither=dither)
-            elif "m02" in protocol:
-                await self._print_m02(
-                    working_image, width_bytes, density, dither=dither
-                )
-            elif "m04" in protocol:
-                await self._print_m04(
-                    working_image, width_bytes, density, feed, dither=dither
-                )
-            elif "m110" in protocol:
-                await self._print_m110(
-                    working_image, width_bytes, density, dither=dither
-                )
-            else:
-                await self._print_m_series(
-                    working_image, width_bytes, density, feed, dither=dither
-                )
+                if "tspl" in protocol:
+                    await self._print_tspl(
+                        working_image, width_bytes, density, dither=False
+                    )
+                elif "p12" in protocol:
+                    await self._print_p12(working_image, dither=dither)
+                elif protocol.split("_")[-1] == "d":
+                    await self._print_d_series(working_image, density, dither=dither)
+                elif "m02" in protocol:
+                    await self._print_m02(
+                        working_image, width_bytes, density, dither=dither
+                    )
+                elif "m04" in protocol:
+                    await self._print_m04(
+                        working_image, width_bytes, density, feed, dither=dither
+                    )
+                elif "m110" in protocol:
+                    await self._print_m110(
+                        working_image, width_bytes, density, dither=dither
+                    )
+                else:
+                    await self._print_m_series(
+                        working_image, width_bytes, density, feed, dither=dither
+                    )
+            finally:
+                working_image.close()
 
     async def _print_released_images(
         self,
