@@ -10,7 +10,7 @@ Objective: implement the complete [2 October maintenance plan](reviews/2026-10-0
 | 3 — upstream parity | Implemented locally within pinned scope; hardware acceptance open | Released generic/dedicated recipes, Classic receive and selected BLE hooks pass fixtures. Pinned Luck A4 overlay/transactions and experimental PrintMaster M110/M120 are integrated. Explicit unadopted deltas and physical/native limits remain in the parity ledger. |
 | 4 — installation/dependencies | Implemented locally within accepted scope; foreign native acceptance open | Locked bootstrap, selected-artifact update/rollback and accepted dependency bundles have receipts below. ESLint10/TypeScript7 remain peer-gated compatibility deferrals. Windows/macOS are best effort. |
 | 5 — structure/UX | Implemented locally; native interaction acceptance limited | Named store slices, typed domain/API boundaries, decomposed editor/properties/assistant, responsive setup and save/draft recovery have receipts below. Whole-app JSX typing and native pointer/keyboard acceptance remain limited. |
-| 6 — performance/lifecycle | In progress | Alpha hoist, readiness, renderer ownership, paginated summaries, bounded previews/code cache and owned decoding pass. Printer spooling, headless output streaming and broader representative measurements are being accepted. Whole decoded-input retention remains bounded by the configured total pixel ceiling. |
+| 6 — performance/lifecycle | Implemented locally within measured scope; hardware/native interaction limits remain | Alpha/readiness, renderer ownership, paginated summaries, bounded previews/code cache, owned decoding, protocol spooling, one-frame headless output and binary local staging pass. Representative measurements and cancellation/output parity are recorded below. Decoded source lists remain bounded by the configured total pixel ceiling rather than constant memory. |
 | 7 — maintenance routine | Policy implemented; recurring execution is future work | Manual weekly advisories/monthly upstream/debt review, ownership, compatibility reconsideration dates and exact release receipts are specified in development-checks.md. No automation is scheduled. |
 
 The original [review baseline](reviews/2026-10-02/baseline.md) remains immutable historical evidence. Updated checks describe their configuration/environment; changed counts must not be interpreted as fixes without comparing the diagnostics.
@@ -663,3 +663,50 @@ prepared image/job is live in the streaming candidate. Full source RGB lists rem
 retained. One excluded harness close-verifier failure and its replacement are recorded.
 Spool fstat lengths precede buffered flushing and are not full logical-byte counts.
 [Memory receipt](reviews/2026-10-02/evidence/phase6-spool-memory-receipt.json).
+
+
+Final phase6 integration replaces headless whole-job base64 transfer with one
+acknowledged frame and local whole-job PNG accumulation with binary staging.
+Local preparation overlaps one upload with one rendered successor, retaining at
+most two page payloads and strictly ordered uploads. Server sessions have private
+files, single-use commit leases, expiry and limits (four sessions, 500 pages,
+8MiB/page, 64MiB/session, 50 million pixels). A canceled preparation never commits;
+committed output retains the existing truthful physical-completion receipt.
+
+The final Linux full gate runs810 backend tests (809 passed, one Windows SDK skip),
+220 frontend tests, all ten empty static categories and a clean production build.
+No baseline diagnostics or suppressions were added. Parent inspected the Luna
+non-UI changes and owns all UI/compiled-browser acceptance. The bundled27-file
+frontend matches the inspected artifact exactly; its canonical release digest is
+`de8c72340261a8d51bffc2877d5fbfdb20edda26cbd7b647633a98bfa954de9c`.
+[Streaming/performance receipt](reviews/2026-10-02/evidence/phase6-stream-performance-receipt.json)
+and [local staging receipt](reviews/2026-10-02/evidence/phase6-local-staging-receipt.json).
+
+On the declared desktop, numeric-edit paint proxies have p95 of60.9ms (one QR)
+and48.6ms (200 painted rectangles); displacement-verified synthetic drag frames
+have p95 of21ms. Native pointer/keyboard latency remains unverified. Icon search
+has p95 of39.6ms and the one cold-dialog sample is352ms; a new icon data subsystem
+is not justified by these observations. Earlier blank200-item and idle-pointer
+measurements are explicitly excluded. Heap snapshots are not leak proof.
+
+The corrected5ms headless handoff stays within about1.2% of the legacy median for
+20 pages and100 mixed labels, with exact pixel/geometry parity. The local workflow
+has an intentional per-page HTTP/validation boundary: three paired100-label runs
+have medians14.306s legacy and14.967s staging (4.6% overhead), with all100 outputs
+identical and at most three stages including the visible editor/previews.
+The broad one-label,10-record, concurrent-render and four-page4x6 PDF observations
+are retained with candidate/version provenance; three samples do not establish p95.
+
+Acceptance reconciles the proposed memory target with current printer contracts:
+encoded jobs and browser handoff are bounded by chunk capacity, while decoded RGB
+source lists remain under the50-million-pixel ceiling. Eliminating those lists
+requires a separate repeatable-image/preflight driver contract; it is an explicit
+remaining optimization, not an assertion of whole-pipeline constant memory.
+The dedicated legacy Phomemo sender is unchanged. Physical PD01 and tentative
+Niimbot D111/D100 checks, foreign native installers, live providers and native UI
+input remain unverified. These are retained compatibility/acceptance limits under
+the user's Linux-only and best-effort instructions. No deployment or push occurred.
+
+The locally executable maintenance phases are now implemented and verified within
+the documented scope. The phase7 routine is manual future upkeep, with named owners
+and review dates; recurring execution and automation were not requested.

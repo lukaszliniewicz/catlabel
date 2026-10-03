@@ -1,8 +1,9 @@
+import asyncio
 import logging
 import os
 import shutil
 import urllib.request
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from functools import lru_cache
 from typing import Annotated
 
@@ -27,10 +28,12 @@ from ..core.server_security import ServerSecurity
 from ..rendering.template import close_browser_renderer
 from ..services.agent_context import build_agent_context
 from ..services.layout_engine import TEMPLATE_METADATA
+from ..services.prepared_prints import PreparedPrintStore
 from ..services.uploads import convert_uploaded_pdf, store_uploaded_font
 from .request_limits import RequestLimitsMiddleware
 from .routes_ai import migrate_legacy_provider
 from .routes_ai import router as ai_router
+from .routes_prepared_print import router as prepared_print_router
 from .routes_print import router as print_router
 from .routes_project import router as project_router
 from .security import LocalSecurityMiddleware
@@ -112,6 +115,12 @@ def release_identity() -> dict[str, str | int] | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     with RuntimeLease(DATA_DIRECTORY):
+        prepared_print_store = PreparedPrintStore()
+        app.state.prepared_print_store = prepared_print_store
+        reaper_task = asyncio.create_task(
+            _reap_prepared_print_sessions(prepared_print_store),
+            name="catlabel-prepared-print-reaper",
+        )
         try:
             release_identity()
             create_db_and_tables()
@@ -122,9 +131,29 @@ async def lifespan(app: FastAPI):
             yield
         finally:
             try:
-                await close_browser_renderer()
-            except Exception:
-                logger.exception("Browser renderer cleanup failed during shutdown")
+                reaper_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await reaper_task
+            finally:
+                prepared_print_store.close()
+                if (
+                    getattr(app.state, "prepared_print_store", None)
+                    is prepared_print_store
+                ):
+                    app.state.prepared_print_store = None
+                try:
+                    await close_browser_renderer()
+                except Exception:
+                    logger.exception("Browser renderer cleanup failed during shutdown")
+
+
+async def _reap_prepared_print_sessions(store: PreparedPrintStore) -> None:
+    while True:
+        await asyncio.sleep(30)
+        try:
+            store.reap()
+        except Exception:
+            logger.exception("Failed to reap expired prepared print sessions")
 
 
 security_settings = ServerSecurity.from_environment()
@@ -144,6 +173,7 @@ app.add_middleware(
 app.add_middleware(LocalSecurityMiddleware, settings=security_settings)
 
 app.include_router(print_router)
+app.include_router(prepared_print_router)
 app.include_router(project_router)
 app.include_router(ai_router)
 

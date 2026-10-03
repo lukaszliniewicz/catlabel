@@ -2,6 +2,7 @@ import { recalcAutoFit } from '../../domain/normalization';
 import { describePrintError } from '../../utils/apiErrors';
 import { apiJson } from '../../utils/apiClient';
 import { isPrintReceipt } from '../../domain/print';
+import { isPreparedPrintReceipt } from '../../domain/preparedPrint';
 import { serializeCanvasDocument } from '../../domain/document';
 import { buildBatchMatrix, buildBatchSequence, getPrintJobCount, getRenderPixelCount, MAX_BATCH_RECORDS, MAX_PRINT_COPIES, MAX_PRINT_JOBS, MAX_RENDER_PIXELS } from '../../utils/batchData';
 
@@ -108,7 +109,12 @@ export const createBatchSlice = (set, get) => ({
       return;
     }
 
-    if (!images || images.length === 0) {
+    const prepared = isPreparedPrintReceipt(images) ? images : null;
+    if (prepared && prepared.next_index !== prepared.total) {
+      set({ pendingPrintJob: null, apiError: 'Label preparation is incomplete. Nothing was submitted.' });
+      return false;
+    }
+    if (!prepared && (!images || images.length === 0)) {
       set({ pendingPrintJob: null });
       return;
     }
@@ -116,12 +122,12 @@ export const createBatchSlice = (set, get) => ({
     set({ isPrinting: true });
 
     try {
-      const receipt = await apiJson(`/api/print/images`, {
+      const receipt = await apiJson(prepared ? `/api/print/prepared/${prepared.prepared_id}/commit` : '/api/print/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mac_address: pendingPrintJob.macAddress,
-          images,
+          ...(prepared ? {} : { images }),
           split_mode: pendingPrintJob.splitMode,
           is_rotated: pendingPrintJob.canvasState.isRotated || false,
           dither: pendingPrintJob.dither

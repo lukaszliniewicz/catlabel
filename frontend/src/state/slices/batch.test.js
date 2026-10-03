@@ -33,3 +33,17 @@ test('cancelled or superseded preparation cannot submit and duplicate completion
   finish(receipt); await first;
   expect(useStore.getState().lastPrintReceipt.job_id).toBe('one');
 });
+
+test('a completed staged receipt commits once without serializing all image payloads', async () => {
+  const receipt = { status: 'submitted', submitted: 1, physical_completion: 'unverified', job_id: 'staged', message: 'Sent' };
+  const submit = vi.spyOn(apiClient, 'apiJson').mockResolvedValue(receipt);
+  await useStore.getState().printPages([0]); const id = useStore.getState().pendingPrintJob.id;
+  const staged = { prepared_id: 'a'.repeat(32), total: 1, next_index: 1 };
+  await useStore.getState().onLocalRenderComplete(staged, null, id);
+  await useStore.getState().onLocalRenderComplete(staged, null, id);
+  expect(submit).toHaveBeenCalledOnce();
+  expect(submit.mock.calls[0][0]).toBe(`/api/print/prepared/${staged.prepared_id}/commit`);
+  expect(JSON.parse(submit.mock.calls[0][1].body)).toEqual(expect.objectContaining({ mac_address: 'AA:BB:CC:DD:EE:FF' }));
+  expect(JSON.parse(submit.mock.calls[0][1].body)).not.toHaveProperty('images');
+  expect(useStore.getState().lastPrintReceipt.job_id).toBe('staged');
+});

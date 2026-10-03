@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, patch
 from PIL import Image
 
 from catlabel.core.resource_limits import ResourceLimitError
-from catlabel.rendering import template
+from catlabel.rendering import browser_stream, template
 
 HEADLESS_URL = "http://127.0.0.1:8765/index.html?mode=headless"
 
@@ -38,6 +38,7 @@ class FakeFactory:
         identity_gate: asyncio.Event | None = None,
         status: int = 200,
         identity: bool = True,
+        streaming: bool = False,
         outputs: list[object] | None = None,
         launch_error: Exception | None = None,
         launch_gate: asyncio.Event | None = None,
@@ -52,6 +53,7 @@ class FakeFactory:
         self.identity_gate = identity_gate
         self.status = status
         self.identity = identity
+        self.streaming = streaming
         self.outputs = [_png()] if outputs is None else outputs
         self.launch_error = launch_error
         self.launch_gate = launch_gate
@@ -69,6 +71,11 @@ class FakeFactory:
         self.loops: list[asyncio.AbstractEventLoop] = []
         self.transferred_outputs = 0
         self.payload_injected = False
+        self.injected_payload: object = None
+        self.evaluation_order: list[str] = []
+        self.stream_payload_transfers = 0
+        self.stream_ack_indices: list[object] = []
+        self.stream_completed = asyncio.Event()
         self.identity_wait_started = asyncio.Event()
         self.identity_wait_timeout_ms: int | None = None
         self.launch_calls = 0
@@ -169,6 +176,7 @@ class FakeContext:
     def __init__(self, factory: FakeFactory) -> None:
         self.factory = factory
         self.closed = asyncio.Event()
+        self.close_started = asyncio.Event()
         self.close_calls = 0
         self.page: FakePage | None = None
 
@@ -184,6 +192,7 @@ class FakeContext:
         self.factory.record_loop()
         self.close_calls += 1
         self.closed.set()
+        self.close_started.set()
         if self.factory.context_close_gate is not None:
             await self.factory.context_close_gate.wait()
         if self.factory.context_close_error is not None:
@@ -211,9 +220,40 @@ class FakePage:
 
     async def evaluate(self, expression: str, argument: object = None) -> object:
         self.factory.record_loop()
+        self.factory.evaluation_order.append(expression)
+        if expression == "window.__CATLABEL_RENDER_STREAM_VERSION__ === 1":
+            return self.factory.streaming
         if expression.startswith("(payload)"):
             self.factory.payload_injected = True
+            self.factory.injected_payload = argument
             return None
+        if expression == browser_stream._FRAME_METADATA_SCRIPT:
+            index = getattr(self, "stream_index", 0)
+            has_frame = index < len(self.factory.outputs)
+            output = self.factory.outputs[index] if has_frame else None
+            return {
+                "error": None,
+                "done": not has_frame,
+                "hasFrame": has_frame,
+                "index": index if has_frame else None,
+                "total": len(self.factory.outputs),
+                "payloadType": "string" if isinstance(output, str) else "object",
+                "payloadLength": len(output) if isinstance(output, str) else None,
+                "payloadHeader": output[:22] if isinstance(output, str) else None,
+            }
+        if expression == browser_stream._FRAME_PAYLOAD_SCRIPT:
+            index = getattr(self, "stream_index", 0)
+            self.factory.stream_payload_transfers += 1
+            return self.factory.outputs[index]
+        if expression == browser_stream._ACK_FRAME_SCRIPT:
+            index = getattr(self, "stream_index", 0)
+            self.factory.stream_ack_indices.append(argument)
+            if argument is not index:
+                return False
+            self.stream_index = index + 1
+            if self.stream_index >= len(self.factory.outputs):
+                self.factory.stream_completed.set()
+            return True
         if expression == "window.__RENDER_ERROR__ || null":
             return None
         if "encodedChars" in expression and "__RENDERED_IMAGES__" in expression:
@@ -235,8 +275,22 @@ class FakePage:
             return self.factory.outputs
         raise AssertionError(f"Unexpected page.evaluate expression: {expression}")
 
-    async def wait_for_function(self, expression: str, *, timeout: int) -> object:
+    async def wait_for_function(
+        self,
+        expression: str,
+        *,
+        timeout: int | None = None,
+        polling: int | str = "raf",
+    ) -> object:
         self.factory.record_loop()
+        if expression == browser_stream._FRAME_EVENT_SCRIPT:
+            if not self.factory.streaming:
+                raise AssertionError(
+                    "legacy renderer should not wait for stream frames"
+                )
+            if polling != 5:
+                raise AssertionError("stream state must use a 5 ms polling interval")
+            return object()
         if expression != "window.__CATLABEL_HEADLESS_VERSION__ === 1":
             raise AssertionError("renderer must wait for the headless identity marker")
         self.factory.identity_wait_timeout_ms = timeout
@@ -298,6 +352,122 @@ class FakePage:
 
 
 class BrowserRendererTests(unittest.IsolatedAsyncioTestCase):
+    async def test_advertised_stream_is_negotiated_before_injection(self) -> None:
+        factory = FakeFactory(
+            streaming=True,
+            outputs=[f"data:image/png;base64,{_png()}"],
+        )
+        renderer = template.BrowserRenderer()
+        with factory.patch_import():
+            images = await renderer.render({}, [{}])
+            try:
+                self.assertEqual(len(images), 1)
+                self.assertIsInstance(factory.injected_payload, dict)
+                self.assertIs(
+                    factory.injected_payload.get("stream_output"),  # type: ignore[union-attr]
+                    True,
+                )
+                self.assertLess(
+                    factory.evaluation_order.index(
+                        "window.__CATLABEL_RENDER_STREAM_VERSION__ === 1"
+                    ),
+                    factory.evaluation_order.index(
+                        "(payload) => { window.__INJECTED_PAYLOAD__ = payload; }"
+                    ),
+                )
+                self.assertEqual(factory.stream_payload_transfers, 1)
+                self.assertEqual(factory.stream_ack_indices, [0])
+                self.assertEqual(factory.transferred_outputs, 0)
+            finally:
+                for image in images:
+                    image.close()
+            await renderer.close()
+
+    async def test_unadvertised_stream_keeps_legacy_payload_and_bulk_output(
+        self,
+    ) -> None:
+        factory = FakeFactory(streaming=False)
+        renderer = template.BrowserRenderer()
+        with factory.patch_import():
+            images = await renderer.render({}, [{}])
+            try:
+                self.assertIsInstance(factory.injected_payload, dict)
+                self.assertNotIn(
+                    "stream_output",
+                    factory.injected_payload,  # type: ignore[operator]
+                )
+                self.assertEqual(factory.stream_payload_transfers, 0)
+                self.assertEqual(factory.transferred_outputs, 1)
+            finally:
+                for image in images:
+                    image.close()
+            await renderer.close()
+
+    async def test_streamed_images_close_if_context_close_fails(self) -> None:
+        factory = FakeFactory(
+            streaming=True,
+            outputs=[f"data:image/png;base64,{_png()}"],
+            context_close_error=RuntimeError("context close failed"),
+        )
+        renderer = template.BrowserRenderer()
+        decoded: list[Image.Image] = []
+        decode = browser_stream.decode_image_payloads
+
+        def capture_decode(
+            payloads: object, *, rotate: bool = False
+        ) -> list[Image.Image]:
+            images = decode(payloads, rotate=rotate)  # type: ignore[arg-type]
+            decoded.extend(images)
+            return images
+
+        with (
+            factory.patch_import(),
+            patch.object(browser_stream, "decode_image_payloads", capture_decode),
+            self.assertRaisesRegex(RuntimeError, "context close failed"),
+        ):
+            await renderer.render({}, [{}])
+        self.assertEqual(len(decoded), 1)
+        with self.assertRaises(ValueError):
+            _ = decoded[0].getpixel((0, 0))
+        await renderer.close()
+
+    async def test_final_abort_closes_streamed_images_before_transfer(self) -> None:
+        close_gate = asyncio.Event()
+        factory = FakeFactory(
+            streaming=True,
+            outputs=[f"data:image/png;base64,{_png()}"],
+            context_close_gate=close_gate,
+        )
+        renderer = template.BrowserRenderer()
+        decoded: list[Image.Image] = []
+        decode = browser_stream.decode_image_payloads
+
+        def capture_decode(
+            payloads: object, *, rotate: bool = False
+        ) -> list[Image.Image]:
+            images = decode(payloads, rotate=rotate)  # type: ignore[arg-type]
+            decoded.extend(images)
+            return images
+
+        with (
+            factory.patch_import(),
+            patch.object(browser_stream, "decode_image_payloads", capture_decode),
+        ):
+            request = asyncio.create_task(renderer.render({}, [{}]))
+            await asyncio.wait_for(factory.stream_completed.wait(), 1)
+            context = factory.contexts[0]
+            await asyncio.wait_for(context.close_started.wait(), 1)
+            request.cancel()
+            close_gate.set()
+            with self.assertRaises(asyncio.CancelledError):
+                await request
+
+        self.assertEqual(factory.stream_ack_indices, [0])
+        self.assertEqual(len(decoded), 1)
+        with self.assertRaises(ValueError):
+            _ = decoded[0].getpixel((0, 0))
+        await renderer.close()
+
     async def test_concurrent_jobs_share_one_loop_and_fifth_is_rejected(self) -> None:
         gate = asyncio.Event()
         factory = FakeFactory(wait_gate=gate)

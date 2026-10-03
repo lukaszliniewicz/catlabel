@@ -18,7 +18,7 @@ export type CanvasItem = ItemGeometry & (
   | { type: 'image'; src?: string }
   | { type: 'html'; html?: string; font?: string }
   | { type: 'barcode' | 'qrcode'; data?: string; barcodeType?: string }
-  | { type: 'shape'; shape?: string }
+  | { type: 'shape'; shapeType?: 'rect' | 'circle' | 'ellipse' | 'line' }
   | { type: 'cut_line_indicator' }
   | { type: 'group'; children: CanvasItem[] }
 );

@@ -7,6 +7,7 @@ import HeadlessRenderer from '../HeadlessRenderer';
 import BatchPrintModal from './BatchPrintModal';
 import TemplateWizardModal from './TemplateWizardModal';
 import PresetPickerModal from './PresetPickerModal';
+import * as apiClient from '../utils/apiClient';
 
 const pages = vi.hoisted(() => []);
 vi.mock('./HeadlessPage', () => ({ default: (props) => {
@@ -34,6 +35,7 @@ afterEach(async () => {
   useStore.setState(originalState, true);
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 const render = (Component, props = {}) => act(() => root.render(React.createElement(Component, props)));
 const job = (id) => ({ id, canvasState: { width: 100, height: 100 }, batchRecords: [{ name: id }], copies: 1, pageIndices: [0, 1] });
@@ -44,24 +46,31 @@ const changeSelect = async (element, value) => {
 
 test('replacement render jobs reset progress and reject old callbacks and timers', async () => {
   vi.useFakeTimers();
+  let created = 0;
+  vi.spyOn(apiClient, 'apiJson').mockImplementation(async (url, options) => {
+    if (url === '/api/print/prepared') return { prepared_id: (++created === 1 ? 'a' : 'b').repeat(32), total: 2, next_index: 0 };
+    if (options.method === 'DELETE') return { status: 'discarded' };
+    return { prepared_id: url.split('/')[4], total: 2, next_index: Number(url.split('/').at(-1)) + 1 };
+  });
+  const png = 'data:image/png;base64,' + btoa('test PNG bytes');
   const onComplete = vi.fn();
   useStore.setState({ pendingPrintJob: job(1) });
   await render(LocalBatchRenderer, { onComplete });
   const oldPage = pages.at(-1);
-  await act(() => oldPage.onReady('old-first'));
-  expect(container.textContent).toContain('Rendering 1 of 2');
+  await act(() => oldPage.onReady(png));
+  expect(container.textContent).toContain('Preparing 1 of 2');
   await act(() => useStore.setState({ pendingPrintJob: job(2) }));
-  expect(container.textContent).toContain('Rendering 0 of 2');
+  expect(container.textContent).toContain('Preparing 0 of 2');
   await act(() => oldPage.onReady('stale'));
   await act(() => vi.advanceTimersByTime(50));
   expect(onComplete).not.toHaveBeenCalled();
   expect(pages.at(-1).pageIndex).toBe(0);
   expect(pages.at(-1).record.name).toBe(2);
-  await act(() => pages.at(-1).onReady('new-first'));
+  await act(() => pages.at(-1).onReady(png));
   await act(() => vi.advanceTimersByTime(50));
   expect(pages.at(-1).pageIndex).toBe(1);
-  await act(() => pages.at(-1).onReady('new-second'));
-  expect(onComplete).toHaveBeenCalledExactlyOnceWith(['new-first', 'new-second'], null, 2);
+  await act(() => pages.at(-1).onReady(png));
+  expect(onComplete).toHaveBeenCalledExactlyOnceWith({ prepared_id: 'b'.repeat(32), total: 2, next_index: 2 }, null, 2);
 });
 
 test('headless payloads publish their own completion once', async () => {

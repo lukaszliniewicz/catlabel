@@ -1,0 +1,454 @@
+{
+  "source_parent": "e3a3e2b1d1e9632b169f3e1d962f9795c0e27ffa",
+  "accepted_at_utc": "2026-10-03T07:53:46.905475+00:00",
+  "scope": "One-frame headless output handoff, declared render/performance matrix and parent-owned interaction measurements",
+  "source_sha256": {
+    "catlabel/rendering/browser_stream.py": "cd3f65acea5b3b98b2e5f9caf0283ffbb4f9c807ba67c64046260fe9f9f85a26",
+    "catlabel/rendering/template.py": "79889d07e39a066acc58af08a4eb3cd2dfa3c83a606429b83a39f7cefccb65a2",
+    "frontend/src/HeadlessRenderer.jsx": "f1709d1c5a04cd50ee4618642e29e1a0d6d34d11fae2af23b1ae54fc15894a64",
+    "frontend/src/HeadlessRenderer.test.jsx": "0db22241d9a9ba2c1b19c3c2655fb4b1e0fb87665a0724e26d483651b91b6a08",
+    "tests/test_browser_stream.py": "1092efc490d504810c4be56b80ec6a594456b11e8d1b35ed74f1c02336a9d23e",
+    "tests/test_browser_renderer.py": "25194446ba1dc2bb7130d20661af2e923ecd38d43ff23317f2847445c5a5c597"
+  },
+  "contract": {
+    "browser_pending_frames": 1,
+    "frame_wait_polling_ms": 5,
+    "image_bytes": 8388608,
+    "encoded_aggregate_bytes": 67108864,
+    "cumulative_pixels": 50000000,
+    "acknowledge": "Only after ordered/count/header/size validation and successful decode; cleanup closes partial images.",
+    "legacy_array_contract": "Preserved when streaming negotiation is absent."
+  },
+  "checks": {
+    "backend_tests_run": 810,
+    "backend_passed": 809,
+    "backend_skipped": 1,
+    "skip": "Native Windows SDK unavailable on Linux",
+    "frontend_tests": 220,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "build": "Passed; clean scratch output",
+    "vulture": "Two known protocol-parameter advisories remain advisory, outside the zero diagnostic ratchet."
+  },
+  "environment": {
+    "python": "3.11.15",
+    "pillow": "12.3.0",
+    "playwright": "1.63.0",
+    "host": "Linux-7.2.8-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "cpu": "Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz"
+  },
+  "browser_versions": {
+    "legacy": "153.0.8010.12",
+    "stream": "153.0.8010.12"
+  },
+  "final_headless_paired_matrix": {
+    "samples_per_candidate_case": 3,
+    "fixtures_sha256": "34d8216c5611307d7152c2e941e16376bcf5fd912c86a1b7898c88626a81e1f9",
+    "summaries": [
+      {
+        "case": "pages20",
+        "candidate": "legacy",
+        "median_seconds": 2.038732113000151
+      },
+      {
+        "case": "pages20",
+        "candidate": "stream",
+        "median_seconds": 2.054747431000578
+      },
+      {
+        "case": "mixed100",
+        "candidate": "legacy",
+        "median_seconds": 10.831612210000458
+      },
+      {
+        "case": "mixed100",
+        "candidate": "stream",
+        "median_seconds": 10.95644559900029
+      }
+    ],
+    "all_output_geometry_pixel_signatures_equal": true,
+    "measurement": "Actual BrowserRenderer.render, including frame handoff/decode, excluding physical printing."
+  },
+  "corrected_items200": {
+    "samples_per_candidate": 3,
+    "summaries": [
+      {
+        "case": "items200",
+        "candidate": "legacy",
+        "median_seconds": 0.5315180059988052
+      },
+      {
+        "case": "items200",
+        "candidate": "stream",
+        "median_seconds": 0.428784910000104
+      }
+    ],
+    "all_output_geometry_pixel_signatures_equal": true,
+    "fixture": "200 painted rectangles use shapeType; parent visually inspected corrected grid."
+  },
+  "earlier_broad_matrix": {
+    "summaries": [
+      {
+        "candidate": "legacy",
+        "case": "one384",
+        "samples": 20,
+        "median_seconds": 0.4180966499998249,
+        "range_seconds": [
+          0.39404717499928665,
+          0.5994986650002829
+        ],
+        "p95_seconds_nearest_rank": 0.5913822729999083
+      },
+      {
+        "candidate": "stream",
+        "case": "one384",
+        "samples": 20,
+        "median_seconds": 0.4056164985004216,
+        "range_seconds": [
+          0.3957237790000363,
+          0.4301966540006106
+        ],
+        "p95_seconds_nearest_rank": 0.42786746800084074
+      },
+      {
+        "candidate": "legacy",
+        "case": "records10",
+        "samples": 3,
+        "median_seconds": 1.5150335430007544,
+        "range_seconds": [
+          1.5135853409992706,
+          1.5413977970001724
+        ]
+      },
+      {
+        "candidate": "stream",
+        "case": "records10",
+        "samples": 3,
+        "median_seconds": 1.4594377449993772,
+        "range_seconds": [
+          1.4537094709994562,
+          1.5202560939997056
+        ]
+      },
+      {
+        "candidate": "legacy",
+        "case": "two_concurrent",
+        "samples": 3,
+        "median_seconds": 0.5809753110006568,
+        "range_seconds": [
+          0.5800116419995902,
+          0.598704029000146
+        ]
+      },
+      {
+        "candidate": "stream",
+        "case": "two_concurrent",
+        "samples": 3,
+        "median_seconds": 0.5911663730003056,
+        "range_seconds": [
+          0.549690482999722,
+          0.593654633999904
+        ]
+      }
+    ],
+    "version_note": "Streaming used RAF frame polling at this checkpoint, before the final 5 ms correction. These are earlier candidate measurements, not final-candidate p95 estimates.",
+    "pdf": {
+      "fixture_sha256": "ae2464d38d0aa9000217fcca94a49566eeea8c80005df5ebdf9bf1b26d48ea97",
+      "page_count": 4,
+      "page_inches": [
+        4,
+        6
+      ],
+      "dpi": 203,
+      "runs": [
+        {
+          "seconds": 0.06249704999936512,
+          "output_signature": [
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            }
+          ],
+          "encoded_chars": 29784
+        },
+        {
+          "seconds": 0.06108655000025465,
+          "output_signature": [
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            }
+          ],
+          "encoded_chars": 29784
+        },
+        {
+          "seconds": 0.05969011299930571,
+          "output_signature": [
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            },
+            {
+              "size": [
+                812,
+                1218
+              ],
+              "pixel_sha256": "7ccaafa363636ac160e1ff0ec3a89f7d3ed0fad6368871411ef56a8b3191e2cc"
+            }
+          ],
+          "encoded_chars": 29784
+        }
+      ]
+    },
+    "physical_throughput": "Unmeasured"
+  },
+  "interaction_measurements": {
+    "one_qr_numeric_edit": {
+      "samples": 20,
+      "p50_ms": 37.09999999962747,
+      "p95_ms_nearest_rank": 60.89999999850989,
+      "range_ms": [
+        5.800000000745058,
+        85
+      ],
+      "longtasks_ms": [
+        64
+      ],
+      "stages": 1
+    },
+    "painted200_numeric_edit": {
+      "samples": 20,
+      "p50_ms": 38.15000000037253,
+      "p95_ms_nearest_rank": 48.599999997764826,
+      "range_ms": [
+        11.300000000745058,
+        53.599999997764826
+      ],
+      "longtasks_ms": [],
+      "stages": 1
+    },
+    "synthetic_drag": {
+      "samples": 60,
+      "p50_ms": 16.900000000023283,
+      "p95_ms_nearest_rank": 21,
+      "range_ms": [
+        8.29999999993015,
+        38.699999999953434
+      ],
+      "initial": [
+        {
+          "label": "X Pos (mm)\u21f9",
+          "value": "9.8"
+        },
+        {
+          "label": "Y Pos (mm)\u21f9",
+          "value": "45.5"
+        }
+      ],
+      "final": [
+        {
+          "label": "X Pos (mm)\u21f9",
+          "value": "17"
+        },
+        {
+          "label": "Y Pos (mm)\u21f9",
+          "value": "43"
+        }
+      ],
+      "input": "Synthetic DOM mouse events; native input unverified",
+      "longtasks_ms": [],
+      "native_pointer": "Unverified"
+    },
+    "icon_picker": {
+      "cold": {
+        "cold_in_this_page": true,
+        "longtasks_ms": [],
+        "open_to_ready_ms": 351.8999999985099,
+        "resources": [
+          {
+            "duration": 25.800000000745055,
+            "encodedBodySize": 159783,
+            "transferSize": 160083,
+            "url": "http://127.0.0.1:18251/assets/IconPicker-CPwkIrUU.js"
+          }
+        ],
+        "status": "1858 icons \u00b7 Page 1 of 24"
+      },
+      "search": {
+        "samples": 20,
+        "p50_ms": 33.40000000037253,
+        "p95_ms_nearest_rank": 39.599999997764826,
+        "range_ms": [
+          16.300000000745058,
+          39.60000000149011
+        ]
+      },
+      "search_longtasks_ms": [],
+      "decision": "Retain current lazy boundary. One 352 ms cold sample and responsive search do not warrant a separate icon data subsystem; revisit if repeated user-visible delay appears."
+    },
+    "method": "DOM control events to two animation frames are a paint proxy, not native-input latency. Heap snapshots are observations, not leak or retained-memory proof.",
+    "artifact_provenance": "Numeric edits/drag were measured in the earlier b005d3c editor artifact; icon dialog in the pre-pipeline staging artifact. Editor/icon implementations were unchanged by streaming/staging integration. Final pipeline artifact was separately read back as index-wWXf48FZ.js and LocalBatchRenderer-Ci0gX2Pv.js."
+  },
+  "real_browser_handoff": {
+    "labels": 20,
+    "legacyRetainedOutputCount": 20,
+    "streamMaxRetainedArray": 0,
+    "streamMaxStages": 1,
+    "exactAllPageDataUrlParity": true,
+    "pageSha256": [
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98",
+      "00e13f047f870a6d85d8eb0cc27126d31e6fbb5c070eaab1c3a756fa71b04a98"
+    ]
+  },
+  "frontend": {
+    "files": 27,
+    "sha256": "de8c72340261a8d51bffc2877d5fbfdb20edda26cbd7b647633a98bfa954de9c",
+    "algorithm": "catlabel.core.release_artifacts.frontend_digest: sorted repository paths, NUL, ASCII hex file hash, newline",
+    "ship_matches_inspected_build": true,
+    "prior_sha256": "49ffd87531244623c41d3754b39a2ad6eb4eeb3fe85ebc8104f9c8bedcb0704b",
+    "prior_artifact_backup": "check-results/phase6-local-staging/shipped-before-final",
+    "manifest": {
+      "frontend/dist/assets/AIAssistant-BKoHs4f1.css": "94968b94e9b607743c033d66922ac7f061bfa227b4488c2086356182405ff277",
+      "frontend/dist/assets/AIAssistant-DGzPo88d.js": "6e306bf2eedd2042b7a019228c195482e6562a203807dd16ce341a9ebdf739a4",
+      "frontend/dist/assets/AIConfigModal-BlRGTFni.js": "9a5fd3028f1f003287183299083343bb14d36c412b7899de1d7dbe656f508259",
+      "frontend/dist/assets/BatchPrintModal-DT09BzQa.js": "8960f734e6730028a23de4898b60b24fd75cb8a553f938646fee4c2481ba5bff",
+      "frontend/dist/assets/DateToolModal-7W_GyThS.js": "f41a65a8dce2b0e719b878604ffcf3661956eba296ec36dad47f5ec92d6b64db",
+      "frontend/dist/assets/HtmlPickerModal-BMfmE9iR.js": "a426d699de88d9045da9df4616893d6ef67bfaa9b9a41bbf53c626cda1c8d38d",
+      "frontend/dist/assets/IconPicker-B983Fm-e.js": "f44f91c2809c19180b846adf9d484ba2c6eaf0a4ec8e6f04f6ad28c2ae0cdf8e",
+      "frontend/dist/assets/LocalBatchRenderer-Ci0gX2Pv.js": "223af868625045a488b7e63fa1cf3e909bcbb3391d3480c71e6784b7764859e8",
+      "frontend/dist/assets/OnboardingWizard-D11JocYs.js": "2b39f907249b9c294b5ba8e2805ba138621a6c001ea7f9da3d6f365c8894e9b0",
+      "frontend/dist/assets/TemplateWizardModal-CKac7-7x.js": "57510872d7d726bad84c474b7ed44f3376479284021f84612f0b90e52c73d534",
+      "frontend/dist/assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+      "frontend/dist/assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+      "frontend/dist/assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+      "frontend/dist/assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+      "frontend/dist/assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+      "frontend/dist/assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+      "frontend/dist/assets/index-CijogBI1.css": "5c36c58ea138fa2a9320c13e9a6f3f57cae530ecb6580454d7fe94f3a52617cf",
+      "frontend/dist/assets/index-wWXf48FZ.js": "f805180df03e3138f7ad4c48575772c0ad370815dfd65ba2308265ab19971679",
+      "frontend/dist/assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+      "frontend/dist/assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+      "frontend/dist/assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+      "frontend/dist/assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+      "frontend/dist/assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+      "frontend/dist/assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+      "frontend/dist/assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+      "frontend/dist/index.html": "beaf1afd67cae49b1fc44559012e22f54764ca65f8bfb30ddde8d0b397ca7693",
+      "frontend/dist/logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+    }
+  },
+  "exclusions": [
+    "Initial items200 used an incorrect shape field and painted blank objects; original items200 renderer/editor timings excluded.",
+    "Raw CDP pointer sample did not move an item; idle frame timings excluded.",
+    "Initial streaming20/100 regression was corrected by 5ms polling; superseded timings are exploratory.",
+    "Contended polling comparison and interrupted font service attempt are excluded from the quiet accepted comparison."
+  ],
+  "raw_artifacts_sha256": {
+    "check-results/phase6-render-matrix/results.json": "d8df1e68c356eb2784cd57bc30166c78ad1f1ffd163f67d2123b17801e1f5cf7",
+    "check-results/phase6-stream-polling/matrix/results.json": "1bb756f43609fc82b5ca7808ba8e47f576a62320a9c9311eb1cb86b9a874a120",
+    "check-results/phase6-stream-polling/corrected-items200/results.json": "2475a59f44eb65be9ee55ce10f7c4cb5895ef9dedfd9cc6b3e5c767dd365ed24",
+    "check-results/phase6-render-matrix/editor-one-qr.json": "c200989a056f97fa6f4230529aa1aa3e37df2b3327acfc1c5e38313144f8bb9e",
+    "check-results/phase6-render-matrix/editor-200-corrected.json": "94410fb084844565d9a75e43c6d351da8aa5c8e435f53cf2230d175b71ef450a",
+    "check-results/phase6-render-matrix/drag-200-verified.json": "f635ae5ab3151859f7e94603b056ac0643d6e2f7463012bfea168edb1346ec16",
+    "check-results/phase6-render-matrix/icon-picker.json": "ffe808b337438c76582363c959a19b907285c4b8e76d6b3345eed7703428c1e5"
+  },
+  "limits": [
+    "Decoded source RGB lists remain retained within the 50-million-pixel ceiling; no whole-pipeline constant-memory claim.",
+    "RSS sampling excludes Chromium children; lifetime highwater and browser heap snapshots have different meanings.",
+    "Three-sample render groups support ranges/medians, not p95 claims.",
+    "No physical printer, provider, foreign native installation or external promotion acceptance."
+  ]
+}

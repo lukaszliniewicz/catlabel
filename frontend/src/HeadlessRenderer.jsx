@@ -10,6 +10,7 @@ export default function HeadlessRenderer() {
   const [fontError, setFontError] = useState(null);
   useEffect(() => {
     window.__CATLABEL_HEADLESS_VERSION__ = 1;
+    window.__CATLABEL_RENDER_STREAM_VERSION__ = 1;
     let active = true;
     useStore.getState().fetchFonts().then((loaded) => {
       if (!active) return;
@@ -40,15 +41,27 @@ export default function HeadlessRenderer() {
 function HeadlessJob({ payload, initialError }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const resultsRef = useRef([]);
+  const pendingFrameRef = useRef(null);
+  const ownedAckRef = useRef(null);
   const completedRef = useRef(false);
   useEffect(() => {
     completedRef.current = false;
     return () => {
       completedRef.current = true;
+      if (window.__CATLABEL_RENDER_FRAME__ === pendingFrameRef.current) delete window.__CATLABEL_RENDER_FRAME__;
+      if (window.__CATLABEL_ACK_RENDER_FRAME__ === ownedAckRef.current) delete window.__CATLABEL_ACK_RENDER_FRAME__;
+      pendingFrameRef.current = null;
+      ownedAckRef.current = null;
+      resultsRef.current = [];
     };
   }, []);
 
   const markDone = useCallback((images, error = null) => {
+    if (window.__CATLABEL_RENDER_FRAME__ === pendingFrameRef.current) delete window.__CATLABEL_RENDER_FRAME__;
+    if (window.__CATLABEL_ACK_RENDER_FRAME__ === ownedAckRef.current) delete window.__CATLABEL_ACK_RENDER_FRAME__;
+    pendingFrameRef.current = null;
+    ownedAckRef.current = null;
+    resultsRef.current = [];
     window.__RENDERED_IMAGES__ = images;
     window.__RENDER_ERROR__ = error ? String(error.message || error) : null;
     if (!document.getElementById('render-done')) {
@@ -129,7 +142,30 @@ function HeadlessJob({ payload, initialError }) {
   }, [markDone, renderJobs.length, renderPlan.error, payload]);
 
   const handlePageReady = useCallback((b64) => {
-    if (completedRef.current) return;
+    if (completedRef.current || pendingFrameRef.current) return;
+    if (payload.stream_output === true) {
+      const frame = Object.freeze({ index: currentIndex, total: renderJobs.length, payload: b64 });
+      pendingFrameRef.current = frame;
+      window.__CATLABEL_RENDER_FRAME__ = frame;
+      const acknowledge = (index) => {
+        if (completedRef.current || pendingFrameRef.current !== frame || index !== frame.index) return false;
+        pendingFrameRef.current = null;
+        delete window.__CATLABEL_RENDER_FRAME__;
+        if (index + 1 === renderJobs.length) {
+          completedRef.current = true;
+          markDone([]);
+        } else {
+          // Remove the callback too: its closure owns the prior page's data URL.
+          if (window.__CATLABEL_ACK_RENDER_FRAME__ === acknowledge) delete window.__CATLABEL_ACK_RENDER_FRAME__;
+          ownedAckRef.current = null;
+          setCurrentIndex(index + 1);
+        }
+        return true;
+      };
+      ownedAckRef.current = acknowledge;
+      window.__CATLABEL_ACK_RENDER_FRAME__ = acknowledge;
+      return;
+    }
     const next = [...resultsRef.current, b64];
     resultsRef.current = next;
 
@@ -140,7 +176,7 @@ function HeadlessJob({ payload, initialError }) {
     }
 
     setCurrentIndex((idx) => idx + 1);
-  }, [markDone, renderJobs.length]);
+  }, [currentIndex, markDone, payload.stream_output, renderJobs.length]);
 
   const handlePageError = useCallback((error) => {
     if (completedRef.current) return;

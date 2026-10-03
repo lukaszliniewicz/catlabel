@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store';
 import HeadlessPage from './HeadlessPage';
 import { useDialogAccessibility } from '../utils/useDialogAccessibility';
+import { usePreparedPrintSession } from '../rendering/usePreparedPrintSession';
 
 export default function LocalBatchRenderer({ onComplete }) {
   const pendingPrintJob = useStore((state) => state.pendingPrintJob);
@@ -11,9 +12,10 @@ export default function LocalBatchRenderer({ onComplete }) {
 }
 
 function LocalBatchJob({ pendingPrintJob, onComplete }) {
-  const [results, setResults] = useState([]);
+  const [completedCount, setCompletedCount] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const resultsRef = useRef([]);
+  const uploadTaskRef = useRef(null);
+  const queuedIndexRef = useRef(-1);
   const completedRef = useRef(false);
   useEffect(() => {
     completedRef.current = false;
@@ -57,39 +59,58 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
     }
   }, [jobs.length, onComplete, pendingPrintJob]);
 
-  const handlePageReady = useCallback((b64) => {
-    if (completedRef.current) return;
-    const next = [...resultsRef.current, b64];
-    resultsRef.current = next;
-    setResults(next);
-
-    if (next.length === jobs.length) {
-      completedRef.current = true;
-      onComplete(next, null, pendingPrintJob.id);
-      return;
-    }
-
-    setCurrentIndex((idx) => idx + 1);
-  }, [jobs.length, onComplete, pendingPrintJob.id]);
+  const preparation = usePreparedPrintSession(jobs.length);
+  const { ready, error: preparationError, upload, handOff, cancel, rejectHandOff } = preparation;
 
   const handlePageError = useCallback((error) => {
     if (completedRef.current) return;
     completedRef.current = true;
+    cancel();
     onComplete([], error, pendingPrintJob.id);
-  }, [onComplete, pendingPrintJob.id]);
+  }, [cancel, onComplete, pendingPrintJob.id]);
+
+  useEffect(() => { if (preparationError) handlePageError(preparationError); }, [handlePageError, preparationError]);
+
+  const handlePageReady = useCallback((b64) => {
+    if (completedRef.current || currentIndex <= queuedIndexRef.current) return undefined;
+    const index = currentIndex;
+    queuedIndexRef.current = index;
+    const previous = uploadTaskRef.current;
+    // One upload and one rendered successor may coexist; uploads remain ordered.
+    const sendPage = async () => {
+      if (completedRef.current) return;
+      const sending = upload(b64, index);
+      if (index + 1 < jobs.length) setCurrentIndex(index + 1);
+      await sending;
+      if (completedRef.current) return;
+      const nextCount = index + 1;
+      setCompletedCount(nextCount);
+      if (nextCount === jobs.length) {
+        const receipt = handOff();
+        completedRef.current = true;
+        const accepted = await onComplete(receipt, null, pendingPrintJob.id);
+        if (accepted === false) rejectHandOff();
+      }
+    };
+    const task = (previous ? previous.then(sendPage) : sendPage()).catch(error => {
+      if (completedRef.current) rejectHandOff();
+      else handlePageError(error);
+    }).finally(() => {
+      if (uploadTaskRef.current === task) uploadTaskRef.current = null;
+    });
+    uploadTaskRef.current = task;
+    return task;
+  }, [currentIndex, handlePageError, handOff, jobs.length, onComplete, pendingPrintJob.id, rejectHandOff, upload]);
 
   const cancelPreparation = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    onComplete([], new Error('Print preparation cancelled before submission.'), pendingPrintJob.id);
-  }, [onComplete, pendingPrintJob.id]);
+    handlePageError(new Error('Print preparation cancelled before submission.'));
+  }, [handlePageError]);
   const dialogRef = useDialogAccessibility(cancelPreparation);
 
   if (!pendingPrintJob || jobs.length === 0) {
     return null;
   }
 
-  const completedCount = results.length;
   const progressPercent = jobs.length
     ? Math.round((completedCount / jobs.length) * 100)
     : 0;
@@ -101,7 +122,7 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
         <h3 className="text-lg font-serif dark:text-white">Preparing Labels</h3>
         <p role="status" aria-live="polite" aria-busy="true" className="text-sm text-neutral-500 mt-2">
-          Rendering {completedCount} of {jobs.length}...
+          Preparing {completedCount} of {jobs.length}...
         </p>
         <div role="progressbar" aria-label="Label rendering progress" aria-valuemin={0} aria-valuemax={jobs.length} aria-valuenow={completedCount} className="mt-4 h-2 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
           <div
@@ -114,7 +135,7 @@ function LocalBatchJob({ pendingPrintJob, onComplete }) {
       </div>
 
       <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
-        {activeJob && (
+        {activeJob && ready && (
           <HeadlessPage
             key={activeJob.id}
             state={pendingPrintJob.canvasState}

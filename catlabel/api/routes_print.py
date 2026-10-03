@@ -311,7 +311,7 @@ async def execute_print_jobs(
     return await _with_print_admission(mac_address, execute)
 
 
-async def _execute_owned_print_jobs(
+async def execute_owned_print_jobs(
     mac_address: str,
     prepare: Callable[[], Awaitable[list[Image.Image]]],
     split_mode: bool = False,
@@ -577,7 +577,7 @@ async def print_direct(request: DirectPrintRequest):
         except Exception as exc:
             raise _render_http_error(exc) from exc
 
-    receipt = await _execute_owned_print_jobs(
+    receipt = await execute_owned_print_jobs(
         request.mac_address, prepare, split_mode, dither=request.dither
     )
     return {**receipt, "mac_address": request.mac_address}
@@ -619,7 +619,7 @@ async def print_batch(request: BatchPrintRequest):
         except Exception as exc:
             raise _render_http_error(exc) from exc
 
-    return await _execute_owned_print_jobs(
+    return await execute_owned_print_jobs(
         request.mac_address, prepare, split_mode, dither=request.dither
     )
 
@@ -641,7 +641,7 @@ async def print_images_direct(request: ImagePrintRequest):
                 status_code=400, detail="Invalid image payload supplied."
             ) from exc
 
-    return await _execute_owned_print_jobs(
+    return await execute_owned_print_jobs(
         request.mac_address,
         prepare,
         request.split_mode,

@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 from PIL import Image
 
 from ..core.resource_limits import ResourceLimitError, validate_render_budget
+from .browser_stream import MAX_ENCODED_OUTPUT_CHARS, collect_streamed_images
 from .image_payload import decode_image_payloads
 from .owned_decode import decode_owned
 
@@ -21,7 +22,6 @@ MAX_ACTIVE_RENDER_JOBS = 2
 MAX_RENDER_DEADLINE_SECONDS = 120.0
 RENDER_BASE_TIMEOUT_SECONDS = 30.0
 RENDER_PER_JOB_TIMEOUT_SECONDS = 0.25
-MAX_ENCODED_OUTPUT_CHARS = 64 * 1024 * 1024
 
 
 class RenderBusyError(RuntimeError):
@@ -440,25 +440,27 @@ class BrowserRenderer:
         primary_error: tuple[BaseException, Any] | None = None
         image_payloads: object = None
         images: list[Image.Image] | None = None
-        try:
-            await self._wait_for_slot(job)
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            browser = await self._ensure_browser()
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            context = await browser.new_context()
-            job.context = context
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            page = await context.new_page()
+        stream_output = False
+        transfer_success = False
+
+        def check_active() -> None:
             if job.aborted or self._stopped:
                 raise _RenderAborted
 
+        try:
+            await self._wait_for_slot(job)
+            check_active()
+            browser = await self._ensure_browser()
+            check_active()
+            context = await browser.new_context()
+            job.context = context
+            check_active()
+            page = await context.new_page()
+            check_active()
+
             page.set_default_timeout(max(1, int(job.timeout_seconds * 1000)))
             response = await page.goto(job.url, wait_until="domcontentloaded")
-            if job.aborted or self._stopped:
-                raise _RenderAborted
+            check_active()
             if response is None or response.status != 200:
                 status = "no response" if response is None else str(response.status)
                 raise RuntimeError(
@@ -490,88 +492,106 @@ class BrowserRenderer:
                         "before the render deadline."
                     ) from exc
                 raise
-            if job.aborted or self._stopped:
-                raise _RenderAborted
+            check_active()
+
+            stream_output = (
+                await page.evaluate("window.__CATLABEL_RENDER_STREAM_VERSION__ === 1")
+            ) is True
+            check_active()
 
             payload = {
                 "canvas_state": canvas_state,
                 "variables_collection": variables_collection,
                 "copies": copies,
             }
+            if stream_output:
+                payload["stream_output"] = True
             await page.evaluate(
                 "(payload) => { window.__INJECTED_PAYLOAD__ = payload; }", payload
             )
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            await page.wait_for_selector("#render-done", state="attached")
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            render_error = await page.evaluate("window.__RENDER_ERROR__ || null")
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            if render_error:
-                raise RuntimeError(f"Frontend renderer failed: {render_error}")
+            check_active()
 
-            metadata = await page.evaluate(_OUTPUT_METADATA_SCRIPT)
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            if not isinstance(metadata, dict) or metadata.get("isArray") is not True:
-                raise ResourceLimitError("The renderer returned an invalid image list.")
-            count = metadata.get("count")
-            if (
-                isinstance(count, bool)
-                or not isinstance(count, int)
-                or count != job.expected_jobs
-            ):
-                raise ResourceLimitError(
-                    "The renderer returned an unexpected label count."
+            if stream_output:
+                images = await collect_streamed_images(
+                    page,
+                    expected_jobs=job.expected_jobs,
+                    rotate=bool(canvas_state.get("isRotated")),
+                    check_active=check_active,
                 )
-            invalid_count = metadata.get("invalidCount")
-            if (
-                isinstance(invalid_count, bool)
-                or not isinstance(invalid_count, int)
-                or invalid_count != 0
-            ):
-                raise ResourceLimitError(
-                    "The renderer returned invalid image payloads."
-                )
-            encoded_chars = metadata.get("encodedChars")
-            if (
-                isinstance(encoded_chars, bool)
-                or not isinstance(encoded_chars, int)
-                or encoded_chars < 0
-            ):
-                raise ResourceLimitError(
-                    "The renderer returned invalid image metadata."
-                )
-            if encoded_chars > MAX_ENCODED_OUTPUT_CHARS:
-                raise ResourceLimitError(
-                    "The renderer output exceeds the encoded size limit."
-                )
+                check_active()
+            else:
+                await page.wait_for_selector("#render-done", state="attached")
+                check_active()
+                render_error = await page.evaluate("window.__RENDER_ERROR__ || null")
+                check_active()
+                if render_error:
+                    raise RuntimeError(f"Frontend renderer failed: {render_error}")
 
-            image_payloads = await page.evaluate(
-                "window.__CATLABEL_RENDERED_IMAGE_SNAPSHOT__ || []"
-            )
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            if (
-                not isinstance(image_payloads, list)
-                or len(image_payloads) != job.expected_jobs
-            ):
-                raise ResourceLimitError(
-                    "The renderer returned an unexpected label count."
+                metadata = await page.evaluate(_OUTPUT_METADATA_SCRIPT)
+                check_active()
+                if (
+                    not isinstance(metadata, dict)
+                    or metadata.get("isArray") is not True
+                ):
+                    raise ResourceLimitError(
+                        "The renderer returned an invalid image list."
+                    )
+                count = metadata.get("count")
+                if (
+                    isinstance(count, bool)
+                    or not isinstance(count, int)
+                    or count != job.expected_jobs
+                ):
+                    raise ResourceLimitError(
+                        "The renderer returned an unexpected label count."
+                    )
+                invalid_count = metadata.get("invalidCount")
+                if (
+                    isinstance(invalid_count, bool)
+                    or not isinstance(invalid_count, int)
+                    or invalid_count != 0
+                ):
+                    raise ResourceLimitError(
+                        "The renderer returned invalid image payloads."
+                    )
+                encoded_chars = metadata.get("encodedChars")
+                if (
+                    isinstance(encoded_chars, bool)
+                    or not isinstance(encoded_chars, int)
+                    or encoded_chars < 0
+                ):
+                    raise ResourceLimitError(
+                        "The renderer returned invalid image metadata."
+                    )
+                if encoded_chars > MAX_ENCODED_OUTPUT_CHARS:
+                    raise ResourceLimitError(
+                        "The renderer output exceeds the encoded size limit."
+                    )
+
+                image_payloads = await page.evaluate(
+                    "window.__CATLABEL_RENDERED_IMAGE_SNAPSHOT__ || []"
                 )
-            if (
-                sum(len(value) for value in image_payloads if isinstance(value, str))
-                > MAX_ENCODED_OUTPUT_CHARS
-            ):
-                raise ResourceLimitError(
-                    "The renderer output exceeds the encoded size limit."
-                )
-            if any(not isinstance(value, str) for value in image_payloads):
-                raise ResourceLimitError(
-                    "The renderer returned invalid image payloads."
-                )
+                check_active()
+                if (
+                    not isinstance(image_payloads, list)
+                    or len(image_payloads) != job.expected_jobs
+                ):
+                    raise ResourceLimitError(
+                        "The renderer returned an unexpected label count."
+                    )
+                if (
+                    sum(
+                        len(value) for value in image_payloads if isinstance(value, str)
+                    )
+                    > MAX_ENCODED_OUTPUT_CHARS
+                ):
+                    raise ResourceLimitError(
+                        "The renderer output exceeds the encoded size limit."
+                    )
+                if any(not isinstance(value, str) for value in image_payloads):
+                    raise ResourceLimitError(
+                        "The renderer returned invalid image payloads."
+                    )
         except BaseException as exc:
             if job.aborted and self._stopped:
                 primary_error = (_RenderAborted(), None)
@@ -592,22 +612,29 @@ class BrowserRenderer:
             if primary_error is not None:
                 error, traceback = primary_error
                 raise error.with_traceback(traceback)
-            if job.aborted or self._stopped:
-                raise _RenderAborted
-            assert isinstance(image_payloads, list)
-            images = await decode_owned(
-                lambda: decode_image_payloads(
-                    image_payloads,
-                    rotate=bool(canvas_state.get("isRotated")),
+            check_active()
+            if not stream_output:
+                assert isinstance(image_payloads, list)
+                images = await decode_owned(
+                    lambda: decode_image_payloads(
+                        image_payloads,
+                        rotate=bool(canvas_state.get("isRotated")),
+                    )
                 )
-            )
-            if job.aborted or self._stopped:
-                for image in images:
-                    image.close()
-                images = None
-                raise _RenderAborted
+                check_active()
+            assert images is not None
+            check_active()
+            transfer_success = True
             return images
         finally:
+            if images is not None and not transfer_success:
+                for image in images:
+                    try:
+                        image.close()
+                    except Exception:
+                        logger.exception(
+                            "Closing an untransferred browser render image failed"
+                        )
             if job.slot_acquired:
                 assert self._slots is not None
                 self._slots.release()
