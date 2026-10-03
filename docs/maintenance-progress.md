@@ -426,3 +426,24 @@ Component decomposition, keyboard file/object workflows, backend preflight/spool
 the broader performance matrix and phase 7 remain active. No physical print,
 provider call or external promotion occurred; Windows/macOS native acceptance is
 best effort and physical printer outcomes remain unverified.
+
+Phase 5 property sections now separate canvas geometry, printer overrides, global
+defaults and template/background fields. Narrow store subscriptions include
+reactive dithering. Named native buttons expose image/PDF/project/font file
+controls. Printer/default saves distinguish pending, failed, acknowledged and
+changed drafts; failure rollback preserves intervening document edits and new
+document sessions. Failed default saves retain newer form drafts. Delayed HTML
+formatting rejects stale content rather than replacing newer edits.
+
+All 140 frontend tests in 27 files, ten empty static categories and a clean
+production build pass. Parent inspection at 390 CSS pixels covers canvas, printer,
+defaults and background HTML. Axe reports zero violations, retaining incomplete
+contrast results. DOM activation and unit semantics do not establish native
+keyboard/pointer/file-chooser acceptance while the controller's earlier prompt
+remains stalled. No Python product or dependency lock changes occurred.
+The shipped 26-file frontend matches the inspected artifact; canonical digest
+`c2978b195e22ebe81918e5b0fc08be4025bda2486202496b2641ca12ecb8f9fe` uses the relative-path JSON format recorded in the
+[property receipt](reviews/2026-10-02/evidence/phase5-properties-receipt.json).
+Media import ownership, element/AI/canvas decomposition, keyboard object workflows,
+backend spooling, performance and phase 7 remain active. No printer/provider calls,
+foreign native acceptance or external promotion occurred.

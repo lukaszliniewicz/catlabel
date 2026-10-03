@@ -82,3 +82,13 @@ test('delete is only called after the explicit destructive choice', async () => 
   await act(() => container.querySelector('[aria-label="Actions for Saved"]').click()); await choose('Delete'); await choose('Delete saved project');
   expect(remove).toHaveBeenCalledWith(42); expect(document.querySelector('[role=dialog]')).toBeNull();
 });
+
+test('package import uses a named button and retains a contextual failure', async () => {
+  vi.spyOn(apiClient, 'apiFetch').mockRejectedValue(new Error('Invalid package'));
+  await act(() => root.render(<ProjectTree />));
+  const control = container.querySelector('button[aria-label="Import project package"]'); expect(control.type).toBe('button');
+  const input = container.querySelector('input[type=file]');
+  Object.defineProperty(input, 'files', { value: [new File(['{}'], 'fixture.json', { type: 'application/json' })] });
+  await act(() => input.dispatchEvent(new Event('change', { bubbles: true })));
+  expect(container.querySelector('[role=alert]').textContent).toBe('Invalid package'); expect(control.disabled).toBe(false);
+});

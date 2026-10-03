@@ -1,4 +1,5 @@
 import LazyFeature from './LazyFeature';
+import FileUploadButton from './FileUploadButton';
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
@@ -15,9 +16,11 @@ const HtmlPickerModal = React.lazy(() => import('./HtmlPickerModal'));
 const DateToolModal = React.lazy(() => import('./DateToolModal'));
 const TemplateWizardModal = React.lazy(() => import('./TemplateWizardModal'));
 
-const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button', active = false, children, disabled = false, className = '' }) => (
+const ToolButton = ({ icon: Icon, label, onClick, accept, onFileChange, active = false, children, disabled = false, className = '' }) => {
+  const Component = accept ? FileUploadButton : 'button';
+  return (
   <Component
-    {...(Component === 'button' ? { type: 'button', disabled, 'aria-label': label } : {})}
+    {...(accept ? { label, accept, onChange: onFileChange, disabled } : { type: 'button', disabled, 'aria-label': label })}
     onClick={disabled ? undefined : onClick}
     className={`relative group p-2.5 rounded transition-colors flex items-center justify-center ${className} ${
       disabled
@@ -34,6 +37,7 @@ const ToolButton = ({ icon: Icon, label, onClick, component: Component = 'button
     </div>
   </Component>
 );
+};
 
 export default function Toolbar() {
   const {
@@ -243,7 +247,7 @@ export default function Toolbar() {
       }
     } catch (err) {
       console.error(err);
-      alert('Failed to process PDF file.');
+      useStore.setState({ apiError: err.message || 'Failed to process the PDF file.' });
     }
 
     e.target.value = null;
@@ -266,9 +270,7 @@ export default function Toolbar() {
       {/* Group: Visuals */}
       <div className="flex items-center gap-1">
         <ToolButton icon={Smile} label="Icon Only" onClick={() => setShowIconPicker(true)} />
-        <ToolButton component="label" icon={ImageIcon} label="Upload Image">
-          <input type="file" accept="image/*" className="hidden" onClick={(e) => e.target.value = null} onChange={handleAddImage} />
-        </ToolButton>
+        <ToolButton icon={ImageIcon} label="Upload Image" accept="image/*" onFileChange={handleAddImage} />
 
         <div className="relative flex items-center" ref={shapeDropdownRef}>
           <ToolButton
@@ -329,9 +331,7 @@ export default function Toolbar() {
         />
         <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
         <ToolButton icon={Code} label="Custom HTML" onClick={() => setShowHtmlPicker(true)} />
-        <ToolButton component="label" icon={FileText} label="Import PDF">
-          <input type="file" accept="application/pdf" className="hidden" onClick={(e) => e.target.value = null} onChange={handleAddPdf} />
-        </ToolButton>
+        <ToolButton icon={FileText} label="Import PDF" accept="application/pdf" onFileChange={handleAddPdf} />
 
         {/* Generate / Smart Wizards Button - Now integrated smoothly */}
         <div className="relative flex items-center" ref={dropdownRef}>

@@ -1,0 +1,145 @@
+{
+  "source_parent": "6a5cf3fb1a22100ec313c5a2a596bbc27a493439",
+  "accepted_at_utc": "2026-10-03T04:27:47.411830+00:00",
+  "scope": "Canvas/printer/global/template property leaves, named file controls, acknowledged settings saves and late-failure draft/document guards",
+  "source_sha256": {
+    "frontend/src/components/ProjectTree.jsx": "95f9e776ca02f11065eedd6438e3afa9e008e857ec6bd503304032ba87cd4e7b",
+    "frontend/src/components/ProjectTree.test.jsx": "6d2866f9e462edfabfd50cc7063bb4ac5d5ed1a886d9f5637689d204cb40da29",
+    "frontend/src/components/PropertiesPanel.jsx": "83cd2d11a9271410f8f2e3aa0a8d308f8b3aedb4ac6722c30001225f030ff396",
+    "frontend/src/components/PropertiesPanel.test.jsx": "0eb89af9f9f4d4bce595e695fad4dd4a11a3e2268364828059de57023b985ca0",
+    "frontend/src/components/Toolbar.jsx": "7b0c102d8ea07f01a16e9602db3a5774d51c4326861df2c1bb31a2ebf25213d6",
+    "frontend/src/state/slices/settings.js": "713da9035e5c173b3e129d33db8de4f9df84ae73a12e4a192f32b0eb0b6f9d4a",
+    "frontend/src/components/FileUploadButton.jsx": "4ad9f15f3e8a16b72350ad30ae1249ce80c43f3a68f74fe7942cc09115bad748",
+    "frontend/src/components/FileUploadButton.test.jsx": "37e850b1a00417b433bd1e13ad881bbbdd45c92e48b8fc4d87a093967d21bc15",
+    "frontend/src/components/properties/CanvasSettings.jsx": "f370c925bdf01121b5a74bcc16b49a615ff9935fb3e428ff60018929894c63c6",
+    "frontend/src/components/properties/GlobalDefaults.jsx": "8af94fcb570ff4d4bb51447ab5715acc47a4669fd86af3006d31ba9fd1b198c0",
+    "frontend/src/components/properties/PrinterSettings.jsx": "46d483353b2be986c17e66ba532b0d0b52a368503843e60e68ca84a566e1d9eb",
+    "frontend/src/components/properties/PrinterSettings.test.jsx": "5c3c804dabe21df5112f7a71ff367ab8d4dfd73e9fbb1cdb66d8ad4907735d7e",
+    "frontend/src/components/properties/TemplateSettings.jsx": "1f48af959af981153d7d5468980af90a638ae48ad9633346d293fa396bba1e5c",
+    "frontend/src/components/properties/styles.js": "db0df1292498b9c1feffd466aa4a6717436e3145dc692a063d9953926f9c3da9",
+    "frontend/src/state/slices/settings.test.js": "7cd04c4bf9ac5190e28ed3a68458ad2fb0318947faf04f8af5679d3cbff23e2e"
+  },
+  "checks": {
+    "frontend_tests": 140,
+    "test_files": 27,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "production_build": "passed; clean output directory",
+    "backend_tests": "not rerun: no Python product change",
+    "dependency_audit": "unchanged locks; zero-advisory receipt carried from 6a5cf3f",
+    "diff_check": "passed after removing extracted trailing whitespace; initial staged check failed and was corrected"
+  },
+  "browser": {
+    "viewport_css": [
+      390,
+      843
+    ],
+    "surfaces": [
+      "canvas geometry",
+      "printer/defaults controls",
+      "background HTML"
+    ],
+    "axe": {
+      "properties": {
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "targets": [
+              [
+                ".font-semibold"
+              ]
+            ]
+          }
+        ],
+        "passes": 37,
+        "violations": []
+      },
+      "template": {
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "targets": [
+              [
+                ".font-semibold"
+              ]
+            ]
+          }
+        ],
+        "passes": 35,
+        "violations": []
+      }
+    },
+    "activation": "developer DOM activation; ordinary keyboard/pointer controller remains affected by prior stalled native prompt",
+    "file_chooser": "named native button semantics tested; actual file chooser/upload workflow unverified",
+    "screenshots": [
+      "check-results/phase5-properties/properties-390.png",
+      "check-results/phase5-properties/properties-defaults-390.png",
+      "check-results/phase5-properties/template-390.png"
+    ]
+  },
+  "generated_frontend": {
+    "files": {
+      "assets/AIAssistant--3MD_BaQ.js": "dcdc2662189ec7fbf53212e96aa0c3a0c9e09a8383d33683463a6ce9d4f01929",
+      "assets/AIConfigModal-DJkwQOyA.js": "d7dcd4f1b49a8bd48efeb180e3cc7fd2c98d6529b799b44c9004aef29ec4f9fe",
+      "assets/BatchPrintModal-DswaathR.js": "58220fcb4961c3bab5330f35668979e29c1693638a411492cb285757283a563f",
+      "assets/DateToolModal-DvAZOmi5.js": "48f494b033ebbe2017d128760ff051c7b0bc23e55c98a684a46821d4e36294b8",
+      "assets/HtmlPickerModal-CzjUoFZ8.js": "ca8107fe29298d3fbdea0504094bfb25f5fd65ad8a7a0d5853385c9c2aea037e",
+      "assets/IconPicker-ZD-2IbU4.js": "dac01bdbf3513c8252d2ea9727c2320cb46af9d1bc423d66cc2d2b9f13b8b35c",
+      "assets/LocalBatchRenderer-fkzdz_zH.js": "140f3ea9a2d862f95b15a79d47d2e4b01419c01b6bdb67eb74aef0c6b9215907",
+      "assets/OnboardingWizard-Dbsxc-jR.js": "05bdae1de1bae06d6fbff9151148182ff4dbeabcb5ec9460d96a87d108b2a486",
+      "assets/TemplateWizardModal-DBjD_zxU.js": "dda049f9c1507b40fb7ccd7f4a93095d503619cd18558e9cb3fe959163acda6a",
+      "assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+      "assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+      "assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+      "assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+      "assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+      "assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+      "assets/index-BVy5gSbL.js": "dd0fdd534fcad81c5b39977fc701703bc8b38a818b0bb6138f42ecff17bc3233",
+      "assets/index-DtCNKHte.css": "1bcc075fa23a536fbc08d257bc35d17d7627170cd4e6158ec93fd70e38d07daa",
+      "assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+      "assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+      "assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+      "assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+      "assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+      "assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+      "assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+      "index.html": "c0da88ed6653d57a84ab7e0865c52a0f48df7666481b905658b539f79ab57caa",
+      "logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+    },
+    "file_count": 26,
+    "canonical_digest": "c2978b195e22ebe81918e5b0fc08be4025bda2486202496b2641ca12ecb8f9fe",
+    "digest_format": "SHA256 of compact sorted relative-path-to-SHA256 JSON",
+    "matches_inspected_artifact": true
+  },
+  "specialist": {
+    "profile": "implementer",
+    "configured_model": "gpt-6-luna",
+    "effort": "max",
+    "purpose": "non-UI settings rollback guard and six store tests",
+    "runtime_telemetry": "unavailable"
+  },
+  "remaining": [
+    "element/AI/canvas decomposition",
+    "media import ownership",
+    "keyboard object workflow",
+    "backend preflight/spooling",
+    "performance matrix",
+    "phase7 maintenance"
+  ],
+  "limitations": [
+    "No physical printer/provider calls",
+    "No external promotion",
+    "Windows/macOS native best effort",
+    "Physical PD01/Niimbot acceptance unverified"
+  ]
+}

@@ -12,6 +12,8 @@ export const createSettingsSlice = (set, get) => ({
   addresses: [],
   settings: { paper_width_mm: 58.0, print_width_mm: 48.0, default_dpi: 203, speed: 0, energy: 0, feed_lines: 50, default_font: 'RobotoCondensed.ttf', intended_media_type: 'unknown' },
   settingsLoaded: false,
+  settingsSaveStatus: 'idle',
+  settingsSaveError: '',
   fetchPresets: async () => {
     try {
       let data = await apiJson('/api/presets', {}, {
@@ -153,6 +155,8 @@ export const createSettingsSlice = (set, get) => ({
   setSettings: (settings) => set({ settings }),
   updateSettingsAPI: async (newSettings) => {
     const previous = get();
+    if (previous.settingsSaveStatus === 'saving') return false;
+
     const rollback = {
       settings: previous.settings,
       currentDpi: previous.currentDpi,
@@ -161,6 +165,7 @@ export const createSettingsSlice = (set, get) => ({
       items: previous.items,
       pageLayouts: previous.pageLayouts
     };
+
     const requestedDpi = Number(newSettings?.default_dpi);
     const currentDpi = previous.currentDpi || previous.settings?.default_dpi || 203;
     const shouldScaleForDpi = !previous.selectedPrinter
@@ -168,11 +173,12 @@ export const createSettingsSlice = (set, get) => ({
       && requestedDpi > 0
       && Math.abs(requestedDpi - currentDpi) > 0.001;
 
+    let optimisticUpdate;
     if (shouldScaleForDpi) {
       const scale = requestedDpi / currentDpi;
       const nextWidth = Math.max(1, Math.round(previous.canvasWidth * scale));
       const nextHeight = Math.max(1, Math.round(previous.canvasHeight * scale));
-      set({
+      optimisticUpdate = {
         settings: newSettings,
         currentDpi: requestedDpi,
         canvasWidth: nextWidth,
@@ -182,19 +188,52 @@ export const createSettingsSlice = (set, get) => ({
           ...layout,
           htmlContent: buildTemplateHtml(layout.activeTemplate.id, layout.activeTemplate.params, nextWidth, nextHeight)
         } : layout)
-      });
+      };
     } else {
-      set({ settings: newSettings });
+      optimisticUpdate = { settings: newSettings };
     }
+
+    set({ settingsSaveStatus: 'saving', settingsSaveError: '' }, false, { history: 'skip' });
+    set(optimisticUpdate);
+    const submittedDocument = get();
+    const submittedSessionId = submittedDocument.documentSessionId;
+    const submittedRevision = submittedDocument.documentRevision;
+
     try {
       await apiFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings)
       });
+      set({ settingsSaveStatus: 'saved', settingsSaveError: '' }, false, { history: 'skip' });
+      return true;
     } catch (e) {
       console.error("Failed to save settings", e);
-      set({ ...rollback, apiError: errorMessage(e, 'Failed to save settings.') });
+      const message = errorMessage(e, 'Failed to save settings.');
+      const current = get();
+      const rollbackUpdate = {};
+
+      if (current.settings === newSettings) {
+        rollbackUpdate.settings = rollback.settings;
+      }
+      if (
+        current.documentSessionId === submittedSessionId
+        && current.documentRevision === submittedRevision
+      ) {
+        rollbackUpdate.currentDpi = rollback.currentDpi;
+        rollbackUpdate.canvasWidth = rollback.canvasWidth;
+        rollbackUpdate.canvasHeight = rollback.canvasHeight;
+        rollbackUpdate.items = rollback.items;
+        rollbackUpdate.pageLayouts = rollback.pageLayouts;
+      }
+
+      if (Object.keys(rollbackUpdate).length > 0) set(rollbackUpdate);
+      set({
+        settingsSaveStatus: 'failed',
+        settingsSaveError: message,
+        apiError: message
+      }, false, { history: 'skip' });
+      return false;
     }
   }
 });

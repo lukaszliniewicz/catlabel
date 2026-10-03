@@ -4,11 +4,12 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import PropertiesPanel from './PropertiesPanel';
 import { useStore } from '../store';
 import { TEMPLATE_METADATA } from '../domain/templates';
+import * as apiClient from '../utils/apiClient';
 vi.mock('./AIAssistant', () => ({ default: () => <span>Assistant fixture</span> }));
 let root, container;
 const original = useStore.getState();
 beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true; container = document.createElement('div'); document.body.append(container); root = createRoot(container); useStore.setState({ isNarrowLayout: false, isPropertiesOpen: true }); });
-afterEach(async () => { await act(() => root.unmount()); container.remove(); useStore.setState(original, true); });
+afterEach(async () => { await act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); useStore.setState(original, true); });
 test('tabs use one tab stop and arrow/Home/End navigation with associated panels', async () => {
   await act(() => root.render(<PropertiesPanel />));
   const tabs = [...container.querySelectorAll('[role=tab]')];
@@ -71,4 +72,59 @@ test('template parameters and generated HTML retain label associations', async (
   await act(() => container.querySelector('[aria-label="Element and layout"]').click());
   for (const field of container.querySelectorAll('input, select, textarea')) expect(Boolean(field.getAttribute('aria-label') || field.labels?.length), field.outerHTML).toBe(true);
   for (const label of container.querySelectorAll('label[for]')) expect(label.control, label.outerHTML).not.toBeNull();
+});
+
+test('default draft survives switching properties tabs and custom-font upload is a button', async () => {
+  await act(() => root.render(<PropertiesPanel />));
+  const field = [...container.querySelectorAll('select')].find(input => input.name === 'intended_media_type');
+  await act(() => { field.value = 'both'; field.dispatchEvent(new Event('change', { bubbles: true })); });
+  await act(() => container.querySelector('[aria-label="Batch data"]').click());
+  await act(() => container.querySelector('[aria-label="Canvas and printer"]').click());
+  expect([...container.querySelectorAll('select')].find(input => input.name === 'intended_media_type').value).toBe('both');
+  expect(container.querySelector('button[aria-label="Upload custom font"]')).not.toBeNull();
+});
+
+test('format loading cannot overwrite a newer background edit', async () => {
+  useStore.setState({ selectedId: null, pageLayouts: [{ pageIndex: 0, htmlContent: '<div>Old</div>', activeTemplate: null }], currentPage: 0, apiError: null });
+  await act(() => root.render(<PropertiesPanel />));
+  await act(() => container.querySelector('[aria-label="Element and layout"]').click());
+  await act(() => {
+    [...container.querySelectorAll('button')].find(button => button.textContent === 'Auto-Format').click();
+    useStore.getState().setHtmlContent('<div>Newer edit</div>');
+  });
+  await vi.waitFor(() => expect(useStore.getState().apiError).toContain('changed while formatting'));
+  expect(useStore.getState().pageLayouts[0].htmlContent).toBe('<div>Newer edit</div>');
+});
+
+test('global defaults show pending and failed saves while retaining newer draft edits', async () => {
+  let rejectRequest;
+  vi.spyOn(apiClient, 'apiFetch').mockImplementation(() => new Promise((resolve, reject) => { rejectRequest = reject; }));
+  useStore.setState({ settingsSaveStatus: 'idle', settingsSaveError: '' });
+  await act(() => root.render(<PropertiesPanel />));
+  const media = () => container.querySelector('select[name="intended_media_type"]');
+  const change = async value => act(() => { media().value = value; media().dispatchEvent(new Event('change', { bubbles: true })); });
+  await change('both');
+  await act(() => [...container.querySelectorAll('button')].find(button => button.textContent.trim() === 'Save Global Defaults').click());
+  expect([...container.querySelectorAll('button')].find(button => button.textContent.includes('Saving global defaults')).disabled).toBe(true);
+  expect(container.textContent).not.toContain('Global defaults saved.');
+  await change('continuous');
+  await act(async () => rejectRequest(new Error('Defaults service unavailable')));
+  expect(container.querySelector('[role="alert"]').textContent).toContain('Defaults service unavailable');
+  expect(media().value).toBe('continuous');
+  expect(container.textContent).toContain('Unsaved default changes');
+});
+
+test('global defaults report saved only after acknowledgement and until another draft edit', async () => {
+  let resolveRequest;
+  vi.spyOn(apiClient, 'apiFetch').mockImplementation(() => new Promise(resolve => { resolveRequest = resolve; }));
+  useStore.setState({ settingsSaveStatus: 'idle', settingsSaveError: '' });
+  await act(() => root.render(<PropertiesPanel />));
+  const media = container.querySelector('select[name="intended_media_type"]');
+  await act(() => { media.value = 'both'; media.dispatchEvent(new Event('change', { bubbles: true })); });
+  await act(() => [...container.querySelectorAll('button')].find(button => button.textContent.trim() === 'Save Global Defaults').click());
+  await act(async () => resolveRequest({ status: 200 }));
+  expect(container.textContent).toContain('Global defaults saved.');
+  await act(() => { media.value = 'continuous'; media.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(container.textContent).not.toContain('Global defaults saved.');
+  expect(container.textContent).toContain('Unsaved default changes');
 });

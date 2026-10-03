@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { apiFetch, apiJson, isObjectPayload } from '../utils/apiClient';
 import ConfirmActionDialog from './ConfirmActionDialog';
 import ProjectActionsDialog from './ProjectActionsDialog';
+import FileUploadButton from './FileUploadButton';
 import {
   Folder, FolderOpen, FileText, Layers, MoreVertical,
   Download, Upload, Plus, Trash, Edit2, Save, Play
@@ -289,10 +290,7 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
                     <button className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onClick={() => { setMenuOpen(false); setIsOpen(true); setCreating({ type: 'project' }); }}>
                       <Save size={12} /> Save Current Here
                     </button>
-                    <label className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left cursor-pointer dark:text-white">
-                      <Upload size={12} /> Import Package Here
-                      <input type="file" accept=".json" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => { setMenuOpen(false); setIsOpen(true); onImport(e, node.id); }} />
-                    </label>
+                    <FileUploadButton label="Import package here" accept=".json" className="min-h-11 flex items-center gap-2 px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left dark:text-white" onChange={event => { setMenuOpen(false); setIsOpen(true); onImport(event, node.id); }}><Upload size={12} /> Import Package Here</FileUploadButton>
                     <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1"></div>
                   </>
                 )}
@@ -358,6 +356,8 @@ const TreeNode = ({ node, level, onImport, onMove, focusedKey, onFocusNode }) =>
 };
 
 export default function ProjectTree() {
+  const [importError, setImportError] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
   const { projects, categories, createCategory, saveProject } = useStore(useShallow((state) => ({
     projects: state.projects, categories: state.categories,
     createCategory: state.createCategory, saveProject: state.saveProject
@@ -410,6 +410,8 @@ export default function ProjectTree() {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (isImporting) return;
+    setImportError(''); setIsImporting(true);
     const formData = new FormData();
     formData.append("file", file);
 
@@ -418,12 +420,12 @@ export default function ProjectTree() {
 
     try {
       await apiFetch(url, { method: 'POST', body: formData });
-      useStore.getState().fetchProjects();
+      await useStore.getState().fetchProjects();
     } catch (err) {
       console.error(err);
-      alert(err.message);
-    }
-    e.target.value = null;
+      setImportError(err.message || 'The project package could not be imported.');
+    } finally { setIsImporting(false); }
+    e.target.value = '';
   };
 
   const handleMove = (dragged, targetCategoryId) => {
@@ -460,12 +462,11 @@ export default function ProjectTree() {
         >
           <Save size={12} /> Save
         </button>
-        <label className="flex-1 flex items-center justify-center gap-1 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-[10px] uppercase font-bold tracking-wider cursor-pointer">
-          <Upload size={12} /> Import
-          <input type="file" accept=".json" className="hidden" onClick={(e) => e.target.value = null} onChange={(e) => handleImport(e, null)} />
-        </label>
+        <FileUploadButton label="Import project package" accept=".json" disabled={isImporting} className="min-h-8 flex-1 flex items-center justify-center gap-1 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-[10px] uppercase font-bold tracking-wider" onChange={event => handleImport(event, null)}><Upload size={12} /> Import</FileUploadButton>
       </div>
 
+      {isImporting && <p role="status" className="text-xs">Importing project package…</p>}
+      {importError && <p role="alert" className="text-xs text-red-800 dark:text-red-300">{importError}</p>}
       <div 
         role="tree" aria-label="Saved projects and folders"
         className={`flex flex-col flex-1 max-h-64 overflow-y-auto border border-neutral-100 dark:border-neutral-800 rounded-sm transition-colors ${isRootDragOver ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-neutral-950'}`}
