@@ -16,6 +16,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useStore } from '../store';
+import { serializeCanvasDocument } from '../domain/document';
 import { getPageIndices } from '../utils/canvasPages';
 import { apiFetch } from '../utils/apiClient';
 
@@ -59,19 +60,9 @@ const MessageRow = ({ m }) => {
 };
 
 const buildCanvasStateSnapshot = (state) => ({
+  ...serializeCanvasDocument(state),
   __project_id__: state.currentProjectId,
   __project_revision__: state.currentProjectRevision,
-  width: state.canvasWidth,
-  height: state.canvasHeight,
-  isRotated: state.isRotated,
-  splitMode: state.splitMode,
-  canvasBorder: state.canvasBorder,
-  canvasBorderThickness: state.canvasBorderThickness,
-  pageLayouts: state.pageLayouts,
-  items: state.items,
-  currentPage: state.currentPage,
-  batchRecords: state.batchRecords,
-  printCopies: state.printCopies,
   __dpi__: state.currentDpi || state.selectedPrinterInfo?.dpi || 203
 });
 

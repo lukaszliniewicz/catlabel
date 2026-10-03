@@ -1,9 +1,11 @@
 import { create } from 'zustand';
+import { resolveDpi, scaleItemForDpi, serializeCanvasDocument } from './domain/document';
+import { recalcAutoFit, buildTemplateHtml, buildCanvasDocumentPatch } from './domain/normalization';
+import { withHistory } from './state/history';
+import { normalizePageIndex } from './utils/canvasPages';
 import { calculateAutoFitItem } from './utils/rendering';
 import { describePrintError } from './utils/apiErrors';
 import { apiFetch, apiJson, isArrayPayload, isObjectPayload } from './utils/apiClient';
-import { buildLabelTemplateMarkup } from './components/templateStyles';
-import { normalizePageIndex } from './utils/canvasPages';
 import {
   buildBatchMatrix,
   buildBatchSequence,
@@ -17,253 +19,9 @@ import {
 
 let nextPrintJobId = 0;
 
-const recalcAutoFit = (items, batchRecords, cw, ch) => {
-  let changed = false;
-
-  const nextItems = items.map((item) => {
-    if (item.fit_to_width) {
-      const optimizedItem = calculateAutoFitItem(item, batchRecords, cw, ch);
-      if (optimizedItem.size !== item.size) {
-        changed = true;
-        return optimizedItem;
-      }
-    }
-    return item;
-  });
-
-  return changed ? nextItems : items;
-};
-
-const buildTemplateHtml = (templateId, params = {}, width = 384, height = 384) =>
-  buildLabelTemplateMarkup({ template_id: templateId, params, width, height }, {});
-
 const errorMessage = (error, fallback) => error?.message || fallback;
 
 let printerProfileRequestId = 0;
-
-const scaleItemForDpi = (item, scale) => {
-  const scalableKeys = [
-    'x', 'y', 'width', 'height', 'size', 'padding', 'border_thickness', 'strokeWidth',
-    'icon_size', 'icon_x', 'icon_y', 'text_x', 'text_y'
-  ];
-  const nextItem = { ...item };
-  scalableKeys.forEach((key) => {
-    if (typeof nextItem[key] === 'number' && Number.isFinite(nextItem[key])) {
-      nextItem[key] = nextItem[key] * scale;
-    }
-  });
-  if (Array.isArray(item.children)) {
-    nextItem.children = item.children.map((child) => scaleItemForDpi(child, scale));
-  }
-  return nextItem;
-};
-
-const normalizeCanvasState = (canvasState = {}) => {
-  const items = Array.isArray(canvasState.items)
-    ? canvasState.items.filter((item) => item && typeof item === 'object')
-    : [];
-  let pageLayouts = canvasState.pageLayouts;
-
-  // Migration from old single-template/HTML structure
-  if (!pageLayouts || pageLayouts.length === 0) {
-    const activeTemplate = canvasState.activeTemplate || null;
-    const htmlContent = canvasState.htmlContent || '';
-    
-    if (activeTemplate?.id) {
-      pageLayouts = [{
-        pageIndex: 0,
-        activeTemplate,
-        htmlContent: buildTemplateHtml(activeTemplate.id, activeTemplate.params || {}, canvasState.width || 384, canvasState.height || 384)
-      }];
-    } else {
-      pageLayouts = [{ pageIndex: 0, htmlContent, activeTemplate: null }];
-    }
-  }
-
-  const legacyTemplateItem = items.length === 1 && items[0]?.type === 'label_template' ? items[0] : null;
-  if (legacyTemplateItem) {
-    const templateId = legacyTemplateItem.template_id || 'title_subtitle';
-    const params = legacyTemplateItem.params || {};
-    return {
-      ...canvasState,
-      pageLayouts: [{
-        pageIndex: 0,
-        activeTemplate: { id: templateId, params },
-        htmlContent: buildTemplateHtml(templateId, params, canvasState.width || 384, canvasState.height || 384)
-      }],
-      items: []
-    };
-  }
-
-  return {
-    ...canvasState,
-    pageLayouts
-  };
-};
-
-const buildCanvasDocumentPatch = (canvasState = {}, currentState = {}) => {
-  const normalized = normalizeCanvasState(canvasState);
-  const width = Math.min(20_000, Math.max(1, Number(normalized.width ?? currentState.canvasWidth) || 384));
-  const height = Math.min(20_000, Math.max(1, Number(normalized.height ?? currentState.canvasHeight) || 384));
-  const normalizedBatchRecords = Array.isArray(normalized.batchRecords)
-    ? normalized.batchRecords.filter((record) => record && typeof record === 'object').slice(0, MAX_BATCH_RECORDS)
-    : [];
-  const batchRecords = normalizedBatchRecords.length ? normalizedBatchRecords : [{}];
-  const rawPageLayouts = (Array.isArray(normalized.pageLayouts) && normalized.pageLayouts.length
-    ? normalized.pageLayouts
-    : [{ pageIndex: 0, htmlContent: '', activeTemplate: null }]
-  ).filter((layout) => layout && typeof layout === 'object').map((layout) => {
-    const pageIndex = normalizePageIndex(layout?.pageIndex);
-    if (!layout?.activeTemplate?.id) {
-      return {
-        ...layout,
-        pageIndex,
-        htmlContent: typeof layout.htmlContent === 'string' ? layout.htmlContent : '',
-        activeTemplate: null
-      };
-    }
-
-    return {
-      ...layout,
-      pageIndex,
-      htmlContent: buildTemplateHtml(
-        layout.activeTemplate.id,
-        layout.activeTemplate.params || {},
-        width,
-        height
-      )
-    };
-  });
-  const pageLayouts = [...new Map(rawPageLayouts.map((layout) => [layout.pageIndex, layout])).values()];
-  if (pageLayouts.length === 0) pageLayouts.push({ pageIndex: 0, htmlContent: '', activeTemplate: null });
-  const items = (normalized.items || []).map((item, index) => ({
-    ...item,
-    id: String(item.id ?? `recovered-${index}`),
-    pageIndex: normalizePageIndex(item.pageIndex)
-  }));
-  const allowedBorders = new Set(['none', 'box', 'top', 'bottom', 'cut_line']);
-
-  return {
-    canvasWidth: width,
-    canvasHeight: height,
-    canvasBorder: allowedBorders.has(normalized.canvasBorder) ? normalized.canvasBorder : 'none',
-    canvasBorderThickness: Math.max(1, Number(normalized.canvasBorderThickness) || 4),
-    splitMode: Boolean(normalized.splitMode),
-    pageLayouts,
-    isRotated: Boolean(normalized.isRotated),
-    batchRecords,
-    printCopies: Math.min(MAX_PRINT_COPIES, Math.max(1, Number(normalized.printCopies) || 1)),
-    currentPage: normalizePageIndex(normalized.currentPage),
-    items: recalcAutoFit(items, batchRecords, width, height),
-    selectedId: null,
-    selectedIds: [],
-    selectedPagesForPrint: []
-  };
-};
-
-const withHistory = (config) => {
-  let historyTimeout;
-  let storedPrevState = null;
-
-  return (set, get, api) => {
-    const historySet = (args, replace, options = {}) => {
-      if (options.history === 'reset') {
-        clearTimeout(historyTimeout);
-        storedPrevState = null;
-        set(args, replace);
-        set({
-          history: [],
-          historyIndex: -1,
-          canUndo: false,
-          canRedo: false,
-          _isUndoRedo: false
-        });
-        return;
-      }
-
-      if (options.history === 'skip') {
-        set(args, replace);
-        return;
-      }
-
-      if (!storedPrevState) {
-        storedPrevState = get();
-      }
-
-      set(args, replace);
-      const nextState = get();
-
-      // If this change was triggered by undo/redo, strip the flag, reset the baseline, and exit.
-      if (nextState._isUndoRedo) {
-        set({ _isUndoRedo: false });
-        storedPrevState = null;
-        return;
-      }
-
-      clearTimeout(historyTimeout);
-      historyTimeout = setTimeout(() => {
-        const finalState = get();
-        const relevantKeys = [
-          'items',
-          'canvasWidth',
-          'canvasHeight',
-          'isRotated',
-          'splitMode',
-          'canvasBorder',
-          'canvasBorderThickness',
-          'pageLayouts',
-          'batchRecords'
-        ];
-        let changed = false;
-
-        for (const key of relevantKeys) {
-          if (storedPrevState[key] !== finalState[key]) {
-            changed = true;
-            break;
-          }
-        }
-
-        if (changed) {
-          const snap = {};
-          for (const key of relevantKeys) {
-            snap[key] = finalState[key];
-          }
-
-          const currentHistory = finalState.history || [];
-          const currentIndex = finalState.historyIndex !== undefined ? finalState.historyIndex : -1;
-
-          // Truncate future history if the user makes a new change after undoing
-          let newHistory = currentHistory.slice(0, currentIndex + 1);
-
-          // If this is the very first change, push the original baseline state first
-          if (newHistory.length === 0) {
-            const prevSnap = {};
-            for (const key of relevantKeys) {
-              prevSnap[key] = storedPrevState[key];
-            }
-            newHistory.push(prevSnap);
-          }
-
-          newHistory.push(snap);
-          
-          // Limit stack to 50 items to prevent memory bloat
-          if (newHistory.length > 50) newHistory.shift();
-
-          set({
-            history: newHistory,
-            historyIndex: newHistory.length - 1,
-            canUndo: newHistory.length > 1,
-            canRedo: false
-          });
-        }
-
-        storedPrevState = null;
-      }, 400);
-    };
-
-    return config(historySet, get, api);
-  };
-};
 
 export const useStore = create(withHistory((set, get) => ({
   history: [],
@@ -860,9 +618,6 @@ export const useStore = create(withHistory((set, get) => ({
 
   saveProject: async (name, categoryId = null) => {
     const state = useStore.getState();
-    const thickness = state.canvasBorderThickness || 4;
-    const batchRecords = state.batchRecords || [{}];
-    const printCopies = state.printCopies || 1;
     
     try {
       const res = await apiFetch('/api/projects', {
@@ -871,14 +626,7 @@ export const useStore = create(withHistory((set, get) => ({
         body: JSON.stringify({
           name,
           category_id: categoryId,
-          canvas_state: {
-            width: state.canvasWidth, height: state.canvasHeight,
-            isRotated: state.isRotated, canvasBorder: state.canvasBorder,
-            canvasBorderThickness: thickness, splitMode: state.splitMode,
-            pageLayouts: state.pageLayouts,
-            items: state.items, currentPage: state.currentPage,
-            batchRecords, printCopies
-          }
+          canvas_state: serializeCanvasDocument(state)
         })
       });
       const data = await res.json();
@@ -894,9 +642,6 @@ export const useStore = create(withHistory((set, get) => ({
 
   updateProject: async (id, newName = null, newCategoryId = undefined) => {
     const state = useStore.getState();
-    const thickness = state.canvasBorderThickness || 4;
-    const batchRecords = state.batchRecords || [{}];
-    const printCopies = state.printCopies || 1;
     
     const writesCanvas = newName == null && newCategoryId === undefined;
     const expectedRevision = state.currentProjectId === id
@@ -907,14 +652,7 @@ export const useStore = create(withHistory((set, get) => ({
       return;
     }
     const payload = { expected_revision: expectedRevision };
-    if (writesCanvas) payload.canvas_state = {
-        width: state.canvasWidth, height: state.canvasHeight,
-        isRotated: state.isRotated, canvasBorder: state.canvasBorder,
-        canvasBorderThickness: thickness, splitMode: state.splitMode,
-        pageLayouts: state.pageLayouts,
-        items: state.items, currentPage: state.currentPage,
-        batchRecords, printCopies
-    };
+    if (writesCanvas) payload.canvas_state = serializeCanvasDocument(state);
     if (newName != null) payload.name = newName;
     if (newCategoryId !== undefined) payload.category_id = newCategoryId;
 
@@ -965,11 +703,15 @@ export const useStore = create(withHistory((set, get) => ({
   ),
 
   loadProject: (proj) => {
-    get().hydrateCanvasState(proj.canvas_state || {}, {
-      currentProjectId: proj.id,
-      currentProjectRevision: proj.revision ?? null,
-      resetHistory: true
-    });
+    try {
+      get().hydrateCanvasState(proj.canvas_state || {}, {
+        currentProjectId: proj.id,
+        currentProjectRevision: proj.revision ?? null,
+        resetHistory: true
+      });
+    } catch (error) {
+      set({ apiError: errorMessage(error, 'Failed to open the project.') }, false, { history: 'skip' });
+    }
   },
 
   savePreset: async (presetData) => {
@@ -1185,7 +927,7 @@ export const useStore = create(withHistory((set, get) => ({
     let border = currentState.canvasBorder;
 
     // Use the exact DPI passed by the hardware info payload
-    const activeDpi = info?.dpi || 203;
+    const activeDpi = info ? resolveDpi(info.dpi) : resolveDpi(currentState.currentDpi);
     const calcMmToPx = (mm) => Math.round(mm * (activeDpi / 25.4));
 
     if (info) {
@@ -1200,7 +942,9 @@ export const useStore = create(withHistory((set, get) => ({
         nextItems = currentState.items.map((item) => scaleItemForDpi(item, dpiScale));
       }
 
-      if (isNewPrinter) {
+      const hasDocument = currentState.currentProjectId != null || currentState.items.length > 0
+        || currentState.pageLayouts.some((layout) => layout.htmlContent || layout.activeTemplate);
+      if (isNewPrinter && !hasDocument) {
         if (isPreCutMedia) {
           const model = info.model_id ? info.model_id.toLowerCase() : '';
 

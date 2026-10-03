@@ -7,5 +7,6 @@
   "knip-production": [],
   "python-cycles": [],
   "import-contracts": [],
-  "frontend-cycles": []
+  "frontend-cycles": [],
+  "frontend-typing": []
 }

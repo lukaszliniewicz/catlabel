@@ -111,6 +111,13 @@ def collect_static(*, typing: bool = True) -> dict[str, list[dict[str, Any]]]:
         ]
     frontend = ROOT / "frontend"
     node = "node"
+    frontend_types = run(
+        [node, "node_modules/typescript/bin/tsc", "--project", "tsconfig.json"],
+        frontend,
+    )
+    if frontend_types.returncode:
+        raise RuntimeError(frontend_types.stdout + frontend_types.stderr)
+    findings["frontend-typing"] = []
     findings["react"] = [
         {
             "path": relative(file["filePath"]),
@@ -178,7 +185,7 @@ def collect_static(*, typing: bool = True) -> dict[str, list[dict[str, Any]]]:
                 "--circular",
                 "--json",
                 "--extensions",
-                "js,jsx",
+                "js,jsx,ts",
                 "src",
             ],
             frontend,

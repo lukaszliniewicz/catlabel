@@ -1,0 +1,137 @@
+{
+  "source_base_commit": "5d10de3d280b868f5446e4bc2006ff43977e2b21",
+  "source_sha256": {
+    "checks/debt.json": "52b9f6ef47a999dd34be70f999d95df417f4f5d86aea245b84d9aa1b015cc3e7",
+    "frontend/knip.json": "aefb09771907078967ebe9d48360d9946076dfad7de7cef6f48a898d550ccd78",
+    "frontend/package-lock.json": "ae7efcd7aa9a178f81982ff595ff22e6d9fd20508f18754a53e6d2797e67d857",
+    "frontend/package.json": "34dc982d7a46944ce88f7109f9ff03b5edd7a506ab53a8ed1c740fe91b5f9c28",
+    "frontend/src/components/AIAssistant.jsx": "774ab672412468234688262fbb0c926594456250fa1ba63c389b466d87ad7944",
+    "frontend/src/components/CanvasArea.jsx": "ed573fe3ed73eca18c1e0606a606dd7288c1eba84fd8d15f4d72ff1c42d7e07e",
+    "frontend/src/components/HeadlessPage.jsx": "c80d4030225da228d016ac98033d3ef47df86b2fcb07ad7d9c72700c195ed10e",
+    "frontend/src/components/PropertiesPanel.jsx": "415c4c56cf81dd0b8530c31dabbb15bd772741c17e8480d8eae22cc9a444b4fa",
+    "frontend/src/store.js": "6d73be58f6d7a41096205d8d9c574b008315ef79cee2ec2190bdc1e9722a1fa9",
+    "frontend/src/store.test.js": "01c7c8ed45d63ffc27dc0a1d701c3ee9beffa94abfaac7fba28eb87b85889bee",
+    "frontend/src/utils/rendering.js": "5d95161b5ce915d6196d70839d0d2073190f5d8bb2fe57d566c60ff5222cd44d",
+    "tools/check.py": "134074c238fb7557a6460fe9959ad09895cf278c6de0ede4292181e2b109c063",
+    "frontend/src/domain/document.ts": "46e9e410714f23d565062e5bec405f412a2d45e0ad2ca6e5b5b160c574854392",
+    "frontend/src/domain/normalization.js": "6f7677197d413a1df87024652d43d944360099bc25e7210efb7b5118b3deef3a",
+    "frontend/src/domain/templates.js": "3593606c0ccc084e6bbe318e386a850523405ca969aa82a0d50494180f900f54",
+    "frontend/src/domain/variables.js": "6bc3362fab3f01a1bbaf4ac4ff64e98168f62f6f8934bdcdeb95dc91d66a5a3c",
+    "frontend/src/state/history.js": "16787a572961275abd94477596f4b049234c65f1a3510be7a0d75cadc2caa8d3",
+    "frontend/tsconfig.json": "06a58cf5e2498a2fddab5a1c474bfb212b6b129b7cbb2dd5557ef36d25731817"
+  },
+  "frontend_release_manifest_digest": "dc3521dbda7b0269b9251556b2ac9b9e441d853c9d00fdbc14730c53266a60d1",
+  "frontend_files_sha256": {
+    "frontend/dist/assets/AIAssistant-BsP6iacd.js": "0593c0945db58655809b724cd05141a36e47ceb315c4a9978a32b03e38105b6c",
+    "frontend/dist/assets/AIConfigModal-Ckn0wXl5.js": "a6524600c1f4691f76067f9ed8630e2c03c719694b7fdbd9d731ed5cf4ffa663",
+    "frontend/dist/assets/BatchPrintModal-DE07yt7X.js": "a8358f0e2ab8cc6bbe4229fd6fa8910c50f8068d082f890d2d8daad632f4ea30",
+    "frontend/dist/assets/DateToolModal-Cwhexegd.js": "de7cd566e5dd2ab6ad43c7a774329e8f56c93e218f24f7f2bcf3f9d86d113827",
+    "frontend/dist/assets/HtmlPickerModal-DQ_SEoPp.js": "c2f6583986d7eefa2ee0bdc8685a50090b1a863f2cd258d3a1531e695648270a",
+    "frontend/dist/assets/IconPicker-BNSB4R58.js": "29069293c7ed01cb3f404bae4878ebfdf20bd591c0263d6d01da7310370d28ed",
+    "frontend/dist/assets/LocalBatchRenderer-BhL0dp32.js": "d3bdc5517bcbaf693dd059baea27466c48ad2b4d48b1faa29c9607566e81d6e9",
+    "frontend/dist/assets/OnboardingWizard-BqOTGNlr.js": "cff2b024f9c190e0aba20f520fe3cd6a30c51a26b9dbce2e3a88b874802830fd",
+    "frontend/dist/assets/TemplateWizardModal-9tqgiKJ7.js": "5929123e0c7d878ea29d583254c67eb6b6f017b72a2f4cb36f2e1c034f06924d",
+    "frontend/dist/assets/arrow-right-s7w_Huqs.js": "4f4ee9605158e7d67d300cd066ed42072670ab9fcb8239e1c2a303994d976bd8",
+    "frontend/dist/assets/browser-CCrYwriZ.js": "1eaab0e76321a9b6aabff1bc7358368ba771048d92b7ca21f19090df0fae6424",
+    "frontend/dist/assets/bwip-js-57VEc1jp.js": "e5e9ae7e7c44c1e3a55db189a778c8dc0ce1090a268c0f6e293bb56454f6b095",
+    "frontend/dist/assets/canvas-vendor-EptoETYm.js": "2f4df1948960ff6981033e1f1f74847fcd4c58cab38e05c74df54c9533517639",
+    "frontend/dist/assets/createLucideIcon-CviMrOnZ.js": "f3aee878ee07c535c68808c20353a4d010ca8a91f65a6db6ec8615209679c706",
+    "frontend/dist/assets/editor-vendor-z7wF58dC.js": "905f376dae38750f47dd561e99cbeea854cb43503619ea059b3ccca3df5fb7d3",
+    "frontend/dist/assets/index-CNXdjsVY.js": "40f8f31984f25077b61a90274fca2b41fb239007df4e9c0072f49b6ddda3a406",
+    "frontend/dist/assets/index-MNRPy6gH.css": "dd617d2763a510249d03441cb1720c11a1ec29cdc2baff91f08109968805227d",
+    "frontend/dist/assets/js-CiQGITab.js": "470357b0bcda186133b97acc236a72ba7bae8cdc5e6e23b5634ea830689aaa89",
+    "frontend/dist/assets/loader-circle-y5rui68Z.js": "1b68ccfe3e6cad95dbaccadcffa6bd229ff28f49e4467ab3d4d98ed632af52e2",
+    "frontend/dist/assets/react-vendor-C-eDKiZx.js": "972b78b1ee46692b68d196ec4e322d43dc9982fbc9649ae7682c38254caab213",
+    "frontend/dist/assets/rolldown-runtime-hePW80VL.js": "580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021",
+    "frontend/dist/assets/settings-2-C7fYqvh_.js": "47f5dccbc999dd10cca99fd329bbc42ea391e0b17a6738903f0b2510ae6f60bc",
+    "frontend/dist/assets/settings-2o0Ipn0n.js": "b88139de49e451412b4a5c579308dc6136a99a3135b19bdac9f883eeb9fb4e7d",
+    "frontend/dist/assets/tag-DNZAD0Mo.js": "b384d77907603e4a4411b04ffb957da5d834c8ce38f804b8099909c88ff25f46",
+    "frontend/dist/index.html": "6f91fdc4c6af78a7a175a3e5d831254102c98b9db75b5ac5885c9a935fc83f62",
+    "frontend/dist/logo.webp": "13243f2e1cb0df1b7e1cfd421adc5aaab0ed8239773189dd0472106a663f6423"
+  },
+  "checked_frontend_matches_shipped": true,
+  "gates": {
+    "backend_run": 702,
+    "backend_passed": 701,
+    "backend_skipped": 1,
+    "frontend_tests": 42,
+    "frontend_test_files": 8,
+    "static": {
+      "ruff": [],
+      "format": [],
+      "typing": [],
+      "frontend-typing": [],
+      "react": [],
+      "knip": [],
+      "knip-production": [],
+      "python-cycles": [],
+      "import-contracts": [],
+      "frontend-cycles": []
+    },
+    "advisories": {
+      "python-advisories": [],
+      "npm-advisories": []
+    }
+  },
+  "browser_evidence": {
+    "fixture_dpi": 300,
+    "fixture_pixels": [
+      600,
+      300
+    ],
+    "saved_project": {
+      "id": 4,
+      "name": "DPI round trip saved",
+      "category_id": null,
+      "canvas_state": {
+        "document_version": 1,
+        "dpi": 200,
+        "width": 400,
+        "height": 200,
+        "isRotated": false,
+        "canvasBorder": "none",
+        "canvasBorderThickness": 4,
+        "splitMode": false,
+        "pageLayouts": [
+          {
+            "pageIndex": 0,
+            "htmlContent": "",
+            "activeTemplate": null
+          }
+        ],
+        "items": [
+          {
+            "id": "dpi-text",
+            "type": "text",
+            "text": "50.8 x 25.4 mm at 300 DPI",
+            "x": 0,
+            "y": 66.66666666666666,
+            "width": 400,
+            "height": 40,
+            "size": 20,
+            "font": "Arial",
+            "pageIndex": 0
+          }
+        ],
+        "currentPage": 0,
+        "batchRecords": [
+          {}
+        ],
+        "printCopies": 1
+      },
+      "revision": 1
+    },
+    "reload_physical_mm": [
+      50.8,
+      25.4
+    ],
+    "screenshot": "check-results/phase5-document/dpi-reload.png",
+    "printed": false
+  },
+  "typing_scope": "Strict TypeScript covers src/domain/**/*.ts; JSX/store callers remain JavaScript. TypeScript 5.9.3 retained because 7.0.2 conflicts with installed Madge/typescript-eslint peers.",
+  "remaining": [
+    "Named store slices, component decomposition, dirty/draft/switch UX and accessibility",
+    "Shared resource readiness and owned browser lifecycle",
+    "No native Windows/macOS or physical printer acceptance"
+  ]
+}

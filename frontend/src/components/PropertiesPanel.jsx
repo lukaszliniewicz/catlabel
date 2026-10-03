@@ -6,7 +6,7 @@ import {
   Plus, Bold, Italic, Underline
 } from 'lucide-react';
 import { calculateAutoFitItem } from '../utils/rendering';
-import { TEMPLATE_METADATA } from './templateStyles';
+import { TEMPLATE_METADATA } from '../domain/templates';
 import { apiFetch } from '../utils/apiClient';
 import BatchDataPanel from './BatchDataPanel';
 

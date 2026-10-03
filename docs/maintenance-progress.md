@@ -303,3 +303,9 @@ manifest digest `3429f55d5f3cdce08d225312412eb11e3874763d25ccc6591299f6026c66418
 Linux installation/recovery and dependency work are implemented; native foreign
 systems and physical printers remain best effort/unverified. Phases 5–7 remain
 required work on the active goal.
+
+Phase 5 document foundation is accepted locally. A versioned serializer now includes DPI in project saves, AI snapshots and clean capture. Document/template/variable helpers and history middleware have separate ownership. Loading resets document and history atomically; unsupported/oversize documents preserve the prior project. Selecting a printer preserves populated label geometry and rescales numeric nested coordinates while keeping percentages and rotation.
+
+The production browser saved a 600×300 pixel / 300-DPI fixture at 400×200 / 200 DPI, then reloaded it before and after printer discovery: the physical size remained 50.8×25.4 mm. No print job was submitted. Strict TypeScript 5.9.3 covers the new document boundary; JavaScript/JSX callers remain unchecked. Version 7 conflicts with current analysis-tool peers and is deferred.
+
+Full Linux checks pass: 702 backend tests (701 pass, one Windows SDK skip), 42 frontend tests, production build, ten empty static categories and zero Python/npm advisory findings. The shipped 26-file frontend matches the inspected build with canonical digest `dc3521dbda7b0269b9251556b2ac9b9e441d853c9d00fdbc14730c53266a60d1`. [Document receipt](reviews/2026-10-02/evidence/phase5-document-receipt.json). Named store slices, component decomposition, unsaved-work/draft UX, accessibility and phases 6–7 remain active. Windows/macOS and physical devices remain best effort/unverified.

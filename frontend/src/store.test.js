@@ -17,11 +17,90 @@ afterEach(() => {
     history: [],
     historyIndex: -1,
     canUndo: false,
-    canRedo: false
+    canRedo: false,
+    currentDpi: 203,
+    canvasWidth: 384,
+    canvasHeight: 384,
+    selectedPrinter: null,
+    selectedPrinterInfo: null
   });
 });
 
 describe('editor store correctness', () => {
+  test('saved DPI survives loading without a selected printer', () => {
+    useStore.setState({ currentDpi: 203 });
+    useStore.getState().loadProject({ id: 1, revision: 2, canvas_state: {
+      document_version: 1, dpi: 300, width: 600, height: 300, items: []
+    } });
+    expect(useStore.getState()).toMatchObject({ currentDpi: 300, canvasWidth: 600, canvasHeight: 300 });
+    expect(useStore.getState().getPxToMm(600)).toBe('50.8');
+  });
+
+  test('legacy documents retain the current resolution without inventing a saved DPI', () => {
+    useStore.setState({ currentDpi: 300 });
+    useStore.getState().loadProject({ id: 1, canvas_state: { width: 600, height: 300, items: [] } });
+    expect(useStore.getState()).toMatchObject({ currentDpi: 300, canvasWidth: 600, canvasHeight: 300 });
+  });
+
+  test('document hydration and history reset notify subscribers atomically', async () => {
+    vi.useFakeTimers();
+    useStore.getState().setItems([{ id: 'old', type: 'text' }]);
+    await vi.advanceTimersByTimeAsync(450);
+    const observed = [];
+    const unsubscribe = useStore.subscribe(state => observed.push({ id: state.currentProjectId,
+      item: state.items[0]?.id, canUndo: state.canUndo, history: state.history.length }));
+    useStore.getState().loadProject({ id: 99, canvas_state: { items: [{ id: 'new', type: 'text' }] } });
+    unsubscribe();
+    expect(observed).toEqual([{ id: 99, item: 'new', canUndo: false, history: 0 }]);
+  });
+
+  test('loading against a selected printer preserves millimetres and nested geometry', () => {
+    useStore.setState({ currentDpi: 203, selectedPrinter: 'offline', selectedPrinterInfo: { dpi: 203 } });
+    useStore.getState().loadProject({ id: 1, canvas_state: {
+      document_version: 1, dpi: 300, width: 600, height: 300, items: [{
+        id: 'group', type: 'group', x: 300, rotation: 30,
+        children: [{ id: 'text', type: 'text', size: 30, x: 150, width: '50%' }]
+      }]
+    } });
+    expect(useStore.getState()).toMatchObject({ currentDpi: 203, canvasWidth: 406, canvasHeight: 203 });
+    expect(useStore.getState().getPxToMm(406)).toBe('50.8');
+    expect(useStore.getState().items[0]).toMatchObject({ x: 203, rotation: 30,
+      children: [{ size: 20.3, x: 101.5, width: '50%' }] });
+  });
+
+  test.each(['save', 'overwrite'])('%s serializes document version and DPI', async (operation) => {
+    useStore.setState({ currentProjectId: 42, currentProjectRevision: 3, currentDpi: 300,
+      canvasWidth: 600, canvasHeight: 300 });
+    const fetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ id: 42, revision: 4 }) });
+    vi.spyOn(apiClient, 'apiJson').mockResolvedValue([]);
+    if (operation === 'save') await useStore.getState().saveProject('DPI fixture');
+    else await useStore.getState().updateProject(42);
+    expect(JSON.parse(fetch.mock.calls[0][1].body).canvas_state).toMatchObject({
+      document_version: 1, dpi: 300, width: 600, height: 300
+    });
+  });
+
+  test('unsupported or over-limit documents preserve the current editor', () => {
+    useStore.setState({ currentProjectId: 42, items: [{ id: 'retained', type: 'text' }], currentDpi: 203 });
+    useStore.getState().loadProject({ id: 99, canvas_state: { document_version: 2, items: [] } });
+    expect(useStore.getState()).toMatchObject({ currentProjectId: 42, items: [{ id: 'retained' }] });
+    expect(useStore.getState().apiError).toContain('document version');
+    useStore.getState().loadProject({ id: 99, canvas_state: { width: 20_001, items: [] } });
+    expect(useStore.getState()).toMatchObject({ currentProjectId: 42, items: [{ id: 'retained' }] });
+    expect(useStore.getState().apiError).toContain('dimension limit');
+  });
+
+  test('printer selection and deselection preserve existing document geometry', async () => {
+    vi.spyOn(apiClient, 'apiFetch').mockResolvedValue({ json: async () => ({ speed: 0, energy: 0, feed_lines: 50 }) });
+    useStore.setState({ currentDpi: 300, canvasWidth: 600, canvasHeight: 300,
+      items: [{ id: 'text', type: 'text', size: 30 }], pageLayouts: [] });
+    await useStore.getState().setSelectedPrinter('offline', { address: 'offline', dpi: 203,
+      media_type: 'pre-cut', model_id: 'd110', width_px: 384 });
+    expect(useStore.getState()).toMatchObject({ currentDpi: 203, canvasWidth: 406, canvasHeight: 203 });
+    await useStore.getState().setSelectedPrinter(null, null);
+    expect(useStore.getState()).toMatchObject({ currentDpi: 203, canvasWidth: 406, canvasHeight: 203 });
+  });
+
   test('AI setters accept React-style functional updaters', () => {
     useStore.setState({ aiMessages: [], aiSessionUsage: { tokens: 1 } });
     useStore.getState().setAiMessages((messages) => [...messages, { role: 'user', content: 'hello' }]);

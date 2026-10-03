@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Group, Layer, Line, Path, Rect, Stage, Transformer } from 'react-konva';
 import { useStore } from '../store';
+import { serializeCanvasDocument } from '../domain/document';
 import { useShallow } from 'zustand/react/shallow';
 import CanvasItemNode from './CanvasItemNode';
 import FloatingToolbar from './FloatingToolbar';
@@ -87,14 +88,7 @@ export default function CanvasArea() {
         id: Date.now(),
         pageIndex: state.currentPage,
         record: state.batchRecords?.[0] || {},
-        state: {
-          width: state.canvasWidth,
-          height: state.canvasHeight,
-          canvasBorder: state.canvasBorder,
-          canvasBorderThickness: state.canvasBorderThickness,
-          items: state.items,
-          pageLayouts: state.pageLayouts
-        }
+        state: serializeCanvasDocument(state)
       });
     });
 

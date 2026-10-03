@@ -8,10 +8,11 @@
     "build": "vite build",
     "test": "vitest run",
     "lint": "eslint src *.config.js",
-    "check": "npm run lint && npm run test && npm run build",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "preview": "vite preview",
     "debt": "knip",
-    "cycles": "madge --circular --json --extensions js,jsx src"
+    "cycles": "madge --circular --json --extensions js,jsx,ts src",
+    "typecheck": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "bwip-js": "4.11.4",
@@ -42,6 +43,7 @@
     "madge": "8.0.0",
     "postcss": "^8.5.1",
     "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
     "vite": "8.3.2",
     "vitest": "5.0.3"
   },

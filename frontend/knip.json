@@ -1,5 +1,5 @@
 {
   "entry": ["src/main.jsx!", "src/**/*.test.{js,jsx}"],
-  "project": ["src/**/*.{js,jsx,css}!", "!src/**/*.test.{js,jsx}!", "src/**/*.test.{js,jsx}", "*.config.js"],
+  "project": ["src/**/*.{js,jsx,ts,css}!", "!src/**/*.test.{js,jsx}!", "src/**/*.test.{js,jsx}", "*.config.js"],
   "includeEntryExports": true
 }

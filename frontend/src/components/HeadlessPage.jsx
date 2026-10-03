@@ -3,7 +3,7 @@ import { Layer, Line, Rect, Stage } from 'react-konva';
 import { toPng } from 'html-to-image';
 import CanvasItemNode from './CanvasItemNode';
 import HtmlLabel from './HtmlLabel';
-import { buildLabelTemplateMarkup } from './templateStyles';
+import { buildLabelTemplateMarkup } from '../domain/templates';
 import { getPageItems, getPageLayout } from '../utils/canvasPages';
 
 const renderCanvasBorder = (canvasState) => {
