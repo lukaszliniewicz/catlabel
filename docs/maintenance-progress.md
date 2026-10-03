@@ -8,10 +8,10 @@ Objective: implement the complete [2 October maintenance plan](reviews/2026-10-0
 | 1 — correctness and local operation | Implemented locally; hardware acceptance open | Classification/row packing, local-server/provider-secret fixes, device admission and Niimbot acknowledgements, shared processing limits, safe catalog publication and project transactions/revisions are integrated. Full Linux checks pass: 300 backend tests, 28 frontend tests and a scratch production build. |
 | 2 — debt elimination | Implemented locally; native acceptance open | All source/check debt gates are zero, both full Python SCCs are removed, and no import-contract exception remains. 329 backend tests pass with one native SDK test skipped on Linux; 33 frontend tests and production build pass. |
 | 3 — upstream parity | Implemented locally within pinned scope; hardware acceptance open | Released generic/dedicated recipes, Classic receive and selected BLE hooks pass fixtures. Pinned Luck A4 overlay/transactions and experimental PrintMaster M110/M120 are integrated. Explicit unadopted deltas and physical/native limits remain in the parity ledger. |
-| 4 — installation/dependencies | In progress | Five-platform locked bootstrap and four independent AI/headless environments pass Linux checks. Selected-artifact updater source passes tests; immutable-release integration acceptance follows. Frontend package groups remain. Foreign native checks are best effort. |
-| 5 — structure/UX | Pending | Typed interfaces/store/component decomposition; responsive/accessible setup/editor/save recovery. Parent owns browser acceptance. |
-| 6 — performance/lifecycle | Pending | Measured alpha hoist, unified render readiness, Playwright ownership, bounded jobs/previews and representative benchmarks. |
-| 7 — maintenance routine | Pending | Owners, expiry/review triggers, dependency/upstream/release receipts and debt gates maintained. |
+| 4 — installation/dependencies | Implemented locally within accepted scope; foreign native acceptance open | Locked bootstrap, selected-artifact update/rollback and accepted dependency bundles have receipts below. ESLint10/TypeScript7 remain peer-gated compatibility deferrals. Windows/macOS are best effort. |
+| 5 — structure/UX | Implemented locally; native interaction acceptance limited | Named store slices, typed domain/API boundaries, decomposed editor/properties/assistant, responsive setup and save/draft recovery have receipts below. Whole-app JSX typing and native pointer/keyboard acceptance remain limited. |
+| 6 — performance/lifecycle | In progress | Alpha hoist, readiness, renderer ownership, paginated summaries, bounded previews/code cache and owned decoding pass. Printer spooling, headless output streaming and broader representative measurements are being accepted. Whole decoded-input retention remains bounded by the configured total pixel ceiling. |
+| 7 — maintenance routine | Policy implemented; recurring execution is future work | Manual weekly advisories/monthly upstream/debt review, ownership, compatibility reconsideration dates and exact release receipts are specified in development-checks.md. No automation is scheduled. |
 
 The original [review baseline](reviews/2026-10-02/baseline.md) remains immutable historical evidence. Updated checks describe their configuration/environment; changed counts must not be interpreted as fixes without comparing the diagnostics.
 
@@ -627,3 +627,12 @@ and physical output remain unverified. The shipped27-file frontend matches the
 inspected clean build. [Element receipt](reviews/2026-10-02/evidence/phase5-elements-receipt.json).
 The lightweight paginated project summaries and detail-on-selection work was already
 accepted earlier in phase6; it is not an outstanding implementation task.
+
+Phase7 maintenance policy names the repository maintainer and change/integration
+owners, weekly live advisory checks during active development, monthly upstream/debt
+reviews, peer-gated major-version triggers and release-receipt requirements. Future
+review dates do not imply those reviews or unavailable native/hardware tests ran.
+The policy distinguishes Vulture protocol-parameter false positives, compatibility
+deferrals and the currently empty advisory exception list. The table above now
+reflects completed work; historical checkpoints below remain unchanged.
+[Maintenance routine](development-checks.md#maintenance-ownership-and-review-cadence).

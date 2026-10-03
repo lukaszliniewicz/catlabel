@@ -67,3 +67,55 @@ in its deadline and preserves caller cancellation. Raw `apiFetch` returns at
 successful headers; callers that consume a body should use `apiJson` to keep that
 consumption inside the deadline. These checks cover the boundary contracts, not
 whole-app JavaScript typing.
+
+## Maintenance ownership and review cadence
+
+The CatLabel repository maintainer owns dependency selection, accepted exceptions,
+upstream scope and release decisions. The author of a change owns its focused checks
+and receipt; the integrating maintainer owns the combined gate and exact shipped
+artifact. A delegated test or review does not transfer acceptance ownership.
+
+| When | Owner | Required action and recorded result |
+| --- | --- | --- |
+| Every change | Change author and integrating maintainer | Run the static gate and relevant tests; run the full lane for integration. Keep all ten diagnostic categories at zero. Review every suppression, ignored path and boundary change. |
+| Weekly during active development | Repository maintainer | Run the live advisory lane against the resolved environment. Review actionable security patches; retain the uncapped report, resolved versions and disposition. Next review: 10 October 2026. |
+| Monthly | Repository maintainer | Review upstream releases and the pinned parity ledger, dependency minors/majors, compatibility deferrals and outstanding acceptance gaps. Publish a dated debt report. Next review: 3 November 2026. |
+| Before a release | Integrating maintainer | Verify source/lock/checker identity, exact built frontend, install/update/rollback evidence, and changed protocol-family fixtures. Distinguish physical/native/provider evidence from fixtures. |
+
+The cadence is a manual maintenance policy. No reminder or recurring automation has
+been scheduled. Missing future reports are not represented as already completed.
+
+A monthly debt report records the source commit, environment/checker versions, all
+uncapped static/advisory counts, remaining exceptions with owners and expiry,
+upstream tag/SHA and adopted/deferred deltas, dependency decisions and new evidence.
+Compare diagnostic fingerprints, not just totals. The historical review baseline
+is immutable; a green new tool/configuration does not retroactively change it.
+Vulture remains advisory: context-manager parameters such as `exc_type` are part of
+the Python protocol and are not removable dead code merely because their names are
+unused. Record reviewed advisory candidates rather than adding meaningless reads.
+
+Current compatibility deferrals have concrete reconsideration triggers:
+
+- ESLint10: reconsider when the installed React plugin declares compatible peers,
+  or after a deliberately tested replacement of that rule surface. Owner: repository
+  maintainer. Review by 3 November2026; do not force an incompatible dependency tree.
+- TypeScript7: reconsider when the installed analysis tool peers support it and the
+  domain/API fixtures pass. Owner: repository maintainer. Review by 3 November2026.
+- Windows/macOS native installs and transports: best effort until native runners
+  are available. Owner: repository maintainer. Reassess availability monthly; keep
+  portable script/lock evidence separate from native execution.
+- Physical PD01 and Niimbot checks: confirm the actual Niimbot model before choosing
+  its hardware recipe; record model/firmware/media/transport and visible output.
+  Owner: repository maintainer. No automatic enablement follows from a calendar date.
+
+These are compatibility/acceptance deferrals, not advisory exemptions. The advisory
+exception list is currently empty. Any future advisory exemption needs its exact
+package/version/advisory, rationale, owner, expiry and review receipt; the check gate
+rejects an expired exemption or an unrelated replacement finding.
+
+Each release receipt must include the source commit and dirty-state disposition,
+resolved lock/checker hashes and versions, commands and test outcomes including
+skips, static and live advisory reports, inspected frontend file manifest/digest,
+installation/update/rollback scope, relevant fixture hashes, and actual hardware or
+provider receipts when performed. Unavailable checks remain explicitly unverified.
+Never replace an accepted artifact with an uninspected rebuild during promotion.
