@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import TemplateSettings from './properties/TemplateSettings';
 import ElementSettings from './properties/ElementSettings';
+import CanvasObjectList from './properties/CanvasObjectList';
 import CanvasSettings from './properties/CanvasSettings';
 import PrinterSettings from './properties/PrinterSettings';
 import GlobalDefaults from './properties/GlobalDefaults';
@@ -175,6 +176,7 @@ export default function PropertiesPanel() {
         {/* === ELEMENT TAB === */}
         {activeTab === 'element' && (
           <>
+            <CanvasObjectList />
             {!selectedItem ? (
               <TemplateSettings layout={currentLayout} onEject={ejectTemplate} onChangeParams={updateTemplateParams}
                 onPickIcon={field => setTemplateIconField({ field, session: documentSessionId, revision: documentRevision, page: currentPage, template: activeTemplate.id })} onFormat={() => handleFormatHtml('designMode')} onChangeHtml={setHtmlContent} />

@@ -1,17 +1,16 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Group, Layer, Line, Path, Rect, Stage, Transformer } from 'react-konva';
 import { useStore } from '../store';
-import { serializeCanvasDocument } from '../domain/document';
 import { useShallow } from 'zustand/react/shallow';
 import CanvasItemNode from './CanvasItemNode';
 import FloatingToolbar from './FloatingToolbar';
 import HtmlLabel from './HtmlLabel';
-import HeadlessPage from './HeadlessPage';
-import { getPageIndices, getPageItems, getPageLayout, normalizePageIndex } from '../utils/canvasPages';
-import { ignoreCanvasShortcut } from '../utils/canvasShortcuts';
+import CanvasCapture from './CanvasCapture';
+import useCanvasKeyboard from './useCanvasKeyboard';
+import useCanvasInteractions from './useCanvasInteractions';
+import { getPageIndices, getPageItems, getPageLayout } from '../utils/canvasPages';
 
 const WORKSPACE_PAD = 40;
-const SNAP_T = 10;
 
 export default function CanvasArea() {
   const {
@@ -68,11 +67,9 @@ export default function CanvasArea() {
     batchRecords: state.batchRecords
   })));
 
-  const [snapLines, setSnapLines] = useState([]);
   const [selectionBox, setSelectionBox] = useState(null);
-  const [isPanning, setIsPanning] = useState(false);
+  const isPanning = useCanvasKeyboard();
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
-  const trRef = useRef(null);
   const containerRef = useRef(null);
   const [availableWidth, setAvailableWidth] = useState(0);
   useEffect(() => {
@@ -89,42 +86,8 @@ export default function CanvasArea() {
   }, []);
   const fitScale = isNarrowLayout && availableWidth > 0 ? Math.min(1, availableWidth / (canvasWidth + WORKSPACE_PAD * 2)) : 1;
   const zoomScale = userZoomScale * fitScale;
-  const captureResolverRef = useRef(null);
-  const [captureRequest, setCaptureRequest] = useState(null);
   const cvThick = canvasBorderThickness || 4;
 
-  useEffect(() => {
-    window.__getStageB64 = () => new Promise((resolve, reject) => {
-      if (captureResolverRef.current) {
-        reject(new Error('A clean canvas capture is already in progress.'));
-        return;
-      }
-
-      const state = useStore.getState();
-      captureResolverRef.current = { resolve, reject };
-      setCaptureRequest({
-        id: Date.now(),
-        pageIndex: state.currentPage,
-        record: state.batchRecords?.[0] || {},
-        state: serializeCanvasDocument(state)
-      });
-    });
-
-    return () => {
-      delete window.__getStageB64;
-      captureResolverRef.current?.reject(new Error('Canvas capture was cancelled.'));
-      captureResolverRef.current = null;
-    };
-  }, []);
-
-  const finishCapture = useCallback((dataUrl, error = null) => {
-    const resolver = captureResolverRef.current;
-    captureResolverRef.current = null;
-    setCaptureRequest(null);
-    if (!resolver) return;
-    if (error) resolver.reject(error);
-    else resolver.resolve(dataUrl);
-  }, []);
   const dotsPerMm = (currentDpi || settings.default_dpi || 203) / 25.4;
   const printPx = selectedPrinterInfo?.width_px || Math.round((settings.print_width_mm || 48) * dotsPerMm);
   const visibleRecords = (batchRecords || [{}]).slice(0, 10);
@@ -133,168 +96,9 @@ export default function CanvasArea() {
   
   const selectedItem = items.find((item) => item.id === selectedId);
 
-  useEffect(() => {
-    if (!trRef.current) return;
-    const stage = trRef.current.getStage();
-    if (!stage) return;
-
-    const selectedNodes = selectedIds.map((id) => stage.findOne(`#node-${id}`)).filter(Boolean);
-    trRef.current.nodes(selectedNodes);
-    trRef.current.getLayer()?.batchDraw();
-  }, [selectedIds, currentPage, items]);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (ignoreCanvasShortcut(e)) return;
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (!isPanning) setIsPanning(true);
-      }
-
-      const { selectedIds, deleteSelectedItems, moveSelectedItems, undo, redo } = useStore.getState();
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
-        }
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        redo();
-        return;
-      }
-
-      if (selectedIds.length === 0) return;
-
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-        deleteSelectedItems();
-      }
-
-      const step = e.shiftKey ? 10 : 1;
-      if (e.key === 'ArrowUp') { e.preventDefault(); moveSelectedItems(0, -step); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); moveSelectedItems(0, step); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); moveSelectedItems(-step, 0); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); moveSelectedItems(step, 0); }
-    };
-
-    const handleKeyUp = (e) => {
-      if (e.code === 'Space') {
-        setIsPanning(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [isPanning]);
-
-  const getBoundingBox = useCallback((item) => {
-    const w = item.width || 100;
-    const lineCount = item.text ? String(item.text).split('\n').length : 1;
-    const pad = item.padding !== undefined ? Number(item.padding) : 0;
-    const actualLineHeight = item.lineHeight ?? (lineCount > 1 ? 1.15 : 1);
-    const h = item.height || (item.type === 'text' ? (item.size * actualLineHeight * lineCount) + (pad * 2) : 50);
-    return { x: item.x, y: item.y, width: w, height: h };
-  }, []);
-
-  const handleDragMove = useCallback((e, draggedItem) => {
-    const node = e.target;
-    const x = node.x();
-    const y = node.y();
-    const { width: w, height: h } = getBoundingBox(draggedItem);
-    
-    let newX = x;
-    let newY = y;
-    const lines = [];
-
-    // Canvas Edge Snapping
-    const centerX = canvasWidth / 2;
-    if (Math.abs(x + w / 2 - centerX) < SNAP_T) {
-      newX = centerX - w / 2;
-      lines.push({ points: [centerX, -9999, centerX, 9999], stroke: '#06b6d4' });
-    }
-    if (Math.abs(x) < SNAP_T) {
-      newX = 0;
-      lines.push({ points: [0, -9999, 0, 9999], stroke: '#06b6d4' });
-    }
-    if (Math.abs(x + w - canvasWidth) < SNAP_T) {
-      newX = canvasWidth - w;
-      lines.push({ points: [canvasWidth, -9999, canvasWidth, 9999], stroke: '#06b6d4' });
-    }
-
-    const centerY = canvasHeight / 2;
-    if (Math.abs(y + h / 2 - centerY) < SNAP_T) {
-      newY = centerY - h / 2;
-      lines.push({ points: [-9999, centerY, 9999, centerY], stroke: '#ec4899' });
-    }
-    if (Math.abs(y) < SNAP_T) {
-      newY = 0;
-      lines.push({ points: [-9999, 0, 9999, 0], stroke: '#ec4899' });
-    }
-    if (Math.abs(y + h - canvasHeight) < SNAP_T) {
-      newY = canvasHeight - h;
-      lines.push({ points: [-9999, canvasHeight, 9999, canvasHeight], stroke: '#ec4899' });
-    }
-
-    // Element-to-Element Snapping
-    const otherItems = items.filter(i => i.id !== draggedItem.id && i.pageIndex === currentPage);
-    for (const item of otherItems) {
-      const box = getBoundingBox(item);
-      
-      // Snap Left to Left
-      if (Math.abs(x - box.x) < SNAP_T) { newX = box.x; lines.push({ points: [box.x, -9999, box.x, 9999], stroke: '#f59e0b' }); }
-      // Snap Left to Right
-      if (Math.abs(x - (box.x + box.width)) < SNAP_T) { newX = box.x + box.width; lines.push({ points: [box.x + box.width, -9999, box.x + box.width, 9999], stroke: '#f59e0b' }); }
-      // Snap Right to Right
-      if (Math.abs((x + w) - (box.x + box.width)) < SNAP_T) { newX = box.x + box.width - w; lines.push({ points: [box.x + box.width, -9999, box.x + box.width, 9999], stroke: '#f59e0b' }); }
-      // Snap Right to Left
-      if (Math.abs((x + w) - box.x) < SNAP_T) { newX = box.x - w; lines.push({ points: [box.x, -9999, box.x, 9999], stroke: '#f59e0b' }); }
-      // Snap Top to Top
-      if (Math.abs(y - box.y) < SNAP_T) { newY = box.y; lines.push({ points: [-9999, box.y, 9999, box.y], stroke: '#f59e0b' }); }
-      // Snap Top to Bottom
-      if (Math.abs(y - (box.y + box.height)) < SNAP_T) { newY = box.y + box.height; lines.push({ points: [-9999, box.y + box.height, 9999, box.y + box.height], stroke: '#f59e0b' }); }
-      // Snap Bottom to Bottom
-      if (Math.abs((y + h) - (box.y + box.height)) < SNAP_T) { newY = box.y + box.height - h; lines.push({ points: [-9999, box.y + box.height, 9999, box.y + box.height], stroke: '#f59e0b' }); }
-      // Snap Bottom to Top
-      if (Math.abs((y + h) - box.y) < SNAP_T) { newY = box.y - h; lines.push({ points: [-9999, box.y, 9999, box.y], stroke: '#f59e0b' }); }
-    }
-
-    node.position({ x: newX, y: newY });
-    setSnapLines(lines);
-  }, [canvasHeight, canvasWidth, currentPage, getBoundingBox, items]);
-
-  const handleDragEnd = useCallback((e, item) => {
-    setSnapLines([]);
-    const newX = e.target.x();
-    const newY = e.target.y();
-    const dx = newX - item.x;
-    const dy = newY - item.y;
-
-    const { selectedIds, moveSelectedItems } = useStore.getState();
-
-    if (selectedIds.includes(item.id) && selectedIds.length > 1) {
-      moveSelectedItems(dx, dy);
-    } else {
-      updateItem(item.id, { x: newX, y: newY });
-    }
-  }, [updateItem]);
-
-  const handleItemPointerDown = useCallback((e, item) => {
-    if (isPanning) return;
-    e.cancelBubble = true;
-    setCurrentPage(normalizePageIndex(item.pageIndex));
-    const isMulti = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
-    selectItem(item.id, isMulti);
-  }, [isPanning, selectItem, setCurrentPage]);
+  const { trRef, snapLines, handleDragMove, handleDragEnd, handleItemPointerDown } = useCanvasInteractions({
+    items, selectedIds, currentPage, canvasWidth, canvasHeight, isPanning, updateItem, setCurrentPage, selectItem
+  });
 
   return (
     <div 
@@ -663,18 +467,7 @@ export default function CanvasArea() {
         Drag items to move. Click empty space to deselect. Hold Space to Pan.
       </div>
 
-      {captureRequest && (
-        <div aria-hidden="true" style={{ position: 'fixed', left: '-100000px', top: 0 }}>
-          <HeadlessPage
-            key={captureRequest.id}
-            state={captureRequest.state}
-            record={captureRequest.record}
-            pageIndex={captureRequest.pageIndex}
-            onReady={(dataUrl) => finishCapture(dataUrl)}
-            onError={(error) => finishCapture(null, error)}
-          />
-        </div>
-      )}
+      <CanvasCapture />
     </div>
   );
 }

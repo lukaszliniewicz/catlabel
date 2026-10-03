@@ -485,3 +485,25 @@ Imports/fixture creation precede the initial sample and pixel hashing follows th
 final sample. No product/source/test change or hardware call was made.
 [Fixed protocol and baseline](reviews/2026-10-02/evidence/phase6-decode-memory-baseline.json).
 The broader performance matrix and backend ownership/spooling remain active.
+
+Phase 5 adds a current-label object list with roving arrow/Home/End navigation,
+Enter selection and modifier-assisted multiple selection. It includes legacy
+page-zero objects and treats groups as one object. Selection leaves document
+revision unchanged. Canvas capture, keyboard/pan handling and pointer/transform/
+snapping responsibilities are separated from the page-preview container. Pan ends
+on window focus loss. Legacy objects now participate in page-zero snapping.
+Capture requests have identity/deadline/teardown ownership and reject duplicate
+requests or stale completion callbacks.
+
+All 161 frontend tests in32files, final ten empty static categories and the clean
+production build pass. The affected two interaction tests also pass after moving
+the test handoff out of render. The parent inspected the compiled object list at
+390CSS pixels; Axe reports zero violations with incomplete contrast retained.
+An actual full-resolution378×378PNG contains the label text and matches exactly
+after editor zoom changes. Native keyboard-only completion remains unverified due
+to the controller's earlier prompt stall; unit navigation evidence is distinct.
+The shipped 26-file frontend matches the inspected build with digest
+`2b7f29140f79a7b34ab1bc4416d87ad0659b0fcff5f2d0c85f8b0f735d8bac91`. [Canvas controls receipt](reviews/2026-10-02/evidence/phase5-canvas-controls-receipt.json).
+Page-preview separation/virtualization, AI decomposition, stronger leaf typing,
+backend preflight/spooling, performance and phase7remain active. No physical print,
+provider call, foreign native acceptance or external promotion occurred.
