@@ -1,10 +1,11 @@
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { lazy, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
 import DocumentStatus from './components/DocumentStatus';
 import ProjectSwitchDialog from './components/ProjectSwitchDialog';
+import LazyFeature from './components/LazyFeature';
 import HeadlessRenderer from './HeadlessRenderer';
 import { useStore } from './store';
 
@@ -25,6 +26,7 @@ function App() {
   const apiError = useStore((state) => state.apiError);
   const clearApiError = useStore((state) => state.clearApiError);
   const pendingProjectLoad = useStore(state => state.pendingProjectLoad);
+  const completeOnboarding = useStore(state => state.completeOnboarding);
   const isHeadless = new URLSearchParams(window.location.search).get('mode') === 'headless';
 
   useEffect(() => {
@@ -70,11 +72,9 @@ function App() {
           <button type="button" onClick={clearApiError} className="font-bold" aria-label="Dismiss error">×</button>
         </div>
       )}
-      <Suspense fallback={null}>
-        {isPreparingForPrint && <LocalBatchRenderer onComplete={onLocalRenderComplete} />}
-        {settingsLoaded && (!onboardingComplete || showOnboarding) && <OnboardingWizard />}
-        {showAiConfig && <AIConfigModal onClose={() => setShowAiConfig(false)} />}
-      </Suspense>
+      {isPreparingForPrint && <LazyFeature label="print preparation" onClose={() => onLocalRenderComplete([], new Error('Print preparation cancelled before submission.'))} onError={error => onLocalRenderComplete([], error)}><LocalBatchRenderer onComplete={onLocalRenderComplete} /></LazyFeature>}
+      {settingsLoaded && (!onboardingComplete || showOnboarding) && <LazyFeature label="welcome setup" onClose={completeOnboarding}><OnboardingWizard /></LazyFeature>}
+      {showAiConfig && <LazyFeature label="AI settings" onClose={() => setShowAiConfig(false)}><AIConfigModal onClose={() => setShowAiConfig(false)} /></LazyFeature>}
     </div>
   );
 }

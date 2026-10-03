@@ -1,3 +1,4 @@
+import LazyFeature from './LazyFeature';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
@@ -1177,32 +1178,30 @@ export default function PropertiesPanel() {
 
         {/* === ASSISTANT TAB === */}
         {activeTab === 'assistant' && (
-          <React.Suspense fallback={<div className="p-4 text-sm text-neutral-500">Loading assistant…</div>}>
+          <LazyFeature label="AI assistant" inline onClose={() => setActiveTab('canvas')}>
             <AIAssistant />
-          </React.Suspense>
+          </LazyFeature>
         )}
       </div>
 
-      <React.Suspense fallback={null}>
         {showIconPicker && (
-          <IconPicker
+          <LazyFeature label="icon picker" onClose={() => setShowIconPicker(false)}><IconPicker
             onClose={() => setShowIconPicker(false)}
             onSelect={(b64) => {
               updateItem(selectedId, { icon_src: b64 });
               setShowIconPicker(false);
             }}
-          />
+          /></LazyFeature>
         )}
         {templateIconField && activeTemplate && (
-          <IconPicker
+          <LazyFeature label="template icon picker" onClose={() => setTemplateIconField(null)}><IconPicker
             onClose={() => setTemplateIconField(null)}
             onSelect={(b64) => {
               updateTemplateParams({ [templateIconField]: b64 });
               setTemplateIconField(null);
             }}
-          />
+          /></LazyFeature>
         )}
-      </React.Suspense>
     </div>
   );
 }

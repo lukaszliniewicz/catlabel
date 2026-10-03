@@ -1,3 +1,4 @@
+import LazyFeature from './LazyFeature';
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
@@ -389,12 +390,10 @@ export default function Toolbar() {
       </div>
 
       {/* Modals */}
-      <React.Suspense fallback={null}>
-        {showIconPicker && <IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} />}
-        {showHtmlPicker && <HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} />}
-        {showDateModal && <DateToolModal onClose={() => setShowDateModal(false)} />}
-        {selectedWizard && <TemplateWizardModal template={selectedWizard} onClose={() => setSelectedWizard(null)} />}
-      </React.Suspense>
+        {showIconPicker && <LazyFeature label="icon picker" onClose={() => setShowIconPicker(false)}><IconPicker onClose={() => setShowIconPicker(false)} onSelect={handleAddIcon} /></LazyFeature>}
+        {showHtmlPicker && <LazyFeature label="HTML templates" onClose={() => setShowHtmlPicker(false)}><HtmlPickerModal onClose={() => setShowHtmlPicker(false)} onSelect={handleAddHtml} /></LazyFeature>}
+        {showDateModal && <LazyFeature label="date tool" onClose={() => setShowDateModal(false)}><DateToolModal onClose={() => setShowDateModal(false)} /></LazyFeature>}
+        {selectedWizard && <LazyFeature label="template wizard" onClose={() => setSelectedWizard(null)}><TemplateWizardModal template={selectedWizard} onClose={() => setSelectedWizard(null)} /></LazyFeature>}
     </div>
   );
 }

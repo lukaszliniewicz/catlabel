@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useMemo, useState } from 'react';
+import LazyFeature from './LazyFeature';
+import React, { lazy, useMemo, useState } from 'react';
 import { FileSpreadsheet, Plus, Trash2 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../store';
@@ -171,9 +172,7 @@ export default function BatchDataPanel() {
         </div>
       )}
 
-      <Suspense fallback={null}>
-        {showImport && <BatchPrintModal onClose={() => setShowImport(false)} />}
-      </Suspense>
+      {showImport && <LazyFeature label="batch import" onClose={() => setShowImport(false)}><BatchPrintModal onClose={() => setShowImport(false)} /></LazyFeature>}
     </div>
   );
 }
