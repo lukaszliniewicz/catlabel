@@ -29,7 +29,8 @@ launcher acceptance must be performed on Windows.
 
 ## Linux AppImage
 
-Use Linux x86_64 with Python 3.11 and the pinned launcher requirements:
+Use Linux x86_64 with Python 3.11, Git, GNU binutils and the `file` utility,
+plus the pinned launcher requirements:
 
 ```sh
 python -m pip install --requirement launcher-requirements.txt
