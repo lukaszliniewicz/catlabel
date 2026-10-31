@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import socket
 import threading
 import time
@@ -15,6 +16,7 @@ from catlabel.transport.bluetooth import backend as backend_module
 from catlabel.transport.bluetooth.backend import SppBackend
 from catlabel.transport.bluetooth.classic_receive import ClassicReceiveHub
 from catlabel.transport.bluetooth.types import DeviceInfo, DeviceTransport
+from tests.test_native_classic_receive import _WinRtFixture
 
 
 class _NativePairSocket(socket.socket):
@@ -93,6 +95,37 @@ class _CustomPairSocket:
     def close(self) -> None:
         self._record()
         self.source.close()
+
+
+class _CleanupSocket:
+    def __init__(self) -> None:
+        self.connect_failure = False
+        self.close_failure = False
+        self.stop_failure = False
+        self.closed = False
+
+    def settimeout(self, timeout: float) -> None:
+        pass
+
+    def connect(self, target) -> None:
+        if self.connect_failure:
+            raise OSError("connect refused")
+        self.closed = False
+
+    def sendall(self, payload: bytes) -> None:
+        pass
+
+    def start_receive(self, on_data, on_error) -> None:
+        pass
+
+    def stop_receive(self) -> None:
+        if self.stop_failure:
+            raise OSError("stop refused")
+
+    def close(self) -> None:
+        if self.close_failure:
+            raise OSError("close refused")
+        self.closed = True
 
 
 class ClassicBackendReceiveTests(unittest.IsolatedAsyncioTestCase):
@@ -619,6 +652,194 @@ class ClassicBackendReceiveTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(first_sock.fileno() < 0)
         self.assertIs(backend._sock, adapter.created[1])
         self.assertIsNotNone(backend._classic_receive)
+
+    async def test_winrt_push_reads_progress_while_worker_idle_and_flow_paused(
+        self,
+    ) -> None:
+        fixture = _WinRtFixture()
+        self.addCleanup(fixture.close)
+        backend = await self._connect(
+            _ClassicAdapter(lambda: fixture.sock),
+            profile=BleTransportProfile(
+                flow_controlled_standard_write=True, flow_resume_timeout_s=0.5
+            ),
+        )
+        self.assertTrue(backend.can_receive_passively())
+        self.assertTrue(backend.can_query_control_packet())
+        self.assertTrue(backend.can_wait_for_notification())
+        self.assertTrue(backend.can_send_control_packet_wait_notification())
+        paused, resumed = threading.Event(), threading.Event()
+
+        def notify(data: bytes) -> None:
+            if data == b"pause":
+                backend.set_flow_paused(True)
+                paused.set()
+            elif data == b"resume":
+                backend.set_flow_paused(False)
+                resumed.set()
+
+        backend.register_notify_callback(notify)
+        fixture.feed(b"pause")
+        self.assertTrue(await asyncio.to_thread(paused.wait, 0.3))
+        writing = asyncio.create_task(backend.write(b"abcdef", chunk_size=2))
+        await asyncio.sleep(0.01)
+        self.assertEqual(fixture.writes, [])
+        fixture.feed(b"resume")
+        self.assertTrue(await asyncio.to_thread(resumed.wait, 0.3))
+        await asyncio.wait_for(writing, timeout=0.3)
+        self.assertEqual(fixture.writes, [b"ab", b"cd", b"ef"])
+        self.assertEqual(fixture.reader.max_consumers, 1)
+
+    async def test_winrt_push_queries_fence_stale_data_and_match_after_listener(
+        self,
+    ) -> None:
+        fixture = _WinRtFixture()
+        self.addCleanup(fixture.close)
+        backend = await self._connect(_ClassicAdapter(lambda: fixture.sock))
+        notifications: list[bytes] = []
+        stale = threading.Event()
+
+        def notify(data: bytes) -> None:
+            notifications.append(data)
+            stale.set()
+
+        backend.register_notify_callback(notify)
+        fixture.feed(b"stale")
+        self.assertTrue(await asyncio.to_thread(stale.wait, 0.3))
+        query = asyncio.create_task(
+            backend.query_control_packet(
+                b"ask",
+                timeout=0.3,
+                reply_complete=lambda data: (
+                    data == b"abcdef" and notifications[-1] == b"cdef"
+                ),
+            )
+        )
+        self.assertTrue(await asyncio.to_thread(fixture.write_seen.wait, 0.3))
+        fixture.feed(b"ab")
+        fixture.feed(b"cdef")
+        self.assertEqual(await query, b"abcdef")
+        fixture.write_seen.clear()
+        atomic = asyncio.create_task(
+            backend.send_control_packet_wait_notification(
+                b"state",
+                label="ready",
+                match=lambda data: data == b"ready",
+                timeout=0.3,
+            )
+        )
+        self.assertTrue(await asyncio.to_thread(fixture.write_seen.wait, 0.3))
+        fixture.feed(b"ready")
+        self.assertEqual(await atomic, b"ready")
+        self.assertEqual(fixture.reader.max_consumers, 1)
+
+    async def test_before_write_rejects_second_chunk_without_replay(self) -> None:
+        fixture = _WinRtFixture()
+        self.addCleanup(fixture.close)
+        backend = await self._connect(_ClassicAdapter(lambda: fixture.sock))
+        observed: list[tuple[int, float, int]] = []
+
+        def before_write(size: int, timeout: float) -> None:
+            observed.append((size, timeout, threading.get_ident()))
+            if len(observed) == 2:
+                raise ValueError("runtime rejected chunk two")
+
+        backend.register_before_write_callback(before_write)
+        with self.assertRaisesRegex(ValueError, "rejected chunk two"):
+            await backend.write(b"abcdef", chunk_size=2)
+        self.assertEqual(fixture.writes, [b"ab"])
+        self.assertEqual([size for size, _, _ in observed], [2, 2])
+        self.assertTrue(
+            all(math.isfinite(timeout) and timeout > 0 for _, timeout, _ in observed)
+        )
+        self.assertEqual([timeout for _, timeout, _ in observed], [8.0, 8.0])
+        self.assertEqual(len({thread for _, _, thread in observed}), 1)
+        self.assertNotEqual(observed[0][2], threading.get_ident())
+        self.assertNotEqual(observed[0][2], fixture.calls[0][1])
+
+    async def test_push_disconnect_wakes_query_and_rejects_io_before_close(
+        self,
+    ) -> None:
+        fixture = _WinRtFixture()
+        self.addCleanup(fixture.close)
+        backend = await self._connect(_ClassicAdapter(lambda: fixture.sock))
+        query = asyncio.create_task(backend.query_control_packet(b"wait", timeout=10))
+        self.assertTrue(await asyncio.to_thread(fixture.write_seen.wait, 0.3))
+        fixture.close_failure = True
+        with self.assertRaisesRegex(OSError, "reader close refused"):
+            await backend.disconnect()
+        self.assertFalse(backend.is_connected())
+        self.assertFalse(backend.can_send_control_packet())
+        self.assertFalse(backend.can_query_control_packet())
+        self.assertIs(backend._sock, fixture.sock)
+        with self.assertRaisesRegex(RuntimeError, "hub stopped"):
+            await asyncio.wait_for(query, timeout=0.3)
+        fixture.close_failure = False
+        await backend.disconnect()
+        self.assertIsNone(backend._sock)
+
+    async def test_connect_failure_retains_unclean_candidate_and_blocks_fallback(
+        self,
+    ) -> None:
+        source = _CleanupSocket()
+        source.connect_failure = True
+        source.close_failure = True
+        adapter = _ClassicAdapter(lambda: source, channels=[1, 2])
+        backend = SppBackend()
+        self.backends.append(backend)
+        with self.assertRaisesRegex(OSError, "connect refused") as raised:
+            await self._connect(adapter, backend=backend)
+        self.assertIsInstance(raised.exception.__cause__, OSError)
+        self.assertEqual(str(raised.exception.__cause__), "close refused")
+        self.assertIs(backend._sock, source)
+        self.assertFalse(backend.is_connected())
+        self.assertEqual(len(adapter.created), 1)
+        with self.assertRaisesRegex(OSError, "close refused"):
+            await self._connect(adapter, backend=backend)
+        self.assertEqual(len(adapter.created), 1)
+        source.close_failure = False
+        source.connect_failure = False
+        await self._connect(adapter, backend=backend)
+        self.assertEqual(len(adapter.created), 2)
+        self.assertTrue(backend.is_connected())
+
+    async def test_stop_and_close_failures_are_both_visible_and_retained(self) -> None:
+        source = _CleanupSocket()
+        backend = await self._connect(_ClassicAdapter(lambda: source))
+        hub = backend._classic_receive
+        source.stop_failure = True
+        source.close_failure = True
+        try:
+            with self.assertRaisesRegex(OSError, "stop refused") as raised:
+                await backend.disconnect()
+            messages: list[str] = []
+            error: BaseException | None = raised.exception
+            while error is not None:
+                messages.append(str(error))
+                error = error.__cause__
+            self.assertIn("close refused", messages)
+            self.assertIs(backend._sock, source)
+            self.assertIs(backend._classic_receive, hub)
+            self.assertFalse(backend.is_connected())
+        finally:
+            source.stop_failure = False
+            source.close_failure = False
+        await backend.disconnect()
+
+    async def test_failed_push_stop_retains_hub_until_cleanup_retry(self) -> None:
+        source = _CleanupSocket()
+        backend = await self._connect(_ClassicAdapter(lambda: source))
+        hub = backend._classic_receive
+        source.stop_failure = True
+        with self.assertRaisesRegex(OSError, "stop refused"):
+            await backend.disconnect()
+        self.assertIs(backend._classic_receive, hub)
+        self.assertIsNone(backend._sock)
+        self.assertTrue(source.closed)
+        self.assertFalse(backend.is_connected())
+        source.stop_failure = False
+        await backend.disconnect()
+        self.assertIsNone(backend._classic_receive)
 
 
 if __name__ == "__main__":

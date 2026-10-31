@@ -18,6 +18,7 @@ from mcp.types import (
 )
 from pydantic import BaseModel
 
+from .. import __version__
 from ..services import printers, projects
 from ..services.documents import (
     EditOperation,
@@ -42,7 +43,7 @@ class Registry:
         self.services = services
         self.server = MCPServer(
             "CatLabel",
-            version="0.1.0",
+            version=__version__,
             instructions="Create or load a saved design, edit with expected_revision, inspect a PNG preview, prepare a frozen printer plan, then start with a unique idempotency key. Print start has physical effects; use the harness approval policy. Submitted means physical completion is unverified. Never silently retry an uncertain delivery.",
         )
         self._register()

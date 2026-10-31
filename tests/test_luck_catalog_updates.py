@@ -290,6 +290,16 @@ class LuckCatalogUpdatesTests(unittest.TestCase):
                     "base_commit": BASE_COMMIT,
                     "scope": "PrintMaster ownership",
                 },
+                {
+                    "commit": "73172c621c3b7aea9c71c9c024f9cd549d0b314e",
+                    "base_commit": BASE_COMMIT,
+                    "scope": "Ordinary V5G monochrome capabilities",
+                },
+                {
+                    "commit": "95beec7ba0f6422c29fd480ca262e369caf5e375",
+                    "base_commit": BASE_COMMIT,
+                    "scope": "V5X BH03 gray-label variant",
+                },
             ],
         )
 

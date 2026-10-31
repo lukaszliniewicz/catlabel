@@ -4,6 +4,7 @@ import selectors
 import socket
 import threading
 import unittest
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -273,6 +274,142 @@ class ClassicReceiveHubTests(unittest.TestCase):
         self.writer.sendall(b"socket remains open")
         self.assertEqual(self.reader.recv(64), b"socket remains open")
         self.assertEqual(callbacks, [])
+
+
+class _PushSource:
+    def __init__(self) -> None:
+        self.on_data: Callable[[bytes], None] = lambda _: None
+        self.on_error: Callable[[Exception], None] = lambda _: None
+        self.stop_failure = False
+        self.stops = 0
+        self.closed = False
+
+    def start_receive(self, on_data, on_error) -> None:
+        self.on_data = on_data
+        self.on_error = on_error
+
+    def stop_receive(self) -> None:
+        self.stops += 1
+        if self.stop_failure:
+            raise OSError("push stop refused")
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class PushClassicReceiveHubTests(unittest.TestCase):
+    def make_hub(self, **kwargs):
+        source = _PushSource()
+        hub = ClassicReceiveHub(source, **kwargs)
+        self.addCleanup(hub.stop)
+        hub.start()
+        hub.ensure_healthy()
+        return source, hub
+
+    def test_push_requires_both_lifecycle_methods(self) -> None:
+        self.assertFalse(
+            ClassicReceiveHub.supports(SimpleNamespace(start_receive=lambda *_: None))
+        )
+        self.assertFalse(
+            ClassicReceiveHub.supports(SimpleNamespace(stop_receive=lambda: None))
+        )
+        self.assertFalse(
+            ClassicReceiveHub.supports(SimpleNamespace(recv=lambda _: b""))
+        )
+
+    def test_start_can_deliver_on_another_thread_without_holding_inbox_lock(
+        self,
+    ) -> None:
+        source = _PushSource()
+        delivered = threading.Event()
+
+        def start(on_data, on_error) -> None:
+            def deliver() -> None:
+                on_data(b"startup")
+                delivered.set()
+
+            owner = threading.Thread(target=deliver)
+            owner.start()
+            owner.join(timeout=0.3)
+            self.assertFalse(owner.is_alive())
+
+        source.start_receive = start
+        hub = ClassicReceiveHub(source)
+        self.addCleanup(hub.stop)
+        hub.start()
+        self.assertTrue(delivered.is_set())
+        waiter = hub.register_passive_waiter(lambda data: data == b"startup")
+        self.assertEqual(hub.wait(waiter, timeout=0.1), b"startup")
+
+    def test_push_fragmented_coalesced_and_offset_fence_listener_first(self) -> None:
+        order: list[tuple[str, bytes]] = []
+        source, hub = self.make_hub(
+            listener=lambda data: order.append(("listener", data))
+        )
+        source.on_data(b"stale")
+        fence = hub.mark()
+
+        def match(data: bytes) -> bool:
+            order.append(("predicate", data))
+            return data == b"abcdef"
+
+        whole = hub.register_waiter(fence, match)
+        suffix = hub.register_waiter(fence + 3, lambda data: data == b"def")
+        source.on_data(b"ab")
+        source.on_data(b"cdef")
+        self.assertEqual(hub.wait(whole, timeout=0.1), b"abcdef")
+        self.assertEqual(hub.wait(suffix, timeout=0.1), b"def")
+        self.assertEqual(
+            [kind for kind, _ in order],
+            ["listener", "listener", "predicate", "listener", "predicate"],
+        )
+
+    def test_push_failure_wakes_waiters_and_preserves_cause(self) -> None:
+        source, hub = self.make_hub()
+        waiter = hub.register_waiter(hub.mark(), lambda _: False)
+        source.on_error(OSError("link lost"))
+        with self.assertRaisesRegex(RuntimeError, "source failed") as raised:
+            hub.wait(waiter, timeout=0.1)
+        self.assertIsInstance(raised.exception.__cause__, OSError)
+        with self.assertRaisesRegex(RuntimeError, "source failed"):
+            hub.ensure_healthy()
+
+    def test_push_stop_failure_is_retryable_wakes_waiters_and_never_closes_source(
+        self,
+    ) -> None:
+        source, hub = self.make_hub()
+        waiter = hub.register_waiter(0, lambda _: False)
+        source.stop_failure = True
+        with self.assertRaisesRegex(OSError, "push stop refused"):
+            hub.stop()
+        with self.assertRaisesRegex(RuntimeError, "hub stopped"):
+            hub.wait(waiter, timeout=0.1)
+        self.assertTrue(hub._push_started)
+        source.stop_failure = False
+        hub.stop()
+        hub.stop()
+        self.assertEqual(source.stops, 2)
+        self.assertFalse(source.closed)
+        source.on_data(b"ignored")
+        self.assertEqual(hub.mark(), 0)
+
+    def test_push_history_trim_and_cancel_match_native_semantics(self) -> None:
+        source, hub = self.make_hub(max_history_bytes=4)
+        cancelled = hub.register_passive_waiter(lambda _: True)
+        hub.cancel_waiter(cancelled)
+        with self.assertRaisesRegex(RuntimeError, "cancelled"):
+            hub.wait(cancelled, timeout=0.1, claim_passive=True)
+        active = hub.register_waiter(0, lambda _: False)
+        source.on_data(b"123456")
+        with self.assertRaisesRegex(RuntimeError, "trimmed past active"):
+            hub.wait(active, timeout=0.1)
+        next_waiter = hub.register_passive_waiter(lambda data: data == b"3456")
+        self.assertEqual(
+            hub.wait(next_waiter, timeout=0.1, claim_passive=True), b"3456"
+        )
+        source.on_data(b"78")
+        new = hub.register_passive_waiter(lambda data: data == b"78")
+        self.assertEqual(hub.wait(new, timeout=0.1), b"78")
 
 
 if __name__ == "__main__":

@@ -21,7 +21,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from catlabel.vendors.generic.catalog_snapshot import validate_snapshot  # noqa: E402, I001
+from catlabel.vendors.generic.catalog_snapshot import (  # noqa: E402, I001
+    load_snapshot,
+    policy_sha256,
+    validate_snapshot,
+)
 
 
 DATA_DIR = ROOT / "catlabel" / "vendors" / "generic" / "data"
@@ -54,17 +58,13 @@ def _git(repository_path: Path, *args: str) -> str:
 
 
 def _source_exists(repository_path: Path, commit: str, source: str) -> bool:
-    listed = _git(
-        repository_path,
-        "ls-tree",
-        "-r",
-        "--name-only",
-        "--full-tree",
-        commit,
-        "--",
-        source,
+    completed = subprocess.run(
+        ["git", "cat-file", "-e", f"{commit}:{source}"],
+        cwd=repository_path,
+        capture_output=True,
+        check=False,
     )
-    return source in listed.splitlines()
+    return completed.returncode == 0
 
 
 def _fsync_directory(directory: Path) -> None:
@@ -88,10 +88,12 @@ def _source_paths(repository_path: Path, commit: str) -> dict[str, str]:
         if _source_exists(repository_path, commit, MODERN_ORIGIN_SOURCE)
         else LEGACY_ORIGIN_SOURCE
     )
-    return {
-        **SOURCE_PATHS,
-        ORIGIN_DESTINATION: origin_source,
-    }
+    paths = {**SOURCE_PATHS, ORIGIN_DESTINATION: origin_source}
+    if not _source_exists(
+        repository_path, commit, SOURCE_PATHS["catalog_unsupported.json"]
+    ):
+        paths.pop("catalog_unsupported.json")
+    return paths
 
 
 def _acquire_sources(
@@ -105,7 +107,13 @@ def _acquire_sources(
     }
 
 
-def sync(revision: str, repository_path: Path = ROOT) -> str:
+def sync(
+    revision: str,
+    repository_path: Path = ROOT,
+    *,
+    policy_snapshot_path: Path | None = None,
+    output_path: Path | None = None,
+) -> str:
     """Publish ``revision`` as one validated snapshot and return its commit."""
 
     commit = _git(
@@ -134,18 +142,42 @@ def sync(revision: str, repository_path: Path = ROOT) -> str:
         },
         "catalogs": catalogs,
     }
+    if "catalog_unsupported.json" not in paths:
+        prior = load_snapshot(policy_snapshot_path or DATA_DIR / SNAPSHOT_FILENAME)
+        if prior["schema_version"] == 2:
+            policy = prior["detection_policy"]
+        else:
+            policy_models = prior["catalogs"]["catalog_unsupported.json"]
+            policy_origins = prior["catalogs"][ORIGIN_DESTINATION]
+            policy = {
+                "source": {
+                    **prior["source"],
+                    "files": {
+                        "catalog_unsupported.json": prior["source"]["files"][
+                            "catalog_unsupported.json"
+                        ]
+                    },
+                },
+                "models": policy_models,
+                "origins": policy_origins,
+                "sha256": policy_sha256(policy_models, policy_origins),
+            }
+        snapshot["schema_version"] = 2
+        snapshot["detection_policy"] = policy
     validated = validate_snapshot(snapshot)
     serialized = json.dumps(validated, indent=2, ensure_ascii=False) + "\n"
 
-    snapshot_path = DATA_DIR / SNAPSHOT_FILENAME
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    snapshot_path = (
+        output_path if output_path is not None else DATA_DIR / SNAPSHOT_FILENAME
+    )
+    snapshot_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
             newline="\n",
-            dir=DATA_DIR,
+            dir=snapshot_path.parent,
             prefix=f".{snapshot_path.name}.",
             suffix=".tmp",
             delete=False,
@@ -161,7 +193,7 @@ def sync(revision: str, repository_path: Path = ROOT) -> str:
             with suppress(OSError):
                 temporary_path.unlink(missing_ok=True)
 
-    _fsync_directory(DATA_DIR)
+    _fsync_directory(snapshot_path.parent)
     return commit
 
 
@@ -179,8 +211,25 @@ def main() -> None:
         default=ROOT,
         help="Local TiMini-Print Git checkout (no fetch is performed)",
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Snapshot output path (default: checked-in active bundle)",
+    )
+    parser.add_argument(
+        "--policy-snapshot",
+        type=Path,
+        default=None,
+        help="Validated prior snapshot supplying retained detection veto policy",
+    )
     args = parser.parse_args()
-    commit = sync(args.revision, repository_path=args.repository_path)
+    commit = sync(
+        args.revision,
+        repository_path=args.repository_path,
+        output_path=args.output,
+        policy_snapshot_path=args.policy_snapshot,
+    )
     print(f"Published TiMini-Print catalog snapshot from {commit}")
 
 

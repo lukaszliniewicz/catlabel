@@ -102,17 +102,18 @@ def _line_packets(
 
 
 def _line_eight_tail_feed(request: PrintJobRequest) -> int:
+    # Ported from upstream tiny-protocol recipe fix 06c52a371c2db88b04ed968019a49930961a0165.
     if request.paper_mode == PaperMode.A4_SHEET:
         if request.a4xii:
             return 500
         max_height = request.a4_sheet_max_height
         if max_height is None or max_height <= 0:
             max_height = 3800 if request.dev_dpi == 300 else 2400
-        return max(0, max_height - request.require_raster(PixelFormat.BW1).height)
-    if request.a4xii or not request.lsb_first:
+        return max_height - request.require_raster(PixelFormat.BW1).height
+    if request.a4xii:
         return 100
     dots_per_paper = 72 if request.dev_dpi == 300 else 48
-    return max(0, request.post_print_feed_count + 1) * dots_per_paper
+    return max(0, request.post_print_feed_count) * dots_per_paper
 
 
 def _build_line_eight_job(
@@ -120,17 +121,18 @@ def _build_line_eight_job(
 ) -> bytes:
     pixels, width = _left_padded_pixels(request)
     output = bytearray()
-    if professional:
+    if professional and request.starts_media_page:
         output += make_packet(0xA6, b"\x05", request.protocol_family)
     output += _blackening_cmd(request.blackening, request.protocol_family)
     output += _energy_cmd(request.energy, request.protocol_family)
     output += _mode_cmd(request.is_text, request.protocol_family)
     output += _speed_cmd(request.speed, request.protocol_family)
     output += _line_packets(pixels, width, request, periodic_speed=not professional)
-    output += _paper_feed_check_black_cmd(
-        _line_eight_tail_feed(request),
-        request.protocol_family,
-    )
+    if request.ends_media_page:
+        output += _paper_feed_check_black_cmd(
+            _line_eight_tail_feed(request),
+            request.protocol_family,
+        )
     output += _state_cmd(request.protocol_family)
     return bytes(output)
 
@@ -156,7 +158,16 @@ def _esc_star_24dot_payload(request: PrintJobRequest) -> bytes:
                     if y < raster.height and raster.pixels[y * raster.width + x]:
                         value |= 1 << (7 - bit)
                 output.append(value)
-        output += b"\x1bJ\x00\x0a"
+        output += b"\x1b\x33\x00\x0a"
+    return bytes(output)
+
+
+def _esc_star_feed_commands(amount: int) -> bytes:
+    output = bytearray()
+    while amount > 0:
+        count = min(amount, 0xFF)
+        output += b"\x1bd" + bytes([count])
+        amount -= count
     return bytes(output)
 
 
@@ -165,28 +176,26 @@ def _build_esc_star_job(request: PrintJobRequest, *, eight: bool) -> bytes:
         max_height = request.a4_sheet_max_height
         if max_height is None or max_height <= 0:
             max_height = 3800 if request.dev_dpi == 300 else 2400
+        raster_height = request.require_raster(PixelFormat.BW1).height
         final_feed = (
-            max(
-                0,
-                max_height - request.require_raster(PixelFormat.BW1).height,
-            )
-            // 24
+            (max_height - raster_height) // 24
+            if raster_height < max_height
+            else request.one_length
         )
-    elif eight and request.one_length > 0:
-        final_feed = request.one_length
-    elif eight and request.feed_padding > 0:
-        final_feed = request.feed_padding
     else:
         final_feed = 4 if request.dev_dpi == 300 else 3
-    return bytes(
-        b"\x1b@\x12#"
-        + bytes([_esc_star_energy_byte(request.energy)])
-        + _mode_cmd(request.is_text, request.protocol_family)
-        + _esc_star_24dot_payload(request)
-        + b"\x1bd"
-        + bytes([final_feed & 0xFF])
-        + _state_cmd(request.protocol_family)
-    )
+
+    output = bytearray()
+    if request.starts_media_page:
+        output += b"\x1b@"
+    output += b"\x12#"
+    output += bytes([_esc_star_energy_byte(request.energy)])
+    output += _mode_cmd(request.is_text, request.protocol_family)
+    output += _esc_star_24dot_payload(request)
+    if request.ends_media_page:
+        output += _esc_star_feed_commands(final_feed)
+    output += _state_cmd(request.protocol_family)
+    return bytes(output)
 
 
 def _build_variant_job(request: PrintJobRequest) -> bytes | None:

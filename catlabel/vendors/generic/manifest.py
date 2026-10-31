@@ -219,7 +219,9 @@ class GenericManifest(VendorManifest):
         if device and hasattr(device, "model") and device.model:
             model = device.model
         else:
-            match = registry.detect_with_origin(name, mac)
+            match = registry.detect_with_origin(
+                name, mac, manufacturer_data=getattr(device, "manufacturer_data", None)
+            )
             model = match.model if match else None
 
         if model:

@@ -85,7 +85,7 @@ class PhomemoManifest(VendorManifest):
                 "protocol_family": "phomemo_m02",
             },
             {
-                **base,
+                **compact,
                 "name": "M02X",
                 "model_id": "M02X",
                 "protocol_variant": "m02x",
@@ -94,13 +94,7 @@ class PhomemoManifest(VendorManifest):
                 "dpi": 203,
                 "media_type": "continuous",
                 "protocol_family": "phomemo_m02",
-                "default_energy": 4,
                 "default_feed": 0,
-                "capabilities": {
-                    **self._build_capabilities(),
-                    "density": {"available": True, "min": 1, "max": 8, "default": 4},
-                    "feed": {"available": True, "default": 0},
-                },
             },
             {
                 **base,

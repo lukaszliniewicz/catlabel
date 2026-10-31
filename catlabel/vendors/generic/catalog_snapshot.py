@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -15,6 +16,9 @@ CATALOG_FILENAMES = (
     "catalog_profiles.json",
     "catalog_paper_presets.json",
     "catalog_origin_apps.json",
+)
+MODERN_CATALOG_FILENAMES = tuple(
+    name for name in CATALOG_FILENAMES if name != "catalog_unsupported.json"
 )
 _COMMIT_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 _WHITESPACE_MODES = {"remove", "trim", "preserve"}
@@ -68,7 +72,9 @@ def _string_list(value: object, path: str) -> list[str]:
     return result
 
 
-def _validate_detections(entry: dict[str, Any], path: str, model_key: str) -> None:
+def _validate_detections(
+    entry: dict[str, Any], path: str, model_key: str, *, modern: bool = False
+) -> None:
     detections = _list(entry.get("detections"), f"{path}.detections")
     if not detections:
         _fail(f"{path}.detections", "expected a non-empty list")
@@ -97,11 +103,75 @@ def _validate_detections(entry: dict[str, Any], path: str, model_key: str) -> No
             f"{rule_path}.mac_suffixes",
         )
 
-        if not exact_names and not prefixes and is_legacy_nested:
+        substrings: list[str] = []
+        if modern:
+            if is_legacy_nested and set(rule) - {
+                "name",
+                "detection",
+                "marketing_names",
+            }:
+                _fail(rule_path, "unknown nested detection fields")
+            allowed = {
+                "exact_names",
+                "prefixes",
+                "mac_suffixes",
+                "marketing_names",
+                "substrings",
+                "name_pattern",
+                "manufacturer_data_suffixes",
+                "manufacturer_data_lengths",
+            }
+            if set(detection) - allowed:
+                _fail(
+                    rule_path,
+                    f"unknown detection fields {sorted(set(detection) - allowed)!r}",
+                )
+            substrings = _string_list(
+                detection.get("substrings", []), f"{rule_path}.substrings"
+            )
+            pattern = detection.get("name_pattern")
+            if "name_pattern" in detection:
+                pattern = _nonempty_string(pattern, f"{rule_path}.name_pattern")
+                try:
+                    re.compile(pattern)
+                except re.error as error:
+                    _fail(f"{rule_path}.name_pattern", str(error))
+            if substrings and pattern is None:
+                _fail(
+                    rule_path,
+                    "substring detection requires a constraining name_pattern",
+                )
+            suffixes = _string_list(
+                detection.get("manufacturer_data_suffixes", []),
+                f"{rule_path}.manufacturer_data_suffixes",
+            )
+            for suffix in suffixes:
+                if not re.fullmatch(r"(?:[0-9a-fA-F]{2})+", suffix):
+                    _fail(
+                        rule_path,
+                        "manufacturer suffixes must be even-length hexadecimal strings",
+                    )
+            lengths = _list(
+                detection.get("manufacturer_data_lengths", []),
+                f"{rule_path}.manufacturer_data_lengths",
+            )
+            for length in lengths:
+                _positive_integer(length, f"{rule_path}.manufacturer_data_lengths")
+            if (
+                bool(suffixes) != bool(lengths)
+                or ("manufacturer_data_suffixes" in detection and not suffixes)
+                or ("manufacturer_data_lengths" in detection and not lengths)
+            ):
+                _fail(
+                    rule_path,
+                    "manufacturer detection requires both suffixes and lengths",
+                )
+
+        if not exact_names and not prefixes and not substrings and is_legacy_nested:
             fallback = rule.get("name") or model_key
             _nonempty_string(fallback, f"{rule_path}.name")
             continue
-        if not exact_names and not prefixes:
+        if not exact_names and not prefixes and not substrings:
             _fail(rule_path, "requires at least one exact name or prefix")
 
 
@@ -109,6 +179,8 @@ def _validate_model_entries(
     value: object,
     path: str,
     origin_ids: set[str],
+    *,
+    modern: bool = False,
 ) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     identifiers: set[str] = set()
@@ -142,7 +214,7 @@ def _validate_model_entries(
                         f"unknown origin {origin!r}",
                     )
 
-        _validate_detections(entry, entry_path, model_key)
+        _validate_detections(entry, entry_path, model_key, modern=modern)
         entries.append(entry)
     return entries
 
@@ -198,7 +270,7 @@ def _validate_profiles(
     return profiles
 
 
-def _validate_paper_presets(value: object) -> set[str]:
+def _validate_paper_presets(value: object, *, modern: bool = False) -> set[str]:
     path = "catalogs.catalog_paper_presets.json"
     presets = _mapping(value, path)
     preset_ids: set[str] = set()
@@ -224,6 +296,68 @@ def _validate_paper_presets(value: object) -> set[str]:
                     f"{path}.{preset_key}.rotation_degrees",
                     f"expected one of {sorted(_ROTATIONS)!r}",
                 )
+        if modern:
+            allowed = {
+                "label",
+                "paper_mode",
+                "paper_width_px",
+                "render_width_px",
+                "left_padding_px",
+                "render_height_px",
+                "max_height_px",
+                "rotation_degrees",
+                "top_padding_px",
+                "raster_height_px",
+            }
+            if set(preset) - allowed:
+                _fail(f"{path}.{preset_key}", "unknown paper geometry fields")
+            for dimension in ("left_padding_px", "top_padding_px"):
+                padding = preset.get(dimension, 0)
+                if type(padding) is not int or padding < 0:
+                    _fail(
+                        f"{path}.{preset_key}.{dimension}",
+                        "expected a nonnegative integer",
+                    )
+            raster_height = preset.get("raster_height_px")
+            if "raster_height_px" in preset:
+                _positive_integer(
+                    raster_height, f"{path}.{preset_key}.raster_height_px"
+                )
+            if (
+                preset["render_width_px"] + preset.get("left_padding_px", 0)
+                > preset["paper_width_px"]
+            ):
+                _fail(
+                    f"{path}.{preset_key}",
+                    "render width plus padding exceeds paper width",
+                )
+            top = preset.get("top_padding_px", 0)
+            height = preset.get("render_height_px")
+            if top and raster_height is None:
+                _fail(
+                    f"{path}.{preset_key}", "top padding requires a fixed raster height"
+                )
+            if (
+                raster_height is not None
+                and height is not None
+                and height + top > raster_height
+            ):
+                _fail(
+                    f"{path}.{preset_key}",
+                    "render height plus padding exceeds raster height",
+                )
+            maximum = preset.get("max_height_px")
+            if maximum is not None and height is not None and height + top > maximum:
+                _fail(
+                    f"{path}.{preset_key}",
+                    "render height plus padding exceeds maximum height",
+                )
+            if (
+                maximum is not None
+                and raster_height is not None
+                and raster_height > maximum
+            ):
+                _fail(f"{path}.{preset_key}", "raster height exceeds maximum height")
         preset_ids.add(preset_key)
     return preset_ids
 
@@ -238,15 +372,8 @@ def _validate_origins(value: object) -> set[str]:
     return result
 
 
-def validate_snapshot(snapshot: object) -> dict[str, Any]:
-    """Validate a catalog bundle and return it without normalizing source data."""
-
-    bundle = _mapping(snapshot, "root")
-    _exact_keys(bundle, {"schema_version", "source", "catalogs"}, "root")
-    if type(bundle["schema_version"]) is not int or bundle["schema_version"] != 1:
-        _fail("schema_version", "expected integer schema version 1")
-
-    source = _mapping(bundle["source"], "source")
+def _validate_source(value: object, filenames: set[str]) -> dict[str, Any]:
+    source = _mapping(value, "source")
     _exact_keys(
         source, {"repository", "revision", "commit", "license", "files"}, "source"
     )
@@ -265,9 +392,24 @@ def validate_snapshot(snapshot: object) -> dict[str, Any]:
         _fail("source.license", f"expected {UPSTREAM_LICENSE!r}")
 
     source_files = _mapping(source["files"], "source.files")
-    _exact_keys(source_files, set(CATALOG_FILENAMES), "source.files")
+    _exact_keys(source_files, filenames, "source.files")
     for destination, upstream_path in source_files.items():
         _nonempty_string(upstream_path, f"source.files.{destination}")
+
+    return source
+
+
+def validate_snapshot(snapshot: object) -> dict[str, Any]:
+    """Validate a catalog bundle and return it without normalizing source data."""
+
+    bundle = _mapping(snapshot, "root")
+    if type(bundle.get("schema_version")) is int and bundle["schema_version"] == 2:
+        return _validate_modern_snapshot(bundle)
+    _exact_keys(bundle, {"schema_version", "source", "catalogs"}, "root")
+    if type(bundle["schema_version"]) is not int or bundle["schema_version"] != 1:
+        _fail("schema_version", "expected integer schema version 1")
+
+    _validate_source(bundle["source"], set(CATALOG_FILENAMES))
 
     catalogs = _mapping(bundle["catalogs"], "catalogs")
     _exact_keys(catalogs, set(CATALOG_FILENAMES), "catalogs")
@@ -294,6 +436,48 @@ def validate_snapshot(snapshot: object) -> dict[str, Any]:
             f"supported and unsupported model keys overlap: {sorted(overlap)!r}",
         )
 
+    _validate_profile_references(models, profiles)
+
+    return bundle
+
+
+def load_snapshot(path: Path) -> dict[str, Any]:
+    """Read and validate a snapshot JSON file."""
+
+    try:
+        snapshot = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Invalid catalog snapshot JSON at {path}: {error}") from error
+    return validate_snapshot(snapshot)
+
+
+def policy_sha256(models: object, origins: object) -> str:
+    """Digest retained veto records independently of their new upstream bundle."""
+    payload = json.dumps(
+        {"models": models, "origins": origins},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("ascii")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def validate_detection_policy(value: object) -> dict[str, Any]:
+    policy = _mapping(value, "detection_policy")
+    _exact_keys(policy, {"source", "models", "origins", "sha256"}, "detection_policy")
+    _validate_source(policy["source"], {"catalog_unsupported.json"})
+    origins = _validate_origins(policy["origins"])
+    _validate_model_entries(
+        policy["models"], "detection_policy.models", origins, modern=True
+    )
+    if policy["sha256"] != policy_sha256(policy["models"], policy["origins"]):
+        _fail("detection_policy.sha256", "does not match retained models and origins")
+    return policy
+
+
+def _validate_profile_references(
+    models: list[dict[str, Any]], profiles: dict[str, dict[str, Any]]
+) -> None:
     for index, model in enumerate(models):
         model_path = f"catalogs.catalog_models.json[{index}]"
         profile_key = _nonempty_string(
@@ -315,14 +499,25 @@ def validate_snapshot(snapshot: object) -> dict[str, Any]:
                     f"unknown runtime preset {runtime_key!r} for profile {profile_key!r}",
                 )
 
+
+def _validate_modern_snapshot(bundle: dict[str, Any]) -> dict[str, Any]:
+    _exact_keys(
+        bundle, {"schema_version", "source", "catalogs", "detection_policy"}, "root"
+    )
+    _validate_source(bundle["source"], set(MODERN_CATALOG_FILENAMES))
+    catalogs = _mapping(bundle["catalogs"], "catalogs")
+    _exact_keys(catalogs, set(MODERN_CATALOG_FILENAMES), "catalogs")
+    origins = _validate_origins(catalogs["catalog_origin_apps.json"])
+    presets = _validate_paper_presets(
+        catalogs["catalog_paper_presets.json"], modern=True
+    )
+    profiles = _validate_profiles(catalogs["catalog_profiles.json"], presets)
+    models = _validate_model_entries(
+        catalogs["catalog_models.json"],
+        "catalogs.catalog_models.json",
+        origins,
+        modern=True,
+    )
+    _validate_profile_references(models, profiles)
+    validate_detection_policy(bundle["detection_policy"])
     return bundle
-
-
-def load_snapshot(path: Path) -> dict[str, Any]:
-    """Read and validate a snapshot JSON file."""
-
-    try:
-        snapshot = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        raise ValueError(f"Invalid catalog snapshot JSON at {path}: {error}") from error
-    return validate_snapshot(snapshot)

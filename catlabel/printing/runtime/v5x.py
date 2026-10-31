@@ -51,9 +51,6 @@ class _V5XSessionState:
     pending_get_serial: asyncio.Task | None = None
     pending_status_poll: asyncio.Task | None = None
     command_ack_events: dict[int, asyncio.Event] = field(default_factory=dict)
-    await_start_ready: bool = False
-    start_ready_seen: bool = False
-    start_ready_event: asyncio.Event | None = None
     connect_info_event: asyncio.Event | None = None
 
 
@@ -64,7 +61,10 @@ class _V5XJobContext:
 
 
 class V5XRuntimeController(RuntimeController):
-    _START_READY_MAX_S = 60.0
+    # A9 busy retry timing follows the pinned TiMini-Print v0.9.1 fix:
+    # 45b00c50a4382a8df626aa67d656f1d60c825805.
+    _A9_ACCEPTANCE_WINDOW_S = 60.0
+    _A9_BUSY_RETRY_DELAY_S = 0.4
     _COMPLETION_QUIET_S = 3.0
     _COMPLETION_GRACE_S = 3.0
     _COMPLETION_MAX_S = 60.0
@@ -80,9 +80,6 @@ class V5XRuntimeController(RuntimeController):
         previous_state.pending_get_serial = current_state.pending_get_serial
         previous_state.pending_status_poll = current_state.pending_status_poll
         previous_state.command_ack_events = current_state.command_ack_events
-        previous_state.await_start_ready = current_state.await_start_ready
-        previous_state.start_ready_seen = current_state.start_ready_seen
-        previous_state.start_ready_event = current_state.start_ready_event
         previous_state.connect_info_event = current_state.connect_info_event
         previous_state.pending_sign_responses.update(
             current_state.pending_sign_responses
@@ -113,9 +110,6 @@ class V5XRuntimeController(RuntimeController):
             "pending_command_ack_opcodes": sorted(
                 self._state.command_ack_events.keys()
             ),
-            "await_start_ready": self._state.await_start_ready,
-            "start_ready_seen": self._state.start_ready_seen,
-            "has_start_ready_event": self._state.start_ready_event is not None,
             "has_connect_info_event": self._state.connect_info_event is not None,
         }
 
@@ -159,7 +153,6 @@ class V5XRuntimeController(RuntimeController):
         if pending_background:
             await asyncio.gather(*pending_background, return_exceptions=True)
         self._state.command_ack_events.clear()
-        self._clear_start_ready()
         self._state.last_a9_status = None
         self._state.connect_info_event = None
 
@@ -293,7 +286,7 @@ class V5XRuntimeController(RuntimeController):
             payload is not None
             and len(payload) == 4
             and payload[2] == 0x30
-            and payload[3] in (0x00, 0x01, 0x02)
+            and payload[3] in (0x00, 0x01, 0x02, 0x03)
             and packet.endswith(b"\x00\x00")
         )
 
@@ -369,16 +362,43 @@ class V5XRuntimeController(RuntimeController):
         ack_token = self.arm_command_ack(session, packet)
         self._state.last_a9_status = None
         try:
-            reply = await session.send_control_packet_wait_notification(
-                packet,
-                label="V5X command ack 0xa9",
-                match=self._is_valid_a9_notification,
-                timeout=timeout,
-                required=True,
-            )
-            status = self._extract_status_byte(session, reply or b"")
-            self._state.last_a9_status = status
-            self._validate_command_ack(0xA9)
+            deadline = time.monotonic() + self._A9_ACCEPTANCE_WINDOW_S
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError(
+                        "Timed out waiting for V5X start print acceptance"
+                    )
+
+                self._state.last_a9_status = None
+                reply = await session.send_control_packet_wait_notification(
+                    packet,
+                    label="V5X command ack 0xa9",
+                    match=self._is_valid_a9_notification,
+                    timeout=min(timeout, remaining),
+                    required=True,
+                )
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(
+                        "Timed out waiting for V5X start print acceptance"
+                    )
+                status = self._extract_status_byte(session, reply or b"")
+                self._state.last_a9_status = status
+                if status == 0x01:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError(
+                            "Timed out waiting for V5X start print acceptance"
+                        )
+                    await asyncio.sleep(min(self._A9_BUSY_RETRY_DELAY_S, remaining))
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError(
+                            "Timed out waiting for V5X start print acceptance"
+                        )
+                    continue
+
+                self._validate_command_ack(0xA9)
+                return
         finally:
             self.clear_command_ack(session, ack_token)
 
@@ -397,14 +417,9 @@ class V5XRuntimeController(RuntimeController):
         )
 
     async def _send_finalizer(self, session, packet: bytes, *, timeout: float) -> None:
-        self._arm_start_ready()
-        try:
-            sent = await session.send_control_packet(packet, timeout=timeout)
-            if not sent:
-                raise RuntimeError("V5X finalizer send unavailable")
-        except BaseException:
-            self._clear_start_ready()
-            raise
+        sent = await session.send_control_packet(packet, timeout=timeout)
+        if not sent:
+            raise RuntimeError("V5X finalizer send unavailable")
 
     def build_split_context(self, session, split) -> _V5XJobContext:
         is_gray = False
@@ -415,7 +430,7 @@ class V5XRuntimeController(RuntimeController):
             if payload is None:
                 continue
             if len(payload) >= 4:
-                is_gray = payload[3] == 0x02
+                is_gray = payload[3] in (0x02, 0x03)
             break
         coverage_ratio = 0.0
         if split.bulk_payload and not is_gray:
@@ -455,8 +470,6 @@ class V5XRuntimeController(RuntimeController):
         density_updated: bool,
     ) -> None:
         opcode = prefixed_packet_opcode(packet, ProtocolFamily.V5X)
-        if opcode in (0xA2, 0xA9):
-            await self._wait_for_start_ready(session, timeout)
         if opcode == 0xA9:
             delay_ms = self._compute_start_delay_ms(
                 split_context, density_updated=density_updated
@@ -484,7 +497,6 @@ class V5XRuntimeController(RuntimeController):
     async def wait_for_completion(self, session, *, timeout: float) -> None:
         # V5X devices stream A1 state while the mechanism is moving. Waiting is
         # passive: polling A3 here would move paper on affected firmware.
-        self._clear_start_ready()
         if not session.can_wait_for_notification():
             return
         session.report_debug("V5X waiting for print completion before disconnect")
@@ -531,8 +543,6 @@ class V5XRuntimeController(RuntimeController):
             self._mark_status_poll_ack(session)
         elif opcode == 0xA6:
             self._schedule_get_serial(session)
-        elif opcode == 0xAA:
-            self._release_start_ready(session)
         elif opcode == 0xA9:
             if self._is_valid_a9_notification(payload):
                 self._release_command_ack(session, 0xA9)
@@ -547,28 +557,6 @@ class V5XRuntimeController(RuntimeController):
             self._schedule_status_poll(session)
         elif opcode == 0xB3:
             self._schedule_sign_response(session, payload)
-
-    async def _wait_for_start_ready(self, session, timeout: float) -> None:
-        event = self._state.start_ready_event
-        if not self._state.await_start_ready or event is None:
-            return
-        try:
-            wait_timeout = max(timeout, self._START_READY_MAX_S)
-            await asyncio.wait_for(event.wait(), timeout=wait_timeout)
-        except TimeoutError:
-            self._clear_start_ready()
-            raise TimeoutError("Timed out waiting for V5X start ready 0xaa") from None
-        self._clear_start_ready()
-
-    def _arm_start_ready(self) -> None:
-        self._state.await_start_ready = True
-        self._state.start_ready_seen = False
-        self._state.start_ready_event = asyncio.Event()
-
-    def _clear_start_ready(self) -> None:
-        self._state.await_start_ready = False
-        self._state.start_ready_seen = False
-        self._state.start_ready_event = None
 
     async def _wait_for_connect_info(self, session, timeout: float) -> None:
         if self._state.connect_info_event is None:
@@ -585,21 +573,10 @@ class V5XRuntimeController(RuntimeController):
                 self._state.connect_info_event = None
 
     def _release_command_ack(self, session, opcode: int) -> None:
-        event = self._state.command_ack_events.pop(opcode, None)
+        event = self._state.command_ack_events.get(opcode)
         if event is not None and not event.is_set():
             event.set()
             session.report_debug(f"command ack: 0x{opcode:02x}")
-
-    def _release_start_ready(self, session) -> None:
-        if (
-            not self._state.await_start_ready
-            or self._state.start_ready_event is None
-            or self._state.start_ready_event.is_set()
-        ):
-            return
-        self._state.start_ready_seen = True
-        self._state.start_ready_event.set()
-        session.report_debug("start ready: 0xaa")
 
     def _release_connect_info(self, session) -> None:
         if (
@@ -637,7 +614,7 @@ class V5XRuntimeController(RuntimeController):
             return
         if not session.can_send_control_packet():
             return
-        if self._state.await_start_ready:
+        if 0xA9 in self._state.command_ack_events:
             return
         try:
             loop = asyncio.get_running_loop()

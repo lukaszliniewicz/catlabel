@@ -2,281 +2,346 @@ from __future__ import annotations
 
 import unittest
 from collections.abc import Iterator
+from dataclasses import dataclass
 from unittest.mock import patch
 
+from catlabel.core.resource_limits import MAX_DIMENSION
 from catlabel.protocol.families import phomemo_esc_core as recipes
 from catlabel.protocol.types import PaperMode
 from catlabel.raster import PixelFormat, RasterBuffer
 
-_COMPACT_SETUP = bytes.fromhex("1b40 1f110202 1f113764 1f110b 1f113500")
+_SETUP_PREFIX = bytes.fromhex("1b40 1f1102")
+_COEFFICIENT = bytes.fromhex("1f1137")
+_MEDIA = bytes.fromhex("1f11")
+_UNCOMPRESSED = bytes.fromhex("1f113500")
 _COMPACT_FEED = bytes.fromhex("1b6402")
+_DENSITY_LEVELS = ((1, 100), (2, 100), (4, 100), (4, 150))
 
 
-def _edge_raster(width: int, height: int = 2) -> RasterBuffer:
-    pixels = [0] * (width * height)
-    pixels[0] = 1
-    pixels[-1] = 1
-    return RasterBuffer(pixels, width, PixelFormat.BW1)
+@dataclass(frozen=True)
+class _WireSpec:
+    content_width: int
+    top_padding: int
+    paper_modes: tuple[PaperMode, ...]
+    tag_total_width: int | None = None
 
 
-def _expected_raster_block(
-    width: int,
-    height: int,
+_WIRE_SPECS = {
+    "m02": _WireSpec(384, 4, (PaperMode.PLAIN, PaperMode.TAG)),
+    "m02s": _WireSpec(
+        576,
+        4,
+        (PaperMode.PLAIN, PaperMode.TAG),
+        tag_total_width=588,
+    ),
+    "m02_pro": _WireSpec(
+        576,
+        4,
+        (PaperMode.PLAIN, PaperMode.TAG),
+        tag_total_width=583,
+    ),
+    "t02": _WireSpec(384, 4, (PaperMode.PLAIN, PaperMode.TAG)),
+    "m02x": _WireSpec(384, 4, (PaperMode.PLAIN,)),
+    "m110": _WireSpec(
+        384,
+        0,
+        (PaperMode.TAG, PaperMode.PLAIN, PaperMode.BLACK_TAG),
+    ),
+    "m220": _WireSpec(
+        576,
+        0,
+        (PaperMode.TAG, PaperMode.PLAIN, PaperMode.BLACK_TAG),
+    ),
+}
+
+
+def _wire_setup(
     *,
-    wire_width: int,
-    left_padding: int,
+    density: int | None,
+    paper_mode: PaperMode,
 ) -> bytes:
-    row_bytes = (wire_width + 7) // 8
-    rows = bytearray(row_bytes * height)
-    rows[left_padding // 8] |= 1 << (7 - left_padding % 8)
-    last_pixel = left_padding + width - 1
-    rows[(height - 1) * row_bytes + last_pixel // 8] |= 1 << (7 - last_pixel % 8)
+    level = 2 if density is None else max(1, min(4, int(density)))
+    density_value, coefficient = _DENSITY_LEVELS[level - 1]
+    media_value = 0x26 if paper_mode is PaperMode.BLACK_TAG else 0x0B
     return (
-        bytes.fromhex("1d763000")
-        + row_bytes.to_bytes(2, "little")
-        + height.to_bytes(2, "little")
-        + rows
+        _SETUP_PREFIX
+        + bytes((density_value,))
+        + _COEFFICIENT
+        + bytes((coefficient,))
+        + _MEDIA
+        + bytes((media_value,))
+        + _UNCOMPRESSED
     )
 
 
+def _expected_page(
+    pixels: list[int],
+    width: int,
+    height: int,
+    *,
+    variant: str,
+    paper_mode: PaperMode,
+    density: int | None = None,
+    is_first_page: bool = True,
+    is_last_page: bool = True,
+    ends_media_page: bool = True,
+) -> bytes:
+    """Encode a literal protocol expectation without using production helpers."""
+    spec = _WIRE_SPECS[variant]
+    output_width = width
+    left_padding = 0
+    if paper_mode is PaperMode.TAG and spec.tag_total_width is not None:
+        output_width = spec.tag_total_width
+        left_padding = output_width - width
+
+    output_height = height + spec.top_padding
+    bytes_per_row = (output_width + 7) // 8
+    packed_rows = bytearray(bytes_per_row * output_height)
+    for source_index, value in enumerate(pixels):
+        if value:
+            source_y, source_x = divmod(source_index, width)
+            output_y = source_y + spec.top_padding
+            output_x = source_x + left_padding
+            offset = output_y * bytes_per_row + output_x // 8
+            packed_rows[offset] |= 1 << (7 - output_x % 8)
+
+    payload = bytearray()
+    if is_first_page:
+        payload += _wire_setup(density=density, paper_mode=paper_mode)
+
+    for first_row in range(0, output_height, 0xFFFF):
+        block_height = min(0xFFFF, output_height - first_row)
+        payload += bytes.fromhex("1d763000")
+        payload += bytes_per_row.to_bytes(2, "little")
+        payload += block_height.to_bytes(2, "little")
+        first_byte = first_row * bytes_per_row
+        final_byte = (first_row + block_height) * bytes_per_row
+        payload += packed_rows[first_byte:final_byte]
+
+    if is_last_page:
+        payload += _COMPACT_FEED * 2
+    elif ends_media_page:
+        payload += _COMPACT_FEED
+    return bytes(payload)
+
+
+def _pattern_pixels(width: int, pattern: str) -> list[int]:
+    pixels = [0] * (width * 3)
+    if pattern == "black":
+        return [1] * len(pixels)
+    if pattern == "asymmetric_edges":
+        pixels[0] = 1
+        pixels[width + width - 1] = 1
+        pixels[2 * width + width // 2] = 1
+    if pattern not in {"white", "black", "asymmetric_edges"}:
+        raise AssertionError(f"Unknown raster pattern: {pattern}")
+    return pixels
+
+
 class PhomemoReleasedRecipeTests(unittest.TestCase):
-    def test_m02_complete_page_matches_literal_wire_vector(self) -> None:
-        raster = RasterBuffer(
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-            width=8,
-        )
+    def test_m02_complete_page_matches_literal_current_wire_vector(self) -> None:
+        pixels = [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+        raster = RasterBuffer(pixels, width=8)
         self.assertEqual(
             recipes.build_released_page(raster, variant="m02"),
             bytes.fromhex(
-                "1b401f1102021f1137641f110b1f1135001d76300002000200080004001b64021b6402"
+                "1b401f1102021f1137641f110b1f113500"
+                "1d76300001000600000000008040"
+                "1b64021b6402"
             ),
         )
 
-    def test_compact_placement_preserves_odd_width_rows_and_tag_padding(self) -> None:
-        fixtures = {
-            "m02": (384, 4, 0, (PaperMode.PLAIN, PaperMode.TAG)),
-            "m02s": (576, 4, 12, (PaperMode.PLAIN, PaperMode.TAG)),
-            "m02_pro": (576, 4, 7, (PaperMode.PLAIN, PaperMode.TAG)),
-            "t02": (384, 4, 0, (PaperMode.PLAIN, PaperMode.TAG)),
-            "m110": (384, 0, 0, (PaperMode.TAG, PaperMode.PLAIN, PaperMode.BLACK_TAG)),
-            "m220": (576, 0, 0, (PaperMode.TAG, PaperMode.PLAIN, PaperMode.BLACK_TAG)),
-        }
-        widths = (1, 7, 17, 383, 384, 575, 576)
-        for variant, (maximum, left, tag_extra, modes) in fixtures.items():
-            for width in widths:
-                if width > maximum:
-                    continue
-                for mode in modes:
-                    with self.subTest(variant=variant, width=width, mode=mode):
-                        right = (
-                            maximum + tag_extra - width
-                            if mode is PaperMode.TAG and tag_extra
-                            else 0
-                        )
-                        wire_width = left + width + right
-                        media = 0x26 if mode is PaperMode.BLACK_TAG else 0x0B
-                        setup = _COMPACT_SETUP.replace(
-                            bytes.fromhex("1f110b"), bytes((0x1F, 0x11, media))
-                        )
-                        page = recipes.build_released_page(
-                            _edge_raster(width),
-                            variant=variant,
-                            paper_mode=mode,
-                        )
-                        block = _expected_raster_block(
-                            width,
-                            2,
-                            wire_width=wire_width,
-                            left_padding=left,
-                        )
-                        self.assertEqual(page, setup + block + _COMPACT_FEED * 2)
-
-    def test_size_planner_returns_logical_geometry_and_checks_resource_limits(
+    def test_compact_whole_payload_fixtures_cover_widths_modes_and_pixels(
         self,
     ) -> None:
-        self.assertEqual(
-            recipes.plan_released_raster_size(8, 2, variant="m02"),
-            (12, 2),
-        )
-        self.assertEqual(
-            recipes.plan_released_raster_size(8, 2, variant="m02s"),
-            (12, 2),
-        )
-        self.assertEqual(
-            recipes.plan_released_raster_size(
-                8,
-                2,
-                variant="m02s",
-                paper_mode=PaperMode.TAG,
-            ),
-            (592, 2),
-        )
-        self.assertEqual(
-            recipes.plan_released_raster_size(
-                8,
-                2,
-                variant="m02_pro",
-                paper_mode=PaperMode.TAG,
-            ),
-            (587, 2),
-        )
-        self.assertEqual(
-            recipes.plan_released_raster_size(
-                1000,
-                2,
-                variant="m02x",
-                paper_mode=PaperMode.PLAIN,
-            ),
-            (1000, 2),
-        )
+        for variant, spec in _WIRE_SPECS.items():
+            widths = (1, 7, 8, 9, spec.content_width)
+            for width in widths:
+                for mode in spec.paper_modes:
+                    for pattern in ("white", "black", "asymmetric_edges"):
+                        pixels = _pattern_pixels(width, pattern)
+                        raster = RasterBuffer(pixels, width, PixelFormat.BW1)
+                        with self.subTest(
+                            variant=variant,
+                            width=width,
+                            mode=mode,
+                            pattern=pattern,
+                        ):
+                            expected_width = (
+                                spec.tag_total_width
+                                if mode is PaperMode.TAG
+                                and spec.tag_total_width is not None
+                                else width
+                            )
+                            expected_height = 3 + spec.top_padding
+                            self.assertEqual(
+                                recipes.plan_released_raster_size(
+                                    width,
+                                    3,
+                                    variant=variant,
+                                    paper_mode=mode,
+                                ),
+                                (expected_width, expected_height),
+                            )
+                            self.assertEqual(
+                                recipes.build_released_page(
+                                    raster,
+                                    variant=variant,
+                                    paper_mode=mode,
+                                ),
+                                _expected_page(
+                                    pixels,
+                                    width,
+                                    3,
+                                    variant=variant,
+                                    paper_mode=mode,
+                                ),
+                            )
 
-        for width, height in ((0, 2), (8, 0), (True, 2), (8, -1)):
-            with (
-                self.subTest(width=width, height=height),
-                self.assertRaises(ValueError),
-            ):
-                recipes.plan_released_raster_size(
-                    width,
-                    height,
-                    variant="m02",  # type: ignore[arg-type]
+    def test_first_intermediate_and_final_page_boundaries(self) -> None:
+        pixels = _pattern_pixels(9, "asymmetric_edges")
+        raster = RasterBuffer(pixels, 9)
+        cases = (
+            (True, False, True),
+            (False, False, True),
+            (False, True, False),
+            (False, False, False),
+        )
+        for variant in ("m02", "m02x", "m02s"):
+            for first, last, media_end in cases:
+                with self.subTest(
+                    variant=variant,
+                    first=first,
+                    last=last,
+                    media_end=media_end,
+                ):
+                    self.assertEqual(
+                        recipes.build_released_page(
+                            raster,
+                            variant=variant,
+                            paper_mode=PaperMode.PLAIN,
+                            is_first_page=first,
+                            is_last_page=last,
+                            ends_media_page=media_end,
+                        ),
+                        _expected_page(
+                            pixels,
+                            9,
+                            3,
+                            variant=variant,
+                            paper_mode=PaperMode.PLAIN,
+                            is_first_page=first,
+                            is_last_page=last,
+                            ends_media_page=media_end,
+                        ),
+                    )
+
+    def test_density_media_and_reference_recipe_geometry(self) -> None:
+        raster = RasterBuffer([0] * 8, width=8)
+        for variant in _WIRE_SPECS:
+            spec = _WIRE_SPECS[variant]
+            modes = spec.paper_modes
+            for mode in modes:
+                for level in (None, -10, 1, 2, 3, 4, 9):
+                    with self.subTest(variant=variant, mode=mode, density=level):
+                        self.assertEqual(
+                            recipes.build_released_page(
+                                raster,
+                                variant=variant,
+                                paper_mode=mode,
+                                density=level,
+                            ),
+                            _expected_page(
+                                [0] * 8,
+                                8,
+                                1,
+                                variant=variant,
+                                paper_mode=mode,
+                                density=level,
+                            ),
+                        )
+
+        for variant in ("m110", "m220"):
+            for mode in _WIRE_SPECS[variant].paper_modes:
+                self.assertEqual(
+                    recipes.plan_released_raster_size(
+                        8,
+                        1,
+                        variant=variant,
+                        paper_mode=mode,
+                    ),
+                    (8, 1),
                 )
 
-    def test_density_media_channels_and_page_feed_precedence(self) -> None:
-        density_wire = (
-            (None, 2, 100),
-            (-10, 1, 100),
-            (1, 1, 100),
-            (2, 2, 100),
-            (3, 4, 100),
-            (4, 4, 150),
-            (9, 4, 150),
-        )
-        raster = RasterBuffer([0] * 8, width=8)
-        for variant in ("m02", "m02s", "m02_pro", "t02", "m110", "m220"):
-            for level, density, coefficient in density_wire:
-                with self.subTest(variant=variant, density=level):
-                    page = recipes.build_released_page(
-                        raster,
-                        variant=variant,
-                        density=level,
-                        paper_mode=PaperMode.BLACK_TAG
-                        if variant in ("m110", "m220")
-                        else PaperMode.PLAIN,
-                    )
-                    expected_density = bytes((density,))
-                    expected_coefficient = bytes((coefficient,))
-                    self.assertIn(
-                        b"\x1f\x11\x02"
-                        + expected_density
-                        + b"\x1f\x117"
-                        + expected_coefficient,
-                        page,
-                    )
-
-        black_tag = recipes.build_released_page(
-            raster, variant="m110", paper_mode=PaperMode.BLACK_TAG
-        )
-        plain = recipes.build_released_page(
-            raster, variant="m110", paper_mode=PaperMode.PLAIN
-        )
-        tag = recipes.build_released_page(
-            raster, variant="m110", paper_mode=PaperMode.TAG
-        )
-        default_mode = recipes.build_released_page(raster, variant="m110")
-        for page, media in ((black_tag, 0x26), (plain, 0x0B), (tag, 0x0B)):
-            self.assertIn(bytes((0x1F, 0x11, media)), page)
-        self.assertIn(bytes.fromhex("1f110b"), default_mode)
-
-        intermediate = recipes.build_released_page(
-            raster,
-            variant="m02",
-            is_first_page=False,
-            is_last_page=False,
-            ends_media_page=True,
-        )
-        self.assertEqual(intermediate, bytes.fromhex("1d763000020001000000 1b6402"))
-        final_without_media_end = recipes.build_released_page(
-            raster,
-            variant="m02",
-            is_first_page=False,
-            is_last_page=True,
-            ends_media_page=False,
-        )
-        self.assertEqual(
-            final_without_media_end,
-            bytes.fromhex("1d763000020001000000 1b6402 1b6402"),
-        )
-        neither = recipes.build_released_page(
-            raster,
-            variant="m02",
-            is_first_page=False,
-            is_last_page=False,
-            ends_media_page=False,
-        )
-        self.assertEqual(neither, bytes.fromhex("1d763000020001000000"))
-
-    def test_m02x_uses_esc_setup_each_page_raw_density_and_one_feed_command(
+    def test_m02x_is_compact_plain_only_and_rejects_oversize_before_scanning(
         self,
     ) -> None:
-        raster = RasterBuffer([1] + [0] * 7, width=8)
-        page = recipes.build_released_page(
-            raster,
-            variant="m02x",
-            density=17,
-            is_first_page=False,
-            is_last_page=True,
-            ends_media_page=True,
-            post_print_feed_count=3,
-        )
+        class UnscannablePixels(list[int]):
+            def __iter__(self) -> Iterator[int]:
+                raise AssertionError("invalid recipe must fail before pixel scan")
+
+        for mode in (PaperMode.TAG, PaperMode.BLACK_TAG, PaperMode.A4_SHEET):
+            raster = RasterBuffer(UnscannablePixels([0] * 8), width=8)
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                recipes.build_released_page(
+                    raster,
+                    variant="m02x",
+                    paper_mode=mode,
+                )
+
+        too_wide = RasterBuffer(UnscannablePixels([0] * 385), width=385)
+        with self.assertRaisesRegex(ValueError, "content width"):
+            recipes.build_released_page(too_wide, variant="m02x")
+
+        pixels = _pattern_pixels(8, "asymmetric_edges")
         self.assertEqual(
-            page,
-            bytes.fromhex("1b401b61011f110211 1d7630000100010080 1b6403"),
+            recipes.build_released_page(
+                RasterBuffer(pixels, width=8),
+                variant="m02x",
+                density=None,
+            ),
+            _expected_page(
+                pixels,
+                8,
+                3,
+                variant="m02x",
+                paper_mode=PaperMode.PLAIN,
+                density=2,
+            ),
         )
 
-        no_feed = recipes.build_released_page(
-            raster,
-            variant="m02x",
-            is_last_page=True,
-            ends_media_page=False,
+    def test_gsv0_row_stripes_respect_65535_row_limit(self) -> None:
+        source_height = 0xFFFF - 4 + 1
+        pixels = [0] * (8 * source_height)
+        pixels[0] = 1
+        pixels[-1] = 1
+        raster = RasterBuffer(pixels, width=8)
+        with patch.object(
+            recipes, "validate_image_budget", side_effect=lambda w, h: w * h
+        ):
+            payload = recipes.build_released_page(raster, variant="m02")
+
+        setup = _wire_setup(density=2, paper_mode=PaperMode.PLAIN)
+        first_block_offset = len(setup)
+        first_block_size = 8 + 0xFFFF
+        self.assertEqual(
+            payload[first_block_offset : first_block_offset + 8],
+            bytes.fromhex("1d7630000100ffff"),
         )
         self.assertEqual(
-            no_feed,
-            bytes.fromhex("1b401b61011f110204 1d7630000100010080"),
+            payload[first_block_offset + 8 : first_block_offset + 8 + 4],
+            bytes(4),
         )
-        clamped = recipes.build_released_page(
-            raster,
-            variant="m02x",
-            density=300,
-            ends_media_page=True,
-            post_print_feed_count=300,
-        )
-        self.assertEqual(clamped[:9], bytes.fromhex("1b401b61011f1102ff"))
-        self.assertTrue(clamped.endswith(b"\x1b\x64\xff"))
-
-    def test_compact_page_splits_256_rows_once_and_m02x_splits_them_twice(self) -> None:
-        raster = RasterBuffer([0] * (8 * 256), width=8)
-        compact = recipes.build_released_page(raster, variant="m02")
+        self.assertEqual(payload[first_block_offset + 8 + 4], 0x80)
+        second_block_offset = first_block_offset + first_block_size
         self.assertEqual(
-            compact,
-            _COMPACT_SETUP
-            + bytes.fromhex("1d76300002000001")
-            + bytes(512)
-            + _COMPACT_FEED * 2,
+            payload[second_block_offset : second_block_offset + 8],
+            bytes.fromhex("1d76300001000100"),
         )
+        self.assertEqual(payload[second_block_offset + 8], 0x01)
+        self.assertTrue(payload.endswith(_COMPACT_FEED * 2))
 
-        m02x = recipes.build_released_page(raster, variant="m02x")
-        self.assertEqual(
-            m02x,
-            bytes.fromhex("1b401b61011f110204")
-            + bytes.fromhex("1d7630000100ff00")
-            + bytes(255)
-            + bytes.fromhex("1d76300001000100")
-            + b"\x00",
-        )
-
-    def test_invalid_rasters_variants_modes_and_printmaster_variants_reject(
-        self,
-    ) -> None:
+    def test_invalid_rasters_variants_modes_and_content_width_reject(self) -> None:
         invalid_rasters = (
             RasterBuffer([], width=8),
             RasterBuffer([0] * 7, width=8),
@@ -312,19 +377,63 @@ class PhomemoReleasedRecipeTests(unittest.TestCase):
                     paper_mode=mode,
                 )
 
-        with self.assertRaisesRegex(ValueError, "content width"):
-            recipes.build_released_page(
-                RasterBuffer([0] * 385, width=385), variant="m02"
-            )
+        for variant in ("m02", "m02x"):
+            with (
+                self.subTest(variant=variant),
+                self.assertRaisesRegex(ValueError, "content width"),
+            ):
+                recipes.build_released_page(
+                    RasterBuffer([0] * 385, width=385), variant=variant
+                )
 
-    def test_input_pixels_remain_unchanged_and_budget_preflight_precedes_scanning(
+    def test_size_planner_validates_input_and_padded_budgets_before_scanning(
         self,
     ) -> None:
+        expected_sizes = (
+            ("m02", PaperMode.PLAIN, (8, 6)),
+            ("m02", PaperMode.TAG, (8, 6)),
+            ("m02s", PaperMode.PLAIN, (8, 6)),
+            ("m02s", PaperMode.TAG, (588, 6)),
+            ("m02_pro", PaperMode.TAG, (583, 6)),
+            ("t02", PaperMode.PLAIN, (8, 6)),
+            ("m02x", PaperMode.PLAIN, (8, 6)),
+            ("m110", PaperMode.TAG, (8, 2)),
+            ("m220", PaperMode.BLACK_TAG, (8, 2)),
+        )
+        for variant, mode, expected in expected_sizes:
+            with self.subTest(variant=variant, mode=mode):
+                self.assertEqual(
+                    recipes.plan_released_raster_size(
+                        8,
+                        2,
+                        variant=variant,
+                        paper_mode=mode,
+                    ),
+                    expected,
+                )
+
+        for width, height in ((0, 2), (8, 0), (True, 2), (8, -1)):
+            with (
+                self.subTest(width=width, height=height),
+                self.assertRaises(ValueError),
+            ):
+                recipes.plan_released_raster_size(
+                    width,
+                    height,
+                    variant="m02",  # type: ignore[arg-type]
+                )
+
+        if MAX_DIMENSION < 65_535:
+            with self.assertRaises(ValueError):
+                recipes.plan_released_raster_size(
+                    8,
+                    MAX_DIMENSION + 1,
+                    variant="m02",
+                )
+
         class UnscannablePixels(list[int]):
             def __iter__(self) -> Iterator[int]:
-                raise AssertionError(
-                    "pixels must not be scanned before budget preflight"
-                )
+                raise AssertionError("pixels must not be scanned before preflight")
 
         raster = RasterBuffer(UnscannablePixels([0] * 16), width=8)
         with (
@@ -347,17 +456,24 @@ class PhomemoReleasedRecipeTests(unittest.TestCase):
 
         with (
             patch.object(
-                recipes, "validate_image_budget", side_effect=reject_padded_size
+                recipes,
+                "validate_image_budget",
+                side_effect=reject_padded_size,
+            ),
+            patch.object(
+                recipes,
+                "_pad_raster",
+                side_effect=AssertionError("padding allocated before budget check"),
             ),
             self.assertRaisesRegex(MemoryError, "padded budget"),
         ):
             recipes.build_released_page(raster, variant="m02")
-        self.assertEqual(calls, [(8, 2), (12, 2)])
+        self.assertEqual(calls, [(8, 2), (8, 6)])
 
         pixels = [1, 0, 0, 0, 0, 0, 0, 0]
-        before = pixels.copy()
+        original = pixels.copy()
         recipes.build_released_page(RasterBuffer(pixels, width=8), variant="m02")
-        self.assertEqual(pixels, before)
+        self.assertEqual(pixels, original)
 
 
 if __name__ == "__main__":

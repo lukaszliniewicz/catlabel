@@ -101,9 +101,13 @@ def _esc_job(
 
 
 def _image_cmd(raster: RasterBuffer) -> bytes:
-    raster.validate()
     width_bytes = packed_row_width_bytes(raster.width)
-    height = raster.height
+    if not 1 <= width_bytes <= 0xFFFF:
+        raise ValueError("HPRT ESC bitmap stride must be between 1 and 65535 bytes")
+    height = len(raster.pixels) // raster.width
+    if not 1 <= height <= 0xFFFF:
+        raise ValueError("HPRT ESC bitmap height must be between 1 and 65535 rows")
+    raster.validate()
     return (
         _IMAGE_CMD
         + bytes(

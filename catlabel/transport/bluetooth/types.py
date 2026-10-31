@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum, StrEnum
 from typing import Any
@@ -27,6 +28,15 @@ class DeviceInfo:
     paired: bool | None = None
     transport: DeviceTransport = DeviceTransport.CLASSIC
     ble_profile: BleTransportProfile | None = None
+    manufacturer_data: Mapping[int, bytes] | None = None
+
+    def __post_init__(self) -> None:
+        if self.manufacturer_data is not None:
+            object.__setattr__(
+                self,
+                "manufacturer_data",
+                {key: bytes(value) for key, value in self.manufacturer_data.items()},
+            )
 
     def merge(self, other: DeviceInfo) -> DeviceInfo:
         if self.address != other.address or self.transport != other.transport:
@@ -50,6 +60,11 @@ class DeviceInfo:
             paired=paired,
             transport=self.transport,
             ble_profile=ble_profile,
+            manufacturer_data=(
+                other.manufacturer_data
+                if other.manufacturer_data is not None
+                else self.manufacturer_data
+            ),
         )
 
     @staticmethod

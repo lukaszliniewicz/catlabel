@@ -89,3 +89,33 @@ being assigned a wire protocol. More specific unambiguous aliases such as
    runtime-dependent variant.
 4. Verify the layer rules in [architecture.md](architecture.md).
 5. Run the full backend test suite and an application import smoke test.
+
+## Four-file upstream catalogs
+
+TiMini-Print v0.9.1 removes its unsupported-model file. The publisher emits a
+schema-2 candidate for that generation: four unchanged upstream catalogs plus a
+separate detection policy containing the previous veto records, original source
+provenance, origins and a canonical SHA-256 digest. Removing an upstream file
+does not remove CatLabel's detection vetoes.
+
+Generate a candidate separately from the active bundle:
+
+```sh
+.venv/bin/python -m tools.sync_timiniprint_catalog v0.9.1 \
+  --repository-path /path/to/TiMini-Print \
+  --policy-snapshot catlabel/vendors/generic/data/catalog_snapshot.json \
+  --output check-results/upstream-candidate.json
+```
+
+All acquisition, policy and schema validation completes before atomic publication.
+Schema 1 retains its original API and strict Luck overlay pin. Schema 2 skips that
+older overlay, preserves detection constraints and defers models with unsupported
+protocol variants, encodings or raster offsets. Manufacturer-filtered detections
+require advertisement payload bytes; a MAC suffix is not a substitute. API scan
+results encode those bytes as hexadecimal.
+
+The checked-in active bundle remains v0.8.1 with selected corrections listed in
+[upstream-parity.md](upstream-parity.md). In particular, ordinary V5G capabilities
+are narrowed to monochrome and BH03 uses its separate gray-label recipe. A
+candidate import does not establish physical printer support. The enabled
+registry continues to require matching local encoders, runtimes and geometry.

@@ -165,20 +165,21 @@ class BleMtuNegotiationTests(unittest.IsolatedAsyncioTestCase):
         client, backend = _fake_client(events, "bluez")
         socket = _TestSocket(ble_profile=get_ble_transport_profile("v5g"))
         socket.settimeout(30.0)
-        observed_timeouts: list[float | None] = []
-        original_wait_for = asyncio.wait_for
+        observed_timeouts: list[float] = []
+        original_run = socket._lifecycle.run
 
-        async def capture_wait_for(awaitable: Any, timeout: float | None = None) -> Any:
-            observed_timeouts.append(timeout)
-            return await original_wait_for(awaitable, timeout=timeout)
+        async def capture_run(key: str, operation: Any, *, deadline: float) -> Any:
+            if key == "acquire-mtu":
+                observed_timeouts.append(deadline - asyncio.get_running_loop().time())
+            return await original_run(key, operation, deadline=deadline)
 
         with (
             patch.dict(sys.modules, {"bleak": _fake_bleak_module(client)}),
             patch.object(adapter_module.sys, "platform", "linux"),
             patch.object(
-                adapter_module.asyncio,
-                "wait_for",
-                new=capture_wait_for,
+                socket._lifecycle,
+                "run",
+                new=capture_run,
             ),
         ):
             await socket._connect_async("fake-printer")
@@ -190,7 +191,8 @@ class BleMtuNegotiationTests(unittest.IsolatedAsyncioTestCase):
 
         assert isinstance(backend, _FakeBlueZBackend)
         self.assertEqual(backend.calls, 1)
-        self.assertEqual(observed_timeouts, [5.0])
+        self.assertEqual(len(observed_timeouts), 1)
+        self.assertAlmostEqual(observed_timeouts[0], 5.0, delta=0.02)
         self.assertEqual(socket._mtu_size, 245)
         self.assertEqual(socket._transport._verified_payload, 245)
         self.assertLess(events.index("mtu"), events.index("notify"))
@@ -211,25 +213,27 @@ class BleMtuNegotiationTests(unittest.IsolatedAsyncioTestCase):
         client, _backend = _fake_client(events, "bluez")
         socket = _TestSocket(ble_profile=get_ble_transport_profile("v5g"))
         socket.settimeout(0.25)
-        observed_timeouts: list[float | None] = []
-        original_wait_for = asyncio.wait_for
+        observed_timeouts: list[float] = []
+        original_run = socket._lifecycle.run
 
-        async def capture_wait_for(awaitable: Any, timeout: float | None = None) -> Any:
-            observed_timeouts.append(timeout)
-            return await original_wait_for(awaitable, timeout=timeout)
+        async def capture_run(key: str, operation: Any, *, deadline: float) -> Any:
+            if key == "acquire-mtu":
+                observed_timeouts.append(deadline - asyncio.get_running_loop().time())
+            return await original_run(key, operation, deadline=deadline)
 
         with (
             patch.dict(sys.modules, {"bleak": _fake_bleak_module(client)}),
             patch.object(adapter_module.sys, "platform", "linux"),
             patch.object(
-                adapter_module.asyncio,
-                "wait_for",
-                new=capture_wait_for,
+                socket._lifecycle,
+                "run",
+                new=capture_run,
             ),
         ):
             await socket._connect_async("fake-printer")
 
-        self.assertEqual(observed_timeouts, [0.25])
+        self.assertEqual(len(observed_timeouts), 1)
+        self.assertAlmostEqual(observed_timeouts[0], 0.25, delta=0.02)
 
     async def test_invalid_public_mtu_is_not_marked_verified(self) -> None:
         for invalid_mtu in (23, 518, "248"):
@@ -289,7 +293,16 @@ class BleMtuNegotiationTests(unittest.IsolatedAsyncioTestCase):
                     patch.dict(sys.modules, {"bleak": _fake_bleak_module(client)}),
                     patch.object(adapter_module.sys, "platform", platform),
                 ):
-                    await socket._connect_async("fake-printer")
+                    if name in {"nonpositive-timeout", "timeout"}:
+                        with self.assertRaises(TimeoutError):
+                            await socket._connect_async("fake-printer")
+                        await socket._safe_disconnect_async()
+                        self.assertFalse(socket._connected)
+                        self.assertIsNone(socket._transport._verified_payload)
+                        self.assertEqual(events.count("mtu"), calls)
+                        continue
+                    else:
+                        await socket._connect_async("fake-printer")
 
                 self.assertEqual(events.count("mtu"), calls)
                 self.assertIsNone(socket._transport._verified_payload)
@@ -316,6 +329,7 @@ class BleMtuCancellationCleanupTests(unittest.TestCase):
         socket = _TestSocket(ble_profile=get_ble_transport_profile("v5g"))
 
         with (
+            asyncio.Runner(),
             patch.dict(sys.modules, {"bleak": _fake_bleak_module(client)}),
             patch.object(adapter_module.sys, "platform", "linux"),
             self.assertRaises(asyncio.CancelledError),

@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .... import reporting
+from ....devices import BleTransportProfile
+
+
+def _characteristic_identity(characteristic: Any) -> tuple[str, int]:
+    handle = getattr(characteristic, "handle", None)
+    if isinstance(handle, int):
+        return ("handle", handle)
+    return ("object", id(characteristic))
 
 
 @dataclass(frozen=True)
@@ -20,6 +28,7 @@ class _WriteCandidate:
     service_preferred: bool
     notify_preferred: bool
     char: Any
+    service: Any
 
 
 @dataclass(frozen=True)
@@ -29,6 +38,10 @@ class _WriteSelection:
     response_preference: bool
     service_uuid: str
     char_uuid: str
+    service: Any = None
+    notify_char: Any = None
+    bulk_write_char: Any = None
+    control_notify_char: Any = None
 
 
 class _BleWriteEndpointResolver:
@@ -69,14 +82,137 @@ class _BleWriteEndpointResolver:
         *,
         preferred_service_uuid: str = "",
         preferred_write_char_uuid: str = "",
+        profile: BleTransportProfile | None = None,
     ) -> _WriteSelection | None:
+        services = tuple(services)
+        if profile is not None:
+            preferred_service_uuid = profile.preferred_service_uuid
+            preferred_write_char_uuid = profile.preferred_write_char_uuid
         candidates = self._collect_candidates(
             services,
             preferred_service_uuid=preferred_service_uuid,
             preferred_write_char_uuid=preferred_write_char_uuid,
         )
+        layouts: dict[int, tuple[Any, Any, Any]] = {}
+        layout_errors: list[RuntimeError] = []
+        if profile is not None:
+            complete: list[_WriteCandidate] = []
+            for candidate in candidates:
+                try:
+                    layout = self._resolve_layout(candidate.service, services, profile)
+                except RuntimeError as exc:
+                    layout_errors.append(exc)
+                    continue
+                layouts[id(candidate.service)] = layout
+                complete.append(candidate)
+            candidates = complete
         self._log_candidates(candidates)
-        return self._select_candidate(candidates)
+        selection = self._select_candidate(candidates)
+        if selection is None:
+            if layout_errors:
+                raise layout_errors[0]
+            return None
+        if profile is None:
+            return selection
+        notify, bulk, control = layouts[id(selection.service)]
+        return replace(
+            selection,
+            notify_char=notify,
+            bulk_write_char=bulk,
+            control_notify_char=control,
+        )
+
+    @classmethod
+    def _required_characteristic(
+        cls,
+        services: Iterable[object],
+        uuid: str,
+        properties: set[str],
+        label: str,
+    ) -> Any:
+        matches: dict[tuple[str, int], Any] = {}
+        for service in services:
+            for characteristic in getattr(service, "characteristics", []):
+                if cls._normalize_uuid(
+                    getattr(characteristic, "uuid", "")
+                ) != cls._normalize_uuid(uuid):
+                    continue
+                if not properties.intersection(
+                    cls._normalize_properties(getattr(characteristic, "properties", []))
+                ):
+                    continue
+                matches.setdefault(
+                    _characteristic_identity(characteristic), characteristic
+                )
+        if len(matches) != 1:
+            reason = "ambiguous" if matches else "not found with required properties"
+            raise RuntimeError(
+                f"Configured BLE {label} characteristic {uuid}: {reason}"
+            )
+        return next(iter(matches.values()))
+
+    @classmethod
+    def _resolve_layout(
+        cls,
+        service: object,
+        services: tuple[object, ...],
+        profile: BleTransportProfile,
+    ) -> tuple[Any, Any, Any]:
+        notify = None
+        if profile.notify_char_uuid:
+            notify = cls._required_characteristic(
+                (service,),
+                profile.notify_char_uuid,
+                {"notify", "indicate"},
+                "notification",
+            )
+        elif profile.prefer_generic_notify:
+            notify = cls.find_notify_characteristic((service,))
+        bulk = None
+        if profile.bulk_write is not None:
+            bulk = cls._required_characteristic(
+                (service,),
+                profile.bulk_write.char_uuid,
+                {"write", "write-without-response"},
+                "bulk write",
+            )
+        control = None
+        if profile.control_notify_char_uuid:
+            target = cls._normalize_uuid(profile.control_notify_char_uuid)
+            local = any(
+                cls._normalize_uuid(getattr(characteristic, "uuid", "")) == target
+                for characteristic in getattr(service, "characteristics", [])
+            )
+            control = cls._required_characteristic(
+                (service,) if local else services,
+                target,
+                {"notify", "indicate"},
+                "control notification",
+            )
+        return notify, bulk, control
+
+    @classmethod
+    def find_notify_characteristic(cls, services: Iterable[object]) -> Any | None:
+        preferred: list[tuple[str, str, Any]] = []
+        generic: list[tuple[str, str, Any]] = []
+        for service in services:
+            service_uuid = cls._normalize_uuid(getattr(service, "uuid", ""))
+            for characteristic in getattr(service, "characteristics", []):
+                props = cls._normalize_properties(
+                    getattr(characteristic, "properties", [])
+                )
+                if not {"notify", "indicate"}.intersection(props):
+                    continue
+                char_uuid = cls._normalize_uuid(getattr(characteristic, "uuid", ""))
+                candidate = (service_uuid, char_uuid, characteristic)
+                if cls._uuid_is_preferred(
+                    char_uuid, cls._PREFERRED_NOTIFY_UUIDS, cls._PREFERRED_NOTIFY_SHORT
+                ):
+                    preferred.append(candidate)
+                else:
+                    generic.append(candidate)
+        candidates = sorted(preferred or generic, key=lambda item: (item[0], item[1]))
+        return candidates[0][2] if candidates else None
 
     @classmethod
     def resolve_response_mode(
@@ -174,8 +310,12 @@ class _BleWriteEndpointResolver:
         write_preference = cls._normalize_uuid(preferred_write_char_uuid)
         for service in services:
             service_uuid = cls._normalize_uuid(getattr(service, "uuid", ""))
+            if service_preference and service_uuid != service_preference:
+                continue
             for characteristic in getattr(service, "characteristics", []):
                 char_uuid = cls._normalize_uuid(getattr(characteristic, "uuid", ""))
+                if write_preference and char_uuid != write_preference:
+                    continue
                 props = cls._normalize_properties(
                     getattr(characteristic, "properties", [])
                 )
@@ -211,6 +351,7 @@ class _BleWriteEndpointResolver:
                             cls._PREFERRED_NOTIFY_SHORT,
                         ),
                         char=characteristic,
+                        service=service,
                     )
                 )
         return candidates
@@ -238,6 +379,7 @@ class _BleWriteEndpointResolver:
                 response_preference=not selected.has_write_without_response,
                 service_uuid=selected.service_uuid,
                 char_uuid=selected.char_uuid,
+                service=selected.service,
             )
 
         generic_wnr = sorted(
@@ -253,6 +395,7 @@ class _BleWriteEndpointResolver:
                 response_preference=False,
                 service_uuid=selected.service_uuid,
                 char_uuid=selected.char_uuid,
+                service=selected.service,
             )
 
         generic_write = sorted(
@@ -268,6 +411,7 @@ class _BleWriteEndpointResolver:
                 response_preference=True,
                 service_uuid=selected.service_uuid,
                 char_uuid=selected.char_uuid,
+                service=selected.service,
             )
 
         return None

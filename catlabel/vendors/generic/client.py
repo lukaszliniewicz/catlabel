@@ -123,6 +123,11 @@ class _GenericBackendConnection:
         session = RuntimeConnectionSession(self, reporter=reporting.DUMMY_REPORTER)
         self._session = session
         self._backend.register_notify_callback(self._handle_classic_notification)
+        register_write_check = getattr(
+            self._backend, "register_before_write_callback", None
+        )
+        if callable(register_write_check):
+            register_write_check(self._handle_classic_before_write)
         try:
             await controller.initialize_connection(
                 session, mtu_size=self._chunk_size, timeout=timeout
@@ -163,8 +168,33 @@ class _GenericBackendConnection:
         if controller is not None and session is not None:
             controller.handle_notification(session, payload)
 
+    def _handle_classic_before_write(self, size: int, timeout: float) -> None:
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            raise RuntimeError("Classic runtime event loop is unavailable before write")
+        if threading.get_ident() == self._loop_thread:
+            raise RuntimeError("Classic write permission requires the transport worker")
+
+        async def check() -> None:
+            controller, session = self._controller, self._session
+            if controller is None or session is None:
+                raise RuntimeError("Classic runtime detached before write")
+            await controller.before_write(session, size=size, timeout=timeout)
+
+        pending = asyncio.run_coroutine_threadsafe(check(), loop)
+        try:
+            pending.result(timeout=timeout)
+        except BaseException:
+            pending.cancel()
+            raise
+
     async def stop_runtime_controller(self) -> None:
         self._backend.register_notify_callback(None)
+        register_write_check = getattr(
+            self._backend, "register_before_write_callback", None
+        )
+        if callable(register_write_check):
+            register_write_check(None)
         controller, session = self._controller, self._session
         self._controller = None
         self._session = None
@@ -250,6 +280,7 @@ class GenericClient(BasePrinterClient):
             self.model_match = self.registry.detect_with_origin(
                 getattr(device, "name", ""),
                 getattr(device, "address", None),
+                manufacturer_data=getattr(device, "manufacturer_data", None),
             )
 
         self.model = (

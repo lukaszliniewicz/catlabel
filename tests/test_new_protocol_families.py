@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import unittest
 from collections.abc import Callable
-from unittest.mock import patch
 
 from catlabel.printing import build_raster_job, send_prepared_job
 from catlabel.printing.runtime.base import PreparedRuntimeContext
@@ -20,13 +19,10 @@ from catlabel.protocol import (
 from catlabel.protocol.families.funny_lx import challenge_crc
 from catlabel.protocol.types import PaperMode
 from catlabel.raster import PixelFormat, RasterBuffer, RasterSet
-from catlabel.transport.bluetooth.adapters.windows_winrt import (
-    _WinRtClassicBackend,
-    _WinRtSocket,
-)
 from catlabel.transport.bluetooth.backend import _query_control_packet
 from catlabel.vendors.generic.models import PrinterModelRegistry
 from tests.runtime_session_fake import RuntimeSessionFake
+from tests.test_native_classic_receive import _WinRtFixture
 
 
 def _job(
@@ -330,26 +326,14 @@ class SppQueryTests(unittest.TestCase):
         self.assertEqual(reply, b"OK\x00")
 
     def test_windows_winrt_socket_exposes_received_spp_bytes(self) -> None:
-        class Reader:
-            async def _load(self, size: int) -> int:
-                return min(size, 2)
-
-            def load_async(self, size: int):
-                return self._load(size)
-
-            def read_bytes(self, target: bytearray) -> None:
-                target[:] = b"OK"
-
-        sock = _WinRtSocket(_WinRtClassicBackend())
-        sock.settimeout(0.1)
+        fixture = _WinRtFixture()
         try:
-            with patch.object(sock, "_reader", Reader()):
-                self.assertEqual(sock.recv(4096), b"OK")
-                self.assertEqual(sock.gettimeout(), 0.1)
+            fixture.sock.settimeout(0.1)
+            fixture.feed(b"OK")
+            self.assertEqual(fixture.sock.recv(4096), b"OK")
+            self.assertEqual(fixture.sock.gettimeout(), 0.1)
         finally:
-            if sock._loop is not None:
-                sock._loop.close()
-                sock._loop = None
+            fixture.close()
 
 
 if __name__ == "__main__":

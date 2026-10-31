@@ -37,6 +37,7 @@ V5X_LABEL_MODE_SUFFIX = _hex_bytes("30010000")
 V5X_GRAY_MODE_SUFFIX = _hex_bytes("30020000")
 V5X_STANDARD_MODE_SUFFIX = _hex_bytes("30000000")
 V5X_GRAY_MODE = 0x02
+V5X_GRAY_LABEL_MODE = 0x03
 # Firmware blackening 1-5 maps to different density bytes for dot and gray
 # jobs; the values are not linear.
 _DOT_DENSITY_BY_LEVEL = (0x58, 0x5A, 0x5D, 0x5F, 0x62)
@@ -110,6 +111,12 @@ def _density_payload(request: PrintJobRequest) -> bytes:
 
 def _start_print_mode(request: PrintJobRequest) -> int:
     if request.image_pipeline.encoding == ImageEncoding.V5X_GRAY:
+        # TiMini-Print 95beec7: this mode is specific to the gray-label variant.
+        if (
+            request.protocol_variant == "gray_label"
+            and request.paper_mode is PaperMode.TAG
+        ):
+            return V5X_GRAY_LABEL_MODE
         return V5X_GRAY_MODE
     if request.paper_mode is PaperMode.TAG:
         return 0x01
@@ -220,6 +227,7 @@ def build_job(request: PrintJobRequest) -> ProtocolPlan:
 
 
 BEHAVIOR = ProtocolBehavior(
+    supported_protocol_variants=("gray_label",),
     supported_paper_modes=(PaperMode.PLAIN, PaperMode.TAG),
     default_image_pipeline=ImagePipelineConfig(
         formats=(PixelFormat.BW1, PixelFormat.GRAY4, PixelFormat.GRAY8),

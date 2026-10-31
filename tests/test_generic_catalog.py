@@ -4,6 +4,8 @@ import unittest
 from collections import Counter
 
 from catlabel.protocol import ProtocolFamily
+from catlabel.protocol.types import ImageEncoding
+from catlabel.raster import PixelFormat
 from catlabel.vendors.generic.manifest import GenericManifest
 from catlabel.vendors.generic.models import DetectionRule, PrinterModelRegistry
 from catlabel.vendors.utils import extract_raw_hardware_info
@@ -25,7 +27,7 @@ class GenericCatalogTests(unittest.TestCase):
 
     def test_only_executable_generic_profiles_are_advertised(self) -> None:
         counts = Counter(model.protocol_family for model in self.registry.models)
-        self.assertEqual(len(self.registry.models), 136)
+        self.assertEqual(len(self.registry.models), 137)
         self.assertEqual(counts[ProtocolFamily.PHOMEMO_ESC], 2)
         self.assertEqual(counts[ProtocolFamily.LEGACY], 79)
         self.assertEqual(counts[ProtocolFamily.V5G], 14)
@@ -50,6 +52,28 @@ class GenericCatalogTests(unittest.TestCase):
         if constrained is None:
             self.fail("MAC-constrained MX10 detection should match")
         self.assertEqual(constrained.protocol_family, ProtocolFamily.V5X)
+
+    def test_ordinary_v5g_catalog_capabilities_are_monochrome(self) -> None:
+        models = [
+            model
+            for model in self.registry.models
+            if model.protocol_family is ProtocolFamily.V5G
+        ]
+        self.assertEqual(len(models), 14)
+        for model in models:
+            with self.subTest(model=model.model_no):
+                self.assertEqual(model.image_pipeline.formats, (PixelFormat.BW1,))
+                self.assertIs(model.image_pipeline.encoding, ImageEncoding.V5G_DOT)
+
+    def test_bh03_selects_its_label_recipe_without_changing_other_v5x_models(
+        self,
+    ) -> None:
+        match = self.registry.detect_with_origin("BH03")
+        assert match is not None
+        self.assertEqual(match.protocol_variant, "gray_label")
+        ordinary = self.registry.detect_with_origin("MXW-W5")
+        assert ordinary is not None
+        self.assertIsNone(ordinary.protocol_variant)
 
     def test_mac_constrained_rule_rejects_uuid_address(self) -> None:
         match = self.registry.detect_with_origin(

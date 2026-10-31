@@ -5,13 +5,18 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Iterable
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .... import reporting
 from ....core.async_operations import await_operation
 from ....devices import BleTransportProfile
-from .bleak_adapter_endpoint_resolver import _BleWriteEndpointResolver, _WriteSelection
+from ..bleak_lifecycle import _BleakLifecycle, _chain_cleanup_error
+from .bleak_adapter_endpoint_resolver import (
+    _BleWriteEndpointResolver,
+    _characteristic_identity,
+    _WriteSelection,
+)
 
 
 @dataclass
@@ -50,7 +55,8 @@ class _BleakTransportSession:
         self._reporter = reporter
         self.bindings = _BleakBindings()
         self.notify_started = False
-        self._started_notify_uuids: list[str] = []
+        self._started_notify_endpoints: list[Any] = []
+        self._write_selection: _WriteSelection | None = None
         self.flow_can_write = True
         self._client: Any = None
         self._mtu_size = 180
@@ -60,10 +66,13 @@ class _BleakTransportSession:
         self._runtime_controller: Any = None
         self._runtime_initialized = False
         self._runtime_stopped = False
+        self._lifecycle = _BleakLifecycle()
+        self._cleanup_deadline: float | None = None
         self._notification_history: list[bytes] = []
         self._notification_waiters: list[_NotificationWaiter] = []
 
     def apply_write_selection(self, selection: _WriteSelection) -> None:
+        self._write_selection = selection
         self.bindings.write_char = selection.char
         self.bindings.write_selection_strategy = selection.strategy
         self.bindings.write_response_preference = selection.response_preference
@@ -76,86 +85,67 @@ class _BleakTransportSession:
             f"response_preference={self.bindings.write_response_preference}"
         )
 
+    @property
+    def _started_notify_uuids(self) -> list[str]:
+        """Diagnostic UUIDs; cleanup ownership is held by endpoint objects."""
+        return [
+            _BleWriteEndpointResolver._normalize_uuid(getattr(endpoint, "uuid", ""))
+            for endpoint in self._started_notify_endpoints
+        ]
+
     def configure_endpoints(self, services: Iterable[object]) -> None:
-        transport = self._transport_profile
-
-        self.bindings.bulk_write_char = None
-        self.bindings.bulk_write_char_uuid = ""
-        bulk_write = transport.bulk_write
-        if bulk_write is not None:
-            self.bindings.bulk_write_char = self._find_characteristic_by_uuid(
-                services,
-                bulk_write.char_uuid,
-                preferred_service_uuid=transport.preferred_service_uuid,
+        services = tuple(services)
+        selection = self._write_selection
+        if selection is None or not any(
+            selection.service is service for service in services
+        ):
+            selection = self._write_resolver.resolve(
+                services, profile=self._transport_profile
             )
-            self.bindings.bulk_write_char_uuid = (
-                _BleWriteEndpointResolver._normalize_uuid(
-                    getattr(self.bindings.bulk_write_char, "uuid", "")
-                )
+        else:
+            profile = self._transport_profile
+            for expected, actual in (
+                (profile.preferred_service_uuid, selection.service_uuid),
+                (profile.preferred_write_char_uuid, selection.char_uuid),
+            ):
+                if (
+                    expected
+                    and self._write_resolver._normalize_uuid(expected) != actual
+                ):
+                    raise RuntimeError(
+                        "Selected BLE write endpoint does not match its profile"
+                    )
+            notify, bulk, control = self._write_resolver._resolve_layout(
+                selection.service, services, profile
             )
-            if self.bindings.bulk_write_char:
-                self.report_debug(
-                    f"selected bulk characteristic char={self.bindings.bulk_write_char_uuid}"
-                )
-            else:
-                self.report_debug("configured bulk characteristic not found")
-
-        self.bindings.notify_char = None
-        self.bindings.notify_char_uuid = ""
-        if transport.notify_char_uuid:
-            self.bindings.notify_char = self._find_characteristic_by_uuid(
-                services,
-                transport.notify_char_uuid,
-                preferred_service_uuid=transport.preferred_service_uuid,
+            selection = replace(
+                selection,
+                notify_char=notify,
+                bulk_write_char=bulk,
+                control_notify_char=control,
             )
-        elif transport.prefer_generic_notify:
-            self.bindings.notify_char = self.find_notify_characteristic(services)
-
-        self.bindings.notify_char_uuid = _BleWriteEndpointResolver._normalize_uuid(
-            getattr(self.bindings.notify_char, "uuid", "")
-        )
-        if self.bindings.notify_char:
-            self.report_debug(
-                f"selected notify characteristic char={self.bindings.notify_char_uuid}"
+        if selection is None:
+            raise RuntimeError("Could not resolve a complete writable BLE GATT layout")
+        self.apply_write_selection(selection)
+        for name, endpoint in (
+            ("bulk_write", selection.bulk_write_char),
+            ("notify", selection.notify_char),
+            ("control_notify", selection.control_notify_char),
+        ):
+            setattr(self.bindings, f"{name}_char", endpoint)
+            uuid = _BleWriteEndpointResolver._normalize_uuid(
+                getattr(endpoint, "uuid", "")
             )
-        elif transport.notify_char_uuid or transport.prefer_generic_notify:
-            self.report_debug("configured notify characteristic not found")
-
-        self.bindings.control_notify_char = None
-        self.bindings.control_notify_char_uuid = ""
-        if transport.control_notify_char_uuid:
-            self.bindings.control_notify_char = self._find_characteristic_by_uuid(
-                services,
-                transport.control_notify_char_uuid,
-            )
-            self.bindings.control_notify_char_uuid = (
-                _BleWriteEndpointResolver._normalize_uuid(
-                    getattr(self.bindings.control_notify_char, "uuid", "")
-                )
-            )
-            if not self.bindings.control_notify_char:
-                self.report_debug("configured control notify characteristic not found")
-                raise RuntimeError(
-                    "Configured BLE control notification characteristic not found: "
-                    f"{transport.control_notify_char_uuid}"
-                )
-            self.report_debug(
-                "selected control notify characteristic "
-                f"char={self.bindings.control_notify_char_uuid}"
-            )
+            setattr(self.bindings, f"{name}_char_uuid", uuid)
+            if endpoint is not None:
+                self.report_debug(f"selected {name} characteristic char={uuid}")
 
     async def start_notify_if_available(self, client: Any, callback) -> None:
-        endpoint_uuids = tuple(
-            dict.fromkeys(
-                uuid
-                for uuid in (
-                    self.bindings.notify_char_uuid,
-                    self.bindings.control_notify_char_uuid,
-                )
-                if uuid
-            )
-        )
-        if not endpoint_uuids:
+        endpoints: dict[tuple[str, int], Any] = {}
+        for endpoint in (self.bindings.notify_char, self.bindings.control_notify_char):
+            if endpoint is not None:
+                endpoints.setdefault(_characteristic_identity(endpoint), endpoint)
+        if not endpoints:
             return
         start_notify = getattr(client, "start_notify", None)
         if not callable(start_notify):
@@ -166,19 +156,26 @@ class _BleakTransportSession:
                 )
             return
         try:
-            for uuid in endpoint_uuids:
+            for endpoint in endpoints.values():
+                uuid = _BleWriteEndpointResolver._normalize_uuid(
+                    getattr(endpoint, "uuid", "")
+                )
 
-                def channel_callback(_sender, data, *, source_uuid=uuid):
-                    callback(source_uuid, data)
+                def channel_callback(_sender, data, *, source=endpoint):
+                    callback(source, data)
 
                 await await_operation(
-                    start_notify(uuid, channel_callback),
+                    start_notify(endpoint, channel_callback),
                     operation="start_notify",
                 )
-                self._started_notify_uuids.append(uuid)
+                self._started_notify_endpoints.append(endpoint)
                 self.notify_started = bool(
-                    self.bindings.notify_char_uuid
-                    and self.bindings.notify_char_uuid in self._started_notify_uuids
+                    self.bindings.notify_char is not None
+                    and any(
+                        _characteristic_identity(started)
+                        == _characteristic_identity(self.bindings.notify_char)
+                        for started in self._started_notify_endpoints
+                    )
                 )
                 self.report_debug(f"subscribed to notify characteristic {uuid}")
         except BaseException:
@@ -220,9 +217,24 @@ class _BleakTransportSession:
         stop_error: BaseException | None = None
         unsubscribe_error: BaseException | None = None
         if self._runtime_controller is not None and not self._runtime_stopped:
-            self._runtime_stopped = True
             try:
-                await self._runtime_controller.stop(self)
+
+                async def stop_runtime() -> None:
+                    await self._runtime_controller.stop(self)
+                    self._runtime_stopped = True
+
+                deadline = self._cleanup_deadline
+                if deadline is None:
+                    deadline = asyncio.get_running_loop().time() + 5.0
+                # Leave time for every outstanding unsubscribe, even if the
+                # runtime ignores its cancellation request.
+                budget = max(0.0, deadline - asyncio.get_running_loop().time())
+                await self._lifecycle.run(
+                    "runtime-stop",
+                    stop_runtime,
+                    deadline=asyncio.get_running_loop().time()
+                    + budget / (len(self._started_notify_endpoints) + 1),
+                )
             except BaseException as exc:
                 stop_error = exc
         try:
@@ -232,34 +244,54 @@ class _BleakTransportSession:
         finally:
             self._clear_notification_state()
         if stop_error is not None:
+            if unsubscribe_error is not None:
+                _chain_cleanup_error(stop_error, unsubscribe_error)
             raise stop_error
         if unsubscribe_error is not None:
             raise unsubscribe_error
 
     async def _unsubscribe_started(self, client: Any) -> None:
-        cancellation: asyncio.CancelledError | None = None
-        try:
-            stop_notify = getattr(client, "stop_notify", None)
-            if not callable(stop_notify):
-                return
-            for uuid in tuple(self._started_notify_uuids):
-                try:
-                    await await_operation(
-                        stop_notify(uuid),
-                        operation="stop_notify",
+        error: BaseException | None = None
+        stop_notify = getattr(client, "stop_notify", None)
+        if not callable(stop_notify):
+            if self._started_notify_endpoints:
+                raise RuntimeError("BLE client cannot unsubscribe notifications")
+            return
+        deadline = self._cleanup_deadline
+        if deadline is None:
+            deadline = asyncio.get_running_loop().time() + 5.0
+        endpoints = tuple(self._started_notify_endpoints)
+        for index, endpoint in enumerate(endpoints):
+            key = _characteristic_identity(endpoint)
+            uuid = _BleWriteEndpointResolver._normalize_uuid(
+                getattr(endpoint, "uuid", "")
+            )
+
+            async def unsubscribe(endpoint: Any = endpoint, key=key) -> None:
+                await await_operation(stop_notify(endpoint), operation="stop_notify")
+                self._started_notify_endpoints[:] = [
+                    started
+                    for started in self._started_notify_endpoints
+                    if _characteristic_identity(started) != key
+                ]
+
+            remaining = max(0.0, deadline - asyncio.get_running_loop().time())
+            try:
+                await self._lifecycle.run(
+                    f"unsubscribe:{key}",
+                    unsubscribe,
+                    deadline=asyncio.get_running_loop().time()
+                    + remaining / (len(endpoints) - index),
+                )
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+                with suppress(BaseException):
+                    self.report_debug(
+                        f"failed to unsubscribe notify characteristic {uuid}: {exc}"
                     )
-                except asyncio.CancelledError as exc:
-                    if cancellation is None:
-                        cancellation = exc
-                except Exception as exc:
-                    with suppress(BaseException):
-                        self.report_debug(
-                            f"failed to unsubscribe notify characteristic {uuid}: {exc}"
-                        )
-        finally:
-            self._started_notify_uuids.clear()
-        if cancellation is not None:
-            raise cancellation
+        if error is not None:
+            raise error
 
     def _clear_notification_state(self) -> None:
         self.notify_started = False
@@ -379,12 +411,28 @@ class _BleakTransportSession:
                 raise TimeoutError("Timed out waiting for BLE flow-control resume")
             await asyncio.sleep(0.01)
 
-    def handle_notification(self, payload: bytes, *, source_uuid: str = "") -> None:
+    def handle_notification(
+        self, payload: bytes, *, source_uuid: str = "", source: Any = None
+    ) -> None:
+        if source is not None:
+            identity = _characteristic_identity(source)
+            selected = (self.bindings.notify_char, self.bindings.control_notify_char)
+            if not any(
+                endpoint is not None and _characteristic_identity(endpoint) == identity
+                for endpoint in selected
+            ):
+                return
+            control = self.bindings.control_notify_char
+            is_control = bool(
+                control is not None and _characteristic_identity(control) == identity
+            )
+        else:
+            is_control = bool(
+                self.bindings.control_notify_char_uuid
+                and _BleWriteEndpointResolver._normalize_uuid(source_uuid)
+                == self.bindings.control_notify_char_uuid
+            )
         source_uuid = _BleWriteEndpointResolver._normalize_uuid(source_uuid)
-        control_uuid = _BleWriteEndpointResolver._normalize_uuid(
-            self.bindings.control_notify_char_uuid
-        )
-        is_control = bool(control_uuid and source_uuid == control_uuid)
         if is_control:
             controller = self._runtime_controller
             handle_control = getattr(controller, "handle_control_notification", None)
@@ -532,33 +580,7 @@ class _BleakTransportSession:
 
     @classmethod
     def find_notify_characteristic(cls, services: Iterable[object]) -> Any | None:
-        preferred: list[tuple[str, str, Any]] = []
-        generic: list[tuple[str, str, Any]] = []
-        for service in services:
-            service_uuid = _BleWriteEndpointResolver._normalize_uuid(
-                getattr(service, "uuid", "")
-            )
-            for characteristic in getattr(service, "characteristics", []):
-                props = {
-                    str(item).strip().lower()
-                    for item in getattr(characteristic, "properties", [])
-                }
-                if "notify" not in props and "indicate" not in props:
-                    continue
-                char_uuid = _BleWriteEndpointResolver._normalize_uuid(
-                    getattr(characteristic, "uuid", "")
-                )
-                candidate = (service_uuid, char_uuid, characteristic)
-                if _BleWriteEndpointResolver._uuid_is_preferred(
-                    char_uuid,
-                    _BleWriteEndpointResolver._PREFERRED_NOTIFY_UUIDS,
-                    _BleWriteEndpointResolver._PREFERRED_NOTIFY_SHORT,
-                ):
-                    preferred.append(candidate)
-                else:
-                    generic.append(candidate)
-        candidates = sorted(preferred or generic, key=lambda item: (item[0], item[1]))
-        return candidates[0][2] if candidates else None
+        return _BleWriteEndpointResolver.find_notify_characteristic(services)
 
     def _resolve_response_mode(
         self,

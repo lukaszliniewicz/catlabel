@@ -4,6 +4,8 @@ from ...raster import PixelFormat
 from ..compression import compress_lzo1x_1
 from ..encoding import pack_line
 from ..packet import make_packet
+from ..plan import ProtocolPlan
+from ..steps import ProtocolStep
 from ..types import ImageEncoding, ImagePipelineConfig
 from .base import PrintJobRequest, ProtocolBehavior
 
@@ -70,25 +72,36 @@ def _build_a5_frames(request: PrintJobRequest) -> bytes:
     return bytes(job)
 
 
-def build_job(request: PrintJobRequest) -> bytes:
+def build_job(request: PrintJobRequest) -> ProtocolPlan:
     if request.width % 8 != 0:
         raise ValueError("Width must be divisible by 8")
 
-    job = bytearray()
-    job += make_packet(
-        0xA2,
-        _settings_payload(request.blackening, request.is_text),
-        request.protocol_family,
+    setup = b"".join(
+        (
+            make_packet(
+                0xA2,
+                _settings_payload(request.blackening, request.is_text),
+                request.protocol_family,
+            ),
+            make_packet(0xA3, bytes([0x01]), request.protocol_family),
+        )
     )
-    job += make_packet(0xA3, bytes([0x01]), request.protocol_family)
-    if request.image_pipeline.encoding == ImageEncoding.V5C_A5:
-        job += _build_a5_frames(request)
-    else:
-        job += _build_a4_frames(request)
-
-    job += make_packet(0xA6, bytes([0x30, 0x00]), request.protocol_family)
-    job += V5C_QUERY_STATUS_PACKET
-    return bytes(job)
+    raster = (
+        _build_a5_frames(request)
+        if request.image_pipeline.encoding == ImageEncoding.V5C_A5
+        else _build_a4_frames(request)
+    )
+    finalize = (
+        make_packet(0xA6, bytes([0x30, 0x00]), request.protocol_family)
+        + V5C_QUERY_STATUS_PACKET
+    )
+    return ProtocolPlan.sequence(
+        (
+            ProtocolStep.send("V5C setup", setup),
+            ProtocolStep.send("V5C raster", raster),
+            ProtocolStep.send("V5C finalize", finalize),
+        )
+    )
 
 
 BEHAVIOR = ProtocolBehavior(

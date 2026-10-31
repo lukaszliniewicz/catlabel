@@ -85,7 +85,7 @@ class BleSocketCleanupTests(unittest.TestCase):
         self.assertTrue(loop.is_closed())
         self.assertIsNot(socket._transport, old_transport)
 
-    def test_close_resets_socket_and_closes_loop_after_disconnect_cancellation(
+    def test_close_retains_socket_and_loop_after_disconnect_cancellation(
         self,
     ) -> None:
         disconnect_error = asyncio.CancelledError("physical disconnect cancelled")
@@ -99,21 +99,30 @@ class BleSocketCleanupTests(unittest.TestCase):
         self.assertIs(raised.exception, disconnect_error)
         self.assertEqual(client.disconnect_calls, 1)
         self.assertFalse(socket._connected)
-        self.assertIsNone(socket._client)
-        self.assertIsNone(socket._loop)
+        self.assertIs(socket._client, client)
+        self.assertIs(socket._loop, loop)
+        self.assertFalse(loop.is_closed())
+        client.disconnect_error = None
+        socket.close()
         self.assertTrue(loop.is_closed())
 
-    def test_close_keeps_ordinary_disconnect_errors_best_effort(self) -> None:
+    def test_close_retains_ordinary_disconnect_failure_for_retry(self) -> None:
         client = _FakeClient(disconnect_error=RuntimeError("disconnect failed"))
         socket = _BleakSocket()
         loop = self._attach_loop_and_client(socket, client)
 
-        socket.close()
+        with self.assertRaisesRegex(RuntimeError, "disconnect failed"):
+            socket.close()
 
         self.assertEqual(client.disconnect_calls, 1)
         self.assertFalse(socket._connected)
+        self.assertIs(socket._client, client)
+        self.assertIs(socket._loop, loop)
+        self.assertFalse(loop.is_closed())
+        client.disconnect_error = None
+        socket.close()
+        self.assertEqual(client.disconnect_calls, 2)
         self.assertIsNone(socket._client)
-        self.assertIsNone(socket._loop)
         self.assertTrue(loop.is_closed())
 
     def test_connect_preserves_setup_error_restores_previous_loop_and_allows_reconnect(
@@ -139,13 +148,19 @@ class BleSocketCleanupTests(unittest.TestCase):
             self.assertIs(raised.exception, setup_error)
             self.assertEqual(first_client.disconnect_calls, 1)
             self.assertFalse(socket._connected)
-            self.assertIsNone(socket._client)
-            self.assertIsNone(socket._loop)
-            self.assertIsNot(socket._transport, first_transport)
-            self.assertTrue(socket.setup_loops[0].is_closed())
+            self.assertIs(socket._client, first_client)
+            self.assertIs(socket._loop, socket.setup_loops[0])
+            self.assertIs(socket._transport, first_transport)
+            self.assertFalse(socket.setup_loops[0].is_closed())
             self.assertIs(asyncio.get_event_loop(), previous_loop)
-
+            with self.assertRaises(asyncio.CancelledError):
+                socket.connect(("fake-printer", 0))
+            self.assertEqual(len(socket.setup_loops), 1)
+            first_client.disconnect_error = None
+            socket._transport._runtime_controller = None
             socket.connect(("fake-printer", 0))
+            self.assertTrue(socket.setup_loops[0].is_closed())
+            self.assertIsNot(socket._transport, first_transport)
 
             self.assertTrue(socket._connected)
             self.assertIs(socket._client, second_client)
@@ -178,15 +193,39 @@ class BleSocketCleanupTests(unittest.TestCase):
             self.assertIs(raised.exception, setup_cancel)
             self.assertEqual(client.disconnect_calls, 1)
             self.assertFalse(socket._connected)
-            self.assertIsNone(socket._client)
-            self.assertIsNone(socket._loop)
-            self.assertTrue(socket.setup_loops[0].is_closed())
+            self.assertIs(socket._client, client)
+            self.assertIs(socket._loop, socket.setup_loops[0])
+            self.assertFalse(socket.setup_loops[0].is_closed())
             self.assertIs(asyncio.get_event_loop(), previous_loop)
+            self.assertIs(raised.exception.__cause__, cleanup_error)
+            client.disconnect_error = None
+            socket._transport._runtime_controller = None
+            socket.close()
         finally:
             if socket._loop is not None:
                 socket.close()
             asyncio.set_event_loop(None)
             previous_loop.close()
+
+    def test_connect_retains_original_cause_and_both_cleanup_failures(self) -> None:
+        original = ValueError("original backend failure")
+        setup_error = RuntimeError("primary setup failure")
+        setup_error.__cause__ = original
+        stop_error = RuntimeError("runtime stop failed")
+        disconnect_error = RuntimeError("physical disconnect failed")
+        client = _FakeClient(disconnect_error=disconnect_error)
+        socket = _SetupFailureSocket([(client, setup_error, stop_error)])
+        try:
+            with self.assertRaises(RuntimeError) as raised:
+                socket.connect(("fake-printer", 0))
+            self.assertIs(raised.exception, setup_error)
+            self.assertIs(setup_error.__cause__, original)
+            self.assertIs(original.__cause__, stop_error)
+            self.assertIs(stop_error.__cause__, disconnect_error)
+        finally:
+            client.disconnect_error = None
+            socket._transport._runtime_controller = None
+            socket.close()
 
 
 if __name__ == "__main__":

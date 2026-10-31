@@ -53,18 +53,24 @@ class _FakeClient:
         self.disconnect_error = disconnect_error
         self.start_calls: list[str] = []
         self.stop_calls: list[str] = []
+        self.start_endpoints: list[_Characteristic] = []
+        self.stop_endpoints: list[_Characteristic] = []
         self.disconnect_calls = 0
         self.callbacks: dict[str, Any] = {}
         self.write_calls: list[bytes] = []
         self.events: list[tuple[str, int | bytes]] = []
 
-    async def start_notify(self, uuid: str, callback) -> None:
+    async def start_notify(self, endpoint: _Characteristic, callback) -> None:
+        self.start_endpoints.append(endpoint)
+        uuid = endpoint.uuid
         self.start_calls.append(uuid)
         if uuid == self.fail_start_uuid:
             raise self.start_error
         self.callbacks[uuid] = callback
 
-    async def stop_notify(self, uuid: str) -> None:
+    async def stop_notify(self, endpoint: _Characteristic) -> None:
+        self.stop_endpoints.append(endpoint)
+        uuid = endpoint.uuid
         self.stop_calls.append(uuid)
         if uuid in self.stop_notify_errors:
             raise self.stop_notify_errors[uuid]
@@ -145,12 +151,13 @@ def _new_session(
 def _notification_services(
     *, ordinary_uuid: str = NOTIFY_UUID, control_uuid: str = CONTROL_UUID
 ) -> list[_Service]:
-    return [
-        _Service(
-            _Characteristic(ordinary_uuid),
-            _Characteristic(control_uuid),
-        )
+    characteristics = [
+        _Characteristic(WRITE_UUID, ("write-without-response",)),
+        _Characteristic(ordinary_uuid),
     ]
+    if control_uuid != ordinary_uuid:
+        characteristics.append(_Characteristic(control_uuid))
+    return [_Service(*characteristics)]
 
 
 class BleWriteControlTests(unittest.IsolatedAsyncioTestCase):
@@ -337,7 +344,14 @@ class BleWriteControlTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(
             RuntimeError, "control notification characteristic"
         ):
-            session.configure_endpoints([_Service(_Characteristic(NOTIFY_UUID))])
+            session.configure_endpoints(
+                [
+                    _Service(
+                        _Characteristic(WRITE_UUID, ("write",)),
+                        _Characteristic(NOTIFY_UUID),
+                    )
+                ]
+            )
 
         self.assertEqual(session.bindings.control_notify_char_uuid, "")
 
@@ -385,7 +399,7 @@ class BleWriteControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(raised.exception, start_error)
         self.assertEqual(client.stop_calls, [NOTIFY_UUID])
         self.assertFalse(session.notify_started)
-        self.assertEqual(session._started_notify_uuids, [])
+        self.assertEqual(session._started_notify_uuids, [NOTIFY_UUID])
         self.assertEqual(session._notification_history, [])
 
     async def test_unsubscribe_cancellation_attempts_all_and_clears_waiters(
@@ -416,7 +430,7 @@ class BleWriteControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(raised.exception, cancellation)
         self.assertEqual(client.stop_calls, [NOTIFY_UUID, CONTROL_UUID])
         self.assertFalse(session.notify_started)
-        self.assertEqual(session._started_notify_uuids, [])
+        self.assertEqual(session._started_notify_uuids, [NOTIFY_UUID])
         self.assertEqual(session._notification_history, [])
         self.assertEqual(session._notification_waiters, [])
         self.assertIsInstance(
@@ -442,9 +456,11 @@ class BleWriteControlTests(unittest.IsolatedAsyncioTestCase):
         socket._transport = session
         await session.start_notify_if_available(client, socket._handle_notification)
 
-        await session.stop_notify_if_started(client)
+        with self.assertRaisesRegex(RuntimeError, "stop notify failed"):
+            await session.stop_notify_if_started(client)
 
         self.assertEqual(client.stop_calls, [NOTIFY_UUID, CONTROL_UUID])
+        self.assertEqual(session._started_notify_uuids, [NOTIFY_UUID])
         self.assertTrue(
             any(
                 "failed to unsubscribe" in (message.detail or "")
@@ -512,14 +528,15 @@ class BleWriteControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(client.disconnect_calls, 1)
         self.assertEqual(client.stop_calls, [NOTIFY_UUID, CONTROL_UUID])
 
-    async def test_disconnect_exception_remains_best_effort_without_stop_error(
+    async def test_disconnect_exception_is_visible_without_stop_error(
         self,
     ) -> None:
         client = _FakeClient(disconnect_error=RuntimeError("disconnect failed"))
         socket = _BleakSocket()
         socket._client = client
 
-        await socket._safe_disconnect_async()
+        with self.assertRaisesRegex(RuntimeError, "disconnect failed"):
+            await socket._safe_disconnect_async()
 
         self.assertEqual(client.disconnect_calls, 1)
 
@@ -572,14 +589,17 @@ class BleWriteControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(raised.exception, error)
         self.assertEqual(client.stop_calls, [NOTIFY_UUID, CONTROL_UUID])
         self.assertFalse(session.notify_started)
-        self.assertEqual(session._started_notify_uuids, [])
+        self.assertEqual(session._started_notify_uuids, [NOTIFY_UUID])
         self.assertEqual(session._notification_history, [])
         self.assertEqual(session._notification_waiters, [])
         self.assertEqual(controller.stop_calls, 1)
 
+        controller.stop_error = None
+        client.stop_notify_errors.clear()
         await session.stop_notify_if_started(client)
-        self.assertEqual(controller.stop_calls, 1)
-        self.assertEqual(client.stop_calls, [NOTIFY_UUID, CONTROL_UUID])
+        self.assertEqual(controller.stop_calls, 2)
+        self.assertEqual(client.stop_calls, [NOTIFY_UUID, CONTROL_UUID, NOTIFY_UUID])
+        self.assertEqual(session._started_notify_uuids, [])
         self.assertIsInstance(
             (await asyncio.gather(waiter, return_exceptions=True))[0],
             asyncio.CancelledError,

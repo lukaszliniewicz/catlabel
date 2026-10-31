@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from collections.abc import Callable
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from catlabel.printing.runtime.v5x import V5XRuntimeController
@@ -10,6 +12,7 @@ from catlabel.protocol.families.base import PrintJobRequest, SplitWritePlan
 from catlabel.protocol.families.v5x import (
     BEHAVIOR,
     V5X_FINALIZE_PACKET,
+    V5X_GET_SERIAL_PACKET,
     build_job,
     build_sign_response,
     split_print_stream,
@@ -79,6 +82,10 @@ class _V5XSession(RuntimeSessionFake):
         self.can_wait = False
         self.flow_paused = False
         self.events: list[tuple[str, bytes | float]] = []
+        self.a9_replies: list[bytes | None] | None = None
+        self.atomic_timeouts: list[float] = []
+        self.atomic_error: Exception | None = None
+        self.atomic_hook: Callable[[], None] | None = None
 
     def can_send_control_packet(self) -> bool:
         return self.control_available
@@ -118,8 +125,16 @@ class _V5XSession(RuntimeSessionFake):
     ) -> bytes | None:
         self.atomic.append(packet)
         self.events.append(("atomic", packet))
-        self.matches.append(bool(self.a9_reply and match(self.a9_reply)))
-        return self.a9_reply
+        self.atomic_timeouts.append(timeout)
+        if self.atomic_hook is not None:
+            self.atomic_hook()
+        if self.atomic_error is not None:
+            raise self.atomic_error
+        reply = self.a9_reply
+        if self.a9_replies is not None and self.a9_replies:
+            reply = self.a9_replies.pop(0)
+        self.matches.append(bool(reply and match(reply)))
+        return reply
 
     def report_debug(self, message: str) -> None:
         self.debug.append(message)
@@ -320,6 +335,38 @@ class V5XRuntimeReleaseParityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session.bulk, [raster])
         self.assertEqual(session.control[-1], V5X_FINALIZE_PACKET)
 
+    async def test_gray_label_mode_three_is_valid_and_uses_gray_context(self) -> None:
+        controller = V5XRuntimeController()
+        session = _V5XSession()
+        start = _a9_packet(1, 0x03)
+        split = SplitWritePlan((start,), b"\xff", (V5X_FINALIZE_PACKET,))
+
+        context = controller.build_split_context(session, split)
+        handled = await controller.send_protocol_steps(
+            session,
+            (
+                ProtocolStep.send(
+                    "start", start, write_channel=ProtocolWriteChannel.CONTROL
+                ),
+                ProtocolStep.send(
+                    "raster", b"\xff", write_channel=ProtocolWriteChannel.BULK
+                ),
+                ProtocolStep.send(
+                    "finalize",
+                    V5X_FINALIZE_PACKET,
+                    write_channel=ProtocolWriteChannel.CONTROL,
+                ),
+            ),
+            timeout=0.1,
+        )
+
+        self.assertTrue(context.is_gray)
+        self.assertEqual(context.coverage_ratio, 0.0)
+        self.assertTrue(handled)
+        self.assertEqual(session.atomic, [start])
+        self.assertEqual(session.bulk, [b"\xff"])
+        self.assertEqual(session.control, [V5X_FINALIZE_PACKET])
+
     async def test_unhandled_step_types_return_false_without_writes(self) -> None:
         controller = V5XRuntimeController()
         session = _V5XSession()
@@ -396,35 +443,200 @@ class V5XRuntimeReleaseParityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(missing_finalizer.atomic, [])
         self.assertEqual(missing_finalizer.bulk, [])
 
-    async def test_a9_ack_is_required_and_rejected_before_bulk_or_finalizer(
+    async def test_busy_a9_retries_until_accepted_before_bulk_or_finalizer(
         self,
     ) -> None:
-        for reply, stale_status, final_status in (
-            (None, 0, None),
-            (b"\x22\x21\xa9\x00\x01", 0, None),
-            (make_packet(0xA9, b"\x01", ProtocolFamily.V5X), 0, 1),
-        ):
+        controller = V5XRuntimeController()
+        controller._state.last_density_payload = b"\x5d"
+        controller._state.print_head_type = "other"
+        session = _V5XSession()
+        session.a9_replies = [
+            make_packet(0xA9, b"\x01", ProtocolFamily.V5X),
+            make_packet(0xA9, b"\x01", ProtocolFamily.V5X),
+            make_packet(0xA9, b"\x00", ProtocolFamily.V5X),
+        ]
+        retry_delays: list[float] = []
+        ack_tokens: list[asyncio.Event] = []
+        reply_statuses = (0x01, 0x01, 0x00)
+
+        def trigger_serial_notification() -> None:
+            ack_tokens.append(controller._state.command_ack_events[0xA9])
+            controller.handle_notification(
+                session,
+                make_packet(
+                    0xA9,
+                    bytes([reply_statuses[len(ack_tokens) - 1]]),
+                    ProtocolFamily.V5X,
+                ),
+            )
+            controller.handle_notification(
+                session, make_packet(0xA6, b"", ProtocolFamily.V5X)
+            )
+
+        async def record_delay(delay: float) -> None:
+            retry_delays.append(delay)
+
+        session.atomic_hook = trigger_serial_notification
+        with patch("catlabel.printing.runtime.v5x.asyncio.sleep", new=record_delay):
+            await controller.send_protocol_steps(session, self._steps(), timeout=0.1)
+
+        self.assertEqual(session.atomic, [_a9_packet(1, 0)] * 3)
+        self.assertEqual(retry_delays, [0.4, 0.4])
+        self.assertEqual(session.bulk, [b"opaque raster"])
+        self.assertEqual(session.control.count(V5X_FINALIZE_PACKET), 1)
+        self.assertEqual(len(ack_tokens), 3)
+        self.assertIs(ack_tokens[0], ack_tokens[1])
+        self.assertIs(ack_tokens[1], ack_tokens[2])
+        self.assertNotIn(V5X_GET_SERIAL_PACKET, session.control)
+        self.assertEqual(controller._state.command_ack_events, {})
+        self.assertEqual(controller._state.last_a9_status, 0)
+
+    async def test_missing_or_malformed_a9_reply_aborts_without_retry(self) -> None:
+        for reply in (None, b"\x22\x21\xa9\x00\x01", b"\x22\x21\xa9"):
             with self.subTest(reply=reply):
                 controller = V5XRuntimeController()
-                controller._state.last_a9_status = stale_status
+                controller._state.last_a9_status = 0
                 session = _V5XSession()
                 session.a9_reply = reply
-                with self.assertRaises(RuntimeError):
+                with self.assertRaisesRegex(RuntimeError, "status byte"):
+                    await controller.send_protocol_steps(
+                        session, self._steps(), timeout=0.1
+                    )
+                self.assertEqual(session.atomic, [_a9_packet(1, 0)])
+                self.assertEqual(session.matches, [False])
+                self.assertEqual(session.bulk, [])
+                self.assertNotIn(V5X_FINALIZE_PACKET, session.control)
+                self.assertIsNone(controller._state.last_a9_status)
+                self.assertEqual(controller._state.command_ack_events, {})
+
+    async def test_non_busy_a9_error_status_aborts_without_retry(self) -> None:
+        for status in (0x02, 0x7F):
+            with self.subTest(status=status):
+                controller = V5XRuntimeController()
+                session = _V5XSession()
+                session.a9_reply = make_packet(
+                    0xA9, bytes([status]), ProtocolFamily.V5X
+                )
+                with self.assertRaisesRegex(RuntimeError, f"status=0x{status:02x}"):
                     await controller.send_protocol_steps(
                         session, self._steps(), timeout=0.1
                     )
                 self.assertEqual(session.atomic, [_a9_packet(1, 0)])
                 self.assertEqual(session.bulk, [])
                 self.assertNotIn(V5X_FINALIZE_PACKET, session.control)
-                self.assertEqual(controller._state.last_a9_status, final_status)
+                self.assertEqual(controller._state.last_a9_status, status)
                 self.assertEqual(controller._state.command_ack_events, {})
 
+    async def test_a9_query_timeout_aborts_without_retry_or_pixels(self) -> None:
+        controller = V5XRuntimeController()
+        controller._state.last_a9_status = 0
+        session = _V5XSession()
+        session.atomic_error = TimeoutError("fake A9 query timeout")
+
+        with self.assertRaisesRegex(TimeoutError, "fake A9 query timeout"):
+            await controller.send_protocol_steps(session, self._steps(), timeout=0.1)
+
+        self.assertEqual(session.atomic, [_a9_packet(1, 0)])
+        self.assertEqual(session.bulk, [])
+        self.assertNotIn(V5X_FINALIZE_PACKET, session.control)
+        self.assertIsNone(controller._state.last_a9_status)
+        self.assertEqual(controller._state.command_ack_events, {})
+
+    async def test_a9_write_error_aborts_without_retry_or_pixels(self) -> None:
+        controller = V5XRuntimeController()
+        session = _V5XSession()
+        session.atomic_error = RuntimeError("fake A9 write failure")
+
+        with self.assertRaisesRegex(RuntimeError, "fake A9 write failure"):
+            await controller.send_protocol_steps(session, self._steps(), timeout=0.1)
+
+        self.assertEqual(session.atomic, [_a9_packet(1, 0)])
+        self.assertEqual(session.bulk, [])
+        self.assertNotIn(V5X_FINALIZE_PACKET, session.control)
+        self.assertEqual(controller._state.command_ack_events, {})
+
+    async def test_repeated_busy_reaches_deadline_with_capped_query_and_backoff(
+        self,
+    ) -> None:
+        controller = V5XRuntimeController()
+        controller._state.last_density_payload = b"\x5d"
+        controller._state.print_head_type = "other"
+        session = _V5XSession()
+        session.a9_replies = [
+            make_packet(0xA9, b"\x01", ProtocolFamily.V5X),
+            make_packet(0xA9, b"\x01", ProtocolFamily.V5X),
+        ]
+        clock = SimpleNamespace(now=0.0)
+        fake_time = SimpleNamespace(monotonic=lambda: clock.now)
+        backoff_delays: list[float] = []
+
+        def advance_during_query() -> None:
+            clock.now = 50.0 if len(session.atomic) == 1 else 59.75
+
+        async def advance_during_sleep(delay: float) -> None:
+            backoff_delays.append(delay)
+            clock.now += delay
+
+        session.atomic_hook = advance_during_query
+        with (
+            patch("catlabel.printing.runtime.v5x.time", new=fake_time),
+            patch(
+                "catlabel.printing.runtime.v5x.asyncio.sleep",
+                new=advance_during_sleep,
+            ),
+            self.assertRaisesRegex(TimeoutError, "acceptance"),
+        ):
+            await controller.send_protocol_steps(session, self._steps(), timeout=60.0)
+
+        self.assertEqual(session.atomic, [_a9_packet(1, 0)] * 2)
+        self.assertEqual(session.atomic_timeouts[0], 60.0)
+        self.assertAlmostEqual(session.atomic_timeouts[1], 9.6)
+        self.assertEqual(backoff_delays[0], 0.4)
+        self.assertAlmostEqual(backoff_delays[1], 0.25)
+        self.assertEqual(session.bulk, [])
+        self.assertNotIn(V5X_FINALIZE_PACKET, session.control)
+        self.assertEqual(controller._state.command_ack_events, {})
+
+    async def test_cancellation_during_busy_backoff_cleans_ack_without_pixels(
+        self,
+    ) -> None:
+        controller = V5XRuntimeController()
+        controller._state.last_density_payload = b"\x5d"
+        controller._state.print_head_type = "other"
+        session = _V5XSession()
+        session.a9_reply = make_packet(0xA9, b"\x01", ProtocolFamily.V5X)
+        backoff_started = asyncio.Event()
+
+        async def wait_in_backoff(delay: float) -> None:
+            self.assertEqual(delay, 0.4)
+            backoff_started.set()
+            await asyncio.Event().wait()
+
+        with patch("catlabel.printing.runtime.v5x.asyncio.sleep", new=wait_in_backoff):
+            task = asyncio.create_task(
+                controller.send_protocol_steps(session, self._steps(), timeout=0.1)
+            )
+            await backoff_started.wait()
+            self.assertEqual(session.atomic, [_a9_packet(1, 0)])
+            self.assertEqual(sorted(controller._state.command_ack_events), [0xA9])
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+
+        self.assertEqual(session.bulk, [])
+        self.assertNotIn(V5X_FINALIZE_PACKET, session.control)
+        self.assertEqual(controller._state.command_ack_events, {})
+
+    async def test_successful_a9_ack_allows_bulk_and_finalizer(self) -> None:
         controller = V5XRuntimeController()
         session = _V5XSession()
         session.a9_reply = b"\x22\x21\xa9\x00\x00\x00"
         await controller.send_protocol_steps(session, self._steps(), timeout=0.1)
+        self.assertEqual(session.atomic, [_a9_packet(1, 0)])
         self.assertEqual(session.bulk, [b"opaque raster"])
+        self.assertEqual(session.control.count(V5X_FINALIZE_PACKET), 1)
         self.assertEqual(controller._state.last_a9_status, 0)
+        self.assertEqual(controller._state.command_ack_events, {})
 
     async def test_density_cache_changes_only_after_successful_a2_write(self) -> None:
         density = make_packet(0xA2, b"\x5d", ProtocolFamily.V5X)
@@ -491,47 +703,27 @@ class V5XRuntimeReleaseParityTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
-    async def test_readiness_gate_orders_pages_and_clears_at_completion(self) -> None:
+    async def test_pages_progress_without_aa_and_aa_is_ignored(self) -> None:
         controller = V5XRuntimeController()
-        controller._START_READY_MAX_S = 0.02
         session = _V5XSession()
         controller.handle_notification(session, b"\x22\x21\xaa\x00\x00")
-        self.assertFalse(controller._state.await_start_ready)
 
         await controller.send_protocol_steps(session, self._steps(), timeout=0.1)
-        self.assertTrue(controller._state.await_start_ready)
-        prior_control_count = len(session.control)
-        next_page = asyncio.create_task(
-            controller.send_protocol_steps(session, self._steps(), timeout=0.01)
-        )
-        await asyncio.sleep(0)
-        self.assertEqual(len(session.control), prior_control_count)
-        controller.handle_notification(session, b"\x22\x21\xaa\x00\x00")
-        await next_page
-        self.assertGreater(len(session.control), prior_control_count)
-        self.assertTrue(controller._state.await_start_ready)
+        await controller.send_protocol_steps(session, self._steps(), timeout=0.1)
 
-        await controller.wait_for_completion(session, timeout=0.1)
-        self.assertFalse(controller._state.await_start_ready)
-        self.assertIsNone(controller._state.start_ready_event)
+        self.assertEqual(session.atomic, [_a9_packet(1, 0)] * 2)
+        self.assertEqual(session.bulk, [b"opaque raster"] * 2)
+        self.assertEqual(session.control.count(V5X_FINALIZE_PACKET), 2)
+        self.assertNotIn("start ready: 0xaa", session.debug)
 
-    async def test_readiness_timeout_and_finalizer_failure_clear_gate(self) -> None:
-        controller = V5XRuntimeController()
-        controller._START_READY_MAX_S = 0.01
-        session = _V5XSession()
-        await controller.send_protocol_steps(session, self._steps(), timeout=0.01)
-        with self.assertRaises(TimeoutError):
-            await controller.send_protocol_steps(session, self._steps(), timeout=0.01)
-        self.assertFalse(controller._state.await_start_ready)
-        self.assertIsNone(controller._state.start_ready_event)
-
+    async def test_finalizer_failure_is_reported_without_readiness_state(self) -> None:
         controller = V5XRuntimeController()
         session = _V5XSession()
         session.fail_control.add(V5X_FINALIZE_PACKET)
         with self.assertRaisesRegex(RuntimeError, "finalizer"):
             await controller.send_protocol_steps(session, self._steps(), timeout=0.1)
-        self.assertFalse(controller._state.await_start_ready)
-        self.assertIsNone(controller._state.start_ready_event)
+        self.assertEqual(session.bulk, [b"opaque raster"])
+        self.assertEqual(controller._state.command_ack_events, {})
 
     async def test_repeated_sign_challenges_are_answered_and_stop_cleans_tasks(
         self,
@@ -573,7 +765,6 @@ class V5XRuntimeReleaseParityTests(unittest.IsolatedAsyncioTestCase):
         blocked_controller._state.pending_get_serial = get_task
         blocked_controller._state.pending_status_poll = status_task
         blocked_controller._state.command_ack_events[0xA9] = asyncio.Event()
-        blocked_controller._arm_start_ready()
         await blocked_controller.stop(blocked_session)
         self.assertFalse(blocked_controller._state.pending_sign_responses)
         self.assertTrue(get_task.cancelled())
@@ -581,8 +772,6 @@ class V5XRuntimeReleaseParityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(blocked_controller._state.pending_get_serial)
         self.assertIsNone(blocked_controller._state.pending_status_poll)
         self.assertEqual(blocked_controller._state.command_ack_events, {})
-        self.assertFalse(blocked_controller._state.await_start_ready)
-        self.assertIsNone(blocked_controller._state.start_ready_event)
 
         failed_controller = V5XRuntimeController()
         failed_session = _V5XSession()

@@ -27,6 +27,7 @@ class ToPrintTsplPaperRecipe:
 
 
 def build_job(request: PrintJobRequest) -> ProtocolPlan:
+    # Ported from upstream topprint_tspl/core.py commit 8ad78ebb6394235bd39ffef23dabe83885158f6d.
     if request.protocol_variant not in (None, "p1"):
         raise ValueError(
             f"Unsupported ToPrint TSPL protocol variant: {request.protocol_variant!r}"
@@ -55,18 +56,10 @@ def build_job(request: PrintJobRequest) -> ProtocolPlan:
         payload += _command("SPEED", str(request.speed))
     payload += _command("CLS")
     payload += _command_head("BITMAP", f"0,0,{width_bytes},{raster.height},0,")
-    payload += pack_bw1_rows(raster, lsb_first=False)
-    payload += _LINE_END
+    payload += bytes(value ^ 0xFF for value in pack_bw1_rows(raster, lsb_first=False))
+    payload += _LINE_END + _LINE_END
     payload += _command("PRINT", "1,1")
     return ProtocolPlan.stream(bytes(payload))
-
-
-def advance_paper_cmd(_dpi: int, _family, _variant: str | None = None) -> bytes:
-    return _command("FORMFEED")
-
-
-def retract_paper_cmd(_dpi: int, _family, _variant: str | None = None) -> bytes:
-    return _command("BACKFEED", "40")
 
 
 def _paper_recipe(paper_mode: PaperMode | None) -> ToPrintTsplPaperRecipe:
@@ -92,13 +85,12 @@ def _paper_recipe(paper_mode: PaperMode | None) -> ToPrintTsplPaperRecipe:
 
 
 def _width_bytes(raster: RasterBuffer) -> int:
-    if raster.width % 8 != 0:
-        raise ValueError("ToPrint TSPL bitmap jobs require width divisible by 8")
     return packed_row_width_bytes(raster.width)
 
 
 def _px_to_mm(value: int, dpi: int, *, extra_mm: float = 0.0) -> str:
-    return _format_mm(float(value) * 25.4 / float(dpi) + extra_mm)
+    dots_per_mm = 12 if dpi == 300 else 8
+    return _format_mm(float(value) / dots_per_mm + extra_mm)
 
 
 def _format_mm(value: float) -> str:
@@ -125,7 +117,5 @@ BEHAVIOR = ProtocolBehavior(
     },
     supported_protocol_variants=("p1",),
     supported_paper_modes=(PaperMode.TAG, PaperMode.PLAIN, PaperMode.BLACK_TAG),
-    advance_paper_builder=advance_paper_cmd,
-    retract_paper_builder=retract_paper_cmd,
     job_builder=build_job,
 )

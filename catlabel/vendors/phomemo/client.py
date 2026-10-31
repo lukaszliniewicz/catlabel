@@ -477,7 +477,7 @@ class PhomemoClient(BasePrinterClient):
         head_width = int(self.hardware_info.get("width_px", 384) or 384)
         paper_mode = self._released_paper_mode()
 
-        default_density = 4 if variant == "m02x" else 2
+        default_density = 2
         hardware_density = self.hardware_info.get("default_energy")
         if hardware_density in (None, 0):
             hardware_density = default_density

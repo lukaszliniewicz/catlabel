@@ -7,7 +7,7 @@ from collections import deque
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 
-from ...protocol.families.funny_lx import challenge_crc
+from ...protocol.families.funny_lx import FunnyLxStatus, challenge_crc, decode_status
 from ...protocol.steps import ProtocolStep, ProtocolStepOperation
 from ..step_execution import (
     bytes_preview,
@@ -22,6 +22,7 @@ _MAX_RETRY_REQUESTS = 10
 _DEFAULT_PACKET_DELAY_SEC = 0.02
 _MAX_PACKET_DELAY_SEC = 0.5
 _DEFAULT_DARKNESS_CODE = 3
+# Ported from upstream Funny LX runtime commit 7c858d3a3f9415825549b0a83c533e4d9cbb45c5.
 
 
 class FunnyLxRuntimeController(RuntimeController):
@@ -40,6 +41,7 @@ class FunnyLxRuntimeController(RuntimeController):
         self._packet_delay_sec = _DEFAULT_PACKET_DELAY_SEC
         self._supports_darkness = False
         self._darkness_code: int | None = None
+        self._last_status: FunnyLxStatus | None = None
 
     def adopt_previous(self, previous: RuntimeController | None) -> None:
         if not isinstance(previous, FunnyLxRuntimeController):
@@ -48,6 +50,7 @@ class FunnyLxRuntimeController(RuntimeController):
         self._packet_delay_sec = previous._packet_delay_sec
         self._supports_darkness = previous._supports_darkness
         self._darkness_code = previous._darkness_code
+        self._last_status = previous._last_status
 
     async def initialize_connection(
         self,
@@ -179,7 +182,9 @@ class FunnyLxRuntimeController(RuntimeController):
         timeout: float,
     ) -> None:
         darkness = _darkness_code_from_step(step)
-        if darkness is not None and darkness == self._darkness_code:
+        if darkness is not None and (
+            not self._supports_darkness or darkness == self._darkness_code
+        ):
             return
         reply = await execute_protocol_step(
             session,
@@ -248,6 +253,15 @@ class FunnyLxRuntimeController(RuntimeController):
             self._retry_requests.append(requested)
             session.report_debug(f"Funny LX retry requested packet={requested}")
             return
+        status = decode_status(payload)
+        if status is not None:
+            self._last_status = status
+            session.report_debug(
+                "Funny LX status "
+                f"battery={status.battery} paper={status.paper} temp={status.temp} "
+                f"voltage={status.voltage} darkness={status.darkness}"
+            )
+            return
         if len(payload) >= 3 and payload[:2] == b"\x5a\x07":
             self._packet_delay_sec = max(
                 0.0,
@@ -263,6 +277,17 @@ class FunnyLxRuntimeController(RuntimeController):
             "packet_delay_hint_sec": self._packet_delay_sec,
             "supports_darkness": self._supports_darkness,
             "darkness_code": self._darkness_code,
+            "status": (
+                {
+                    "battery": self._last_status.battery,
+                    "paper": self._last_status.paper,
+                    "temp": self._last_status.temp,
+                    "voltage": self._last_status.voltage,
+                    "darkness": self._last_status.darkness,
+                }
+                if self._last_status is not None
+                else None
+            ),
         }
 
 

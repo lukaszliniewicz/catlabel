@@ -1,6 +1,6 @@
 [project]
 name = "catlabel"
-version = "0.3.0"
+version = "0.3.1"
 requires-python = ">=3.11,<3.12"
 dependencies = [
   "fastapi>=0.115.6",

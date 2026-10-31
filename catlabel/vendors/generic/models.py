@@ -25,6 +25,8 @@ SOURCE_PATH = DATA_DIR / "catalog_source.json"
 _NON_GENERIC_FAMILIES = {"niimbot"}
 _PRINTMASTER_VARIANTS = {"printmaster_m110", "printmaster_m120"}
 _PRINTMASTER_OWNERSHIP_COMMIT = "3bd80bac89f8894e143ee867c63683b6c7f2f02b"
+_V5G_MONOCHROME_COMMIT = "73172c621c3b7aea9c71c9c024f9cd549d0b314e"
+_V5X_LABEL_COMMIT = "95beec7ba0f6422c29fd480ca262e369caf5e375"
 _FAMILY_ALIASES = {
     "tiny": "legacy",
     "tiny_prefixed": "legacy_prefixed",
@@ -162,12 +164,52 @@ def _pipeline_from_entry(
     )
     encoding_value = entry.get("encoding")
     default = _family_default_pipeline(family)
-    return ImagePipelineConfig(
+    pipeline = ImagePipelineConfig(
         formats=formats or default.formats,
         encoding=default.encoding
         if encoding_value is None
         else _catalog_encoding(encoding_value),
     )
+    if family is ProtocolFamily.V5G:
+        # The immutable older catalog overstates ordinary V5G's wire formats.
+        # Apply 73172c6 locally, without altering its recorded source bytes.
+        if (
+            pipeline.encoding is not ImageEncoding.V5G_DOT
+            or PixelFormat.BW1 not in pipeline.formats
+        ):
+            raise ValueError("Ordinary V5G requires its monochrome dot pipeline")
+        return ImagePipelineConfig((PixelFormat.BW1,), ImageEncoding.V5G_DOT)
+    return pipeline
+
+
+def _split_bh03_variant(value: object) -> tuple[list[Mapping[str, Any]], bool]:
+    """Select 95beec7's BH03 recipe without rewriting the older source bundle."""
+    records = list(_entries(value, "models"))
+    if any(item.get("model_key") == "funprint_v5x_gray_label" for item in records):
+        return records, False
+    for index, item in enumerate(records):
+        if item.get("model_key") != "v5x" or item.get("profile_key") != "v5x":
+            continue
+        rules = _entries(item.get("detections"), "detections")
+        if not any("BH03" in rule.get("exact_names", ()) for rule in rules):
+            continue
+        remaining = []
+        for rule in rules:
+            names = [name for name in rule.get("exact_names", ()) if name != "BH03"]
+            if names or rule.get("prefixes"):
+                remaining.append({**rule, "exact_names": names})
+        records[index] = {**item, "detections": remaining}
+        records.append(
+            {
+                "model_key": "funprint_v5x_gray_label",
+                "profile_key": "v5x",
+                "protocol_override": {"packets_type": "gray_label"},
+                "origin_ids": ["com.fun.mxw"],
+                "detections": [{"exact_names": ["BH03"]}],
+            }
+        )
+        return records, True
+    return records, False
 
 
 def _middle(tiers: Mapping[str, int] | None, default: int) -> int:
@@ -197,6 +239,8 @@ class PaperPreset:
     max_height_px: int | None = None
     render_height_px: int | None = None
     rotation_degrees: int = 0
+    raster_height_px: int | None = None
+    top_padding_px: int = 0
 
 
 @dataclass(frozen=True)
@@ -206,8 +250,40 @@ class DetectionRule:
     prefixes: tuple[str, ...] = ()
     mac_suffixes: tuple[str, ...] = ()
     whitespace_mode: WhitespaceMode = WhitespaceMode.REMOVE
+    substrings: tuple[str, ...] = ()
+    name_pattern: str | None = None
+    manufacturer_data_suffixes: tuple[str, ...] = ()
+    manufacturer_data_lengths: tuple[int, ...] = ()
+
+    @property
+    def requires_manufacturer_data(self) -> bool:
+        return bool(self.manufacturer_data_suffixes or self.manufacturer_data_lengths)
+
+    def matches_manufacturer_data(self, data: Mapping[int, bytes] | None) -> bool:
+        if not self.requires_manufacturer_data:
+            return True
+        suffixes = tuple(
+            bytes.fromhex(value) for value in self.manufacturer_data_suffixes
+        )
+        return bool(data) and any(
+            len(value) in self.manufacturer_data_lengths
+            and any(value.endswith(suffix) for suffix in suffixes)
+            for value in data.values()
+        )
 
     def match_score(
+        self,
+        name: str,
+        address: str | None,
+        *,
+        casefold: bool,
+        manufacturer_data: Mapping[int, bytes] | None = None,
+    ) -> tuple[int, int, int, int, int] | None:
+        if not self.matches_manufacturer_data(manufacturer_data):
+            return None
+        return self.name_match_score(name, address, casefold=casefold)
+
+    def name_match_score(
         self,
         name: str,
         address: str | None,
@@ -228,6 +304,12 @@ class DetectionRule:
             if not mac or not any(mac.endswith(value) for value in suffixes):
                 return None
 
+        original_case = _normalized_name(name, whitespace_mode=self.whitespace_mode)
+        if self.name_pattern is not None and (
+            len(original_case) > 512
+            or re.fullmatch(self.name_pattern, original_case) is None
+        ):
+            return None
         best: tuple[int, int, int, int, int] | None = None
         for value in self.exact_names:
             normalized = _normalized_name(
@@ -253,6 +335,23 @@ class DetectionRule:
                     whitespace_mode=self.whitespace_mode,
                 )
                 best = max(best or score, score)
+        for value in self.substrings:
+            # Regexes constrain original-case names even on the casefold pass.
+            normalized = _normalized_name(value, whitespace_mode=self.whitespace_mode)
+            if (
+                self.name_pattern is not None
+                and normalized
+                and normalized in original_case
+            ):
+                score = _detection_specificity(
+                    value,
+                    exact=False,
+                    has_mac=bool(suffixes) or self.requires_manufacturer_data,
+                    whitespace_mode=self.whitespace_mode,
+                )
+                best = max(best or score, score)
+        if best is not None and self.requires_manufacturer_data:
+            best = (best[0], 1, *best[2:])
         return best
 
 
@@ -401,7 +500,9 @@ class PrinterModelRegistry:
         deferred: Iterable[_UnsupportedModel] = (),
         *,
         source_metadata: Mapping[str, object],
+        policy_ties_veto: bool = False,
     ) -> None:
+        self._policy_ties_veto = policy_ties_veto
         self._models = tuple(models)
         self._source_unsupported = tuple(unsupported)
         self._deferred = tuple(deferred)
@@ -443,10 +544,12 @@ class PrinterModelRegistry:
         if cached is not None:
             return cached
 
+        modern = False
         if use_snapshot:
             bundle = load_snapshot(snapshot_path)
+            modern = bundle["schema_version"] == 2
             selected_updates: list[dict[str, str]] = []
-            if use_updates:
+            if use_updates and not modern:
                 updates = _mapping(
                     json.loads(updates_path.read_text(encoding="utf-8")),
                     "Luck A4 updates",
@@ -463,8 +566,17 @@ class PrinterModelRegistry:
             profiles_raw = catalogs["catalog_profiles.json"]
             presets_raw = catalogs["catalog_paper_presets.json"]
             models_raw = catalogs["catalog_models.json"]
-            unsupported_raw = catalogs["catalog_unsupported.json"]
+            unsupported_raw = (
+                bundle["detection_policy"]["models"]
+                if modern
+                else catalogs["catalog_unsupported.json"]
+            )
             source_metadata = dict(_mapping(bundle["source"], "source"))
+            if modern:
+                source_metadata["detection_policy"] = {
+                    "source": bundle["detection_policy"]["source"],
+                    "sha256": bundle["detection_policy"]["sha256"],
+                }
             selected_updates.append(
                 {
                     "commit": _PRINTMASTER_OWNERSHIP_COMMIT,
@@ -472,6 +584,34 @@ class PrinterModelRegistry:
                     "scope": "PrintMaster ownership",
                 }
             )
+            if any(
+                _optional_mapping(
+                    profile.get("protocol_default"), "default protocol"
+                ).get("type")
+                == "v5g"
+                for profile in _entries(profiles_raw, "profiles")
+            ):
+                selected_updates.append(
+                    {
+                        "commit": _V5G_MONOCHROME_COMMIT,
+                        "base_commit": str(source_metadata["commit"]),
+                        "scope": "Ordinary V5G monochrome capabilities",
+                    }
+                )
+            if (
+                not modern
+                and source_metadata["commit"]
+                == "f676917257b5d1f869e0f13beff03785258e2a2e"
+            ):
+                models_raw, split_bh03 = _split_bh03_variant(models_raw)
+                if split_bh03:
+                    selected_updates.append(
+                        {
+                            "commit": _V5X_LABEL_COMMIT,
+                            "base_commit": str(source_metadata["commit"]),
+                            "scope": "V5X BH03 gray-label variant",
+                        }
+                    )
             if selected_updates:
                 source_metadata["selected_updates"] = selected_updates
         else:
@@ -494,7 +634,18 @@ class PrinterModelRegistry:
 
         models: list[PrinterModel] = []
         deferred: list[_UnsupportedModel] = []
+        policy_keys = (
+            {
+                str(item["model_key"])
+                for item in _entries(unsupported_raw, "unsupported models")
+            }
+            if modern
+            else set()
+        )
         for item in _entries(models_raw, "models"):
+            if str(item["model_key"]) in policy_keys:
+                deferred.append(cls._unavailable_model(item))
+                continue
             # This exact upstream ownership correction affects only the bundled
             # catalog; retain the immutable release source and custom loaders.
             if use_snapshot and item["model_key"] in {"phomemo_m110", "phomemo_m220"}:
@@ -530,6 +681,15 @@ class PrinterModelRegistry:
             if not behavior.implemented:
                 deferred.append(cls._unavailable_model(item))
                 continue
+            if modern and not cls._modern_configuration_supported(
+                item,
+                profile,
+                presets,
+                family,
+                variant,
+            ):
+                deferred.append(cls._unavailable_model(item))
+                continue
             model = cls._parse_model(item, profile, presets, family)
             models.append(model)
 
@@ -554,9 +714,70 @@ class PrinterModelRegistry:
             unsupported,
             deferred,
             source_metadata=source_metadata,
+            policy_ties_veto=modern,
         )
         cls._cache[key] = registry
         return registry
+
+    @staticmethod
+    def _modern_configuration_supported(
+        item: Mapping[str, Any],
+        profile: Mapping[str, Any],
+        presets: Mapping[str, PaperPreset],
+        family: ProtocolFamily,
+        variant: object,
+    ) -> bool:
+        behavior = get_protocol_definition(family).behavior
+        if variant is not None and variant not in behavior.supported_protocol_variants:
+            return False
+        if family is ProtocolFamily.YK_ASTRA_P1 and variant is None:
+            return False
+        for raw in (profile.get("protocol_default"), item.get("protocol_override")):
+            if raw is not None and set(_mapping(raw, "protocol")) - {
+                "type",
+                "packets_type",
+                "variant",
+            }:
+                return False
+        for key in _strings(profile.get("paper_presets", ()), "paper presets"):
+            preset = presets[key]
+            if preset.top_padding_px or preset.raster_height_px is not None:
+                return False
+        configured = item.get(
+            "image_pipeline_override", profile.get("default_image_pipeline")
+        )
+        if configured is not None and set(_mapping(configured, "image pipeline")) - {
+            "formats",
+            "encoding",
+        }:
+            return False
+        try:
+            # Validate v2 exactly; the older V5G source normalization is v1-only.
+            entry = _optional_mapping(configured, "image pipeline")
+            default = behavior.default_image_pipeline
+            encoding = _catalog_encoding(entry.get("encoding", default.encoding.value))
+            formats = tuple(
+                PixelFormat(value)
+                for value in _strings(
+                    entry.get("formats", tuple(fmt.value for fmt in default.formats)),
+                    "formats",
+                )
+            )
+            allowed = behavior.image_encoding_support.get(encoding, ())
+            return (
+                bool(formats)
+                and len(set(formats)) == len(formats)
+                and formats[0] in allowed
+                and all(
+                    any(
+                        fmt in supported
+                        for supported in behavior.image_encoding_support.values()
+                    )
+                    for fmt in formats
+                )
+            )
+        except ValueError:
+            return False
 
     @staticmethod
     def _parse_paper_preset(key: str, raw: Mapping[str, Any]) -> PaperPreset:
@@ -576,6 +797,10 @@ class PrinterModelRegistry:
             if raw.get("render_height_px") in (None, "")
             else int(raw["render_height_px"]),
             rotation_degrees=int(raw.get("rotation_degrees") or 0),
+            raster_height_px=None
+            if raw.get("raster_height_px") is None
+            else int(raw["raster_height_px"]),
+            top_padding_px=int(raw.get("top_padding_px") or 0),
         )
 
     @classmethod
@@ -601,6 +826,7 @@ class PrinterModelRegistry:
             )
             exact_names = _strings(detection.get("exact_names", ()), "exact names")
             prefixes = _strings(detection.get("prefixes", ()), "prefixes")
+            substrings = _strings(detection.get("substrings", ()), "substrings")
             marketing_names = _strings(
                 entry.get("marketing_names", ()), "marketing names"
             )
@@ -608,8 +834,8 @@ class PrinterModelRegistry:
                 display_name = str(entry.get("name") or item.get("model_key") or "")
             elif marketing_names:
                 display_name = marketing_names[0]
-            elif exact_names or prefixes:
-                public_name = (exact_names or prefixes)[0].strip()
+            elif exact_names or prefixes or substrings:
+                public_name = (exact_names or prefixes or substrings)[0].strip()
                 display_name = (
                     public_name[:-1]
                     if public_name.endswith(("-", "_"))
@@ -617,7 +843,13 @@ class PrinterModelRegistry:
                 )
             else:
                 display_name = str(item.get("model_key") or "")
-            if nested and not exact_names and not prefixes and display_name:
+            if (
+                nested
+                and not exact_names
+                and not prefixes
+                and not substrings
+                and display_name
+            ):
                 exact_names = (display_name,)
             rules.append(
                 DetectionRule(
@@ -628,6 +860,17 @@ class PrinterModelRegistry:
                         detection.get("mac_suffixes", ()), "MAC suffixes"
                     ),
                     whitespace_mode=whitespace_mode,
+                    substrings=substrings,
+                    name_pattern=_optional_string(
+                        detection.get("name_pattern"), "name pattern"
+                    ),
+                    manufacturer_data_suffixes=_strings(
+                        detection.get("manufacturer_data_suffixes", ()),
+                        "manufacturer data suffixes",
+                    ),
+                    manufacturer_data_lengths=tuple(
+                        detection.get("manufacturer_data_lengths", ())
+                    ),
                 )
             )
         return tuple(rules)
@@ -900,24 +1143,48 @@ class PrinterModelRegistry:
         self,
         name: str,
         address: str | None = None,
+        *,
+        manufacturer_data: Mapping[int, bytes] | None = None,
     ) -> PrinterModel | None:
-        match = self.detect_with_origin(name, address)
+        match = self.detect_with_origin(
+            name, address, manufacturer_data=manufacturer_data
+        )
         return None if match is None else match.model
 
     def detect_with_origin(
         self,
         name: str,
         address: str | None = None,
+        *,
+        manufacturer_data: Mapping[int, bytes] | None = None,
     ) -> PrinterModelMatch | None:
         if not name:
+            return None
+        constrained_rules = [
+            rule
+            for model in (*self._models, *self._deferred, *self._source_unsupported)
+            for rule in model.detection_rules
+            if rule.requires_manufacturer_data
+            and rule.name_match_score(name, address, casefold=True) is not None
+        ]
+        if constrained_rules and not any(
+            rule.matches_manufacturer_data(manufacturer_data)
+            for rule in constrained_rules
+        ):
             return None
         # A shared group is catalog evidence that advertised names cannot
         # select a protocol safely, even when casing or specificity differs.
         groups: dict[str, set[str]] = {}
         for candidates in (
-            self._supported_candidates(name, address, casefold=True),
-            self._deferred_candidates(name, address, casefold=True),
-            self._unsupported_candidates(name, address, casefold=True),
+            self._supported_candidates(
+                name, address, casefold=True, manufacturer_data=manufacturer_data
+            ),
+            self._deferred_candidates(
+                name, address, casefold=True, manufacturer_data=manufacturer_data
+            ),
+            self._unsupported_candidates(
+                name, address, casefold=True, manufacturer_data=manufacturer_data
+            ),
         ):
             for _, candidate_model, _ in candidates:
                 group = candidate_model.detection_ambiguity_group
@@ -931,9 +1198,15 @@ class PrinterModelRegistry:
         if any(len(model_ids) > 1 for model_ids in groups.values()):
             return None
         for casefold in (False, True):
-            supported = self._supported_candidates(name, address, casefold=casefold)
-            deferred = self._deferred_candidates(name, address, casefold=casefold)
-            unsupported = self._unsupported_candidates(name, address, casefold=casefold)
+            supported = self._supported_candidates(
+                name, address, casefold=casefold, manufacturer_data=manufacturer_data
+            )
+            deferred = self._deferred_candidates(
+                name, address, casefold=casefold, manufacturer_data=manufacturer_data
+            )
+            unsupported = self._unsupported_candidates(
+                name, address, casefold=casefold, manufacturer_data=manufacturer_data
+            )
             if not supported and not deferred and not unsupported:
                 continue
             supported.sort(key=lambda item: item[0], reverse=True)
@@ -956,7 +1229,11 @@ class PrinterModelRegistry:
                 or (
                     best_unsupported is not None
                     and best_catalog_supported is not None
-                    and best_unsupported > best_catalog_supported
+                    and (
+                        best_unsupported >= best_catalog_supported
+                        if self._policy_ties_veto
+                        else best_unsupported > best_catalog_supported
+                    )
                 )
                 or (best_deferred is not None and best_deferred >= best_supported)
             ):
@@ -971,7 +1248,7 @@ class PrinterModelRegistry:
                 source=PrinterModelMatchSource.HEAD_NAME,
                 alias_kind=(
                     PrinterModelAliasKind.MAC
-                    if score[2]
+                    if rule.mac_suffixes
                     else PrinterModelAliasKind.HEAD_NAME
                 ),
                 protocol_family=model.protocol_family,
@@ -988,11 +1265,17 @@ class PrinterModelRegistry:
         address: str | None,
         *,
         casefold: bool,
+        manufacturer_data: Mapping[int, bytes] | None = None,
     ) -> list[tuple[tuple[int, int, int, int, int], PrinterModel, DetectionRule]]:
         matches = []
         for model in self._models:
             for rule in model.detection_rules:
-                score = rule.match_score(name, address, casefold=casefold)
+                score = rule.match_score(
+                    name,
+                    address,
+                    casefold=casefold,
+                    manufacturer_data=manufacturer_data,
+                )
                 if score is not None:
                     matches.append((score, model, rule))
         return matches
@@ -1003,11 +1286,17 @@ class PrinterModelRegistry:
         address: str | None,
         *,
         casefold: bool,
+        manufacturer_data: Mapping[int, bytes] | None = None,
     ) -> list[tuple[tuple[int, int, int, int, int], _UnsupportedModel, DetectionRule]]:
         matches = []
         for model in self._source_unsupported:
             for rule in model.detection_rules:
-                score = rule.match_score(name, address, casefold=casefold)
+                score = rule.match_score(
+                    name,
+                    address,
+                    casefold=casefold,
+                    manufacturer_data=manufacturer_data,
+                )
                 if score is not None:
                     matches.append((score, model, rule))
         return matches
@@ -1018,11 +1307,17 @@ class PrinterModelRegistry:
         address: str | None,
         *,
         casefold: bool,
+        manufacturer_data: Mapping[int, bytes] | None = None,
     ) -> list[tuple[tuple[int, int, int, int, int], _UnsupportedModel, DetectionRule]]:
         matches = []
         for model in self._deferred:
             for rule in model.detection_rules:
-                score = rule.match_score(name, address, casefold=casefold)
+                score = rule.match_score(
+                    name,
+                    address,
+                    casefold=casefold,
+                    manufacturer_data=manufacturer_data,
+                )
                 if score is not None:
                     matches.append((score, model, rule))
         return matches

@@ -262,7 +262,7 @@ class PhomemoReleasedClientTests(unittest.IsolatedAsyncioTestCase):
             image.close()
 
         expected = bytes.fromhex(
-            "1b401f1102021f1137641f110b1f1135001d76300002000200080004001b64021b6402"
+            "1b401f1102021f1137641f110b1f1135001d763000010006000000000080401b64021b6402"
         )
         send.assert_awaited_once_with(expected)
 
@@ -290,17 +290,18 @@ class PhomemoReleasedClientTests(unittest.IsolatedAsyncioTestCase):
         setup = bytes.fromhex("1b401f1102021f1137641f110b1f113500")
         self.assertEqual(payload[: len(setup)], setup)
         self.assertEqual(
-            payload[len(setup) : len(setup) + 8], b"\x1dv0\x00J\x00\x02\x00"
+            payload[len(setup) : len(setup) + 8], b"\x1dv0\x00J\x00\x06\x00"
         )
         row_width = 74
-        first_row = b"\x08" + bytes(row_width - 1)
-        second_row = b"\x04" + bytes(row_width - 1)
         self.assertEqual(
             payload,
             setup
-            + bytes.fromhex("1d7630004a000200")
-            + first_row
-            + second_row
+            + bytes.fromhex("1d7630004a000600")
+            + bytes(row_width * 4)
+            + bytes(72)
+            + b"\x08\x00"
+            + bytes(72)
+            + b"\x04\x00"
             + bytes.fromhex("1b64021b6402"),
         )
 
@@ -358,8 +359,8 @@ class PhomemoReleasedClientTests(unittest.IsolatedAsyncioTestCase):
 
         expected = bytes.fromhex(
             "1b401f1102021f1137641f110b1f113500"
-            "1d7630000200010008101b6402"
-            "1d763000010001000c1b64021b6402"
+            "1d7630000100050000000000811b6402"
+            "1d7630000100050000000000c01b64021b6402"
         )
         send.assert_awaited_once_with(expected)
         self.assertEqual(len(owned_images), 1)
@@ -629,7 +630,7 @@ class PhomemoReleasedClientTests(unittest.IsolatedAsyncioTestCase):
             image.resize.assert_not_called()
         send.assert_not_awaited()
 
-    async def test_m02x_profile_feed_zero_overrides_hardware_and_global_feed(
+    async def test_m02x_fixed_compact_feed_ignores_feed_defaults(
         self,
     ) -> None:
         client = _client(
@@ -649,8 +650,63 @@ class PhomemoReleasedClientTests(unittest.IsolatedAsyncioTestCase):
             image.close()
 
         send.assert_awaited_once_with(
-            bytes.fromhex("1b401b61011f1102041d7630000100010080")
+            bytes.fromhex(
+                "1b401f1102041f1137961f110b1f113500"
+                "1d7630000100050000000000801b64021b6402"
+            )
         )
+
+    async def test_m02x_defaults_to_density_two_and_ignores_global_defaults(
+        self,
+    ) -> None:
+        client = _client(
+            "m02x",
+            paper_mode="plain",
+            settings_energy=8,
+            settings_feed=17,
+        )
+        image = _black_dot_image(8, 1, ((0, 0),))
+        send = AsyncMock()
+        client._send = send
+
+        try:
+            await client.print_images([image], dither=False)
+        finally:
+            image.close()
+
+        send.assert_awaited_once_with(
+            bytes.fromhex(
+                "1b401f1102021f1137641f110b1f113500"
+                "1d7630000100050000000000801b64021b6402"
+            )
+        )
+
+    async def test_m02x_unsupported_mode_and_oversize_fail_before_image_work(
+        self,
+    ) -> None:
+        cases = (
+            (_client("m02x", paper_mode="tag"), 8, "paper mode"),
+            (_client("m02x", width_px=400, paper_mode="plain"), 400, "content width"),
+        )
+        for client, width, message in cases:
+            image, dimensions_only = _dimensions_only(width, 2)
+            send = AsyncMock()
+            client._send = send
+            with (
+                self.subTest(width=width, message=message),
+                patch.object(
+                    phomemo_client_module,
+                    "image_to_raster",
+                    side_effect=AssertionError("unexpected raster conversion"),
+                ),
+                self.assertRaisesRegex(ValueError, message),
+            ):
+                await client.print_images([image], dither=False)
+
+            dimensions_only.copy.assert_not_called()
+            dimensions_only.crop.assert_not_called()
+            dimensions_only.resize.assert_not_called()
+            send.assert_not_awaited()
 
     async def test_owned_images_close_when_recipe_fails_and_caller_stays_open(
         self,

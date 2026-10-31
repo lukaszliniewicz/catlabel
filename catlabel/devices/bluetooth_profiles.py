@@ -55,6 +55,7 @@ _PROFILES = {
     ),
     "v5x": BleTransportProfile(
         preferred_service_uuid="0000ae30-0000-1000-8000-00805f9b34fb",
+        preferred_write_char_uuid="0000ae01-0000-1000-8000-00805f9b34fb",
         notify_char_uuid="0000ae02-0000-1000-8000-00805f9b34fb",
         bulk_write=BleBulkWriteProfile(
             char_uuid="0000ae03-0000-1000-8000-00805f9b34fb",

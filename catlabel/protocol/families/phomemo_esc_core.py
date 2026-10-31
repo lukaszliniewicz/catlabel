@@ -1,11 +1,12 @@
-"""Pure Phomemo page recipes pinned to the TiMini-Print 0.8.1 release.
+"""Pure Phomemo page recipes adapted from TiMini-Print's compact protocol.
 
 Copyright 2026 Daniel Banecki (TiMini-Print).
 Licensed under the Apache License, Version 2.0.
 
-The wire layouts and raster placement are derived from upstream commit
-``f676917257b5d1f869e0f13beff03785258e2a2e``. See the repository LICENSE and
-NOTICE for license terms and attribution.
+The wire layouts are derived from upstream commit
+``6a71ecf7742e36be05bed7f4e52c4822cccced68``. This module adapts those recipes
+to CatLabel's bounded ``RasterBuffer`` and page-building interfaces. See the
+repository LICENSE and NOTICE for license terms and attribution.
 """
 
 from __future__ import annotations
@@ -18,12 +19,10 @@ from ...protocol.types import PaperMode
 from ...raster import PixelFormat, RasterBuffer
 
 _INIT = b"\x1b\x40"
-_JUSTIFY = b"\x1b\x61"
 _DENSITY = b"\x1f\x11\x02"
 _DENSITY_COEFFICIENT = b"\x1f\x11\x37"
 _MEDIA = b"\x1f\x11"
 _UNCOMPRESSED = b"\x1f\x11\x35\x00"
-_PRINT_AND_FEED_LINES = b"\x1b\x64"
 _COMPACT_FEED = b"\x1b\x64\x02"
 _COMPACT_DENSITY_LEVELS = ((1, 100), (2, 100), (4, 100), (4, 150))
 _PAPER_MEDIA = {
@@ -32,34 +31,46 @@ _PAPER_MEDIA = {
     PaperMode.BLACK_TAG: 0x26,
 }
 _LABEL_MODES = (PaperMode.TAG, PaperMode.PLAIN, PaperMode.BLACK_TAG)
-_M02X_VARIANT = "m02x"
 
 
 @dataclass(frozen=True)
 class _CompactRecipe:
     content_width: int
-    left_padding: int
     paper_modes: tuple[PaperMode, ...]
-    tag_right_extra: int = 0
+    top_padding: int = 0
+    tag_total_width: int | None = None
 
 
 _COMPACT_RECIPES: dict[str, _CompactRecipe] = {
-    "m02": _CompactRecipe(384, 4, (PaperMode.PLAIN, PaperMode.TAG)),
+    "m02": _CompactRecipe(
+        384,
+        (PaperMode.PLAIN, PaperMode.TAG),
+        top_padding=4,
+    ),
     "m02s": _CompactRecipe(
         576,
-        4,
         (PaperMode.PLAIN, PaperMode.TAG),
-        tag_right_extra=12,
+        top_padding=4,
+        tag_total_width=588,
     ),
     "m02_pro": _CompactRecipe(
         576,
-        4,
         (PaperMode.PLAIN, PaperMode.TAG),
-        tag_right_extra=7,
+        top_padding=4,
+        tag_total_width=583,
     ),
-    "t02": _CompactRecipe(384, 4, (PaperMode.PLAIN, PaperMode.TAG)),
-    "m110": _CompactRecipe(384, 0, _LABEL_MODES),
-    "m220": _CompactRecipe(576, 0, _LABEL_MODES),
+    "t02": _CompactRecipe(
+        384,
+        (PaperMode.PLAIN, PaperMode.TAG),
+        top_padding=4,
+    ),
+    "m02x": _CompactRecipe(
+        384,
+        (PaperMode.PLAIN,),
+        top_padding=4,
+    ),
+    "m110": _CompactRecipe(384, _LABEL_MODES),
+    "m220": _CompactRecipe(576, _LABEL_MODES),
 }
 
 
@@ -79,20 +90,17 @@ def plan_released_raster_size(
     recipe, selected_mode = _resolve_recipe(variant, paper_mode)
     validate_image_budget(width, height)
 
-    if recipe is None:
-        return width, height
     if width > recipe.content_width:
         raise ValueError(
             f"Phomemo content width must not exceed {recipe.content_width}px"
         )
 
-    right_padding = 0
-    if selected_mode is PaperMode.TAG and recipe.tag_right_extra:
-        right_padding = recipe.content_width + recipe.tag_right_extra - width
-
-    padded_width = recipe.left_padding + width + right_padding
-    validate_image_budget(padded_width, height)
-    return padded_width, height
+    padded_width = width
+    if selected_mode is PaperMode.TAG and recipe.tag_total_width is not None:
+        padded_width = recipe.tag_total_width
+    padded_height = height + recipe.top_padding
+    validate_image_budget(padded_width, padded_height)
+    return padded_width, padded_height
 
 
 def build_released_page(
@@ -117,7 +125,7 @@ def build_released_page(
         raise ValueError("Phomemo raster pixels must form complete rows")
     height = pixel_count // width
 
-    padded_width, _ = plan_released_raster_size(
+    padded_width, padded_height = plan_released_raster_size(
         width,
         height,
         variant=variant,
@@ -126,31 +134,15 @@ def build_released_page(
     recipe, selected_mode = _resolve_recipe(variant, paper_mode)
     raster.validate()
 
-    if recipe is None:
-        payload = bytearray(_INIT)
-        payload += _JUSTIFY + b"\x01"
-        payload += _DENSITY + bytes((_clamp_byte(density, default=4),))
-        payload += build_gs_v0_blocks(
-            raster,
-            max_lines_per_block=0xFF,
-            lsb_first=False,
-            mode=0,
-        )
-        if ends_media_page and post_print_feed_count > 0:
-            payload += _PRINT_AND_FEED_LINES + bytes(
-                (_clamp_byte(post_print_feed_count, default=0),)
-            )
-        return bytes(payload)
-
-    assert selected_mode is not None
-    right_padding = 0
-    if selected_mode is PaperMode.TAG and recipe.tag_right_extra:
-        right_padding = recipe.content_width + recipe.tag_right_extra - width
+    left_padding = 0
+    if selected_mode is PaperMode.TAG and recipe.tag_total_width is not None:
+        left_padding = recipe.tag_total_width - width
     placed_raster = _pad_raster(
         raster,
-        left=recipe.left_padding,
-        right=right_padding,
+        left=left_padding,
+        top=recipe.top_padding,
         final_width=padded_width,
+        final_height=padded_height,
         height=height,
     )
 
@@ -180,18 +172,13 @@ def build_released_page(
 def _resolve_recipe(
     variant: str,
     paper_mode: PaperMode | None,
-) -> tuple[_CompactRecipe | None, PaperMode | None]:
-    if variant == _M02X_VARIANT:
-        modes = (PaperMode.PLAIN,)
-        recipe = None
-    else:
-        recipe = _COMPACT_RECIPES.get(variant)
-        if recipe is None:
-            raise ValueError(f"Unsupported Phomemo recipe variant: {variant}")
-        modes = recipe.paper_modes
+) -> tuple[_CompactRecipe, PaperMode]:
+    recipe = _COMPACT_RECIPES.get(variant)
+    if recipe is None:
+        raise ValueError(f"Unsupported Phomemo recipe variant: {variant}")
 
-    selected_mode = modes[0] if paper_mode is None else paper_mode
-    if not any(selected_mode is mode for mode in modes):
+    selected_mode = recipe.paper_modes[0] if paper_mode is None else paper_mode
+    if not any(selected_mode is mode for mode in recipe.paper_modes):
         raise ValueError(f"Unsupported Phomemo paper mode: {paper_mode!r}")
     return recipe, selected_mode
 
@@ -200,23 +187,18 @@ def _pad_raster(
     raster: RasterBuffer,
     *,
     left: int,
-    right: int,
+    top: int,
     final_width: int,
+    final_height: int,
     height: int,
 ) -> RasterBuffer:
-    if left == 0 and right == 0:
+    if left == 0 and top == 0:
         return raster
 
-    pixels = [0] * (final_width * height)
+    pixels = [0] * (final_width * final_height)
     for row in range(height):
         source_start = row * raster.width
-        destination_start = row * final_width + left
+        destination_start = (row + top) * final_width + left
         for column in range(raster.width):
             pixels[destination_start + column] = raster.pixels[source_start + column]
     return RasterBuffer(pixels, final_width, PixelFormat.BW1)
-
-
-def _clamp_byte(value: int | None, *, default: int) -> int:
-    if value is None:
-        value = default
-    return max(0, min(0xFF, int(value)))

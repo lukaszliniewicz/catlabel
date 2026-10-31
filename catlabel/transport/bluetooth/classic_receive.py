@@ -5,6 +5,15 @@ import socket
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Protocol, cast
+
+
+class _PushSource(Protocol):
+    def start_receive(
+        self, on_data: Callable[[bytes], None], on_error: Callable[[Exception], None]
+    ) -> None: ...
+
+    def stop_receive(self) -> None: ...
 
 
 @dataclass(eq=False)
@@ -19,7 +28,7 @@ class _ReplyWaiter:
 
 
 class ClassicReceiveHub:
-    """Single-reader byte inbox for a selectable Classic Bluetooth socket.
+    """Single-reader byte inbox for a native socket or owner-thread push source.
 
     The hub owns reads while started, but never owns or changes the socket.
     Callers should register waiters before writing commands that can reply.
@@ -35,14 +44,21 @@ class ClassicReceiveHub:
         max_history_bytes: int = 65536,
         poll_timeout: float = 0.1,
     ) -> None:
-        if not isinstance(sock, socket.socket):
-            raise TypeError("ClassicReceiveHub requires a native socket.socket")
+        if not self.supports(sock):
+            raise TypeError(
+                "ClassicReceiveHub requires a native socket.socket or push source"
+            )
         if max_history_bytes <= 0:
             raise ValueError("max_history_bytes must be positive")
         if poll_timeout <= 0:
             raise ValueError("poll_timeout must be positive")
 
         self._sock = sock
+        self._push_source = (
+            None if isinstance(sock, socket.socket) else cast(_PushSource, sock)
+        )
+        self._push_started = False
+        self._lifecycle_lock = threading.Lock()
         self._listener = listener
         self._max_history_bytes = int(max_history_bytes)
         self._poll_timeout = float(poll_timeout)
@@ -57,11 +73,22 @@ class ClassicReceiveHub:
         self._stopped = False
         self._failure: RuntimeError | None = None
 
+    @staticmethod
+    def supports(sock: object) -> bool:
+        return isinstance(sock, socket.socket) or (
+            callable(getattr(sock, "start_receive", None))
+            and callable(getattr(sock, "stop_receive", None))
+        )
+
     def set_listener(self, listener: Callable[[bytes], None] | None) -> None:
         with self._condition:
             self._listener = listener
 
     def start(self) -> None:
+        with self._lifecycle_lock:
+            self._start()
+
+    def _start(self) -> None:
         with self._condition:
             if self._started:
                 return
@@ -70,9 +97,23 @@ class ClassicReceiveHub:
             if self._failure is not None:
                 self._raise_failure(self._failure)
 
+            if self._push_source is not None:
+                self._started = True
+                # Retain attempted startup for retryable cleanup even if the
+                # source installs native resources and then reports failure.
+                self._push_started = True
+        if self._push_source is not None:
+            try:
+                self._push_source.start_receive(self.feed, self._push_failed)
+            except Exception as exc:
+                self._record_failure("Classic receive startup failed", exc)
+                raise
+            return
+
+        with self._condition:
             selector = selectors.DefaultSelector()
             try:
-                selector.register(self._sock, selectors.EVENT_READ)
+                selector.register(cast(socket.socket, self._sock), selectors.EVENT_READ)
             except Exception:
                 selector.close()
                 raise
@@ -94,12 +135,24 @@ class ClassicReceiveHub:
                 raise
 
     def stop(self) -> None:
+        # Wake transactions before waiting on the native owner's cleanup.
+        self._stop_event.set()
+        with self._condition:
+            self._stopped = True
+            self._fail_locked("Classic receive hub stopped")
+        with self._lifecycle_lock:
+            self._stop()
+
+    def _stop(self) -> None:
         self._stop_event.set()
         with self._condition:
             self._stopped = True
             self._fail_locked("Classic receive hub stopped")
             thread = self._thread
 
+        if self._push_started and self._push_source is not None:
+            self._push_source.stop_receive()
+            self._push_started = False
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=max(0.2, self._poll_timeout * 2))
             if thread.is_alive():
@@ -115,7 +168,9 @@ class ClassicReceiveHub:
                 raise RuntimeError("Classic receive hub is stopped")
             if self._failure is not None:
                 self._raise_failure(self._failure)
-            if self._thread is None or not self._thread.is_alive():
+            if self._push_source is None and (
+                self._thread is None or not self._thread.is_alive()
+            ):
                 raise RuntimeError("Classic receive reader is not running")
 
     def mark(self) -> int:
@@ -234,7 +289,7 @@ class ClassicReceiveHub:
                     return
 
                 try:
-                    payload = self._sock.recv(4096)
+                    payload = cast(socket.socket, self._sock).recv(4096)
                 except Exception as exc:
                     self._record_failure("Classic receive recv failed", exc)
                     return
@@ -242,28 +297,7 @@ class ClassicReceiveHub:
                     self._record_failure("Classic receive socket reached EOF")
                     return
 
-                data = bytes(payload)
-                with self._condition:
-                    if self._stop_event.is_set() or self._failure is not None:
-                        return
-                    listener = self._listener
-                if listener is not None:
-                    try:
-                        listener(data)
-                    except Exception as exc:
-                        self._record_failure("Classic receive listener failed", exc)
-                        return
-
-                with self._condition:
-                    if self._stop_event.is_set() or self._failure is not None:
-                        return
-                    self._history.extend(data)
-                    self._trim_history_locked()
-                    for waiter in tuple(self._waiters):
-                        self._match_waiter_locked(waiter)
-                        if self._failure is not None:
-                            break
-                    self._condition.notify_all()
+                self.feed(bytes(payload))
         except Exception as exc:
             self._record_failure("Classic receive reader failed", exc)
         finally:
@@ -283,6 +317,34 @@ class ClassicReceiveHub:
                         )
                     waiter.event.set()
                 self._condition.notify_all()
+
+    def _push_failed(self, error: Exception) -> None:
+        self._record_failure("Classic receive source failed", error)
+
+    def feed(self, payload: bytes) -> None:
+        if not payload:
+            return
+        data = bytes(payload)
+        with self._condition:
+            if self._stop_event.is_set() or self._failure is not None:
+                return
+            listener = self._listener
+        if listener is not None:
+            try:
+                listener(data)
+            except Exception as exc:
+                self._record_failure("Classic receive listener failed", exc)
+                return
+        with self._condition:
+            if self._stop_event.is_set() or self._failure is not None:
+                return
+            self._history.extend(data)
+            self._trim_history_locked()
+            for waiter in tuple(self._waiters):
+                self._match_waiter_locked(waiter)
+                if self._failure is not None:
+                    break
+            self._condition.notify_all()
 
     def _match_waiter_locked(self, waiter: _ReplyWaiter) -> None:
         if (

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import crc8
 
@@ -13,6 +13,7 @@ class PrefixedPacket:
     opcode: int
     flags: int
     payload: bytes
+    start_offset: int = field(default=0, compare=False)
 
 
 class PrefixedPacketStreamDecoder:
@@ -22,9 +23,16 @@ class PrefixedPacketStreamDecoder:
         family = ProtocolFamily.from_value(protocol_family)
         self._prefix = family.require_packet_prefix()
         self._buffer = bytearray()
+        self._received_byte_count = 0
+
+    @property
+    def received_byte_count(self) -> int:
+        """Count all received bytes, including noise and incomplete frames."""
+        return self._received_byte_count
 
     def feed(self, data: bytes) -> tuple[PrefixedPacket, ...]:
         self._buffer.extend(data)
+        self._received_byte_count += len(data)
         packets: list[PrefixedPacket] = []
         prefix_length = len(self._prefix)
         header_length = prefix_length + 4
@@ -63,6 +71,7 @@ class PrefixedPacketStreamDecoder:
                     opcode=raw[prefix_length],
                     flags=raw[prefix_length + 1],
                     payload=payload,
+                    start_offset=self._received_byte_count - len(self._buffer),
                 )
             )
             del self._buffer[:packet_length]

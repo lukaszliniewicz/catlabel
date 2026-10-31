@@ -95,8 +95,8 @@ def scan_result_payload(
     hardware_info = vendor_registry.identify_device(name, device, device.address)
     transport = getattr(device, "transport", None)
     transport_value = str(getattr(transport, "value", transport) or "").lower()
-
-    return {
+    manufacturer_data = getattr(device, "manufacturer_data", None)
+    result = {
         **hardware_info,
         "name": name,
         "address": device.address,
@@ -104,6 +104,13 @@ def scan_result_payload(
         "paired": device.paired,
         "transport": transport_value or None,
     }
+    if manufacturer_data is not None:
+        # Advertisement bytes are evidence, never raw binary in API/MCP JSON.
+        result["manufacturer_data"] = {
+            str(company): bytes(payload).hex()
+            for company, payload in manufacturer_data.items()
+        }
+    return result
 
 
 async def scan_recognized_devices(

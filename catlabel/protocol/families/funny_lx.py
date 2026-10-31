@@ -17,13 +17,33 @@ _PACKET_HALF_BYTES = 48
 _DIRECT_VARIANT = "lx_d_direct"
 _REVERSED_VARIANT = "lx_d_reversed"
 _SUPPORTED_VARIANTS = frozenset({_DIRECT_VARIANT, _REVERSED_VARIANT})
-_FEED_PAPER_CMD = bytes.fromhex("5a 03 81 00 04 00 00 00 00 00 00 00")
 
 
 @dataclass(frozen=True)
 class FunnyLxCrc:
     low: bytes
     high: bytes
+
+
+@dataclass(frozen=True)
+class FunnyLxStatus:
+    battery: int
+    paper: int
+    temp: int
+    voltage: int
+    darkness: int
+
+
+def decode_status(payload: bytes) -> FunnyLxStatus | None:
+    if len(payload) < 8 or payload[:2] != b"\x5a\x02":
+        return None
+    return FunnyLxStatus(
+        battery=payload[2],
+        paper=payload[3],
+        temp=payload[5],
+        voltage=payload[6],
+        darkness=payload[7] + 1,
+    )
 
 
 def crc16_xmodem(data: bytes) -> int:
@@ -130,14 +150,6 @@ def _footer_matcher(total: bytes) -> ProtocolReplyMatcher:
     )
 
 
-def advance_paper_cmd(_dpi: int, _family, _variant: str | None = None) -> bytes:
-    return _FEED_PAPER_CMD
-
-
-def retract_paper_cmd(_dpi: int, _family, _variant: str | None = None) -> bytes:
-    return b""
-
-
 BEHAVIOR = ProtocolBehavior(
     default_image_pipeline=ImagePipelineConfig(
         formats=(PixelFormat.BW1,),
@@ -146,7 +158,5 @@ BEHAVIOR = ProtocolBehavior(
     image_encoding_support={ImageEncoding.FUNNY_LX_RASTER: (PixelFormat.BW1,)},
     supported_protocol_variants=tuple(sorted(_SUPPORTED_VARIANTS)),
     supported_paper_modes=(PaperMode.PLAIN,),
-    advance_paper_builder=advance_paper_cmd,
-    retract_paper_builder=retract_paper_cmd,
     job_builder=build_job,
 )

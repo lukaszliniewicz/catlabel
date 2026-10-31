@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from ...raster import PixelFormat
-from ..compression import compress_lzo1x_1
 from ..encoding import pack_line
 from ..family import ProtocolFamily
 from ..packet import make_packet
@@ -21,8 +20,6 @@ _POST_IMAGE_FEED_SPEED = 0x19
 _DENSITY_PAYLOAD_PREFIX = 0x01
 V5G_DENSITY_MIN = 1
 V5G_DENSITY_MAX = 200
-# Gray jobs are sent in 20-row compressed bands.
-_GRAY_BAND_ROWS = 20
 V5G_CONNECT_QUERY_PACKET = bytes.fromhex("5178A30001000000FF")
 V5G_TEMPERATURE_QUERY_PACKET = bytes.fromhex("5178D30001000000FF")
 
@@ -92,29 +89,11 @@ def _dot_frames(request: PrintJobRequest) -> bytes:
     return bytes(job)
 
 
-def _gray_band_payload(raw_block: bytes) -> bytes:
-    compressed = compress_lzo1x_1(raw_block)
-    return (
-        len(raw_block).to_bytes(2, "little")
-        + len(compressed).to_bytes(2, "little")
-        + compressed
-    )
-
-
-def _gray_frames(request: PrintJobRequest) -> bytes:
-    raster = request.default_raster
-    if raster.pixel_format not in (PixelFormat.GRAY4, PixelFormat.GRAY8):
-        raise ValueError("V5G gray jobs require GRAY4 or GRAY8 raster data")
-
-    job = bytearray()
-    for row in range(0, raster.height, _GRAY_BAND_ROWS):
-        rows = min(_GRAY_BAND_ROWS, raster.height - row)
-        block = raster.slice_rows(row, rows).packed_bytes()
-        job += make_packet(0xCF, _gray_band_payload(block), request.protocol_family)
-    return bytes(job)
-
-
 def build_job(request: PrintJobRequest) -> bytes:
+    if request.image_pipeline.encoding is not ImageEncoding.V5G_DOT:
+        raise ValueError(
+            f"V5G does not support image encoding {request.image_pipeline.encoding.value}"
+        )
     job = bytearray()
     if request.density is not None:
         job += _density_packet(request.density, request.protocol_family)
@@ -125,10 +104,7 @@ def build_job(request: PrintJobRequest) -> bytes:
     job += _print_mode_packet(request.protocol_family)
     job += _feed_packet(_PRE_IMAGE_FEED_SPEED, request.protocol_family)
 
-    if request.image_pipeline.encoding == ImageEncoding.V5G_GRAY:
-        job += _gray_frames(request)
-    else:
-        job += _dot_frames(request)
+    job += _dot_frames(request)
     job += _feed_packet(_POST_IMAGE_FEED_SPEED, request.protocol_family)
 
     for _ in range(max(0, request.post_print_feed_count)):
@@ -139,14 +115,14 @@ def build_job(request: PrintJobRequest) -> bytes:
     return bytes(job)
 
 
+# Ported from upstream V5G protocol admission commit 73172c621c3b7aea9c71c9c024f9cd549d0b314e.
 BEHAVIOR = ProtocolBehavior(
     default_image_pipeline=ImagePipelineConfig(
-        formats=(PixelFormat.BW1, PixelFormat.GRAY4, PixelFormat.GRAY8),
+        formats=(PixelFormat.BW1,),
         encoding=ImageEncoding.V5G_DOT,
     ),
     image_encoding_support={
         ImageEncoding.V5G_DOT: (PixelFormat.BW1,),
-        ImageEncoding.V5G_GRAY: (PixelFormat.GRAY4, PixelFormat.GRAY8),
     },
     job_builder=build_job,
 )

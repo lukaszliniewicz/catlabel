@@ -113,7 +113,9 @@ class PrintJobCoordinatorTests(unittest.IsolatedAsyncioTestCase):
                 result = await coordinator.start(
                     plan["id"], plan["plan_hash"], "same-key", "credential-1"
                 )
-                await asyncio.sleep(0.04)
+                # Keep this loop alive until the admitted executor has finished;
+                # asyncio.run() cancels pending work when the runner exits.
+                await self.wait_for_state(coordinator, result["id"], "submitted")
                 return result
 
             return asyncio.run(start_and_drain())

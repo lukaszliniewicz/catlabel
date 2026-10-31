@@ -84,21 +84,21 @@ class ReleasedElephAndToPrintTests(unittest.TestCase):
             (
                 PaperMode.TAG,
                 b"\x10\xff\x10\x03\x02",
-                b"SIZE 1 mm,0.13 mm\r\n",
+                b"SIZE 1 mm,0.12 mm\r\n",
                 b"GAP 3 mm,0 mm\r\n",
                 b"SPEED 4\r\n",
             ),
             (
                 PaperMode.PLAIN,
                 b"\x10\xff\x10\x03\x01",
-                b"SIZE 1 mm,5.13 mm\r\n",
+                b"SIZE 1 mm,5.12 mm\r\n",
                 b"GAP 0 mm,0 mm\r\n",
                 b"",
             ),
             (
                 PaperMode.BLACK_TAG,
                 b"\x10\xff\x10\x03\x03",
-                b"SIZE 1 mm,0.13 mm\r\n",
+                b"SIZE 1 mm,0.12 mm\r\n",
                 b"BLINE 3 mm,0 mm\r\n",
                 b"",
             ),
@@ -121,7 +121,7 @@ class ReleasedElephAndToPrintTests(unittest.TestCase):
                     + b"REFERENCE 0,0\r\n"
                     + speed
                     + b"CLS\r\n"
-                    + b"BITMAP 0,0,1,1,0,\x80\r\n"
+                    + b"BITMAP 0,0,1,1,0,\x7f\r\n\r\n"
                     + b"PRINT 1,1\r\n",
                 )
 
@@ -149,9 +149,9 @@ class ReleasedElephAndToPrintTests(unittest.TestCase):
             page_index=2,
             page_count=2,
         )
-        self.assertIn(b"SIZE 1 mm,5.13 mm\r\n", paged_intermediate.payload)
-        self.assertIn(b"SIZE 1 mm,0.13 mm\r\n", continuous_intermediate.payload)
-        self.assertIn(b"SIZE 1 mm,5.13 mm\r\n", continuous_final.payload)
+        self.assertIn(b"SIZE 1 mm,5.12 mm\r\n", paged_intermediate.payload)
+        self.assertIn(b"SIZE 1 mm,0.12 mm\r\n", continuous_intermediate.payload)
+        self.assertIn(b"SIZE 1 mm,5.12 mm\r\n", continuous_final.payload)
 
         paged_hprt = self.build_job(
             ProtocolFamily.TOPRINT_HPRT_ESC,
@@ -223,8 +223,8 @@ class ReleasedElephAndToPrintTests(unittest.TestCase):
             page_count=2,
             page_flow=PageFlow.CONTINUOUS,
         )
-        self.assertIn(b"SIZE 1 mm,0.13 mm\r\n", job.payload)
-        self.assertNotIn(b"SIZE 1 mm,5.13 mm\r\n", job.payload)
+        self.assertIn(b"SIZE 1 mm,0.12 mm\r\n", job.payload)
+        self.assertNotIn(b"SIZE 1 mm,5.12 mm\r\n", job.payload)
 
     def test_page_flow_marks_physical_page_boundaries(self) -> None:
         raster_set = RasterSet.from_single(
@@ -318,13 +318,13 @@ class ReleasedElephAndToPrintTests(unittest.TestCase):
                 variant="p1",
                 paper_mode=PaperMode.CIRCLE_TAG,
             )
-        with self.assertRaisesRegex(ValueError, "divisible by 8"):
-            self.build_job(
-                ProtocolFamily.TOPRINT_TSPL,
-                variant="p1",
-                pixels=self.pixels + [0],
-                width=9,
-            )
+        nine_pixel_job = self.build_job(
+            ProtocolFamily.TOPRINT_TSPL,
+            variant="p1",
+            pixels=self.pixels + [0],
+            width=9,
+        )
+        self.assertIn(b"BITMAP 0,0,2,1,0,\x7f\xff\r\n\r\n", nine_pixel_job.payload)
 
 
 if __name__ == "__main__":

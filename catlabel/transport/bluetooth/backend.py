@@ -18,16 +18,16 @@ from .types import DeviceInfo, DeviceTransport, ScanFailure, SocketLike
 
 _MACOS_FALLBACK_COOLDOWN_SEC = 0.35
 _MACOS_BLE_REFRESH_TIMEOUT_SEC = 3.0
+_STANDARD_WRITE_TIMEOUT_SEC = 8.0
 
 
 class SppBackend:
     def __init__(self, reporter: reporting.Reporter = reporting.DUMMY_REPORTER) -> None:
         self._sock: SocketLike | None = None
         self._lock = threading.Lock()
-        # WinRT and Bleak both retain event-loop/native state for the lifetime
-        # of a connection. The default asyncio executor may run consecutive
-        # operations on different threads, which is unsafe for those objects
-        # on Windows. Keep every operation for this backend on one worker.
+        # Bleak's private loop is pumped by this worker. Native Classic wrappers
+        # marshal I/O to their own SDK owners, while this worker serializes
+        # commands and owns connection selection and teardown.
         self._executor = ThreadPoolExecutor(
             max_workers=1,
             thread_name_prefix="catlabel-bluetooth",
@@ -37,6 +37,7 @@ class SppBackend:
         self._transport: DeviceTransport | None = None
         self._classic_receive: ClassicReceiveHub | None = None
         self._notify_callback: Callable[[bytes], None] | None = None
+        self._before_write_callback: Callable[[int, float], None] | None = None
         self._notify_callback_lock = threading.Lock()
         self._flow_resume_event = threading.Event()
         self._flow_resume_event.set()
@@ -103,7 +104,6 @@ class SppBackend:
         if (
             self._connected
             and self._transport is DeviceTransport.CLASSIC
-            and isinstance(sock, socket.socket)
             and self._classic_receive is not None
         ):
             with self._notify_callback_lock:
@@ -114,6 +114,13 @@ class SppBackend:
             register_callback = getattr(sock, "register_notify_callback", None)
             if callable(register_callback):
                 register_callback(callback)
+
+    def register_before_write_callback(
+        self, callback: Callable[[int, float], None] | None
+    ) -> None:
+        """Validate a Classic standard chunk immediately before writing it."""
+        with self._notify_callback_lock:
+            self._before_write_callback = callback
 
     def _dispatch_classic_notification(self, payload: bytes) -> None:
         with self._notify_callback_lock:
@@ -154,6 +161,7 @@ class SppBackend:
         )
 
     async def disconnect(self) -> None:
+        self._connected = False
         self._disconnect_requested.set()
         self._flow_resume_event.set()
         stop_error: BaseException | None = None
@@ -170,6 +178,8 @@ class SppBackend:
         except BaseException as exc:
             close_error = exc
         if stop_error is not None:
+            if close_error is not None:
+                raise stop_error from close_error
             raise stop_error
         if close_error is not None:
             raise close_error
@@ -317,6 +327,10 @@ class SppBackend:
             raise RuntimeError(
                 "Bluetooth connection failed (no transport attempts provided)"
             )
+        # A failed native/BLE close still owns its resources. Retry cleanup
+        # before considering any replacement socket or fallback transport.
+        if self._sock is not None or self._classic_receive is not None:
+            self._disconnect_blocking()
         self._disconnect_requested.clear()
         self._flow_resume_event.set()
         self._flow_controlled_standard_write = False
@@ -375,6 +389,8 @@ class SppBackend:
                 )
                 return
             except Exception as exc:
+                if self._sock is not None or self._classic_receive is not None:
+                    raise
                 errors.append((candidate, exc))
                 self._reporter.debug(
                     short="Bluetooth",
@@ -470,9 +486,14 @@ class SppBackend:
                     ),
                     reporter=self._reporter,
                 )
+                # Own the candidate before connect: partially opened resources
+                # must remain reachable when native cleanup fails.
+                self._sock = sock
+                self._transport = device.transport
+                self._disconnect_requested.clear()
                 set_timeout = getattr(sock, "settimeout", None)
                 if callable(set_timeout):
-                    set_timeout(8)
+                    set_timeout(_STANDARD_WRITE_TIMEOUT_SEC)
                 sock.connect((device.address, channel))
                 profile = device.ble_profile
                 flow_controlled = bool(
@@ -489,13 +510,15 @@ class SppBackend:
                         raise ValueError(
                             "Classic flow-resume timeout must be finite and non-negative"
                         )
-                if device.transport is DeviceTransport.CLASSIC and isinstance(
-                    sock, socket.socket
+                if (
+                    device.transport is DeviceTransport.CLASSIC
+                    and ClassicReceiveHub.supports(sock)
                 ):
                     hub = ClassicReceiveHub(
                         sock,
                         listener=self._dispatch_classic_notification,
                     )
+                    self._classic_receive = hub
                     hub.start()
                     hub.ensure_healthy()
                 self._sock = sock
@@ -515,15 +538,14 @@ class SppBackend:
                 return
             except Exception as exc:
                 last_error = exc
-                if hub is not None:
-                    with suppress(Exception):
-                        hub.stop()
                 self._reporter.debug(
                     short="Bluetooth",
                     detail=f"RFCOMM channel {channel} failed for {device.address}: {exc}",
                 )
-                _safe_close(sock)
-                self._clear_connection_state()
+                try:
+                    self._disconnect_blocking()
+                except Exception as cleanup_error:
+                    raise exc from cleanup_error
         if last_error and _is_timeout_error(last_error):
             if pair_error:
                 raise RuntimeError(
@@ -549,31 +571,38 @@ class SppBackend:
         self._classic_receive = None
         with self._notify_callback_lock:
             self._notify_callback = None
+            self._before_write_callback = None
         self._flow_controlled_standard_write = False
         self._flow_resume_timeout_s = None
         self._flow_resume_event.set()
 
     def _disconnect_blocking(self) -> None:
+        self._connected = False
         self._disconnect_requested.set()
         self._flow_resume_event.set()
         hub = self._classic_receive
         sock = self._sock
-        primary_error: BaseException | None = None
+        errors: list[BaseException] = []
         if hub is not None:
             try:
                 hub.stop()
             except BaseException as exc:
-                primary_error = exc
-        try:
-            if sock is not None:
+                errors.append(exc)
+            else:
+                self._classic_receive = None
+        if sock is not None:
+            try:
                 sock.close()
-        except BaseException as exc:
-            if primary_error is None:
-                primary_error = exc
-        finally:
+            except BaseException as exc:
+                errors.append(exc)
+            else:
+                self._sock = None
+        if self._classic_receive is None and self._sock is None:
             self._clear_connection_state()
-        if primary_error is not None:
-            raise primary_error
+        if len(errors) > 1:
+            raise errors[0] from errors[1]
+        if errors:
+            raise errors[0]
 
     def _attach_runtime_controller_blocking(
         self,
@@ -614,10 +643,11 @@ class SppBackend:
         if self._transport == DeviceTransport.BLE:
             checker = getattr(self._sock, "can_query_control_packet", None)
             return bool(checker()) if callable(checker) else False
-        if self._transport is DeviceTransport.CLASSIC and isinstance(
-            self._sock, socket.socket
+        if (
+            self._transport is DeviceTransport.CLASSIC
+            and self._classic_receive is not None
         ):
-            return self._classic_receive is not None
+            return True
         return callable(getattr(self._sock, "recv", None))
 
     def _can_wait_for_notification_blocking(self) -> bool:
@@ -652,11 +682,11 @@ class SppBackend:
         sock = self._sock
         if sock is None or not self._connected:
             raise RuntimeError("Not connected to a Bluetooth device")
-        if isinstance(sock, socket.socket):
-            hub = self._classic_receive
-            if hub is None:
-                raise RuntimeError("Classic receive hub unavailable")
+        hub = self._classic_receive
+        if hub is not None:
             hub.ensure_healthy()
+        elif isinstance(sock, socket.socket):
+            raise RuntimeError("Classic receive hub unavailable")
         return sock
 
     def _wait_for_classic_standard_flow(self) -> None:
@@ -719,8 +749,9 @@ class SppBackend:
                     reply_complete=reply_complete,
                 )
             return optional_bytes(result, operation="query_control_packet")
-        if self._transport is DeviceTransport.CLASSIC and isinstance(
-            self._sock, socket.socket
+        if (
+            self._transport is DeviceTransport.CLASSIC
+            and self._classic_receive is not None
         ):
             hub = self._classic_receive
             if hub is None:
@@ -876,6 +907,20 @@ class SppBackend:
             chunk = data[offset : offset + effective_chunk_size]
             with self._lock:
                 sock = self._ensure_classic_ready_for_io()
+                with self._notify_callback_lock:
+                    before_write = self._before_write_callback
+                if before_write is not None:
+                    get_timeout = getattr(sock, "gettimeout", None)
+                    current_timeout = get_timeout() if callable(get_timeout) else None
+                    budget = (
+                        float(current_timeout)
+                        if isinstance(current_timeout, (int, float))
+                        and math.isfinite(current_timeout)
+                        and current_timeout > 0
+                        else _STANDARD_WRITE_TIMEOUT_SEC
+                    )
+                    before_write(len(chunk), budget)
+                self._ensure_classic_ready_for_io()
                 _send_all(sock, chunk)
             offset += len(chunk)
             if effective_delay:
@@ -946,13 +991,6 @@ def _unique_attempts(attempts: list[DeviceInfo]) -> list[DeviceInfo]:
         seen.add(key)
         unique.append(device)
     return unique
-
-
-def _safe_close(sock: SocketLike | None) -> None:
-    if not sock:
-        return
-    with suppress(Exception):
-        sock.close()
 
 
 def _send_all(sock: SocketLike, data: bytes) -> None:
