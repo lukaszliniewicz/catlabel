@@ -763,7 +763,11 @@ class BrowserRendererTests(unittest.IsolatedAsyncioTestCase):
                 )
                 renderer = template.BrowserRenderer(request_cleanup_budget_seconds=0.12)
                 constants = (
-                    patch.object(template, "RENDER_BASE_TIMEOUT_SECONDS", 0.02),
+                    patch.object(
+                        template,
+                        "RENDER_BASE_TIMEOUT_SECONDS",
+                        0.02 if use_timeout else 2.0,
+                    ),
                     patch.object(template, "RENDER_PER_JOB_TIMEOUT_SECONDS", 0.0),
                 )
                 with factory.patch_import(), constants[0], constants[1]:

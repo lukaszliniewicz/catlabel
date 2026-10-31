@@ -86,7 +86,13 @@ class _Client:
 
 
 class _StageSocket(_BleakSocket):
-    def __init__(self, client: _Client) -> None:
+    def __init__(
+        self,
+        client: _Client,
+        *,
+        setup_timeout: float = 0.01,
+        cleanup_timeout: float = 0.025,
+    ) -> None:
         super().__init__(
             pairing_hint=True,
             ble_profile=BleTransportProfile(
@@ -95,8 +101,8 @@ class _StageSocket(_BleakSocket):
         )
         self.fake = client
         self._pairing_hint = True
-        self._timeout = 0.01
-        self._cleanup_timeout = 0.025
+        self._timeout = setup_timeout
+        self._cleanup_timeout = cleanup_timeout
 
     async def _resolve_client_target(self, address: str) -> str:
         await self.fake.stall("resolve")
@@ -248,7 +254,7 @@ class BleSetupDeadlineTests(unittest.TestCase):
 
     def test_successful_setup_preserves_endpoints_and_mtu(self) -> None:
         client = _Client()
-        socket = _StageSocket(client)
+        socket = _StageSocket(client, setup_timeout=1.0, cleanup_timeout=1.0)
         with patch.dict(sys.modules, {"bleak": _bleak(client)}):
             socket.connect(("fake", 0))
         self.assertTrue(socket._connected)
@@ -294,7 +300,7 @@ class BleSetupDeadlineTests(unittest.TestCase):
         client = _Client("failed-subscribe")
         client.stop_errors[NOTIFY] = RuntimeError("unsubscribe failed")
         client.disconnect_error = RuntimeError("disconnect failed")
-        socket = _StageSocket(client)
+        socket = _StageSocket(client, setup_timeout=1.0, cleanup_timeout=1.0)
         transport = socket._transport
         with (
             patch.dict(sys.modules, {"bleak": _bleak(client)}),

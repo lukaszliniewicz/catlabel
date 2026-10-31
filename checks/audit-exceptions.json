@@ -1,1 +1,707 @@
-[]
+[
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@eslint-community/eslint-utils",
+      "via": "eslint",
+      "versions": [
+        "4.10.1"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through eslint. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@eslint/config-array",
+      "via": "minimatch",
+      "versions": [
+        "0.21.2"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through minimatch. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@eslint/eslintrc",
+      "via": "minimatch",
+      "versions": [
+        "3.3.7"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through minimatch. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/eslint-plugin",
+      "via": "@typescript-eslint/parser",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/parser. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/eslint-plugin",
+      "via": "@typescript-eslint/type-utils",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/type-utils. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/eslint-plugin",
+      "via": "@typescript-eslint/utils",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/utils. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/eslint-plugin",
+      "via": "eslint",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through eslint. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/parser",
+      "via": "@typescript-eslint/typescript-estree",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/typescript-estree. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/parser",
+      "via": "eslint",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through eslint. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/type-utils",
+      "via": "@typescript-eslint/typescript-estree",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/typescript-estree. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/type-utils",
+      "via": "@typescript-eslint/utils",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/utils. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/type-utils",
+      "via": "eslint",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through eslint. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/typescript-estree",
+      "via": "minimatch",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through minimatch. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/utils",
+      "via": "@eslint-community/eslint-utils",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @eslint-community/eslint-utils. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/utils",
+      "via": "@typescript-eslint/typescript-estree",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/typescript-estree. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "@typescript-eslint/utils",
+      "via": "eslint",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through eslint. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "dependency-tree",
+      "via": "precinct",
+      "versions": [
+        "11.5.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through precinct. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "detective-typescript",
+      "via": "@typescript-eslint/typescript-estree",
+      "versions": [
+        "14.1.2"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/typescript-estree. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "detective-vue2",
+      "via": "detective-typescript",
+      "versions": [
+        "2.3.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through detective-typescript. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "editorconfig",
+      "via": "minimatch",
+      "versions": [
+        "3.0.2"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through minimatch. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "eslint",
+      "via": "@eslint-community/eslint-utils",
+      "versions": [
+        "9.39.5"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @eslint-community/eslint-utils. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "eslint",
+      "via": "@eslint/config-array",
+      "versions": [
+        "9.39.5"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @eslint/config-array. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "eslint",
+      "via": "@eslint/eslintrc",
+      "versions": [
+        "9.39.5"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @eslint/eslintrc. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "eslint",
+      "via": "minimatch",
+      "versions": [
+        "9.39.5"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through minimatch. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "eslint-plugin-react",
+      "via": "minimatch",
+      "versions": [
+        "7.37.5"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through minimatch. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "eslint-plugin-react-refresh",
+      "via": "eslint",
+      "versions": [
+        "0.5.7"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through eslint. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "glob",
+      "id": 1244013,
+      "severity": "moderate",
+      "range": ">=9.0.0 <=14.0.1",
+      "versions": [
+        "13.0.6"
+      ]
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Direct advisory. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "glob",
+      "via": "minimatch",
+      "versions": [
+        "13.0.6"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through minimatch. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "js-beautify",
+      "via": "editorconfig",
+      "versions": [
+        "2.0.3"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through editorconfig. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "js-beautify",
+      "via": "glob",
+      "versions": [
+        "2.0.3"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through glob. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "madge",
+      "via": "dependency-tree",
+      "versions": [
+        "8.0.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through dependency-tree. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "minimatch",
+      "id": 1244012,
+      "severity": "moderate",
+      "range": "<11.0.1",
+      "versions": [
+        "10.2.6",
+        "3.1.5"
+      ]
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Direct advisory. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "precinct",
+      "via": "detective-typescript",
+      "versions": [
+        "12.3.2"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through detective-typescript. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "precinct",
+      "via": "detective-vue2",
+      "versions": [
+        "12.3.2"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through detective-vue2. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "typescript-eslint",
+      "via": "@typescript-eslint/eslint-plugin",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/eslint-plugin. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "typescript-eslint",
+      "via": "@typescript-eslint/parser",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/parser. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "typescript-eslint",
+      "via": "@typescript-eslint/typescript-estree",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/typescript-estree. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "typescript-eslint",
+      "via": "@typescript-eslint/utils",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through @typescript-eslint/utils. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  },
+  {
+    "tool": "npm-advisories",
+    "finding": {
+      "package": "typescript-eslint",
+      "via": "eslint",
+      "versions": [
+        "8.71.0"
+      ],
+      "severity": "moderate"
+    },
+    "owner": "CatLabel maintainers",
+    "reason": "Transitive report through eslint. Reviewed for 0.3.1: glob and minimatch are confined to trusted repository lint/type/cycle tooling and the unused js-beautify Node CLI. The application imports only js-beautify/js/src/index.js formatters; the packaged ZIP contains neither node_modules nor a Node runtime. No external glob patterns or AbortSignal filesystem traversal enter these paths. Fixes require a separate major tooling upgrade; minimatch 11 removes the callable/default export still used by ESLint and eslint-plugin-react.",
+    "expires": "2026-12-01",
+    "references": [
+      "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+      "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+    ]
+  }
+]
