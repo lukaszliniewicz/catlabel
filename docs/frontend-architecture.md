@@ -42,7 +42,7 @@ npm test
 npm run build
 ```
 
-`npm run check` runs all three. Tests cover document/page isolation, history reset, AI setter contracts, hydration validation, batch/CSV limits, API errors and timeouts, and HTML sanitization.
+`npm run check` runs these checks plus TypeScript validation. Tests cover document/page isolation, history reset, AI setter contracts, hydration validation, batch/CSV limits, API errors and timeouts, and HTML sanitization.
 
 The editor registers browser site tools when `document.modelContext` is available, falling back to older `navigator.modelContext` implementations.
 Schemas come from the backend MCP registry, and calls return its original content

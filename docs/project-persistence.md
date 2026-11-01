@@ -10,4 +10,4 @@ Folder references must exist. Folder moves reject self/descendant references and
 
 Imports keep export format `1.0`. The complete tree is validated before the first insert, with at most 10,000 nodes, 64 levels and a 16 MiB upload. All inserts commit together; a failed later child or database write rolls back the whole import. Existing destination data remain intact. Export and deletion detect cycles and enforce traversal limits; root export rejects disconnected or orphaned records instead of silently omitting them.
 
-Local drafts, undo history and user confirmation before replacing a design are separate editor concerns tracked in the maintenance plan. These transaction guarantees do not yet imply complete draft recovery.
+These guarantees apply to saved projects and imports. Database transactions do not guarantee recovery of unsaved canvas edits or undo history after a browser or process crash; save the design before closing CatLabel.

@@ -1,278 +1,245 @@
-# CatLabel API Reference
+# CatLabel REST API
 
-This guide describes the REST API for direct integrations. For harness-driven design, PNG previews and durable print plans, start with [MCP](docs/mcp.md).
+Use the REST API for direct integrations. For saved designs, revision-checked
+edits, PNG previews and durable print plans, start with the [MCP guide](docs/mcp.md).
+The running application's `/openapi.json` describes the complete REST request
+schemas; this guide covers the main design and printing routes.
 
-Every `/api` request requires `X-CatLabel-Client: 1`; configured access tokens also require Bearer authentication. See [local operation](docs/local-operation.md), [resource limits](docs/resource-limits.md) and [project revisions](docs/project-persistence.md).
+Every `/api` request requires `X-CatLabel-Client: 1`. If an access token is
+configured, also send `Authorization: Bearer <token>`. See
+[local operation](docs/local-operation.md) for authentication and LAN access.
 
-## Core Concepts & Agent Guidelines
+## Discover the available context
 
-*   **Coordinate System**: Canvas dimensions and coordinates are in **pixels**.
-    *   **203 DPI**: 1 mm ≈ 8 pixels. (Standard hardware width: 384px = 48mm)
-    *   **300 DPI**: 1 mm ≈ 11.8 pixels.
-    *   *Tip*: Always check `/api/agent/context` or the hardware profile for the exact width/DPI.
-*   **Media Types (CRITICAL)**: 
-    *   **`continuous` (Rolls)**: Can be cut to a chosen length within the model and processing limits. Use `canvas_state.isRotated = true` for landscape banners.
-    *   **`pre-cut` (Niimbot D11, B21, etc.)**: Fixed boundaries. You *must* strictly adhere to the defined canvas size. **Do not use `splitMode` on pre-cut media.**
-*   **Banners vs. Oversize Split (CRITICAL)**:
-    *   **Long Banners**: To print a long banner on a *single* strip of continuous tape, set `"isRotated": true`, make the `width` as long as you need (e.g., 1000px), and keep `height: 384` (hardware max). **Do NOT use `splitMode`**.
-    *   **Oversize Multi-Strip Decals**: Only set `"splitMode": true` if the user wants a giant graphic stitched together from *multiple parallel strips of tape*.
-*   **Design Modes**: A page can combine absolute-positioned canvas elements with a sanitized HTML/CSS layout. `pageLayouts` supplies the exact page-specific HTML or managed template; one page never inherits another page’s content.
-*   **Built-in Dynamic Tags**:
-    *   `{{ $date }}` -> Inserts today's date (YYYY-MM-DD).
-    *   `{{ $date+7 }}` / `{{ $date-30 }}` -> Inserts offset dates.
-    *   `{{ $time }}` -> Inserts HH:MM time.
-
----
-
-## Dynamic Context (CRITICAL FOR AGENTS)
-Before generating new payloads or guessing standard sizes, always query `GET /api/agent/context`.
-This provides you with:
-1. Printer/Media constraints (`intended_media_type`, `hardware_width_px`).
-2. Available `.ttf` fonts (`global_default_font`).
-3. Standard presets (e.g., Gridfinity 30x12mm).
-4. **Available Templates**: The list of built-in `template_id` options for rapid layout generation (e.g., `price_tag`, `inventory_tag`, `shipping_address`).
-
----
-
-## 1. REST Endpoints
-
-### `POST /api/print/direct`
-Prints a single label immediately using a fully headless Chromium renderer.
-```json
-{
-  "mac_address": "XX:XX:XX:XX:XX:XX",
-  "dither": true,
-  "canvas_state": { /* Canvas State Object */ },
-  "variables": { "product_name": "Screws" }
-}
+```sh
+curl --fail -H 'X-CatLabel-Client: 1' http://127.0.0.1:8000/api/agent/context
 ```
 
-### `POST /api/print/batch`
-Prints a queue of labels. Highly optimized for programmatic and LLM usage. You can provide explicit lists OR a `variables_matrix` to let the backend automatically generate Cartesian permutations.
+The response includes media policy, engine rules, presets, available fonts,
+the default font, templates, and root projects/categories. Use the selected
+printer's profile for its actual printable width, DPI and supported settings.
+Do not infer these from a similar-looking model name.
+
+Canvas dimensions and element geometry use document pixels. At 203 DPI, one
+millimetre is approximately eight pixels; at 300 DPI it is approximately 11.8.
+MCP design creation also accepts physical dimensions in millimetres.
+
+## Canvas documents
+
+The saved-design contract is defined in
+[document.schema.json](catlabel/data/document.schema.json). Its
+[edit-operation schema](catlabel/data/edit-operation.schema.json) describes the
+operations accepted by MCP design editing. The runtime MCP schema catalog is
+available through `catlabel_catalog_get` with `kind: "schema"`.
+
 ```json
 {
-  "mac_address": "XX:XX:XX:XX:XX:XX",
-  "copies": 1,
-  "dither": true,
-  "canvas_state": { /* Canvas State Object */ },
-  
-  // OPTION A: Explicit list of records
-  "variables_list": [
-    {"name": "Alice"}, {"name": "Bob"}
+  "document_version": 1,
+  "dpi": 203,
+  "width": 384,
+  "height": 200,
+  "isRotated": false,
+  "splitMode": false,
+  "canvasBorder": "none",
+  "canvasBorderThickness": 4,
+  "currentPage": 0,
+  "pageLayouts": [
+    { "pageIndex": 0, "htmlContent": "", "activeTemplate": null }
   ],
-
-  // OPTION B: Cartesian Matrix
-  "variables_matrix": {
-    "size": ["M2", "M3", "M4"],
-    "length": ["10mm", "20mm"],
-    "type": ["Flat", "Concave"]
-  }
-}
-```
-
-### `POST /api/print/images`
-Prints directly from an array of base64 PNG images. Useful if you render your own graphics entirely externally.
-```json
-{
-  "mac_address": "XX:XX:XX:XX:XX:XX",
-  "images": ["data:image/png;base64,iVBORw0..."],
-  "split_mode": false,
-  "is_rotated": false,
-  "dither": true
-}
-```
-
-### `POST /api/templates/generate`
-Generates a pre-configured layout based on standard templates. Ideal for LLMs so you don't have to guess coordinates.
-```json
-{
-  "template_id": "shipping_address",
-  "width": 576,
-  "height": 384,
-  "params": {
-    "sender": "John Doe\n123 Street",
-    "recipient": "Jane Smith\n456 Ave",
-    "service": "PRIORITY"
-  }
-}
-```
-
-### `POST /api/ai/manual/prompt-builder`
-Builds a single large prompt string for external LLMs such as ChatGPT or Claude. The response includes the current tool schema, printer constraints, and a sanitized canvas state so you can copy/paste it into your preferred model.
-```json
-{
-  "intent": "Move the barcode down and stop the title from overlapping it.",
-  "canvas_state": { /* Canvas State Object */ },
-  "mac_address": "XX:XX:XX:XX:XX:XX",
-  "printer_info": { /* Optional printer info */ }
-}
-```
-
-### `POST /api/ai/manual/execute`
-Executes the JSON tool-call array returned by an external LLM. Tool calls are applied step-by-step against the provided canvas state and the final mutated state is returned.
-```json
-{
-  "tool_calls": [
+  "items": [
     {
-      "tool": "add_text_element",
-      "arguments": {
-        "text": "Hello",
-        "x": 0,
-        "y": 0,
-        "width": 384,
-        "height": 60
-      }
+      "id": "title",
+      "type": "text",
+      "pageIndex": 0,
+      "text": "Parts: {{ sku }}",
+      "x": 8,
+      "y": 8,
+      "width": 368,
+      "height": 48,
+      "size": 28,
+      "fit_to_width": true
+    },
+    {
+      "id": "code",
+      "type": "qrcode",
+      "pageIndex": 0,
+      "data": "{{ sku }}",
+      "x": 8,
+      "y": 64,
+      "width": 96,
+      "height": 96
     }
   ],
-  "canvas_state": { /* Canvas State Object */ }
-}
-```
-
----
-
-## 2. Canvas State Schema
-
-```json
-{
-  "width": 384,
-  "height": 384,
-  "isRotated": false, 
-  "splitMode": false,
-  "canvasBorder": "none",           // "none", "box", "top", "bottom", "cut_line"
-  "canvasBorderThickness": 4,       // Integer pixel thickness
-  "designMode": "canvas",           // "canvas" OR "html"
-  "htmlContent": "",                // HTML string (used only if designMode is "html")
-  "items": [ /* Element Objects */ ],
-  "batchRecords": [ {} ],           // Used by the UI state to track permutations/batches
+  "batchRecords": [{}],
   "printCopies": 1
 }
 ```
 
-*Note: Elements may optionally include `"pageIndex": 0`. Elements on different pages render as separate label jobs.*
+Each element has an `id`, a `type` and a page assignment. Existing elements without
+`pageIndex` belong to page 0. Pages use their own items and exact `pageLayouts`
+entry; they do not inherit another page's HTML or template.
 
-### Element Object Schemas
+| Element | Common fields |
+| --- | --- |
+| Text | `text`, `font`, `size`, `weight`, `align`, `fit_to_width`, `no_wrap`, `invert` |
+| Barcode / QR | `data`, `width`, `height`; barcodes also use `barcode_type`, such as `code128` |
+| Shape | `shapeType`: `rect`, `circle`, `ellipse` or `line`; `fill`, `stroke`, `strokeWidth` |
+| Image | `src` and geometry; use managed assets or an embedded image for portability |
+| Group | `children`, containing its nested elements |
 
-**1. Text (Auto-scaling & Wrapping)**
-```json
-{
-  "id": "txt_1",
-  "type": "text",
-  "text": "ID: {{ asset_id }}",
-  "x": 0, "y": 10,
-  "width": 384, "height": 50,
-  "size": 36,               // Ignored if fit_to_width is true
-  "weight": 700,            // Font weight (400 = Regular, 700 = Bold, 900 = Black)
-  "align": "center",        // "left", "center", "right"
-  "verticalAlign": "middle",// "top", "middle", "bottom"
-  "font": "Roboto.ttf",
-  "fit_to_width": true,     // Shrinks/expands text to exactly fill the bounding box
-  "batch_scale_mode": "uniform", // "uniform" (syncs all batch labels) or "individual"
-  "no_wrap": false,         // Set true to force a single line
-  "invert": false,          // White text on black box
-  "padding": 0,             // Internal padding inside the box
-  "border_style": "none",   // "none", "box", "top", "bottom", "cut_line"
-  "border_thickness": 4
-}
-```
+The renderer uses `data` for barcode/QR contents, with `text` as a compatibility
+fallback. Placeholders such as `{{ sku }}` are substituted per record. Built-in
+date/time variables include `{{ $date }}`, `{{ $date+7 }}` and `{{ $time }}`.
 
-**2. Icon + Text (Specialized Hybrid Element)**
-Ensures perfect alignment between a leading icon and trailing text.
-```json
-{
-  "id": "it_1",
-  "type": "icon_text",
-  "icon_src": "data:image/svg+xml;base64,...",
-  "text": "Caution: Hot",
-  "size": 32, "weight": 700,
-  "icon_size": 48,
-  "icon_x": 0, "icon_y": 0, "text_x": 60, "text_y": 8,
-  "width": 384, "height": 100,
-  "fit_to_width": true
-}
-```
+The direct-print routes accept a canvas object rather than requiring the full
+saved-document schema. Use the document structure above for new integrations;
+render and resource validation still apply to direct requests.
 
-**3. Barcode & QR Code**
-```json
-{
-  "id": "bc_1",
-  "type": "barcode",         // OR "qrcode"
-  "barcode_type": "code128", // "code128", "code39", "ean13"
-  "data": "{{ sku }}",
-  "x": 42, "y": 100,
-  "width": 300, "height": 80 // QR codes will use `width` as scale for both dimensions
-}
-```
+### HTML and canvas layers
 
-**4. Shapes**
-```json
-{
-  "id": "shp_1",
-  "type": "shape",
-  "shapeType": "rect",       // "rect", "circle", "ellipse", "line"
-  "x": 10, "y": 10, "width": 364, "height": 4,
-  "fill": "black",           // "black", "white", "transparent"
-  "stroke": "transparent",
-  "strokeWidth": 0
-}
-```
+Put HTML in the appropriate `pageLayouts[].htmlContent`. Sanitized HTML and
+canvas elements can render together on the same page. `designMode` is not a
+canonical document field and does not disable the canvas layer.
 
-**5. HTML Mode / `.auto-text` & `.bound-box` Helpers**
-If `designMode` is `"html"`, elements inside `items` are ignored. Instead, the renderer evaluates `htmlContent`.
-CatLabel uses a custom 3-Pass Rendering Pipeline to guarantee text auto-scales perfectly and barcodes render sharply. You MUST follow this exact DOM structure:
+For auto-sized text or generated codes, use `.bound-box` around `.auto-text` or
+`.catlabel-code`. Give the wrapper its layout dimensions, and let `.auto-text`
+calculate its font size. For a single line, add `white-space: nowrap`.
 
-1. Create your layout container (e.g., a standard flexbox).
-2. ONLY wrap auto-scaling text or dynamic barcode elements in a `<div class="bound-box">`. You assign your structural `flex` sizing to *this* box. You can use standard HTML elements outside of bound-boxes for decorative borders and lines.
-3. Inside `.bound-box`, place `<div class="auto-text">` for text, or `<div class="catlabel-code">` for barcodes.
+This example is one entry inside `pageLayouts`:
 
 ```json
 {
-  "designMode": "html",
-  "htmlContent": "<div style='display: flex; gap: 4px; padding: 4px; height: 100%;'><div class='bound-box' style='flex: 6;'><div class='auto-text' style='white-space: nowrap; font-weight: 900;'>{{ title }}</div></div><div class='bound-box' style='flex: 4;'><div class='catlabel-code' data-type='qrcode' data-value='{{ url }}'></div></div></div>"
+  "pageIndex": 0,
+  "htmlContent": "<div style='display:flex;gap:4px;height:100%'><div class='bound-box' style='flex:2'><div class='auto-text' style='white-space:nowrap'>{{ title }}</div></div><div class='bound-box' style='flex:1'><div class='catlabel-code' data-type='qrcode' data-value='{{ sku }}'></div></div></div>"
 }
 ```
 
-*Agent Rules for HTML Mode:*
-*   **The `.bound-box` Wrapper:** You MUST wrap `.auto-text` and `.catlabel-code` elements in `.bound-box`.
-*   **Backgrounds & Thermal Safety:** Thermal printers smudge on large solid black blocks. Use sparse patterns. Apply backgrounds using a `position: absolute; inset: 0; z-index: 0;` div *behind* a `position: relative` flex container.
-*   **Text Sizing:** NEVER apply `font-size` directly to `.auto-text` or its children. The engine calculates the maximum safe font size automatically.
-*   **Single-Line Text:** To force text to shrink onto a single line without wrapping, add `style="white-space: nowrap;"` to the `.auto-text` div.
-*   **Padding:** Thermal labels are physically tiny. Keep layout padding extremely minimal (0px to 4px maximum).
-*   **Dynamic Codes:** Use `<div class="catlabel-code" data-type="qrcode|barcode" data-format="code128" data-value="{{ var }}"></div>`. Do not use `<img>` tags for dynamic barcodes.
+Dynamic HTML barcodes use `data-type="barcode"`, `data-format="code128"` and
+`data-value`. The saved-design normalizer migrates older top-level `htmlContent`
+only when `pageLayouts` is absent or empty. New payloads should use page layouts.
 
----
+## Printing routes
 
-## 3. Simulated Agentic Workflows
+Direct and batch canvas rendering require the headless add-on, installed with
+`--install-headless` or `--install-mcp`. These POST requests can start physical
+printing. A successful receipt reports `status`, a `submitted` count,
+`physical_completion: "unverified"`, a `job_id` and a message. Submission does not
+prove that every label emerged. Check the output before retrying an uncertain
+delivery; see [print-job behavior](docs/print-jobs.md).
 
-### Scenario A: Complex Batch Using Templates
-**User Request:** *"I need 5 price tags. Products are Apple, Banana, Orange, Peach, Grape. Price is $1.99 each."*
-**Agent Thought Process:** Instead of manually calculating X/Y coordinates for text and lines, I will use the built-in layout engine tool (`apply_template`) for a `price_tag`, then instantly set the batch variables.
-**Tool Calls:**
-1. `apply_template({ "template_id": "price_tag", "params": { "currency_symbol": "$", "price_main": "1", "price_cents": "99", "product_name": "{{ product }}" } })`
-2. `set_batch_records({ "variables_list": [{"product": "Apple"}, {"product": "Banana"}, {"product": "Orange"}, {"product": "Peach"}, {"product": "Grape"}] })`
-*Execution:* The UI instantly updates, showing the professionally laid out `price_tag` template mapped out 5 times.
+### `POST /api/print/direct`
 
-### Scenario B: Generating a Serialized Asset Sequence
-**User Request:** *"Print asset tags from AST-001 to AST-150."*
-**Agent Thought Process:** Instead of generating 150 items in a JSON array, I will use the `variables_sequence` tool.
-**Tool Calls:**
-1. `add_text_element({ "text": "Property of IT: {{ asset_id }}", "fit_to_width": true, "width": "100%", "height": "100%" })`
-2. `set_batch_records({ "variables_sequence": { "variable_name": "asset_id", "start": 1, "end": 150, "prefix": "AST-", "padding": 3 } })`
-*Execution:* The engine builds 150 permutations safely in the UI.
+Required: `mac_address` and `canvas_state`. Optional: `variables` (a string-valued
+record, default `{}`) and `dither` (default `true`). It renders one record and one
+copy; the receipt also includes the requested `mac_address`.
 
-### Scenario C: The Infinite Continuous Banner
-**User Request:** *"Print a long banner warning saying 'FRAGILE - DO NOT DROP'. Make it white text on a black background."*
-**Agent Thought Process:** Banners require continuous media. The hardware height limit is 384px. To make a banner, I set `isRotated` to true and stretch the `width` arbitrarily.
-**Tool Calls:**
-1. `set_canvas_dimensions({ "width": 1200, "height": 384, "print_direction": "along_tape_banner" })`
-2. `add_text_element({ "text": "FRAGILE - DO NOT DROP", "x": 0, "y": 0, "width": 1200, "height": 384, "fit_to_width": true, "invert": true, "bgColor": "black" })`
-*Execution:* The renderer rotates the resulting 1200x384 image 90 degrees and streams it infinitely through the printer feed mechanism.
+```json
+{
+  "mac_address": "AA:BB:CC:DD:EE:FF",
+  "dither": true,
+  "canvas_state": {
+    "width": 384,
+    "height": 200,
+    "pageLayouts": [{ "pageIndex": 0 }],
+    "items": [
+      { "id": "label", "type": "text", "text": "{{ product }}", "width": 384, "height": 80, "size": 32 }
+    ]
+  },
+  "variables": { "product": "Screws" }
+}
+```
 
-### Harness connection adapter
+Replace the example address with the discovered printer address. Rotation and
+split behavior come from `canvas_state.isRotated` and `canvas_state.splitMode`.
 
-`GET /api/harness/connection` reports whether harness support is enabled and the
-local connection/configuration-file location. `GET /api/harness/tools` returns the
-existing MCP tool definitions for browser registration.
-`POST /api/harness/tools/{name}` accepts `{ "arguments": { ... } }` and returns
-the SDK tool result, including `content`, `structuredContent` and `isError`. These
-endpoints use the same editor authentication and `X-CatLabel-Client: 1` policy as
-the rest of the REST API; they never return the MCP credential.
+### `POST /api/print/batch`
+
+Required: `mac_address` and `canvas_state`. Optional fields are `copies`
+(integer 1–100, default 1), `variables_list` (default `[]`), `variables_matrix`
+(default `null`) and `dither` (default `true`). Record values must be strings.
+
+```json
+{
+  "mac_address": "AA:BB:CC:DD:EE:FF",
+  "copies": 1,
+  "canvas_state": {
+    "width": 384,
+    "height": 200,
+    "pageLayouts": [{ "pageIndex": 0 }],
+    "items": [
+      { "id": "label", "type": "text", "text": "{{ size }} / {{ length }}", "width": 384, "height": 80, "size": 32 }
+    ]
+  },
+  "variables_matrix": {
+    "size": ["M2", "M3"],
+    "length": ["10 mm", "20 mm"]
+  }
+}
+```
+
+This matrix produces four records. If both a list and a matrix are supplied,
+list rows are followed by matrix-product rows. An empty record collection uses
+one empty record. Total jobs are records × copies × distinct pages and must fit
+the [resource limits](docs/resource-limits.md).
+
+`variables_sequence` belongs to the separate manual AI `set_batch_records` tool;
+it is not a field of this REST request. Generate the sequence in your client and
+send `variables_list`, or use the saved-design workflow through MCP.
+
+### `POST /api/print/images`
+
+Required: `mac_address` and `images`, an array of complete base64 PNG images or
+PNG data URLs. Optional: `split_mode`, `is_rotated` (both default `false`) and
+`dither` (default `true`). At most 500 images are accepted. This route can print
+externally rendered images without the Chromium add-on.
+
+An empty image array returns `status: "empty"` and `submitted: 0`. Nonempty
+requests return the normal submission receipt.
+
+### Banners and pre-cut labels
+
+Use `isRotated: true` for a design that runs along a continuous roll; keep the
+cross-roll dimension within the printer's printable width. `splitMode` divides
+an oversized design into separate strips. Do not use it for fixed pre-cut labels.
+
+Continuous paper does not imply unlimited rendering. Each dimension is capped at
+20,000 pixels, total render pixels at 50 million, and each job at 500 labels.
+Firmware, physical paper and processing deadlines can impose smaller limits.
+
+## Templates
+
+`GET /api/templates` returns template metadata. The same catalog appears in
+`GET /api/agent/context`. Use the editor or MCP saved-design operations to apply
+a template to a design.
+
+`POST /api/templates/generate` is a compatibility endpoint. It accepts
+`template_id`, integer `width`/`height` and optional string-valued `params`, but
+currently returns `{"items": []}` for a known template ID; unknown IDs return
+HTTP 400. It does not produce a complete layout.
+
+## Manual prompt and JSON tools
+
+These routes support the built-in manual prompt/JSON workflow. Their tool names
+are separate from the `catlabel_*` MCP tools.
+
+- `POST /api/ai/manual/prompt-builder` accepts `intent` and `canvas_state`, plus
+  optional `printer_info` and `mac_address`. It returns `{"prompt": "..."}` with
+  the current manual tool schema. Printer constraints are resolved from
+  `printer_info`.
+- `POST /api/ai/manual/execute` accepts `canvas_state` and a `tool_calls` array of
+  objects such as `{"tool": "add_text_element", "arguments": {"text": "Parts"}}`.
+  It returns `canvas_state` and `execution_results`. Each result records the
+  call's index, tool, status and result; inspect individual errors even when the
+  HTTP request succeeds.
+
+## Browser harness adapter
+
+`GET /api/harness/connection` reports the local connection/configuration-file
+location and whether harness support is enabled. `GET /api/harness/tools` returns
+the MCP tool definitions for browser registration.
+
+`POST /api/harness/tools/{name}` accepts `{"arguments": {...}}` and returns the
+SDK tool result, including `content`, `structuredContent` and `isError`. These
+routes use editor authentication and `X-CatLabel-Client: 1`; they do not return
+the MCP bearer credential. Saved edits use the same
+[revision guards](docs/project-persistence.md) as the editor.

@@ -35,9 +35,11 @@ verified launches reuse the installed environment.
 
 The runtime lock targets Linux x86_64/ARM64, Windows x86_64 and macOS Intel/ARM.
 Its platform floors are Linux kernel 4.18+/glibc 2.28+, macOS 13+ and Windows 10+.
-Linux has been verified with printer hardware. Windows launcher packaging and
-fresh setup are checked on native CI; macOS installation and Windows/macOS
-Bluetooth printing remain best effort. Chromium has additional host-library
+Linux has been verified with selected printer hardware. Windows launcher
+packaging and fresh setup are checked on native CI; the
+[v0.3 release also records Windows 11 laptop installation and MCP preview/export checks](https://github.com/lukaszliniewicz/catlabel/releases/tag/0.3).
+macOS installation and Windows/macOS Bluetooth printing remain best effort.
+Chromium has additional host-library
 requirements. Use a current browser; the frontend requires Chrome 111+,
 Firefox 128+ or Safari 16.4+.
 

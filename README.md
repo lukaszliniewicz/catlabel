@@ -7,33 +7,42 @@
 CatLabel is a local label designer for portable thermal printers, including
 Niimbot, Phomemo and many generic “cat printers”. It combines a visual canvas,
 HTML/CSS layouts, reusable templates and batch printing with MCP
-and browser site tools for OpenCode, ChatGPT Work and other harnesses. Your projects and printer connection
-stay on your computer; ordinary design and printing need no account or AI service.
+and browser site tools for OpenCode, ChatGPT Work and other harnesses. Projects
+are stored locally, and printing happens from your computer. Ordinary design and
+printing need no account or AI service; optional AI integrations use the model
+and service you choose.
 
 A fork of [TiMini-Print](https://github.com/Dejniel/TiMini-Print), with a
 FastAPI/React interface, dedicated Niimbot support and shared services for the
 editor, REST API and MCP.
 
-[Installation](#installation) · [MCP / OpenCode](#use-with-opencode-and-other-harnesses) ·
+[Download](#download) · [Installation](#installation) · [MCP / OpenCode](#use-with-opencode-and-other-harnesses) ·
 [Features](#what-you-can-make) · [Printers](#printer-support) · [Documentation](#documentation)
 
-<img width="1000" alt="CatLabel editor and printed labels" src="https://github.com/user-attachments/assets/20a525d0-b6b4-4e8e-a743-ebb3ff5333ea">
+## Download
+
+**Current release: [v0.3.1](https://github.com/lukaszliniewicz/catlabel/releases/tag/0.3.1).**
+
+[![Linux AppImage](https://img.shields.io/badge/Download-Linux_AppImage-2563eb?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3.1/CatLabel-0.3.1-x86_64.AppImage)
+[![Windows launcher](https://img.shields.io/badge/Download-Windows_launcher-2563eb?style=for-the-badge)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3.1/CatLabel-Launcher.exe)
+[![Portable application ZIP](https://img.shields.io/badge/Download-Portable_ZIP-475569?style=for-the-badge)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3.1/CatLabel-0.3.1.zip)
+
+[SHA-256 checksums](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3.1/SHA256SUMS) ·
+[Release notes](https://github.com/lukaszliniewicz/catlabel/releases/tag/0.3.1) ·
+[Latest release](https://github.com/lukaszliniewicz/catlabel/releases/latest)
+
+<p align="center">
+  <img width="480" alt="A cat printer with herb and hardware labels" src="https://github.com/user-attachments/assets/20a525d0-b6b4-4e8e-a743-ebb3ff5333ea">
+</p>
 
 ## Installation
-
-**Download v0.3:**
-
-[![Linux AppImage](https://img.shields.io/badge/Download-Linux_AppImage-2563eb?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3/CatLabel-0.3.0-x86_64.AppImage)
-[![Windows launcher](https://img.shields.io/badge/Download-Windows_launcher-2563eb?style=for-the-badge)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3/CatLabel-Launcher.exe)
-[![Portable application ZIP](https://img.shields.io/badge/Download-Portable_ZIP-475569?style=for-the-badge)](https://github.com/lukaszliniewicz/catlabel/releases/download/0.3/CatLabel-0.3.0.zip)
 
 On **Linux x86_64**, make the AppImage executable and open it. On **Windows
 x86_64**, put the launcher in a short, writable folder (for example
 `C:\CatLabel`) and double-click it. Deeply nested folders can exceed Windows
 dependency path limits. Fresh packaged installs include MCP and preview support
-by default. These are small
-bootstrap downloads: first setup still needs internet access to install the
-runtime and Chromium. [Checksums and release notes](https://github.com/lukaszliniewicz/catlabel/releases/tag/0.3).
+by default. These are bootstrap downloads: first setup needs internet access to
+install the runtime and Chromium.
 
 For **macOS or Linux ARM64**, or a browser-only installation, extract the portable
 ZIP to a writable folder and use the scripts below. Developers can

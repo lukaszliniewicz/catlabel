@@ -29,8 +29,10 @@ Close a running CatLabel server before enabling the add-on. From the application
 folder, run `bash ./run.sh --install-mcp` on Linux/macOS, or
 `run.bat --install-mcp` on Windows. MCP also installs the headless Chromium add-on.
 Subsequent normal launches remember the choice. `--skip-mcp` disables the endpoint
-without removing designs or job receipts. Linux is the first acceptance platform;
-Windows/macOS native installation and credential access controls remain unverified.
+without removing designs or job receipts. Linux installation, preview and export
+have been checked, and Windows packaged setup is checked on native CI. macOS
+installation and manual Windows/macOS credential-permission checks remain
+unverified.
 
 The endpoint is `http://127.0.0.1:8000/mcp/` by default. If you set
 `CATLABEL_PORT`, use that port in the client configuration too. MCP requires a
@@ -45,6 +47,9 @@ launcher commands to generate the configuration or check readiness:
 ./CatLabel-VERSION-x86_64.AppImage --mcp-config
 ./CatLabel-VERSION-x86_64.AppImage --mcp-doctor
 ```
+
+On Windows, use `CatLabel-Launcher.exe --mcp-config` and
+`CatLabel-Launcher.exe --mcp-doctor` from the launcher folder.
 
 Add `--mcp-port 18260` if the app uses port 18260 or
 `--mcp-output /absolute/path/opencode.json` to create a new configuration file.
@@ -61,8 +66,17 @@ PLAYWRIGHT_BROWSERS_PATH=0 ./bin/pixi run --environment mcp-headless --locked --
   python -m catlabel.mcp doctor --port 8000
 ```
 
-On Windows use `bin\pixi.exe` and set `PLAYWRIGHT_BROWSERS_PATH=0` in the terminal.
-If AI is also enabled, use environment `ai-mcp-headless`. Set `CATLABEL_DATA_DIR`
+For a Windows source-folder installation, run these commands in PowerShell from
+the application folder after setup. Windows stores Chromium in the data folder:
+
+```powershell
+$env:CATLABEL_DATA_DIR = Join-Path $PWD 'data'
+$env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $env:CATLABEL_DATA_DIR 'playwright-browsers'
+.\bin\pixi.exe run --environment mcp-headless --locked --no-install python -m catlabel.mcp config --port 8000
+.\bin\pixi.exe run --environment mcp-headless --locked --no-install python -m catlabel.mcp doctor --port 8000
+```
+
+If AI is also enabled, use environment `ai-mcp-headless`. Adjust the data path
 consistently when using a separate data folder. The doctor launches Chromium and
 checks the authenticated MCP endpoint; it never prints a label.
 
@@ -154,10 +168,19 @@ for seven days. The artifact quota is 1 GiB. Limits also bound request size,
 image/PDF decoding, document complexity and rendered pixels.
 
 The server supports July `2026-07-28` and legacy `2025-11-25` through the official
-SDK. Ordinary durable job tools work without the Tasks extension. The server uses local Streamable HTTP. Stdio, SSE, LAN/OAuth, contact sheets and fully
-printer-transformed proofs are not currently implemented. Arbitrary server paths, shell commands,
-provider credentials and automatic URL downloads are not tools.
+SDK. Ordinary durable job tools work without the Tasks extension. The MCP endpoint
+uses local Streamable HTTP; stdio, legacy SSE, LAN MCP access and OAuth are not
+implemented. Arbitrary server paths, shell commands, provider credentials and
+automatic URL downloads are not tools.
 
 The editor notices external saved revisions and offers a reload; it keeps the
 current canvas and undo history until you choose to reload. Dirty edits still
 require the normal replacement confirmation.
+
+## Preview timeouts
+
+A first preview may take longer while Chromium and fonts initialize. Heavy memory
+or disk pressure can make it exceed the render deadline. Let setup finish and
+retry the preview when the machine is less busy. Before retrying a print request,
+inspect its job receipt and physical output; uncertain delivery is never safe to
+replay automatically.
