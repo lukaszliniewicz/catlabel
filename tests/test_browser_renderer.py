@@ -177,6 +177,7 @@ class FakeContext:
         self.factory = factory
         self.closed = asyncio.Event()
         self.close_started = asyncio.Event()
+        self.close_started_at: float | None = None
         self.close_calls = 0
         self.page: FakePage | None = None
 
@@ -192,6 +193,8 @@ class FakeContext:
         self.factory.record_loop()
         self.close_calls += 1
         self.closed.set()
+        if self.close_started_at is None:
+            self.close_started_at = asyncio.get_running_loop().time()
         self.close_started.set()
         if self.factory.context_close_gate is not None:
             await self.factory.context_close_gate.wait()
@@ -766,7 +769,7 @@ class BrowserRendererTests(unittest.IsolatedAsyncioTestCase):
                     patch.object(
                         template,
                         "RENDER_BASE_TIMEOUT_SECONDS",
-                        0.02 if use_timeout else 2.0,
+                        2.0,
                     ),
                     patch.object(template, "RENDER_PER_JOB_TIMEOUT_SECONDS", 0.0),
                 )
@@ -777,7 +780,9 @@ class BrowserRendererTests(unittest.IsolatedAsyncioTestCase):
                     self.assertIsNotNone(owned_job)
                     if not use_timeout:
                         request.cancel()
-                    start = asyncio.get_running_loop().time()
+                    await asyncio.wait_for(factory.contexts[0].close_started.wait(), 3)
+                    start = factory.contexts[0].close_started_at
+                    assert start is not None
                     expected_error = (
                         TimeoutError if use_timeout else asyncio.CancelledError
                     )
